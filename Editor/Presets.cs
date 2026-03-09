@@ -564,6 +564,8 @@ namespace Thry.ThryEditor
 
             s_appliedPresets[key] = AppliedPreset.Create(name, preset, shaderEditor.Materials[0], parent);
             ApplyPresetInternal(shaderEditor, preset, preset, parent);
+            GlobalLinker.PropagateAfterPreset(shaderEditor, preset, parent);
+            PropagateLinkedMaterials(shaderEditor, preset, parent);
             foreach (Material m in shaderEditor.Materials)
                 MaterialEditor.ApplyMaterialPropertyDrawers(m);
         }
@@ -575,6 +577,8 @@ namespace Thry.ThryEditor
             
             ThryLogger.Log($"Revert '{appliedPreset.preset.name}' from '{key.name}'");
             ApplyPresetInternal(shaderEditor, appliedPreset.preset, appliedPreset.prePresetState, appliedPreset.parent);
+            GlobalLinker.PropagateAfterPreset(shaderEditor, appliedPreset.preset, appliedPreset.parent);
+            PropagateLinkedMaterials(shaderEditor, appliedPreset.preset, appliedPreset.parent);
             foreach (Material m in shaderEditor.Materials)
                 MaterialEditor.ApplyMaterialPropertyDrawers(m);
             s_appliedPresets.Remove(key);
@@ -597,6 +601,8 @@ namespace Thry.ThryEditor
             foreach (Material preset in presets)
             {
                 ApplyPresetInternal(shaderEditor, preset, preset, null);
+                GlobalLinker.PropagateAfterPreset(shaderEditor, preset, null);
+                PropagateLinkedMaterials(shaderEditor, preset, null);
             }
             shaderEditor.ApplyDrawers();
             shaderEditor.Reload();
@@ -643,6 +649,23 @@ namespace Thry.ThryEditor
                     // ThryDebug.Detail($"Apply values from '{copyFrom.name}' to '{part.Content.text}' ({copyFrom.name} -> {part.MaterialProperty.targets[0].name}) ({MaterialHelper.GetValue(part.MaterialProperty)} -> {MaterialHelper.GetValue(copyFrom, part.MaterialProperty.name)})");
                     part.CopyFrom(copyFrom, applyDrawers: false);
                 }
+            }
+        }
+
+        static void PropagateLinkedMaterials(ShaderEditor shaderEditor, Material preset, ShaderPart parent)
+        {
+            if (shaderEditor.IsInAnimationMode) return;
+
+            if (!IsMaterialSectionedPreset(preset))
+            {
+                foreach (ShaderPart part in shaderEditor.ShaderParts)
+                {
+                    if (part is ShaderGroup group && IsPreset(preset, part)) group.UpdateLinkedMaterials();
+                }
+            }
+            else if (parent is ShaderGroup group)
+            {
+                group.UpdateLinkedMaterials();
             }
         }
 

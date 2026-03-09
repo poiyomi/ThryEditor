@@ -234,9 +234,11 @@ namespace Thry.ThryEditor
 		public static readonly GUIStyle refresh = CreateIconStyle(EditorGUIUtility.IconContent("d_Refresh"));
 		public static readonly GUIStyle shaders = CreateIconStyle(EditorGUIUtility.IconContent("d_ShaderVariantCollection Icon"));
 		public static readonly GUIStyle tools = CreateIconStyle(EditorGUIUtility.IconContent("d_SceneViewTools@2x"));
-		public static readonly GUIStyle linked = CreateIconStyle(LoadTextureByGUID(RESOURCE_GUID.ICON_LINK));
-		public static readonly GUIStyle thryIcon = CreateIconStyle(LoadTextureByGUID(RESOURCE_GUID.ICON_THRY));
-		public static readonly GUIStyle github = CreateIconStyle(LoadTextureByGUID(RESOURCE_GUID.ICON_GITHUB));
+		public static readonly GUIStyle linked = CreateIconStyle(LoadTextureByGUID(EditorGUIUtility.isProSkin ? RESOURCE_GUID.ICON_LINK : RESOURCE_GUID.ICON_LINK_INV));
+		public static readonly GUIStyle global_linked = CreateIconStyle(LoadTextureByGUID(EditorGUIUtility.isProSkin ? RESOURCE_GUID.ICON_GLOBAL_LINK : RESOURCE_GUID.ICON_GLOBAL_LINK_INV));
+		public static readonly GUIStyle global_linked_active = CreateIconStyle(LoadTextureByGUID(RESOURCE_GUID.ICON_GLOBAL_LINK_ACTIVE));
+		public static readonly GUIStyle thryIcon = CreateIconStyle(LoadTextureByGUID(EditorGUIUtility.isProSkin ? RESOURCE_GUID.ICON_THRY : RESOURCE_GUID.ICON_THRY_INV));
+		public static readonly GUIStyle github = CreateIconStyle(LoadTextureByGUID(EditorGUIUtility.isProSkin ? RESOURCE_GUID.ICON_GITHUB : RESOURCE_GUID.ICON_GITHUB_INV));
 
 		static GUIStyle CreateIconStyle(GUIContent content)
 		{
