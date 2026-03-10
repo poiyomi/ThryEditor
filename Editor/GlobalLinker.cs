@@ -214,6 +214,18 @@ namespace Thry.ThryEditor
             }
         }
 
+        public static void ApplyAllLinksToMaterial(Material material)
+        {
+            Load();
+            string guid = UnityHelper.GetGUID(material);
+            foreach (GlobalLink link in s_data)
+            {
+                if (link == null || link.subscribedMaterialGuids == null) continue;
+                if (!link.subscribedMaterialGuids.Contains(guid)) continue;
+                ApplyLinkToMaterial(link, material);
+            }
+        }
+
         #endregion
 
         #region Property Capture & Apply
