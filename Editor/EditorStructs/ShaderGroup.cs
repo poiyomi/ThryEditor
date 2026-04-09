@@ -194,7 +194,7 @@ namespace Thry.ThryEditor
                 p.FindUnusedTextures(unusedList, isEnabled);
         }
 
-        protected void UpdateLinkedMaterials()
+        public void UpdateLinkedMaterials()
         {
             if(ShaderEditor.Active.IsInAnimationMode) return;
             IEnumerable<Material> linked_materials = MaterialLinker.GetLinked(MaterialProperty);

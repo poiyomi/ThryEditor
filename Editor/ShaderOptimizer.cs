@@ -954,6 +954,12 @@ namespace Thry.ThryEditor
             // In case any keywords were messed up in the material following unlock, fix them now
             if (!isLocking && Config.Instance.fixKeywordsWhenLocking)
                 ShaderEditor.FixKeywords(materialsToChangeLock);
+            
+            // After unlocking, apply Global Link values so the material receives the latest linked properties.
+            if (!isLocking)
+            {
+                foreach (Material m in materialsToChangeLock) GlobalLinker.ApplyAllLinksToMaterial(m);
+            }
 
             AssetDatabase.StopAssetEditing();
             //unity now compiles all the shaders
