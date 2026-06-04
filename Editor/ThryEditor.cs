@@ -32,6 +32,16 @@ namespace Thry
         public static InputEvent Input = new InputEvent();
         public static ShaderEditor Active { get; private set; }
 
+        /// <summary>
+        /// Optional external hook invoked right before a shader is assigned to a material through the inspector's
+        /// shader dropdown. Receives (material, oldShader, newShader). Return <c>false</c> to cancel the assignment -
+        /// the material keeps its current shader, with no flicker or wasted recompile. Return <c>true</c> (the default
+        /// behaviour when no handler is registered) to let the swap proceed as normal.
+        /// Kept shader-agnostic so downstream packages (e.g. Poiyomi's version-upgrade prompt) can opt in without
+        /// ThryEditor taking a dependency on them.
+        /// </summary>
+        public static Func<Material, Shader, Shader, bool> OnBeforeAssignNewShader;
+
         // Stores the different shader properties
         private ShaderGroup _mainGroup;
         private RenderQueueProperty _renderQueueProperty;
@@ -644,6 +654,25 @@ namespace Thry
 
         public override void AssignNewShaderToMaterial(Material material, Shader oldShader, Shader newShader)
         {
+            // Give external tooling a chance to veto the swap before anything is mutated. base.AssignNewShaderToMaterial
+            // is what actually assigns the shader, so returning here leaves the material on its current shader entirely.
+            if (OnBeforeAssignNewShader != null)
+            {
+                bool proceed = true;
+                try
+                {
+                    proceed = OnBeforeAssignNewShader(material, oldShader, newShader);
+                }
+                catch (Exception e)
+                {
+                    // Never let a misbehaving handler block shader assignment.
+                    Debug.LogException(e);
+                }
+
+                if (!proceed)
+                    return;
+            }
+            
             this.ShaderOptimizerProperty = null;
             this.LocaleProperty = null;
             this.InShaderPresetsProperty = null;
