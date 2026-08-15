@@ -1,3 +1,9 @@
+# [2.73.6]
+## Fixes
+- Increased height of Material Lock Manager toolbar so that it still appears fine on 1080p displays.
+- Fixed an old regression that caused Render Queues to show incorrect readings on custom values.
+  - This means Render Queue value readings now line up with Unity's convention. As an example, if the Render Queue is set to 2225, it will now correctly show as `Geometry +225` and a value of 2226 will now correctly appear as `AlphaTest -224`.
+
 # [2.73.5]
 ## Added
 - **Added Stencil Calculator**, contributed by MonadoArt.
