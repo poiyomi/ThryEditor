@@ -20,7 +20,10 @@ namespace Thry.ThryEditor.Drawers
     // reorder or remove a row — only append new modes at the end.
     public class ThryLightingModeDrawer : MaterialPropertyDrawer
     {
-        static readonly string[] MasterKeyword =
+        // Public so Thry's keyword discovery (ShaderHelper.GetKeywordsFromShaderProperty)
+        // can report this property's keyword set to FixKeywords. Index-aligned: the stored
+        // property value is the index into this array.
+        public static readonly string[] MasterKeyword =
         {
             "_LIGHTINGMODE_TEXTURERAMP",    // 0
             "_LIGHTINGMODE_MULTILAYER_MATH",// 1

@@ -155,6 +155,18 @@ namespace Thry.ThryEditor.Helpers
                 //   \s*\)    - Match a closing parenthesis, allowing whitespace before and after
                 const string propertyDrawerRegex = @"(\w+)\s*\(\s*([^)]*)\s*\)";
 
+                // ThryLightingMode takes no arguments, so the drawer regex below can never match
+                // it. It selects one of a fixed, index-aligned keyword set (the stored value IS the
+                // index), so report the whole set here: FixKeywords then enables keywords[value] and
+                // disables the rest. Without this the property contributes no keywords, and
+                // FixKeywords' "disable any remaining keywords" pass strips _LIGHTINGMODE_* from
+                // every material, leaving the shader with no lighting mode selected.
+                if (attribute.Trim() == "ThryLightingMode")
+                {
+                    keywords.AddRange(Drawers.ThryLightingModeDrawer.MasterKeyword);
+                    break;
+                }
+
                 Match regexMatch = Regex.Match(attribute, propertyDrawerRegex);
                 if (regexMatch.Success)
                 {
