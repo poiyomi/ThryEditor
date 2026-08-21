@@ -689,6 +689,10 @@ namespace Thry.ThryEditor
 #endregion
 #region Drawing
 
+        // A part that has nothing to show draws no chrome for itself. Only groups can be empty in this
+        // sense, so the base answer is always false; see ShaderGroup.HasDrawableContent.
+        protected virtual bool SkipDrawBecauseEmpty => false;
+
         bool hasAddedDisabledGroup = false;
         public void Draw(Rect? rect = null, GUIContent content = null, bool useEditorIndent = false, bool isInHeader = false)
         {
@@ -696,6 +700,9 @@ namespace Thry.ThryEditor
                 InitOptions();
 
             if (has_not_searchedFor)
+                return;
+
+            if (SkipDrawBecauseEmpty)
                 return;
 
             if (DrawingData.IsEnabled && Options.condition_enable != null)

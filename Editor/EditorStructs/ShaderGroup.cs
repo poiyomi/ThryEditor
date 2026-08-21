@@ -82,6 +82,43 @@ namespace Thry.ThryEditor
         [PublicAPI]
         public ReadOnlyCollection<ShaderPart> Children => _readonlychildren;
 
+        private bool? _hasDrawableContent;
+
+        /// <summary>
+        /// True when this group would put something on screen beyond its own header row: a property, or a
+        /// nested group that itself has content. A group carrying a reference property always counts, since
+        /// that toggle is drawn in the header bar itself.
+        ///
+        /// A section whose properties all come from modules the shader doesn't include ends up here with no
+        /// children at all — the category property in the skeleton is emitted unconditionally, its #K# sink
+        /// stays empty. Drawing it advertises a section the shader does not have.
+        ///
+        /// The whole part tree is rebuilt by CollectAllProperties on every UI build, so a cached answer can
+        /// never outlive the tree it was computed from. Reads _children rather than Children because the
+        /// latter allocates a new ReadOnlyCollection per access, and this is reached from Draw.
+        /// </summary>
+        public bool HasDrawableContent
+        {
+            get
+            {
+                if (_hasDrawableContent == null)
+                {
+                    _hasDrawableContent = Options.reference_property != null
+                        || (Options.reference_properties != null && Options.reference_properties.Length > 0)
+                        || _children.Any(c => (c as ShaderGroup)?.HasDrawableContent ?? true);
+                }
+                return _hasDrawableContent.Value;
+            }
+        }
+
+        protected override bool SkipDrawBecauseEmpty => !HasDrawableContent;
+
+        private void SetHasDrawableContentDirty()
+        {
+            _hasDrawableContent = null;
+            (Parent as ShaderGroup)?.SetHasDrawableContentDirty();
+        }
+
         protected bool _isExpanded;
         private bool _isSearchExpanded;
 
@@ -168,6 +205,7 @@ namespace Thry.ThryEditor
         {
             part.SetParent(this);
             _children.Add(part);
+            SetHasDrawableContentDirty();
         }
 
         public override void CopyFrom(Material src, bool applyDrawers = true, bool deepCopy = true, bool copyReferenceProperties = true, HashSet<ShaderPropertyType> skipPropertyTypes = null, HashSet<string> skipPropertyNames = null)
