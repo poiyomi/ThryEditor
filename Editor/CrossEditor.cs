@@ -172,6 +172,46 @@ namespace Thry.ThryEditor
             EditorGUIUtility.wideMode = wideMode;
         }
 
+        // A property name plus which declaration of that name this is.
+        //
+        // A shader may declare the same property more than once: Poiyomi's rim lighting declares
+        // _RimBlur in both its Poiyomi style and its LilToon style section, each gated on _RimStyle, and
+        // Unity returns one entry per declaration. Keying the collection below on the name alone
+        // collapsed those into a single entry, so the property could only be placed in one of its
+        // sections and went missing from the other. Keying on the occurrence keeps them apart while
+        // staying unique within a shader, which is what the intersect/union merge relies on.
+        private readonly struct PropertyOccurrence : IEquatable<PropertyOccurrence>
+        {
+            public readonly string Name;
+            public readonly int Occurrence;
+
+            public PropertyOccurrence(string name, int occurrence)
+            {
+                Name = name;
+                Occurrence = occurrence;
+            }
+
+            public bool Equals(PropertyOccurrence other) => Occurrence == other.Occurrence && Name == other.Name;
+            public override bool Equals(object obj) => obj is PropertyOccurrence other && Equals(other);
+            public override int GetHashCode() => unchecked(((Name?.GetHashCode() ?? 0) * 397) ^ Occurrence);
+        }
+
+        // Declaration order, with repeated declarations numbered so they stay distinct.
+        private static PropertyOccurrence[] GetPropertyOccurrences(Material material)
+        {
+            MaterialProperty[] properties = MaterialEditor.GetMaterialProperties(new UnityEngine.Object[] { material });
+            Dictionary<string, int> counts = new Dictionary<string, int>();
+            PropertyOccurrence[] occurrences = new PropertyOccurrence[properties.Length];
+            for (int i = 0; i < properties.Length; i++)
+            {
+                string name = properties[i].name;
+                counts.TryGetValue(name, out int seen);
+                counts[name] = seen + 1;
+                occurrences[i] = new PropertyOccurrence(name, seen);
+            }
+            return occurrences;
+        }
+
         private void CreateShaderEditor()
         {
             if (_shaderEditor != null) return;
@@ -181,17 +221,23 @@ namespace Thry.ThryEditor
 
             // group targets by shader, take one material per shader
             IEnumerable<Material> materialsToSearchProperties = _targets.GroupBy(t => t.shader).Select(g => g.First());
-            // get properties for each shader
-            Dictionary<Shader, HashSet<string>> shaderProperties = materialsToSearchProperties.ToDictionary(m => m.shader, m => new HashSet<string>(MaterialEditor.GetMaterialProperties(new UnityEngine.Object[] { m }).Select(p => p.name)));
-            // get values of dict as string arrays
-            IEnumerable<string[]> propertiesPerShader = shaderProperties.Values.Select(v => v.ToArray());
+            // get properties for each shader, keeping declaration order rather than leaning on the
+            // enumeration order of a set, since the merge below is order sensitive
+            List<PropertyOccurrence[]> propertiesPerShader = new List<PropertyOccurrence[]>();
+            Dictionary<Shader, HashSet<PropertyOccurrence>> shaderProperties = new Dictionary<Shader, HashSet<PropertyOccurrence>>();
+            foreach (Material material in materialsToSearchProperties)
+            {
+                PropertyOccurrence[] occurrences = GetPropertyOccurrences(material);
+                propertiesPerShader.Add(occurrences);
+                shaderProperties[material.shader] = new HashSet<PropertyOccurrence>(occurrences);
+            }
             // create intersection of all properties
-            List<string> propertiesOrdered = propertiesPerShader.Aggregate((a, b) => a.Intersect(b).ToArray()).ToList();
+            List<PropertyOccurrence> propertiesOrdered = propertiesPerShader.Aggregate((a, b) => a.Intersect(b).ToArray()).ToList();
             // expand the intersection to be a union, but add each property after the occurence of their predecessor
-            foreach (string[] properties in propertiesPerShader)
+            foreach (PropertyOccurrence[] properties in propertiesPerShader)
             {
                 int index = 0;
-                foreach (string property in properties)
+                foreach (PropertyOccurrence property in properties)
                 {
                     if (!propertiesOrdered.Contains(property))
                     {
@@ -203,14 +249,16 @@ namespace Thry.ThryEditor
                     index++;
                 }
             }
-            // For each property get all materials, whos shader has this property
-            Dictionary<string, Material[]> propertyMaterials = new Dictionary<string, Material[]>();
-            foreach (string property in propertiesOrdered)
+            // For each property get all materials, whos shader has this property. A material only counts
+            // for the second declaration of a name if its own shader declares that name twice as well.
+            Dictionary<PropertyOccurrence, Material[]> propertyMaterials = new Dictionary<PropertyOccurrence, Material[]>();
+            foreach (PropertyOccurrence property in propertiesOrdered)
             {
                 propertyMaterials[property] = _targets.Where(t => shaderProperties[t.shader].Contains(property)).ToArray();
             }
-            // Get MaterialProperties of all materials
-            _materialProperties = propertiesOrdered.Select(p => MaterialEditor.GetMaterialProperty(propertyMaterials[p], p)).ToArray();
+            // Get MaterialProperties of all materials. Repeated declarations resolve to the same
+            // underlying property, exactly as they do in the normal inspector.
+            _materialProperties = propertiesOrdered.Select(p => MaterialEditor.GetMaterialProperty(propertyMaterials[p], p.Name)).ToArray();
         }
     }
 }
