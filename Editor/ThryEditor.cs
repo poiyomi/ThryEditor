@@ -678,13 +678,57 @@ namespace Thry
         public override void ValidateMaterial(Material material)
         {
             base.ValidateMaterial(material);
-            if(Undo.GetCurrentGroupName() == "Reset Material")
-            {
-                if(Active != null && Active.Materials[0] == material)
-                    Active.OnReset();
-            }
+            WatchForMaterialReset(material, Undo.GetCurrentGroup());
         }
         #endif
+
+        private const string RESET_MATERIAL_UNDO_NAME = "Reset Material";
+        // Unity has named the group by the tick after ValidateMaterial in some resets and later in others,
+        // so a single deferred check misses it. A short watch covers both without polling indefinitely.
+        private const int RESET_WATCH_FRAMES = 20;
+        private static readonly HashSet<int> _watchedResetGroups = new HashSet<int>();
+        private static int _lastHandledResetGroup = -1;
+
+        /// <summary>
+        /// Runs OnReset when the undo group this ValidateMaterial belongs to turns out to be a material reset.
+        ///
+        /// Unity names that group "Reset Material" only after ValidateMaterial has already run, so reading the
+        /// name during the call returns whatever the previous action left behind - typically one of ThryEditor's
+        /// own group names, like "Expand Color &amp; Normals of X". The old check compared against that stale name,
+        /// so the first reset never cleared the animated tags and a second one had to be performed, which then
+        /// matched on the name the first had since set.
+        ///
+        /// Deliberately still an exact name match rather than anything heuristic: OnReset also unlinks materials
+        /// and clears notes, so a false positive destroys user data. Failing to detect a reset is the safe
+        /// direction to err in, and is no worse than the previous behaviour.
+        /// </summary>
+        private void WatchForMaterialReset(Material material, int group)
+        {
+            if (group == _lastHandledResetGroup) return;
+            if (!_watchedResetGroups.Add(group)) return; // already watching this group
+
+            int framesLeft = RESET_WATCH_FRAMES;
+            EditorApplication.CallbackFunction watcher = null;
+            watcher = () =>
+            {
+                bool isReset = Undo.GetCurrentGroup() == group
+                    && Undo.GetCurrentGroupName() == RESET_MATERIAL_UNDO_NAME;
+
+                if (isReset && group != _lastHandledResetGroup)
+                {
+                    _lastHandledResetGroup = group;
+                    if (Active != null && Active.Materials.Length > 0 && Active.Materials[0] == material)
+                        Active.OnReset();
+                }
+
+                if (isReset || --framesLeft <= 0 || material == null)
+                {
+                    EditorApplication.update -= watcher;
+                    _watchedResetGroups.Remove(group);
+                }
+            };
+            EditorApplication.update += watcher;
+        }
 
         private void OnReset()
         {
