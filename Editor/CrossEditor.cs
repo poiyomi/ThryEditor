@@ -72,28 +72,38 @@ namespace Thry.ThryEditor
         private void OnGUI()
         {
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandWidth(true));
-            _showMaterials = EditorGUILayout.Foldout(_showMaterials, "Materials");
-
-            EditorGUI.BeginChangeCheck();
-            DrawMaterials();
-
-            // Check if targets have changed
-            bool didShadersChange = EditorGUI.EndChangeCheck();
-            foreach (Material m in _materialList)
+            // Drawers are allowed to end the GUI pass early by throwing out of GUIUtility.ExitGUI - the lock
+            // button does exactly that, because locking swaps the shader and every control drawn afterwards
+            // would be mismatched. Unwinding past EndScrollView would leave IMGUI's layout group stack
+            // unbalanced, which throws an index out of range on the following repaint and leaves the window
+            // stuck. The inspector never hit this since it does not wrap the shader GUI in its own group.
+            try
             {
-                if (m == null || // Material is null
-                    _targetShaders.ContainsKey(m) && _targetShaders[m] == m.shader) // Shader hasn't changed
-                    continue;
+                _showMaterials = EditorGUILayout.Foldout(_showMaterials, "Materials");
 
-                didShadersChange = true;
-                _targetShaders[m] = m.shader;
+                EditorGUI.BeginChangeCheck();
+                DrawMaterials();
+
+                // Check if targets have changed
+                bool didShadersChange = EditorGUI.EndChangeCheck();
+                foreach (Material m in _materialList)
+                {
+                    if (m == null || // Material is null
+                        _targetShaders.ContainsKey(m) && _targetShaders[m] == m.shader) // Shader hasn't changed
+                        continue;
+
+                    didShadersChange = true;
+                    _targetShaders[m] = m.shader;
+                }
+
+                if (didShadersChange) UpdateTargets();
+
+                DrawShaderEditor();
             }
-
-            if (didShadersChange) UpdateTargets();
-
-            DrawShaderEditor();
-
-            EditorGUILayout.EndScrollView();
+            finally
+            {
+                EditorGUILayout.EndScrollView();
+            }
         }
 
         // List of materials, remove button next to each
