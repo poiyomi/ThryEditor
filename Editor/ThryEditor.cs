@@ -289,18 +289,52 @@ namespace Thry
             return ThryPropertyType.shown_property;
         }
 
+        // Which properties carry [ThryHideInInspector], per shader.
+        //
+        // This used to be answered per property with Shader.FindPropertyIndex(name) followed by
+        // GetPropertyAttributes - a name search and a string[] allocation for each of the ~4900 properties
+        // on a Poiyomi shader, to find the ~830 that are actually flagged. That cost about 24ms of every
+        // material selection. The answer depends only on the shader, so gather it once instead: the first
+        // selection of a shader pays ~2.8ms and every later one pays a set lookup.
+        //
+        // Keyed by instance id rather than the Shader itself so a reimported or destroyed shader cannot be
+        // held alive by this cache, and cleared on reimport since a shader's attributes can change there.
+        private static readonly Dictionary<int, HashSet<string>> _thryHiddenPropertiesByShader = new Dictionary<int, HashSet<string>>();
+
+        internal static void ClearThryHiddenPropertyCache()
+        {
+            _thryHiddenPropertiesByShader.Clear();
+        }
+
+        private static HashSet<string> GetThryHiddenProperties(Shader shader)
+        {
+            int key = shader.GetInstanceID();
+            HashSet<string> hidden;
+            if (_thryHiddenPropertiesByShader.TryGetValue(key, out hidden)) return hidden;
+
+            hidden = new HashSet<string>();
+            int count = shader.GetPropertyCount();
+            for (int i = 0; i < count; i++)
+            {
+                string[] attributes = shader.GetPropertyAttributes(i);
+                for (int a = 0; a < attributes.Length; a++)
+                {
+                    if (attributes[a].StartsWith("ThryHideInInspector", StringComparison.Ordinal))
+                    {
+                        hidden.Add(shader.GetPropertyName(i));
+                        break;
+                    }
+                }
+            }
+
+            _thryHiddenPropertiesByShader[key] = hidden;
+            return hidden;
+        }
+
         private bool HasThryHideInInspectorAttribute(MaterialProperty p)
         {
             if (Shader == null) return false;
-            int index = Shader.FindPropertyIndex(p.name);
-            if (index < 0) return false;
-            string[] attributes = Shader.GetPropertyAttributes(index);
-            for (int i = 0; i < attributes.Length; i++)
-            {
-                if (attributes[i].StartsWith("ThryHideInInspector", StringComparison.Ordinal))
-                    return true;
-            }
-            return false;
+            return GetThryHiddenProperties(Shader).Contains(p.name);
         }
 
         private void LoadLocales()

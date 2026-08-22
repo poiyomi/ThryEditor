@@ -361,6 +361,17 @@ namespace Thry.ThryEditor
         {
             if (deletedAssets.Length > 0) AssetsDeleted(deletedAssets);
             if (importedAssets.Length > 0) RepairLockedShaderRefs(importedAssets);
+            // A shader's property attributes can change on reimport, and ShaderEditor caches which of them
+            // carry [ThryHideInInspector] to keep material selection fast.
+            if (ContainsShader(importedAssets) || ContainsShader(deletedAssets))
+                ShaderEditor.ClearThryHiddenPropertyCache();
+        }
+
+        private static bool ContainsShader(string[] assets)
+        {
+            for (int i = 0; i < assets.Length; i++)
+                if (assets[i].EndsWith(".shader", System.StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
         }
 
         private static void AssetsDeleted(string[] assets)
