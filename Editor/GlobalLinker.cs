@@ -51,6 +51,12 @@ namespace Thry.ThryEditor
         public float[] vectorValue; // x, y, z, w
         public string textureGuid; // Asset GUID for Textures
         public float[] textureScaleAndOffset; // scaleX, scaleY, offsetX, offsetY
+        // A/RA state, which lives in a material override tag rather than in the property, so it has to be
+        // carried explicitly. "" = not animated, "1" = A, "2" = RA. See ShaderOptimizer.SetAnimatedTag.
+        public string animatedTag;
+        // False for links captured before A/RA was tracked. Those have no recorded tag, so applying them
+        // leaves the target's existing tag alone rather than clearing it.
+        public bool hasAnimatedTag;
     }
 
     [Serializable]
@@ -425,6 +431,11 @@ namespace Thry.ThryEditor
             if (a == null || b == null) return a == b;
             if (a.name != b.name || a.type != b.type) return false;
 
+            // Toggling A/RA changes nothing about the value, so without this the link would never notice
+            // and the new state would not reach subscribers.
+            if (a.hasAnimatedTag != b.hasAnimatedTag) return false;
+            if (a.hasAnimatedTag && (a.animatedTag ?? "") != (b.animatedTag ?? "")) return false;
+
             switch (a.type)
             {
                 case "Float": return a.floatValue == b.floatValue;
@@ -522,6 +533,10 @@ namespace Thry.ThryEditor
                 default:
                     return null;
             }
+
+            pv.animatedTag = ShaderOptimizer.GetAnimatedTag(prop);
+            pv.hasAnimatedTag = true;
+
             return pv;
         }
 
@@ -565,6 +580,11 @@ namespace Thry.ThryEditor
                         }
                         break;
                 }
+
+                // Carried separately from the value above, since A/RA is a material tag and not part of
+                // the property itself.
+                if (pv.hasAnimatedTag)
+                    material.SetOverrideTag(pv.name + ShaderOptimizer.AnimatedTagSuffix, pv.animatedTag ?? "");
             }
             EditorUtility.SetDirty(material);
             MaterialEditor.ApplyMaterialPropertyDrawers(material);

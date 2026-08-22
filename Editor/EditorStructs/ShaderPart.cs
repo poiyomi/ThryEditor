@@ -1448,6 +1448,9 @@ namespace Thry.ThryEditor
             IsRenaming = renamed;
             ShaderOptimizer.SetAnimatedTag(MaterialProperty, IsAnimated ? (IsRenaming ? "2" : "1") : "");
             (Parent as ShaderGroup)?.SetAnimatedDescendantStateDirty();
+            // A/RA is toggled from the context menu, which runs outside the section's change check, so the
+            // linker has to be told directly - otherwise the new state never reaches the other subscribers.
+            GlobalLinker.OnPropertyChanged(this);
         }
 #endregion
 #region Actions / Callbacks
