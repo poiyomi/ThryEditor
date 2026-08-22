@@ -48,6 +48,9 @@ namespace Thry.ThryEditor
         MaterialProperty[] _materialProperties = null;
         Vector2 _scrollPosition = Vector2.zero;
         bool _showMaterials = true;
+        // Dirty count per target as of the last build, so an edit made outside this window can be noticed.
+        Dictionary<Material, int> _targetDirtyCounts = new Dictionary<Material, int>();
+        bool _isStale = false;
 
         public void UpdateTargets(IEnumerable<Material> materials, bool add = false)
         {
@@ -67,6 +70,44 @@ namespace Thry.ThryEditor
             _targets = _materialList.Where(t => t != null && !t.shader.IsBroken() && !_incompatibleMaterials.Contains(t) && !_disabledMaterials.Contains(t)).ToList();
 
             _shaderEditor = null;
+        }
+
+        /// <summary>
+        /// The property array is built once and reused, unlike the inspector which is handed a fresh one by
+        /// Unity every frame, so an edit made to a target from anywhere else would otherwise never show up
+        /// here. Rebuilding is far too expensive to do per repaint - roughly 185ms for three materials,
+        /// since it re-fetches every one of ~4900 merged properties - but noticing that a rebuild is needed
+        /// costs nothing, so the two are split: check constantly, rebuild only when it matters.
+        /// </summary>
+        private bool HaveTargetsChangedExternally()
+        {
+            if (_targetDirtyCounts.Count != _targets.Count) return true;
+            foreach (Material m in _targets)
+            {
+                if (m == null) return true;
+                int dirtyCount;
+                if (!_targetDirtyCounts.TryGetValue(m, out dirtyCount)) return true;
+                if (EditorUtility.GetDirtyCount(m) != dirtyCount) return true;
+            }
+            return false;
+        }
+
+        private void RecordTargetDirtyCounts()
+        {
+            _targetDirtyCounts.Clear();
+            foreach (Material m in _targets)
+                if (m != null) _targetDirtyCounts[m] = EditorUtility.GetDirtyCount(m);
+            _isStale = false;
+        }
+
+        // Deliberately deferred to focus rather than rebuilt the moment a target goes dirty. Editing a
+        // material in the inspector marks it dirty on every drag frame, and rebuilding each time would cost
+        // 185ms a frame - the exact stutter this is meant to avoid. Nothing is looking at the stale values
+        // while the window is unfocused anyway.
+        private void OnFocus()
+        {
+            if (HaveTargetsChangedExternally()) _isStale = true;
+            Repaint();
         }
 
         private void OnGUI()
@@ -97,6 +138,14 @@ namespace Thry.ThryEditor
                 }
 
                 if (didShadersChange) UpdateTargets();
+
+                // Free every frame; the rebuild it may trigger is not, which is why it only acts while this
+                // window has focus. Elsewhere it just records that a refresh is owed.
+                if (Event.current.type == EventType.Layout && HaveTargetsChangedExternally())
+                    _isStale = true;
+
+                if (_isStale && EditorWindow.focusedWindow == this && Event.current.type == EventType.Layout)
+                    _shaderEditor = null;
 
                 DrawShaderEditor();
             }
@@ -269,6 +318,9 @@ namespace Thry.ThryEditor
             // Get MaterialProperties of all materials. Repeated declarations resolve to the same
             // underlying property, exactly as they do in the normal inspector.
             _materialProperties = propertiesOrdered.Select(p => MaterialEditor.GetMaterialProperty(propertyMaterials[p], p.Name)).ToArray();
+
+            // This array is now the snapshot everything draws from, so baseline the dirty counts against it.
+            RecordTargetDirtyCounts();
         }
     }
 }
