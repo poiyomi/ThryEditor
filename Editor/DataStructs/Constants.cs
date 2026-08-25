@@ -17,7 +17,7 @@ namespace Thry.ThryEditor
     public class URL
     {
         public const string MODULE_COLLECTION = "https://raw.githubusercontent.com/Thryrallo/ThryEditorStreamedResources/main/packages.json";
-        public const string SETTINGS_MESSAGE_URL = "https://raw.githubusercontent.com/Thryrallo/ThryEditorStreamedResources/main/Messages/settingsWindow.json";
+        public const string SETTINGS_MESSAGE_URL = "https://www.poiyomi.com/assets/somethingcool.json"; // Forgive me, Thryrallo.
         public const string COUNT_PROJECT = "http://thryeditor.thryrallo.de/count_project.php";
         public const string COUNT_USER = "http://thryeditor.thryrallo.de/count_user.php";
     }
