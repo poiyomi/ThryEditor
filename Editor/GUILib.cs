@@ -226,6 +226,49 @@ namespace Thry.ThryEditor
             }
         }
 
+
+        // ---- fast path for texture fields -------------------------------------------------
+        //
+        // MaterialEditor.TexturePropertyMiniThumbnail wraps the actual drawing in
+        // BeginAnimatedCheck/EndAnimatedCheck. That wrapper resolves the property's animation
+        // binding, which is the dominant cost of drawing this inspector. When the editor is not
+        // in animation mode nothing can be animated, so the wrapper cannot change what is drawn
+        // and we call Unity's own inner drawing routine directly - identical pixels, no wrapper.
+
+        static Func<Rect, GUIContent, UnityEngine.Object, Type, UnityEngine.Object> _miniThumbField;
+        static bool _miniThumbFieldResolved;
+
+        static bool TryFastTextureMiniThumbnail(Rect position, MaterialProperty prop, GUIContent label)
+        {
+            if (!_miniThumbFieldResolved)
+            {
+                _miniThumbFieldResolved = true;
+                var mi = typeof(EditorGUI).GetMethod("MiniThumbnailObjectField",
+                    BindingFlags.NonPublic | BindingFlags.Static, null,
+                    new[] { typeof(Rect), typeof(GUIContent), typeof(UnityEngine.Object), typeof(Type) }, null);
+                if (mi != null)
+                    _miniThumbField = (Func<Rect, GUIContent, UnityEngine.Object, Type, UnityEngine.Object>)
+                        Delegate.CreateDelegate(typeof(Func<Rect, GUIContent, UnityEngine.Object, Type, UnityEngine.Object>), mi);
+            }
+            if (_miniThumbField == null) return false;
+
+            EditorGUI.BeginChangeCheck();
+            EditorGUI.showMixedValue = prop.hasMixedValue;
+            var result = _miniThumbField(position, label, prop.textureValue, typeof(Texture));
+            EditorGUI.showMixedValue = false;
+            if (EditorGUI.EndChangeCheck()) prop.textureValue = result as Texture;
+            return true;
+        }
+
+        /// <summary>Draws the mini texture field, using the fast path when it is safe to do so.</summary>
+        static void DrawTextureMiniThumbnail(Rect position, MaterialProperty prop, GUIContent label, MaterialEditor editor)
+        {
+            if (ThryCulling.FastTextureField && !AnimationMode.InAnimationMode()
+                && TryFastTextureMiniThumbnail(position, prop, label))
+                return;
+            editor.TexturePropertyMiniThumbnail(position, prop, label.text, label.tooltip);
+        }
+
         public static void SmallTextureProperty(Rect position, MaterialProperty prop, GUIContent label, MaterialEditor editor, bool hasFoldoutProperties, Action extraFoldoutGUI = null)
         {
             // Border Code start
@@ -251,7 +294,7 @@ namespace Thry.ThryEditor
                 thumbnailPos.x += 12;
                 thumbnailPos.width -= 12;
             }
-            editor.TexturePropertyMiniThumbnail(thumbnailPos, prop, label.text, label.tooltip);
+            DrawTextureMiniThumbnail(thumbnailPos, prop, label, editor);
             float iconsPositioningHeight = thumbnailPos.y;
             //VRAM
             Rect vramPos = Rect.zero;
