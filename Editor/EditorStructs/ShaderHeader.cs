@@ -45,7 +45,10 @@ namespace Thry.ThryEditor
 
                 GUILayout.Space(2);
                 EditorGUI.BeginDisabledGroup(DoDisableChildren);
-                ThryCulling.DrawChildren(Children);
+                foreach (ShaderPart part in Children)
+                {
+                    part.Draw();
+                }
                 EditorGUI.EndDisabledGroup();
                 GUILayout.Space(2);
             }

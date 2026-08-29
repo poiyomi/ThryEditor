@@ -123,12 +123,6 @@ namespace Thry.ThryEditor
     
     public abstract class ShaderPart
     {
-        // Last measured layout box of this part, used by ThryCulling to decide whether it can
-        // be skipped. CullEpoch guards staleness; -1 means never measured.
-        internal float CullY;
-        internal float CullHeight;
-        internal int CullEpoch = -1;
-
         public ShaderPart Parent { private set; get; }
         public MaterialProperty MaterialProperty { private set; get; }
         public ShaderEditor MyShaderUI { protected set; get; }

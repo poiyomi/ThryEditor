@@ -151,9 +151,6 @@ namespace Thry.ThryEditor
             }
             set
             {
-                // Any expand/collapse changes heights below this point, so every cached
-                // cull box is stale from here on.
-                ThryCulling.InvalidateLayout();
                 if(ShaderEditor.Active.IsInSearchMode)
                 {
                     _isSearchExpanded = value;
@@ -357,7 +354,10 @@ namespace Thry.ThryEditor
             {
                 GUILayoutUtility.GetRect(0, Options.margin_top);
             }
-            ThryCulling.DrawChildren(Children);
+            foreach (ShaderPart part in Children)
+            {
+                part.Draw();
+            }
         }
 
         public override void FindUnusedTextures(List<string> unusedList, bool isEnabled)
@@ -406,198 +406,4 @@ namespace Thry.ThryEditor
         }
     }
 
-
-    /// <summary>
-    /// Viewport culling for the shader inspector.
-    ///
-    /// A Poiyomi material can put tens of thousands of pixels of UI into a window a thousand pixels
-    /// tall, and IMGUI draws all of it on every event. Each part remembers the box it last occupied;
-    /// parts whose box falls outside the viewport reserve their height and skip drawing entirely.
-    ///
-    /// The cull decision reads only the PREVIOUS frame's viewport snapshot, never a live value.
-    /// That matters: Layout and Repaint must emit an identical number of layout entries or IMGUI
-    /// throws, and ShaderEditor.OnGUI already carries a comment about undo crashing on exactly that
-    /// mismatch.
-    /// </summary>
-    internal static class ThryCulling
-    {
-        public static bool Enabled = true;
-
-        /// <summary>Extra margin above and below the viewport kept drawn, to absorb small scrolls.</summary>
-        public static float Margin = 200f;
-
-        /// <summary>
-        /// Draw texture fields through Unity's inner routine rather than
-        /// MaterialEditor.TexturePropertyMiniThumbnail. See GUILib.DrawTextureMiniThumbnail.
-        /// </summary>
-        public static bool FastTextureField = true;
-
-        /// <summary>
-        /// Bumped whenever something changes a part's height. Cached boxes from an older epoch are
-        /// not trusted, so everything redraws once and re-measures. Without this, a section expanded
-        /// while scrolled offscreen keeps reserving its old collapsed height.
-        /// </summary>
-        public static int Epoch;
-
-        public static void InvalidateLayout() { Epoch++; }
-
-        static bool _needsInvalidate;
-
-        /// <summary>
-        /// Request invalidation from inside a draw. Bumping Epoch mid-frame would make Repaint take
-        /// different branches than Layout did, so it is deferred to the next frame boundary.
-        /// </summary>
-        static void InvalidateLayoutDeferred() { _needsInvalidate = true; }
-
-        /// <summary>Viewport snapshot used for cull decisions. Constant for a whole frame.</summary>
-        static Rect _frame;
-
-        static Rect _pending;
-        static bool _hasPending;
-        static System.Reflection.PropertyInfo _visibleRect;
-
-        static Rect Live
-        {
-            get
-            {
-                if (_visibleRect == null)
-                {
-                    var t = typeof(GUI).Assembly.GetType("UnityEngine.GUIClip");
-                    if (t != null)
-                        _visibleRect = t.GetProperty("visibleRect",
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                }
-                if (_visibleRect == null) return new Rect(0, 0, 0, 0);
-                try { return (Rect)_visibleRect.GetValue(null, null); } catch { return new Rect(0, 0, 0, 0); }
-            }
-        }
-
-        public static void BeginFrame()
-        {
-            if (!Enabled) return;
-            if (Event.current.type == EventType.Layout)
-            {
-                if (_needsInvalidate) { _needsInvalidate = false; Epoch++; }
-                if (_hasPending) _frame = _pending;
-            }
-        }
-
-        public static void EndFrame()
-        {
-            if (!Enabled) return;
-            if (Event.current.type == EventType.Repaint) { _pending = Live; _hasPending = true; }
-        }
-
-        /// <summary>Draws a child list, skipping parts whose last measured box is outside the viewport.</summary>
-        public static void DrawChildren(System.Collections.Generic.IList<ShaderPart> children)
-        {
-            if (!Enabled)
-            {
-                for (int i = 0; i < children.Count; i++) children[i].Draw();
-                return;
-            }
-
-            // Wrapping every child in a measuring group is not free. If this whole child list
-            // already fits inside the viewport there is nothing worth culling, so draw it plainly.
-            // Uses only cached, epoch-valid data, so Layout and Repaint make the same call.
-            if (_frame.height > 0)
-            {
-                float total = 0f;
-                bool allValid = true;
-                for (int i = 0; i < children.Count; i++)
-                {
-                    ShaderPart c = children[i];
-                    if (c.CullEpoch != Epoch || c.CullHeight <= 0f) { allValid = false; break; }
-                    total += c.CullHeight;
-                }
-                if (allValid && total <= _frame.height)
-                {
-                    for (int i = 0; i < children.Count; i++) children[i].Draw();
-                    return;
-                }
-            }
-
-            bool repaint = Event.current.type == EventType.Repaint;
-
-            // One group around the whole list gives an exact end position, so the final child gets a
-            // real pitch like every other child. Approximating it with its own group rect left a
-            // ~1.6px disagreement that retriggered the self-heal every frame.
-            Rect listBox = EditorGUILayout.BeginVertical(GUIStyle.none);
-
-            ShaderPart pending = null;   // height is unknown until the next sibling starts
-            float pendingY = 0f;
-            float pendingOldHeight = 0f; // previous frame's value, for the self-heal comparison
-            float pendingBox = 0f;
-
-            for (int i = 0; i < children.Count; i++)
-            {
-                ShaderPart part = children[i];
-                float startY;
-                float boxHeight;
-
-                bool offscreen = part.CullHeight > 0 && part.CullEpoch == Epoch && _frame.height > 0
-                    && (part.CullY + part.CullHeight < _frame.y - Margin || part.CullY > _frame.yMax + Margin);
-
-                if (offscreen)
-                {
-                    // Reserve inside the same unstyled group the draw path uses, so both branches
-                    // present identical structure to GUILayout and pick up identical spacing.
-                    EditorGUILayout.BeginVertical(GUIStyle.none);
-                    Rect reserved = GUILayoutUtility.GetRect(0, part.CullHeight, GUIStyle.none);
-                    EditorGUILayout.EndVertical();
-                    startY = reserved.y;
-                    boxHeight = part.CullHeight;
-                }
-                else
-                {
-                    Rect box = EditorGUILayout.BeginVertical(GUIStyle.none);
-                    part.Draw();
-                    EditorGUILayout.EndVertical();
-                    startY = box.y;
-                    boxHeight = box.height;
-                }
-
-                if (repaint)
-                {
-                    part.CullY = startY;
-
-                    if (pending != null)
-                    {
-                        // Pitch (this start -> next start) includes the inter-sibling spacing that
-                        // the group rect omits. Using bare group height under-reserved by ~1.6px per
-                        // part, which made culled content creep upward while scrolling.
-                        float pitch = startY - pendingY;
-
-                        // Self-heal: anything that changes a height without going through the
-                        // IsExpanded setter (texture foldouts, conditional properties, search) shows
-                        // up as a pitch that disagrees with what we cached.
-                        if (pending.CullEpoch == Epoch && pendingOldHeight > 0f
-                            && Mathf.Abs(pendingOldHeight - pitch) > 0.5f)
-                            InvalidateLayoutDeferred();
-
-                        pending.CullHeight = pitch;
-                        pending.CullEpoch = Epoch;
-                    }
-
-                    pending = part;
-                    pendingY = startY;
-                    pendingOldHeight = part.CullHeight;
-                    pendingBox = boxHeight;
-                }
-            }
-
-            EditorGUILayout.EndVertical();
-
-            if (repaint && pending != null)
-            {
-                float pitch = listBox.yMax - pendingY;
-                if (pitch <= 0f) pitch = pendingBox;
-                if (pending.CullEpoch == Epoch && pendingOldHeight > 0f
-                    && Mathf.Abs(pendingOldHeight - pitch) > 0.5f)
-                    InvalidateLayoutDeferred();
-                if (pitch > 0f) pending.CullHeight = pitch;
-                pending.CullEpoch = Epoch;
-            }
-        }
-    }
 }

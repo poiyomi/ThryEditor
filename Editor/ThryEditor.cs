@@ -862,9 +862,7 @@ namespace Thry
                 GUIUtility.ExitGUI();
                 return;
             }
-            ThryCulling.BeginFrame();
             Draw();
-            ThryCulling.EndFrame();
             HandleEvents();
             _didSwapToShader = false;
         }
@@ -901,11 +899,6 @@ namespace Thry
             //PROPERTIES
             using ( new DetourMaterialPropertyVariantIcon())
             {
-                // NOTE: deliberately NOT routed through ThryCulling.DrawChildren. The
-                // GUILayout.Space(-8) just above deliberately overlaps into this content, and
-                // wrapping the children in a layout group re-bases that negative space: measured
-                // +4px of shift and 19% of the inspector's pixels moving. Nested lists are safe
-                // to cull because nothing does this to them.
                 foreach (ShaderPart part in _mainGroup.Children)
                 {
                     part.Draw();

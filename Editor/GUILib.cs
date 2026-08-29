@@ -235,6 +235,9 @@ namespace Thry.ThryEditor
         // in animation mode nothing can be animated, so the wrapper cannot change what is drawn
         // and we call Unity's own inner drawing routine directly - identical pixels, no wrapper.
 
+        /// <summary>Set false to fall back to Unitys wrapped call for every texture field.</summary>
+        public static bool UseFastTextureField = true;
+
         static Func<Rect, GUIContent, UnityEngine.Object, Type, UnityEngine.Object> _miniThumbField;
         static bool _miniThumbFieldResolved;
 
@@ -263,7 +266,7 @@ namespace Thry.ThryEditor
         /// <summary>Draws the mini texture field, using the fast path when it is safe to do so.</summary>
         static void DrawTextureMiniThumbnail(Rect position, MaterialProperty prop, GUIContent label, MaterialEditor editor)
         {
-            if (ThryCulling.FastTextureField && !AnimationMode.InAnimationMode()
+            if (UseFastTextureField && !AnimationMode.InAnimationMode()
                 && TryFastTextureMiniThumbnail(position, prop, label))
                 return;
             editor.TexturePropertyMiniThumbnail(position, prop, label.text, label.tooltip);
