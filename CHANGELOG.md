@@ -1,3 +1,14 @@
+# [2.73.7]
+## Changes
+- Optimized drawing sections by skipping ones that have no properties in them.
+- Repeated property declarations are now distinct in the Cross Shader Editor, accounting for properties that are declared twice (such as `_RimBlur`, `_OutlineSaturation`, etc.).
+- `A`/`RA` tagged properties are now carried through Global Links.
+- Material resets are now detected against the correct undo group, otherwise resetting a material had to be done twice before animated properties cleared.
+- The Cross Shader Editor's layout is now balanced when a drawer exits the GUI.
+- The Cross Shader Editor now refreshes when a target is edited elsewhere.
+- `[ThryHideInInspector]` attributes are gathered once per shader now.
+- Several optimizations implemented that should resolve some inspector perfomance issues in the UI when various sections are expanded.
+
 # [2.73.6]
 ## Fixes
 - Increased height of Material Lock Manager toolbar so that it still appears fine on 1080p displays.
