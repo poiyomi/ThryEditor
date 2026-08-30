@@ -1454,7 +1454,14 @@ namespace Thry
             EditorWindow.GetWindow<UnlockedMaterialsList>(false, "Material Lock Manager", true);
         }
 
-        [MenuItem("Thry/ThryEditor/Settings",priority = 4)]
+        [MenuItem("Thry/Stencil Debug Overlay", priority = 4)]
+        static void MenuStencilDebugOverlay()
+        {
+            // No title: the window sets its own in OnEnable, which survives domain reloads.
+            EditorWindow.GetWindow<StencilDebugOverlay>();
+        }
+
+        [MenuItem("Thry/ThryEditor/Settings",priority = 5)]
         static void MenuShaderUISettings()
         {
             EditorWindow.GetWindow<Settings>(false, "Thry Settings", true);

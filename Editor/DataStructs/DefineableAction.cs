@@ -12,7 +12,8 @@ namespace Thry.ThryEditor
 
         public DefineableActionType type = DefineableActionType.NONE;
         public string data = "";
-        public void Perform(Material[] targets)
+        // Returns the window OPEN_EDITOR opened, for IThryButtonTarget. Null otherwise.
+        public EditorWindow Perform(Material[] targets)
         {
             switch (type)
             {
@@ -43,9 +44,10 @@ namespace Thry.ThryEditor
                     {
                         try
                         {
+                            // No title: this opens any window, and a window titles itself.
                             EditorWindow window = EditorWindow.GetWindow(t);
-                            window.titleContent = new GUIContent("TPS Setup Wizard");
                             window.Show();
+                            return window;
                         }
                         catch (System.Exception e)
                         {
@@ -55,6 +57,8 @@ namespace Thry.ThryEditor
                     }
                     break;
             }
+
+            return null;
         }
 
         private static DefineableAction ParseForThryParser(string s)
