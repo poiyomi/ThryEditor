@@ -1047,6 +1047,7 @@ namespace Thry.ThryEditor
             private Rect contentRect;
 
             readonly static Vector2 PADDING = new Vector2(10, 10);
+            const float MIN_CONTENT_WIDTH = 60;
 
             public Tooltip(string text)
             {
@@ -1080,20 +1081,32 @@ namespace Thry.ThryEditor
 
             private void CalculatePositions(Rect hoverOverRect)
             {
+                // Wrap the text if the tooltip would be wider than the inspector so it doesn't get cut off.
+                float maxContentWidth = Mathf.Max(MIN_CONTENT_WIDTH, EditorGUIUtility.currentViewWidth - PADDING.x);
                 Vector2 contentSize = EditorStyles.label.CalcSize(content);
-                Vector2 containerPosition = new Vector2(Event.current.mousePosition.x - contentSize.x / 2 - PADDING.x / 2, hoverOverRect.y - contentSize.y - PADDING.y - 3);
+                if (contentSize.x > maxContentWidth)
+                {
+                    contentSize.x = maxContentWidth;
+                    contentSize.y = Styles.upperLeft_richText_wordWrap.CalcHeight(content, maxContentWidth);
+                }
 
+                Vector2 containerSize = contentSize + PADDING;
+                Vector2 containerPosition = new Vector2(Event.current.mousePosition.x - containerSize.x / 2, hoverOverRect.y - containerSize.y - 3);
+
+                containerPosition.x = Mathf.Min(EditorGUIUtility.currentViewWidth - containerSize.x, containerPosition.x);
                 containerPosition.x = Mathf.Max(0, containerPosition.x);
-                containerPosition.x = Mathf.Min(EditorGUIUtility.currentViewWidth - contentSize.x - PADDING.x, containerPosition.x);
 
-                contentRect = new Rect(containerPosition + new Vector2(PADDING.x/2, PADDING.y/2), contentSize);
-                containerRect = new Rect(containerPosition, contentSize + new Vector2(PADDING.x, PADDING.y));
+                // A wrapped tooltip can be tall enough to run off the top of the inspector, so put it below the property instead.
+                if (containerPosition.y < 0) containerPosition.y = hoverOverRect.yMax + 3;
+
+                contentRect = new Rect(containerPosition + PADDING / 2, contentSize);
+                containerRect = new Rect(containerPosition, containerSize);
             }
 
             public void Draw()
             {
                 EditorGUI.DrawRect(containerRect, Colors.backgroundDark);
-                EditorGUI.LabelField(contentRect, content);
+                GUI.Label(contentRect, content, Styles.upperLeft_richText_wordWrap);
                 isSelected = false;
             }
         }
