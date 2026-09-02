@@ -1002,17 +1002,19 @@ namespace Thry.ThryEditor
 
                             if (entry != null)
                             {
+                                // Keywords are recorded and then disabled in LockApplyShader, once the
+                                // OriginalKeywords tag has been written. Stripping them here would save an
+                                // empty tag and leave unlock nothing to restore.
                                 s_applyStructsLater[m] = BuildReuseApplyStruct(m, materialProps, lockedShaderName, entryDirectory);
-                                //Disable shader keywords
-                                foreach (string keyword in m.shaderKeywords)
-                                {
-                                    if (m.IsKeywordEnabled(keyword)) m.DisableKeyword(keyword);
-                                }
                             }
                             // Create new locked shader
                             else
                             {
-                                Lock(m, materialProps, hash, applyShaderLater: true);
+                                // A failed generate must not register this material as a user of a shader
+                                // that does not exist, or a same-hash sibling later in the batch would try
+                                // to reuse it. The catch below reports the error and aborts the batch.
+                                if (!Lock(m, materialProps, hash, applyShaderLater: true))
+                                    throw new InvalidOperationException($"The locked shader for \"{m.name}\" could not be generated.");
                                 s_lockedShaderNamesThisBatch.Add(lockedShaderName);
                             }
                             // Track this material against the shader it shares. Unlike the old in-batch
