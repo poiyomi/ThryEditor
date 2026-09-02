@@ -308,7 +308,7 @@ namespace Thry
 
         private static HashSet<string> GetThryHiddenProperties(Shader shader)
         {
-            int key = shader.GetInstanceID();
+            int key = shader.GetObjectId();
             HashSet<string> hidden;
             if (_thryHiddenPropertiesByShader.TryGetValue(key, out hidden)) return hidden;
 
