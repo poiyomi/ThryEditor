@@ -4,6 +4,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Thry.ThryEditor.Drawers;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
@@ -25,18 +26,32 @@ namespace Thry.ThryEditor
         {
             public string name;
             public Material preset;
-            public Material prePresetState;
+            // One snapshot per selected material, in the editor's material order. Reverting a
+            // multi-selection from a single snapshot would hand every material the first one's values.
+            public Material[] prePresetStates;
             public ShaderPart parent;
 
-            public static AppliedPreset Create(string name, Material preset, Material currentState, ShaderPart parent)
+            public static AppliedPreset Create(string name, Material preset, Material[] currentStates, ShaderPart parent)
             {
                 AppliedPreset appliedPreset = new AppliedPreset();
                 appliedPreset.name = name;
                 appliedPreset.preset = preset;
-                appliedPreset.prePresetState = new Material(currentState);
-                appliedPreset.prePresetState.name = "Before " + name;
+                appliedPreset.prePresetStates = new Material[currentStates.Length];
+                for (int i = 0; i < currentStates.Length; i++)
+                {
+                    appliedPreset.prePresetStates[i] = new Material(currentStates[i]);
+                    appliedPreset.prePresetStates[i].name = "Before " + name;
+                }
                 appliedPreset.parent = parent;
                 return appliedPreset;
+            }
+
+            public void DestroySnapshots()
+            {
+                if (prePresetStates == null) return;
+                foreach (Material m in prePresetStates)
+                    if (m != null) UnityEngine.Object.DestroyImmediate(m);
+                prePresetStates = null;
             }
         }
         
@@ -710,11 +725,11 @@ namespace Thry.ThryEditor
             Material preset = GetPresetMaterial(guid);
 
             // Clean up the previous revert snapshot for this material, if any, before replacing it.
-            if (s_appliedPresets.TryGetValue(key, out AppliedPreset previous) && previous.prePresetState != null)
+            if (s_appliedPresets.TryGetValue(key, out AppliedPreset previous))
             {
-                UnityEngine.Object.DestroyImmediate(previous.prePresetState);
+                previous.DestroySnapshots();
             }
-            s_appliedPresets[key] = AppliedPreset.Create(name, preset, shaderEditor.Materials[0], parent);
+            s_appliedPresets[key] = AppliedPreset.Create(name, preset, shaderEditor.Materials, parent);
             ApplyPresetInternal(shaderEditor, preset, preset, parent);
             GlobalLinker.PropagateAfterPreset(shaderEditor, preset, parent);
             PropagateLinkedMaterials(shaderEditor, preset, parent);
@@ -730,7 +745,24 @@ namespace Thry.ThryEditor
             AppliedPreset appliedPreset = s_appliedPresets[key];
             
             ThryLogger.Log($"Revert '{appliedPreset.preset.name}' from '{key.name}'");
-            ApplyPresetInternal(shaderEditor, appliedPreset.preset, appliedPreset.prePresetState, appliedPreset.parent);
+            Material[] materials = shaderEditor.Materials;
+            Material[] snapshots = appliedPreset.prePresetStates;
+            if (materials.Length == 1 || snapshots.Length != materials.Length)
+            {
+                // Single material, or the selection changed since the preset was applied: the shared
+                // path writes the first snapshot through the editor's own property objects.
+                ApplyPresetInternal(shaderEditor, appliedPreset.preset, snapshots[0], appliedPreset.parent);
+            }
+            else
+            {
+                // Multi-selection: the editor's MaterialProperty objects write to every target at once,
+                // so each material gets its own snapshot copied through a single-target property instead.
+                HashSet<ShaderProperty> affected = new HashSet<ShaderProperty>();
+                CollectPresetProperties(shaderEditor, appliedPreset.preset, appliedPreset.parent, affected);
+                for (int i = 0; i < materials.Length; i++)
+                    RevertMaterial(materials[i], snapshots[i], affected);
+                shaderEditor.Reload();
+            }
             GlobalLinker.PropagateAfterPreset(shaderEditor, appliedPreset.preset, appliedPreset.parent);
             PropagateLinkedMaterials(shaderEditor, appliedPreset.preset, appliedPreset.parent);
             foreach (Material m in shaderEditor.Materials)
@@ -738,7 +770,62 @@ namespace Thry.ThryEditor
                 MaterialEditor.ApplyMaterialPropertyDrawers(m);
             }
             s_appliedPresets.Remove(key);
-            if (appliedPreset.prePresetState != null) UnityEngine.Object.DestroyImmediate(appliedPreset.prePresetState);
+            appliedPreset.DestroySnapshots();
+        }
+
+        // Mirrors what ApplyPresetInternal would touch, as a flat set of properties.
+        static void CollectPresetProperties(ShaderEditor shaderEditor, Material preset, ShaderPart parent, HashSet<ShaderProperty> into)
+        {
+            if (!IsMaterialSectionedPreset(preset))
+            {
+                foreach (ShaderPart part in shaderEditor.ShaderParts)
+                    if (IsPreset(preset, part))
+                        CollectPartProperties(shaderEditor, part, copyReferenceProperties: part is ShaderGroup, into);
+            }
+            else if (parent is ShaderGroup)
+            {
+                CollectPresetPropertiesRecursive(shaderEditor, preset, parent as ShaderGroup, into);
+            }
+        }
+
+        static void CollectPresetPropertiesRecursive(ShaderEditor shaderEditor, Material preset, ShaderGroup parent, HashSet<ShaderProperty> into)
+        {
+            foreach (ShaderPart part in parent.Children)
+            {
+                if (part is ShaderGroup)
+                    CollectPresetPropertiesRecursive(shaderEditor, preset, part as ShaderGroup, into);
+                if (IsPreset(preset, part))
+                    CollectPartProperties(shaderEditor, part, copyReferenceProperties: true, into);
+            }
+        }
+
+        static void CollectPartProperties(ShaderEditor shaderEditor, ShaderPart part, bool copyReferenceProperties, HashSet<ShaderProperty> into)
+        {
+            if (part is ShaderProperty prop) into.Add(prop);
+            if (part is ShaderGroup group)
+                foreach (ShaderPart child in group.Children)
+                    CollectPartProperties(shaderEditor, child, copyReferenceProperties, into);
+            if (!copyReferenceProperties) return;
+            if (part.Options.reference_properties != null)
+                foreach (string name in part.Options.reference_properties)
+                    if (shaderEditor.PropertyDictionary.TryGetValue(name, out ShaderProperty reference)) into.Add(reference);
+            if (!string.IsNullOrWhiteSpace(part.Options.reference_property)
+                && shaderEditor.PropertyDictionary.TryGetValue(part.Options.reference_property, out ShaderProperty singleReference))
+                into.Add(singleReference);
+        }
+
+        static void RevertMaterial(Material target, Material snapshot, HashSet<ShaderProperty> properties)
+        {
+            UnityEngine.Object[] targets = { target };
+            foreach (ShaderProperty property in properties)
+            {
+                if (property.MaterialProperty == null || !target.HasProperty(property.MaterialProperty.name)) continue;
+                MaterialProperty single = MaterialEditor.GetMaterialProperty(targets, property.MaterialProperty.name);
+                if (single == null) continue;
+                MaterialHelper.CopyValue(snapshot, single);
+                TileLabelUtility.CopyTileLabelTag(snapshot, single);
+                if (property.IsAnimatable) ShaderOptimizer.CopyAnimatedTag(snapshot, single);
+            }
         }
 
         static void Dismiss(ShaderEditor shaderEditor)
@@ -747,7 +834,7 @@ namespace Thry.ThryEditor
             if (s_appliedPresets.TryGetValue(key, out AppliedPreset appliedPreset))
             {
                 s_appliedPresets.Remove(key);
-                if (appliedPreset.prePresetState != null) UnityEngine.Object.DestroyImmediate(appliedPreset.prePresetState);
+                appliedPreset.DestroySnapshots();
                 ThryLogger.Log($"Dismissed revert state for '{key.name}'");
             }
         }
