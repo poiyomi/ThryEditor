@@ -57,7 +57,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_TexEnvs", trans.Origin);
                             if(p != null)
                             {
-                                float textureValue = p.FindPropertyRelative("second").FindPropertyRelative("m_Texture") != null ? 1f : 0f;
+                                float textureValue = p.FindPropertyRelative("second").FindPropertyRelative("m_Texture").objectReferenceValue != null ? 1f : 0f;
                                 string expression = trans.GetAppropriateExpression(textureValue);
                                 if(!string.IsNullOrWhiteSpace(expression))
                                 {
@@ -99,7 +99,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_TexEnvs", trans.Origin);
                             if(p != null)
                             {
-                                float textureValue = p.FindPropertyRelative("second").FindPropertyRelative("m_Texture") != null ? 1f : 0f;
+                                float textureValue = p.FindPropertyRelative("second").FindPropertyRelative("m_Texture").objectReferenceValue != null ? 1f : 0f;
                                 string expression = trans.GetAppropriateExpression(textureValue);
                                 if(!string.IsNullOrWhiteSpace(expression))
                                 {
@@ -266,9 +266,11 @@ namespace Thry.ThryEditor.ShaderTranslations
 
         public static ShaderTranslator CheckForExistingTranslationFile(Shader origin, Shader target)
         {
+            // Both shaders have to match. Without the parentheses "&&" binds tighter than "?:" and the
+            // expression degrades to "origin regex only" or "target name only".
             return TranslationDefinitions.FirstOrDefault(t =>
-            t.MatchOriginShaderBasedOnRegex ? (Regex.IsMatch(origin.name, t.OriginShaderRegex)) : (t.OriginShader == origin.name) &&
-            t.MatchTargetShaderBasedOnRegex ? (Regex.IsMatch(target.name, t.TargetShaderRegex)) : (t.TargetShader == target.name) );
+            (t.MatchOriginShaderBasedOnRegex ? Regex.IsMatch(origin.name, t.OriginShaderRegex) : t.OriginShader == origin.name) &&
+            (t.MatchTargetShaderBasedOnRegex ? Regex.IsMatch(target.name, t.TargetShaderRegex) : t.TargetShader == target.name));
         }
 
         public static void SuggestedTranslationButtonGUI(ShaderEditor editor)
