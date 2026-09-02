@@ -337,6 +337,14 @@ namespace Thry.ThryEditor
             "ENDHLSL"
         };
 
+        // Index of the delimiter in <paramref name="starts"/> that <paramref name="trimmedLine"/> opens, or -1.
+        private static int IndexOfBlockStart(string trimmedLine, string[] starts)
+        {
+            for (int k = 0; k < starts.Length; k++)
+                if (trimmedLine.StartsWith(starts[k], StringComparison.Ordinal)) return k;
+            return -1;
+        }
+
         public enum PropertyType
         {
             Vector,
@@ -1633,6 +1641,7 @@ namespace Thry.ThryEditor
                     for (int i=0; i<psf.lines.Length;i++)
                     {
                         string trimmedLine = psf.lines[i].TrimStart();
+                        int blockKind;
 
                         if (trimmedLine.StartsWith("Shader", StringComparison.Ordinal))
                         {
@@ -1673,21 +1682,25 @@ namespace Thry.ThryEditor
                             psf.lines[i] = "GrabPass { \"" + gpr.newName + "\" }";
                             grabPassVariables.Add(gpr);
                         }
-                        else if (trimmedLine.StartsWith(PreprocessStructureStart[(int) pipeline], StringComparison.Ordinal))
+                        // The block delimiters are decided by the shader's own syntax, not by the active
+                        // render pipeline: Poiyomi ships CGPROGRAM and HLSLPROGRAM variants side by side, and
+                        // the shader_feature pragmas were already stripped above, so missing the block here
+                        // would silently produce a locked shader with every keyword feature off.
+                        else if ((blockKind = IndexOfBlockStart(trimmedLine, PreprocessStructureStart)) >= 0)
                         {
                             for (int j = i + 1; j < psf.lines.Length; j++)
-                                if (psf.lines[j].TrimStart().StartsWith(PreprocessStructureEnd[(int) pipeline], StringComparison.Ordinal))
+                                if (psf.lines[j].TrimStart().StartsWith(PreprocessStructureEnd[blockKind], StringComparison.Ordinal))
                                 {
                                     ReplaceShaderValues(material, psf.lines, i + 1, j, props, constantPropsDictionary, macrosArray, grabPassVariables.ToArray());
                                     break;
                                 }
                         }
-                        else if (trimmedLine.StartsWith(CodeBlockStart[(int) pipeline], StringComparison.Ordinal))
+                        else if ((blockKind = IndexOfBlockStart(trimmedLine, CodeBlockStart)) >= 0)
                         {
                             if (commentKeywords == 0)
                                 psf.lines[i] += optimizerDefines;
                             for (int j = i + 1; j < psf.lines.Length; j++)
-                                if (psf.lines[j].TrimStart().StartsWith(CodeBlockEnd[(int) pipeline], StringComparison.Ordinal))
+                                if (psf.lines[j].TrimStart().StartsWith(CodeBlockEnd[blockKind], StringComparison.Ordinal))
                                 {
                                     ReplaceShaderValues(material, psf.lines, i + 1, j, props, constantPropsDictionary, macrosArray, grabPassVariables.ToArray());
                                     break;
