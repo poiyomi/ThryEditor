@@ -81,6 +81,7 @@ namespace Thry.ThryEditor
     {
         // Tags
         public const string TAG_ORIGINAL_SHADER = "OriginalShader";
+        public const string TAG_LOCKED_RENAME_SUFFIX = "thry_locked_rename_suffix";
         public const string TAG_ORIGINAL_SHADER_GUID = "OriginalShaderGUID";
         public const string TAG_ALL_MATERIALS_GUIDS_USING_THIS_LOCKED_SHADER = "AllLockedGUIDS";
         //When locking don't include code from define blocks that are not enabled
@@ -1883,6 +1884,10 @@ namespace Thry.ThryEditor
             // Write original shader to override tag
             material.SetOverrideTag(TAG_ORIGINAL_SHADER, shader.name);
             material.SetOverrideTag(TAG_ORIGINAL_SHADER_GUID, shaderGUID);
+            // Remember the suffix the renamed properties were generated with. It defaults to the material
+            // name, so without this a material renamed or duplicated while locked could not find its
+            // renamed properties again on unlock.
+            material.SetOverrideTag(TAG_LOCKED_RENAME_SUFFIX, animPropertySuffix);
             // Write the new shader folder name in an override tag so it will be deleted
 
             // For some reason when shaders are swapped on a material the RenderType override tag gets completely deleted and render queue set back to -1
@@ -2825,8 +2830,11 @@ namespace Thry.ThryEditor
                 return UnlockSuccess.hasNoSavedShader;
             }
 
-            // Build list of renamed properties
-            string animPropertySuffix = $"_{GetRenamedPropertySuffix(material)}";
+            // Build list of renamed properties. Prefer the suffix recorded at lock time: the default is
+            // derived from the material name, which may have changed since (rename, duplicate).
+            string lockedSuffix = material.GetTag(TAG_LOCKED_RENAME_SUFFIX, false, "");
+            if (string.IsNullOrEmpty(lockedSuffix)) lockedSuffix = GetRenamedPropertySuffix(material);
+            string animPropertySuffix = $"_{lockedSuffix}";
             List<MaterialProperty> renamedProperties = new List<MaterialProperty>();
             MaterialProperty[] props = MaterialEditor.GetMaterialProperties(new Object[] { material });
             foreach (MaterialProperty prop in props)
@@ -2863,6 +2871,7 @@ namespace Thry.ThryEditor
             material.renderQueue = renderQueue;
             MaterialHelper.ApplyOverrideTags(material, preservedTags);
             material.shaderKeywords = material.GetTag("OriginalKeywords", false, string.Join(" ", material.shaderKeywords)).Split(' ');
+            material.SetOverrideTag(TAG_LOCKED_RENAME_SUFFIX, "");
 
             // Restore stripped textures
             foreach (string tex in material.GetTexturePropertyNames())
