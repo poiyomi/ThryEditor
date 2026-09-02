@@ -69,7 +69,26 @@ namespace Thry.ThryEditor
             _disabledMaterials.IntersectWith(_materialList);
             _targets = _materialList.Where(t => t != null && !t.shader.IsBroken() && !_incompatibleMaterials.Contains(t) && !_disabledMaterials.Contains(t)).ToList();
 
+            DiscardShaderEditor();
+        }
+
+        /// <summary>
+        /// The only way a shader editor leaves this window. Nulling the field alone left its undo
+        /// subscription and its MaterialEditors behind, and each of those pinned the full property tree of
+        /// every target in memory - after enough rebuilds the whole editor stayed sluggish, whatever was
+        /// selected, until the next domain reload.
+        /// </summary>
+        private void DiscardShaderEditor()
+        {
+            if (_shaderEditor != null) _shaderEditor.Release();
             _shaderEditor = null;
+            if (_materialEditor != null) DestroyImmediate(_materialEditor);
+            _materialEditor = null;
+        }
+
+        private void OnDestroy()
+        {
+            DiscardShaderEditor();
         }
 
         /// <summary>
@@ -145,9 +164,21 @@ namespace Thry.ThryEditor
                     _isStale = true;
 
                 if (_isStale && EditorWindow.focusedWindow == this && Event.current.type == EventType.Layout)
-                    _shaderEditor = null;
+                    DiscardShaderEditor();
 
                 DrawShaderEditor();
+
+                // An edit made through this window's own controls dirties the target just like an external
+                // one does, but it went through the very property array being drawn, so that array is already
+                // current. Without re-baselining here the check above mistook every one of this window's
+                // edits for an external one and rebuilt the whole editor on the next Layout - once per drag
+                // frame for a slider, which brought the window down to about one frame a second.
+                //
+                // Anything that changes a target during this window's own GUI pass came from this window, so
+                // the counts as they stand at the end of the pass are the new baseline. External edits happen
+                // between passes and are still caught by the Layout check at the top of the next one. Skipped
+                // while stale so a refresh owed to an unfocused window is not forgotten by a repaint.
+                if (!_isStale) RecordTargetDirtyCounts();
             }
             finally
             {

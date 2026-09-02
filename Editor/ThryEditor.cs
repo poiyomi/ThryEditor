@@ -608,6 +608,7 @@ namespace Thry
             Active = this;
             Helper.RegisterEditorUse();
             RegisterCallacks();
+            HookInspectorContainers();
 
             //get material targets
             Materials = Editor.targets.Select(o => o as Material).ToArray();
@@ -660,10 +661,41 @@ namespace Thry
         }
 
         
+        // Every editor that currently holds callbacks, so the ones Unity has silently discarded can be found.
+        //
+        // OnClosed was meant to be the place these get released, and it never runs: Unity 2022.3's
+        // MaterialEditor.OnDisable only removes its own undo handler and never calls ShaderGUI.OnClosed
+        // (verified by reading its IL in a live editor - the calls are CleanUpPreviewRenderUtility,
+        // ReflectionProbePicker.OnDisable, List.Remove and Delegate.Remove, nothing else). So every
+        // selection change left the previous ShaderEditor subscribed to Undo.undoRedoEvent, and that
+        // subscription kept its entire part tree reachable - ~4300 parts plus the MaterialProperty array of
+        // every target - for the rest of the session. A live check found seven such trees for three open
+        // inspectors, two of them built for a 13-material selection. The managed heap only grows from
+        // there, every collection marks all of it, and the whole editor gets slower no matter what is
+        // selected, until the next domain reload. That was the "select many materials, then go back to
+        // one, and it stays laggy" report.
+        private static readonly List<ShaderEditor> s_editorsWithCallbacks = new List<ShaderEditor>();
+
+        /// <summary>
+        /// Releases every registered editor whose MaterialEditor Unity has destroyed. Called from OnGUI, so
+        /// a discarded tree lives at most until the next inspector draw. The cross editor's instances are
+        /// skipped here because their MaterialEditor stays alive; CrossEditor releases those itself.
+        /// </summary>
+        private static void ReleaseOrphanedEditors(ShaderEditor current)
+        {
+            for (int i = s_editorsWithCallbacks.Count - 1; i >= 0; i--)
+            {
+                ShaderEditor editor = s_editorsWithCallbacks[i];
+                if (editor == current || editor == null) continue;
+                if (editor.Editor == null) editor.Release(); // removes it from the list
+            }
+        }
+
         private void RegisterCallacks()
         {
             if (_didRegisterCallbacks) return;
             _didRegisterCallbacks = true;
+            s_editorsWithCallbacks.Add(this);
             //TODO: Handle these in Unity <2022.2
             #if UNITY_2022_2_OR_NEWER
             Undo.undoRedoEvent += UndoRedoEvent;
@@ -674,6 +706,7 @@ namespace Thry
         {
             if (_didRegisterCallbacks == false) return;
             _didRegisterCallbacks = false;
+            s_editorsWithCallbacks.Remove(this);
             //TODO: Handle these in Unity <2022.2
             #if UNITY_2022_2_OR_NEWER
             Undo.undoRedoEvent -= UndoRedoEvent;
@@ -710,6 +743,21 @@ namespace Thry
             _isFirstOnGUICall = true;
             // A swap that never got drawn is not applied to whatever material this editor is reused for
             _doApplyRenderingPresetAfterSwap = false;
+        }
+
+        /// <summary>
+        /// Lets go of everything this editor holds beyond its own lifetime: the undo subscription that
+        /// otherwise keeps the whole part tree reachable, and the MaterialEditors created per target set
+        /// for cross editing, which Unity never destroys on its own. Reached from ReleaseOrphanedEditors
+        /// once Unity has destroyed this editor's MaterialEditor (OnClosed is never called for that, see
+        /// s_editorsWithCallbacks), and from CrossEditor when it drops an instance it built itself.
+        /// </summary>
+        public void Release()
+        {
+            UnregisterCallbacks();
+            foreach (MaterialEditor editor in s_editorCache.Values)
+                if (editor != null) UnityEngine.Object.DestroyImmediate(editor);
+            s_editorCache.Clear();
         }
 
         #if UNITY_2021_2_OR_NEWER
@@ -856,6 +904,7 @@ namespace Thry
             IsInAnimationMode = AnimationMode.InAnimationMode();
 
             Active = this;
+            ReleaseOrphanedEditors(this);
 
             // Undos throw errors because the structure of the UI changes between layout and repaint
             // This is a workaround to prevent the error by exiting the GUI call early
@@ -866,14 +915,113 @@ namespace Thry
                 GUIUtility.ExitGUI();
                 return;
             }
+            if (ShouldSkipDragEventPass()) return;
             Draw();
             HandleEvents();
             _didSwapToShader = false;
         }
 
+        // A drag pass is let through only when no other has run since the last Repaint, or when the last one
+        // is older than this. The valve exists so a slider can never wait on a Repaint that nothing asked for.
+        private const double DRAG_PASS_VALVE_SECONDS = 0.05;
+        private bool _dragPassSinceRepaint;
+        private double _lastFullDragPassTime;
+
+        /// <summary>
+        /// Drops surplus MouseDrag event passes: one processed drag per frame is all a slider needs.
+        ///
+        /// The editor runs a full Layout pass and then a full event pass of this UI for every mouse event
+        /// the OS delivers, and it does not coalesce them: a high-polling-rate mouse queues dozens of
+        /// MouseDrag events per frame while a slider is dragged, and each pass over a Poiyomi material
+        /// costs around 10 ms and allocates about 1 MB. Measured live, that put a drag at roughly one frame
+        /// per second with a garbage collection every frame, for a single material and for thirteen alike.
+        ///
+        /// Skipping only the event pass is always legal for IMGUI (a non-Layout pass may request fewer
+        /// controls than the Layout pass created), so this is safe under any host. It halves the cost;
+        /// the Layout pass and the MaterialEditor's own per-pass work (fetching every property, updating
+        /// the serialized object - about 5 ms together) can only be avoided by the host, which is what
+        /// Poiyomi's ErrorShaderEditor does with IsDragEventIncoming, using this same one-per-repaint rule
+        /// so the two decisions agree.
+        /// </summary>
+        private bool ShouldSkipDragEventPass()
+        {
+            Event e = Event.current;
+            if (e.type == EventType.Repaint) { _dragPassSinceRepaint = false; return false; }
+            if (e.type != EventType.MouseDrag) return false;
+            s_incomingImguiEvent = EventType.Ignore; // this pass consumes the note
+            double now = EditorApplication.timeSinceStartup;
+            if (_dragPassSinceRepaint && now - _lastFullDragPassTime < DRAG_PASS_VALVE_SECONDS) return true;
+            _dragPassSinceRepaint = true;
+            _lastFullDragPassTime = now;
+            return false;
+        }
+
+        // Which IMGUI mouse event the inspector's container is about to run passes for, and when it was
+        // noted. The Layout pass Unity sends before an event carries nothing that identifies the event
+        // (its own Event object, no delta), so the note is taken one step earlier: UI Toolkit hands the
+        // mouse event to the IMGUIContainer through a trickle-down callback before the container runs
+        // IMGUI, and a Repaint never passes that way. The note is consumed by the event pass that follows.
+        private static EventType s_incomingImguiEvent = EventType.Ignore;
+        private static double s_incomingImguiEventTime;
+
+        /// <summary>
+        /// True while the inspector's IMGUI container is running the Layout and event passes for a
+        /// MouseDrag. Lets a host MaterialEditor decide, already at the Layout pass, to draw a placeholder
+        /// instead of running its own per-pass work and this UI. A host that does so must call
+        /// <see cref="ConsumeIncomingDragEvent"/> from the event pass it skipped.
+        /// </summary>
+        public static bool IsDragEventIncoming()
+        {
+            return s_incomingImguiEvent == EventType.MouseDrag
+                && EditorApplication.timeSinceStartup - s_incomingImguiEventTime < 0.1;
+        }
+
+        public static void ConsumeIncomingDragEvent()
+        {
+            s_incomingImguiEvent = EventType.Ignore;
+        }
+
+        /// <summary>The valve a host should use with IsDragEventIncoming so its decision matches this UI's.</summary>
+        public static double DragPassValveSeconds => DRAG_PASS_VALVE_SECONDS;
+
+        private static void OnInspectorContainerMouseMove(UnityEngine.UIElements.MouseMoveEvent evt)
+        {
+            Event imgui = evt.imguiEvent;
+            s_incomingImguiEvent = imgui != null ? imgui.type : EventType.MouseMove;
+            s_incomingImguiEventTime = EditorApplication.timeSinceStartup;
+        }
+
+        /// <summary>
+        /// Registers the mouse-move note on every IMGUI container of every inspector window. Called when
+        /// this UI is (re)built, which is also when the inspector rebuilds its containers. Registering the
+        /// same callback twice on a container is a no-op for UI Toolkit, so this is safe to repeat.
+        /// </summary>
+        private static void HookInspectorContainers()
+        {
+            Type inspectorType = typeof(Editor).Assembly.GetType("UnityEditor.InspectorWindow");
+            if (inspectorType == null) return;
+            foreach (UnityEngine.Object o in Resources.FindObjectsOfTypeAll(inspectorType))
+            {
+                EditorWindow window = o as EditorWindow;
+                if (window == null) continue;
+                UnityEngine.UIElements.VisualElement root;
+                try { root = window.rootVisualElement; } catch { continue; }
+                if (root != null) HookContainers(root);
+            }
+        }
+
+        private static void HookContainers(UnityEngine.UIElements.VisualElement element)
+        {
+            UnityEngine.UIElements.IMGUIContainer container = element as UnityEngine.UIElements.IMGUIContainer;
+            if (container != null)
+                container.RegisterCallback<UnityEngine.UIElements.MouseMoveEvent>(OnInspectorContainerMouseMove, UnityEngine.UIElements.TrickleDown.TrickleDown);
+            for (int i = 0; i < element.hierarchy.childCount; i++)
+                HookContainers(element.hierarchy[i]);
+        }
+
         void Draw()
         {
-            
+
             IsDrawing = true;
 #if UNITY_2022_1_OR_NEWER
             if (!IsCrossEditor) EditorGUI.indentLevel -= 2;

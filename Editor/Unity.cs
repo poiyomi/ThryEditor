@@ -71,9 +71,21 @@ namespace Thry.ThryEditor
             if (window != null) window.Repaint();
         }
 
+        // An asset's GUID never changes for the lifetime of its object (moves and reimports keep it), so
+        // the answer is cached per object. This is asked for by every section header on every GUI pass
+        // (the global-link check), and the two AssetDatabase calls behind it showed up in a live profile
+        // of a slider drag, where a pass runs for every mouse event the editor receives. Objects that are
+        // not assets yet (empty GUID) are not cached so they pick up their GUID once saved.
+        private static readonly Dictionary<UnityEngine.Object, string> s_guidCache = new Dictionary<UnityEngine.Object, string>();
+
         public static string GetGUID(UnityEngine.Object o)
         {
-            return AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(o));
+            if (o == null) return "";
+            string guid;
+            if (s_guidCache.TryGetValue(o, out guid)) return guid;
+            guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(o));
+            if (!string.IsNullOrEmpty(guid)) s_guidCache[o] = guid;
+            return guid;
         }
 
         public static WindowType FindOpenEditorWindow<WindowType>() where WindowType : EditorWindow
