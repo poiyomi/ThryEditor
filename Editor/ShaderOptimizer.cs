@@ -1087,16 +1087,28 @@ namespace Thry.ThryEditor
                 }
                 AssetDatabase.Refresh();
 
+                // The GC decides what is referenced from the import database, i.e. the materials as they
+                // are on disk. The ones just locked still point at their original shader there until the
+                // deferred save lands, so their new cache entries look unreferenced. Protect everything
+                // this batch touched, and when a save is queued anyway, run the GC after it instead.
+                HashSet<string> entriesToProtect = new HashSet<string>(s_cacheEntriesTouchedThisBatch);
+
                 // Bring every material sharing a touched shader back in sync with who actually uses it.
                 ReconcileSharedShaderTags();
 
-                // Unlocking no longer deletes the shader it leaves behind, so trim the cache once it
-                // outgrows its budget. Deletes assets, so it has to run after StopAssetEditing.
-                LockedShaderCache.CollectGarbageIfOverBudget();
-
                 // Make sure things get saved after a cycle. This prevents thumbnails from getting stuck
                 if(Config.Instance.saveAfterLockUnlock)
+                {
+                    s_cacheEntriesProtectedUntilSave.UnionWith(entriesToProtect);
+                    s_collectCacheGarbageAfterSave = true;
                     EditorApplication.update += QueueSaveAfterLockUnlock;
+                }
+                else
+                {
+                    // Unlocking no longer deletes the shader it leaves behind, so trim the cache once it
+                    // outgrows its budget. Deletes assets, so it has to run after StopAssetEditing.
+                    LockedShaderCache.CollectGarbageIfOverBudget(entriesToProtect);
+                }
 
                 if (ShaderEditor.Active != null)
                 {
@@ -1179,7 +1191,21 @@ namespace Thry.ThryEditor
 
             EditorApplication.update -= SaveAfterLockUnlock;
             AssetDatabase.SaveAssets();
+
+            // Now that the materials are on disk with their new shaders, the import database reflects
+            // what they reference and the cache can be trimmed safely.
+            if (s_collectCacheGarbageAfterSave)
+            {
+                s_collectCacheGarbageAfterSave = false;
+                LockedShaderCache.CollectGarbageIfOverBudget(s_cacheEntriesProtectedUntilSave);
+                s_cacheEntriesProtectedUntilSave.Clear();
+            }
         }
+
+        // Cache entries created or joined by a batch whose materials have not been saved yet. See the
+        // comment above the GC call in SetLockedForAllMaterialsInternal.
+        private static readonly HashSet<string> s_cacheEntriesProtectedUntilSave = new HashSet<string>();
+        private static bool s_collectCacheGarbageAfterSave = false;
 
         static void VerifyLockedShaders()
         {

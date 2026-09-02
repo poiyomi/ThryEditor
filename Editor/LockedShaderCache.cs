@@ -296,15 +296,18 @@ are using Poiyomi Shaders, this folder is very important!
         /// it stops as soon as the cache fits the budget, oldest entry first; otherwise it removes every
         /// unreferenced entry. Returns the number of entries deleted.
         /// </summary>
-        public static int CollectGarbage(long budgetBytes = 0)
+        public static int CollectGarbage(long budgetBytes = 0, ICollection<string> protectedEntries = null)
         {
             List<string> entries = GetAllEntryDirectories();
             if (entries.Count == 0) return 0;
 
             HashSet<string> referenced = GetReferencedCachePaths();
 
-            // An entry is live if any material references a file inside it.
+            // An entry is live if any material references a file inside it. Entries the caller marks as
+            // protected are kept regardless: the import database only knows what is saved to disk, so a
+            // material locked moments ago still appears to reference its old shader.
             List<string> unreferenced = entries
+                .Where(entry => !(protectedEntries != null && protectedEntries.Contains(entry)))
                 .Where(entry => !referenced.Any(r => r.StartsWith(entry + "/", StringComparison.OrdinalIgnoreCase)))
                 .ToList();
 
@@ -362,7 +365,7 @@ are using Poiyomi Shaders, this folder is very important!
         /// Trims the cache when it grows past the configured budget. Called after a lock/unlock batch,
         /// so it must run outside StartAssetEditing.
         /// </summary>
-        public static void CollectGarbageIfOverBudget()
+        public static void CollectGarbageIfOverBudget(ICollection<string> protectedEntries = null)
         {
             int budgetMB = Config.Instance.lockedShaderCacheBudgetMB;
             if (budgetMB <= 0) return; // 0 disables trimming entirely
@@ -378,7 +381,7 @@ are using Poiyomi Shaders, this folder is very important!
             }
             if (total <= budgetBytes) return;
 
-            CollectGarbage(budgetBytes);
+            CollectGarbage(budgetBytes, protectedEntries);
         }
 
         /// <summary>Total bytes on disk, and how many locked shaders that covers.</summary>
