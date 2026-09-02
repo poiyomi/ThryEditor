@@ -353,7 +353,10 @@ namespace Thry.ThryEditor
             else
             {
                 //if prop is a duplicated or renamed get og property to check for animted status
-                if (MaterialProperty.name.Contains(ShaderEditor.Active.RenamedPropertySuffix))
+                // Renamed properties are built as "<name>_<suffix>" (see GetAnimatedPropertyName), so only
+                // a trailing match counts. A plain Contains would misfire on any property whose name
+                // happens to include the material name, e.g. _MainTex on a material called "Main".
+                if (MaterialProperty.name.EndsWith("_" + ShaderEditor.Active.RenamedPropertySuffix, StringComparison.Ordinal))
                 {
                     string ogName = MaterialProperty.name.Substring(0, MaterialProperty.name.Length - ShaderEditor.Active.RenamedPropertySuffix.Length - 1);
                     tag = ShaderOptimizer.GetAnimatedTag(MaterialProperty.targets[0] as Material, ogName);
