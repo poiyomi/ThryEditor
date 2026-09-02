@@ -1907,7 +1907,9 @@ namespace Thry.ThryEditor
                 // and do not save it for restore on unlock, since it doesn't belong to the shader
                 // at all.
                 bool isOrphan = REMOVE_ORPHANED_TEXTURES && !string.IsNullOrEmpty(propName) && !propName.StartsWith("unity_", StringComparison.Ordinal) && !material.HasProperty(propName);
-                if (doStrip || propTex == null || isOrphan)
+                // A slot without a texture still carries its tiling and offset. Those are baked into the
+                // locked shader, but nothing saves them for unlock, so the entry has to stay.
+                if (doStrip || isOrphan)
                 {
                     if(doStrip)
                     {
