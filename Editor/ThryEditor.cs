@@ -916,8 +916,20 @@ namespace Thry
                 return;
             }
             if (ShouldSkipDragEventPass()) return;
-            Draw();
-            HandleEvents();
+            try
+            {
+                Draw();
+                HandleEvents();
+            }
+            finally
+            {
+                // Drawers set this per control and count on resetting it afterwards. Anything that ends the
+                // pass early - the object picker's ExitGUI, an exception - skips that reset and leaves it on
+                // for every control drawn later. The inspector's container resets GUI state each pass so it
+                // never shows; the Cross Editor is a plain window and ended up with every material row and
+                // toggle drawn as a mixed-value dash after a texture picker was opened.
+                EditorGUI.showMixedValue = false;
+            }
             _didSwapToShader = false;
         }
 

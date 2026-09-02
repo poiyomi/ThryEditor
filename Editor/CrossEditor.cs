@@ -131,6 +131,9 @@ namespace Thry.ThryEditor
 
         private void OnGUI()
         {
+            // Unlike the inspector's container, a plain window does not reset this between passes, and the
+            // material list below is drawn before the shader editor gets a chance to clean up after itself.
+            EditorGUI.showMixedValue = false;
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition, GUIStyle.none, GUI.skin.verticalScrollbar, GUILayout.ExpandWidth(true));
             // Drawers are allowed to end the GUI pass early by throwing out of GUIUtility.ExitGUI - the lock
             // button does exactly that, because locking swaps the shader and every control drawn afterwards

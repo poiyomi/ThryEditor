@@ -351,6 +351,7 @@ namespace Thry.ThryEditor
                             var materialsWithProp = prop.targets.Cast<Material>().Where(m => m.HasProperty(prop.name));
                             EditorGUI.showMixedValue = materialsWithProp.Select(m => m.GetTextureScale(prop.name)).Distinct().Count() > 1 || materialsWithProp.Select(m => m.GetTextureOffset(prop.name)).Distinct().Count() > 1;
                             ShaderEditor.Active.Editor.TextureScaleOffsetProperty(prop);
+                            EditorGUI.showMixedValue = false;
                             Rect lastRect = GUILayoutUtility.GetLastRect();
                             tooltipRect.height = (lastRect.y - tooltipRect.y) + lastRect.height;
                             iconsPositioningHeight = lastRect.y;
@@ -496,6 +497,7 @@ namespace Thry.ThryEditor
                     var materialsWithProp = prop.targets.Cast<Material>().Where(m => m.HasProperty(prop.name));
                     EditorGUI.showMixedValue = materialsWithProp.Select(m => m.GetTextureScale(prop.name)).Distinct().Count() > 1 || materialsWithProp.Select(m => m.GetTextureOffset(prop.name)).Distinct().Count() > 1;
                     editor.TextureScaleOffsetProperty(scale_offset_rect, prop);
+                    EditorGUI.showMixedValue = false;
                 }
 
                 //In case of locked material end disabled group here to allow editing of sub properties
@@ -593,6 +595,9 @@ namespace Thry.ThryEditor
 
         public static void OpenTexturePicker(MaterialProperty prop)
         {
+            // Showing the picker ends the GUI pass with an ExitGUI, so the caller's reset of showMixedValue
+            // after its texture field never runs. Left on, every control drawn afterwards renders as mixed.
+            EditorGUI.showMixedValue = false;
             EditorGUIUtility.ShowObjectPicker<Texture>(prop.textureValue, false, "", 0);
             s_texturePickerWindow = EditorGUIUtility.GetObjectPickerControlID();
             s_texturePickerWindowProperty = prop;
