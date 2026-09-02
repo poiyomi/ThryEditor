@@ -500,12 +500,13 @@ namespace Thry.ThryEditor
             if (type == ShaderPropertyType.Color) type = ShaderPropertyType.Vector;
             if (type == ShaderPropertyType.Range) type = ShaderPropertyType.Float;
 
+            // Only fill the new property in while it still holds the shader default. A value the user
+            // (or a previous upgrade) already set must not be overwritten by the old property's value.
+            if (!IsPropertyValueDefault)
+                return;
+
             foreach (Material m in ShaderEditor.Active.Materials)
             {
-                // Check if is not default value
-                if(IsPropertyValueDefault)
-                    continue;
-
                 // Material as serializedObject
                 SerializedObject serializedObject = new SerializedObject(m);
                 foreach (string alt in Options.alts)
