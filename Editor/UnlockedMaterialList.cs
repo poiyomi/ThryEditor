@@ -105,8 +105,9 @@ namespace Thry.ThryEditor
 
         void OnDisable()
         {
-            // The owner index holds a map over every prefab in the project; there is no reason to
-            // keep it alive once the window is gone.
+            // Releases the scene half of the ownership index. The prefab half is deliberately kept: rebuilding
+            // it means re-walking every prefab's dependencies, which costs minutes on a large project, and it
+            // holds only asset paths. MaterialLockScanner invalidates it when an asset change actually needs it.
             MaterialLockScanner.InvalidateOwnerIndex();
         }
 
