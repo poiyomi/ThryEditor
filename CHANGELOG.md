@@ -1,3 +1,10 @@
+# [2.73.8]
+## Changes
+- Switched from using `GetInstanceID()` to `GetObjectId()`, future-proofing it for compatibility with Unity 6.5 and later.
+- Throttled drag passes in the Inspector and optimized performance issues. Should be a bit more tolerable now when selecting multiple materials.
+- Fixed an issue with the Cross Shader Editor drawing everything as mixed, impacting performance.
+- Fixed word wrapping on tooltips in the Inspector, and now uses Rich Text.
+
 # [2.73.7]
 ## Changes
 - Optimized drawing sections by skipping ones that have no properties in them.
