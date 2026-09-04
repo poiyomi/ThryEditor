@@ -1,6 +1,7 @@
 # [2.73.9]
 ## Changes
 - HOTFIX: Fixed a bug where two or more materials sharing different values overwrite each other (such as `_BumpScale`).
+- Material Lock Manager shall not re-scan every time the window is opened unless an asset is dirtied.
 
 # [2.73.8]
 ## Changes
