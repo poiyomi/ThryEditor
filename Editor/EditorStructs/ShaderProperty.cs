@@ -419,6 +419,26 @@ namespace Thry.ThryEditor
             }
 
             EditorGUI.BeginChangeCheck();
+
+            // Own the mixed-value flag for every branch below that draws one value control.
+            //
+            // MaterialProperty.BeginProperty is the ONLY place Unity sets EditorGUI.showMixedValue for a
+            // material property - and on 2022.1+ ShaderEditor.Draw wraps the whole property tree in
+            // UnityHelper.DetourMaterialPropertyVariantIcon, which detours BeginProperty and EndProperty to
+            // empty stubs to suppress Unity's material-variant chrome. The mixed-value flag is collateral:
+            // nothing sets it, so every property Unity draws by default (floats, ranges, colors, vectors)
+            // rendered a multi-selection as though all the materials agreed. Drawers are a second hole -
+            // BeginProperty does not run for them even un-detoured, and several of the drawers here never
+            // set the flag themselves (ByteSlider, MultiSlider, ThryIntRange, Ramp4, Curve, ...).
+            //
+            // Setting it here covers both, and EndProperty being a stub is why the reset below matters.
+            // Where Unity is left to set it (2021 and older), it sets the same value.
+            //
+            // Skipped for _doCustomDrawLogic (textures, render queue, VRC fallback, GI, instancing): those
+            // draw several sub-controls with independent mixed states and set the flag per control already.
+            bool drawAsMixedValue = !_doCustomDrawLogic && MaterialProperty != null && MaterialProperty.hasMixedValue;
+            if (drawAsMixedValue) EditorGUI.showMixedValue = true;
+
             if (_doCustomDrawLogic)
             {
                 DrawDefault();
@@ -458,10 +478,14 @@ namespace Thry.ThryEditor
             }
             else if (rect != null)
             {
-                // Custom Drawing for Range, because it doesnt draw correctly if inside the big texture property
+                // Custom Drawing for Range, because it doesn't draw correctly if inside the big texture property
                 if (_drawer == null && MaterialProperty.GetPropertyType() == ShaderPropertyType.Range)
                 {
-                    MaterialProperty.floatValue = EditorGUI.Slider(rect.Value, content, MaterialProperty.floatValue, 0, MaterialProperty.rangeLimits.y);
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUI.showMixedValue = MaterialProperty.hasMixedValue;
+                    float newSliderValue = EditorGUI.Slider(rect.Value, content, MaterialProperty.floatValue, MaterialProperty.rangeLimits.x, MaterialProperty.rangeLimits.y);
+                    EditorGUI.showMixedValue = false;
+                    if (EditorGUI.EndChangeCheck()) MaterialProperty.floatValue = newSliderValue;
                 }
                 else
                 {

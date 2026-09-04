@@ -1,3 +1,7 @@
+# [2.73.9]
+## Changes
+- HOTFIX: Fixed a bug where two or more materials sharing different values overwrite each other (such as `_BumpScale`).
+
 # [2.73.8]
 ## Changes
 - Switched from using `GetInstanceID()` to `GetObjectId()`, future-proofing it for compatibility with Unity 6.5 and later.
