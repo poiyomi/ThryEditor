@@ -140,6 +140,8 @@ namespace Thry.ThryEditor
             // Shaders can be installed or removed between scans, so resolution must not be cached across them.
             s_shaderByGuid.Clear();
             s_shaderByName.Clear();
+            // Drops the scene half of the ownership index only. The prefab half is the expensive one and now
+            // survives until an asset change actually invalidates it - see OwnerIndexWatcher.
             InvalidateOwnerIndex();
 
             string[] guids = includePackages
@@ -574,9 +576,27 @@ namespace Thry.ThryEditor
         static Dictionary<string, List<Owner>> s_ownerIndex;
         static bool s_ownerIndexIncludedPackages;
 
+        // The prefab half is held separately because it is the only expensive part: one recursive
+        // AssetDatabase.GetDependencies walk per prefab in the project, which runs into minutes on a large avatar
+        // project. It now survives scans and window closes. Prefab owners are identified by asset path and hold no
+        // UnityEngine.Object reference, so keeping the map costs a few MB and keeps nothing alive that shouldn't be.
+        static Dictionary<string, List<Owner>> s_prefabOwners;
+        static bool s_prefabOwnersIncludedPackages;
+
+        /// <summary>
+        /// Drops the combined index, so the next lookup re-walks the loaded scenes. The cached prefab walk is
+        /// deliberately kept; <see cref="InvalidatePrefabOwners"/> is what discards that.
+        /// </summary>
         public static void InvalidateOwnerIndex()
         {
             s_ownerIndex = null;
+        }
+
+        /// <summary>Discards the prefab ownership walk too, forcing a full rebuild on the next lookup.</summary>
+        public static void InvalidatePrefabOwners()
+        {
+            s_ownerIndex = null;
+            s_prefabOwners = null;
         }
 
         /// <summary>
@@ -587,23 +607,47 @@ namespace Thry.ThryEditor
         {
             if (s_ownerIndex != null && s_ownerIndexIncludedPackages == includePackages) return s_ownerIndex;
 
-            Dictionary<string, List<Owner>> index = new Dictionary<string, List<Owner>>();
-            try
-            {
-                AddPrefabOwners(index, includePackages);
-                AddSceneOwners(index);
-            }
-            finally
-            {
-                EditorUtility.ClearProgressBar();
-            }
+            Dictionary<string, List<Owner>> prefabOwners = GetPrefabOwners(includePackages);
+
+            // Scene contents change on every edit and cost almost nothing to walk, so that half is rebuilt each
+            // time. Copy the prefab half rather than adding to it, or scene owners accumulate inside the cache.
+            Dictionary<string, List<Owner>> index = new Dictionary<string, List<Owner>>(prefabOwners.Count);
+            foreach (KeyValuePair<string, List<Owner>> pair in prefabOwners)
+                index.Add(pair.Key, new List<Owner>(pair.Value));
+
+            AddSceneOwners(index);
 
             s_ownerIndex = index;
             s_ownerIndexIncludedPackages = includePackages;
             return index;
         }
 
-        static void AddPrefabOwners(Dictionary<string, List<Owner>> index, bool includePackages)
+        static Dictionary<string, List<Owner>> GetPrefabOwners(bool includePackages)
+        {
+            if (s_prefabOwners != null && s_prefabOwnersIncludedPackages == includePackages) return s_prefabOwners;
+
+            Dictionary<string, List<Owner>> owners = new Dictionary<string, List<Owner>>();
+            bool completed;
+            try
+            {
+                completed = AddPrefabOwners(owners, includePackages);
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+            }
+
+            // A cancelled walk leaves a partial map. It still answers this lookup, but caching it would hide
+            // prefab owners for the rest of the session - previously the next scan papered over that.
+            if (!completed) return owners;
+
+            s_prefabOwners = owners;
+            s_prefabOwnersIncludedPackages = includePackages;
+            return owners;
+        }
+
+        /// <summary>Returns false when the user cancelled, which leaves <paramref name="index"/> partly filled.</summary>
+        static bool AddPrefabOwners(Dictionary<string, List<Owner>> index, bool includePackages)
         {
             string[] guids = includePackages
                 ? AssetDatabase.FindAssets("t:Prefab")
@@ -613,7 +657,7 @@ namespace Thry.ThryEditor
             {
                 if ((i & 15) == 0 &&
                     EditorUtility.DisplayCancelableProgressBar("Mapping materials to prefabs", $"{i} / {guids.Length}", (float)i / guids.Length))
-                    break;
+                    return false;
 
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
                 if (string.IsNullOrEmpty(path)) continue;
@@ -633,6 +677,8 @@ namespace Thry.ThryEditor
                     if (dependency.EndsWith(".mat", StringComparison.OrdinalIgnoreCase))
                         Add(index, dependency, owner);
             }
+
+            return true;
         }
 
         static void AddSceneOwners(Dictionary<string, List<Owner>> index)
@@ -682,6 +728,37 @@ namespace Thry.ThryEditor
                 if (owners[i].Key == owner.Key) return;
 
             owners.Add(owner);
+        }
+
+        /// <summary>
+        /// Keeps the cached prefab walk honest without paying for it on every scan. Only changes that can move a
+        /// prefab -> material edge count. Re-saving a material is deliberately NOT one of them: locking, unlocking
+        /// and version upgrades rewrite materials constantly, and discarding the walk each time is what made the
+        /// Material Upgrade Utility crawl. A material's own edits can't change which prefabs reference it - only
+        /// its path can, which shows up as a delete or a move.
+        /// </summary>
+        class OwnerIndexWatcher : AssetPostprocessor
+        {
+            // Assets that can start referencing a different material when their CONTENT changes.
+            static readonly string[] Referencing = { ".prefab", ".controller", ".overridecontroller", ".anim" };
+            // Assets whose PATH is part of the index, so creating, deleting or moving one invalidates it.
+            static readonly string[] Indexed = { ".prefab", ".mat" };
+
+            static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+            {
+                if (AnyOf(imported, Referencing) || AnyOf(deleted, Indexed) ||
+                    AnyOf(moved, Indexed) || AnyOf(movedFrom, Indexed))
+                    InvalidatePrefabOwners();
+            }
+
+            static bool AnyOf(string[] paths, string[] extensions)
+            {
+                for (int i = 0; i < paths.Length; i++)
+                    for (int e = 0; e < extensions.Length; e++)
+                        if (paths[i].EndsWith(extensions[e], StringComparison.OrdinalIgnoreCase))
+                            return true;
+                return false;
+            }
         }
 
         #endregion
