@@ -14,7 +14,7 @@ namespace Thry.ThryEditor
 			get
 			{
 				if (_masterLabel == null)
-					_masterLabel = new GUIStyle(GUI.skin.label) { richText = true, alignment = TextAnchor.MiddleCenter };
+					_masterLabel = new GUIStyle(EditorStyles.label) { richText = true, fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
 				return _masterLabel;
 			}
 		}

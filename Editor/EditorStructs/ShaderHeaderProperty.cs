@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -24,6 +25,9 @@ namespace Thry.ThryEditor
                 }
                 Content.text = displayName.Replace($"<guid={guid}>", replacement);
             }
+
+            // Use the inspector theme's text color, including for existing shader labels.
+            Content.text = Regex.Replace(Content.text, @"</?color\b[^>]*>", "", RegexOptions.IgnoreCase);
         }
 
         // On the rare off-chance the master label is marked as "non-default", ensure it doesn't get a distracting asterisk.
@@ -51,7 +55,7 @@ namespace Thry.ThryEditor
             else
             {
                 //is text draw
-                EditorGUI.LabelField(rect.Value, "<size=16>" + this.Content.text + "</size>", Styles.masterLabel);
+                EditorGUI.LabelField(rect.Value, this.Content.text, Styles.masterLabel);
                 DrawingData.LastGuiObjectRect = rect.Value;
             }
         }

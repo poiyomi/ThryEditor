@@ -26,9 +26,10 @@ namespace Thry.ThryEditor
 			}
 
 			ShaderProperty reference = Options.reference_property != null ? MyShaderUI.PropertyDictionary[Options.reference_property] : null;
-			bool has_header = string.IsNullOrWhiteSpace(this.Content.text) == false || reference != null;
+			int sectionToggleWidth = SectionEditing.IsEditing(this) ? SlidingToggle.ReservedWidth : 0;
+			bool has_header = string.IsNullOrWhiteSpace(this.Content.text) == false || reference != null || sectionToggleWidth > 0;
 
-			int headerTextX = 18;
+			int headerTextX = 18 + sectionToggleWidth;
 			int height = (has_header ? HEADER_HEIGHT : 0) + 4;
 
 			Rect border = EditorGUILayout.BeginVertical();
@@ -50,13 +51,16 @@ namespace Thry.ThryEditor
 				GUI.DrawTexture(border, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0, Colors.backgroundDark, borderWidths, 0);
 			}
 
+			if (has_header)
+				SectionEditing.DrawExcludedBackground(this, new Rect(border.x, border.y, border.width, HEADER_HEIGHT));
 			Rect clickCheckRect = GUILayoutUtility.GetRect(0, height);
 			if (reference != null)
 			{
 				EditorGUI.BeginChangeCheck();
-				Rect referenceRect = new Rect(border.x + CHECKBOX_OFFSET, border.y + 1, HEADER_HEIGHT - 2, HEADER_HEIGHT - 2);
-				reference.Draw(referenceRect, new GUIContent(), isInHeader: true, useEditorIndent: true);
-				headerTextX = CHECKBOX_OFFSET + HEADER_HEIGHT;
+				Rect referenceRect = new Rect(border.x + CHECKBOX_OFFSET + sectionToggleWidth, border.y + 1, HEADER_HEIGHT - 2, HEADER_HEIGHT - 2);
+				using (new SectionEditing.HeaderTintScope(this))
+					reference.Draw(referenceRect, new GUIContent(), isInHeader: true, useEditorIndent: true);
+				headerTextX = CHECKBOX_OFFSET + HEADER_HEIGHT + sectionToggleWidth;
 				if (EditorGUI.EndChangeCheck() && Options.ref_float_toggles_expand)
 				{
 					IsExpanded = reference.MaterialProperty.GetNumber() == 1;
@@ -67,15 +71,19 @@ namespace Thry.ThryEditor
 			if (has_header)
 			{
 				Rect header_rect = new RectOffset(headerTextX, 0, 0, 0).Remove(top_border);
-				GUI.Label(header_rect, this.Content, EditorStyles.label);
+				using (new SectionEditing.HeaderTintScope(this))
+					GUI.Label(header_rect, this.Content, EditorStyles.label);
 			}
 
 			// Draw menu icon
 			if (has_header)
 			{
-				DrawMenuIcon(border, Event.current);
+				using (new SectionEditing.HeaderTintScope(this, graphics: true))
+					DrawMenuIcon(border, Event.current);
 			}
 
+			if (sectionToggleWidth > 0)
+				SectionEditing.DrawHeaderToggle?.Invoke(this, new Rect(border.x + 18, border.y + 1, SlidingToggle.Width, 16));
 			FoldoutArrow(top_border, Event.current);
 			if (Event.current.type == EventType.MouseDown && clickCheckRect.Contains(Event.current.mousePosition))
 			{

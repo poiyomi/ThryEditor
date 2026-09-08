@@ -1042,6 +1042,7 @@ namespace Thry
 
             GUILayout.Space(5);
             GUITopBar();
+            SectionEditing.DrawToolbar?.Invoke(this);
             GUILayout.Space(5);
             GUISearchBar();
             GUILockinButton();
@@ -1120,21 +1121,15 @@ namespace Thry
             Rect topBarRect = RectifiedLayout.GetRect(25);
             // Icons have ~4px internal padding, compensate to get visual EDGE_PADDING
             Rect iconRect = new Rect(GUILib.EDGE_PADDING - 4, topBarRect.y, 25, 25);
-            if(GUILib.ButtonWithCursor(iconRect, Icons.settings, "Settings"))
+            if(GUILib.ButtonWithCursor(iconRect, ToolbarIcons.Settings ?? Icons.settings, "Settings"))
             {
                 EditorWindow.GetWindow<Settings>(false, "Thry Settings", true);
             }
             iconRect.x += 25;
-            if (GUILib.ButtonWithCursor(iconRect, Icons.tools, "Tools"))
+            if (GUILib.ButtonWithCursor(iconRect, ToolbarIcons.Tools ?? Icons.tools, "Tools"))
             {
                 PopupTools(iconRect);
             }
-            iconRect.x += 25;
-            ShaderTranslator.TranslationSelectionGUI(iconRect, this);
-            iconRect.x += 25;
-            if (GUILib.ButtonWithCursor(iconRect, Icons.thryIcon, "Thryrallo"))
-                Application.OpenURL("https://www.twitter.com/thryrallo");
-
             // Buttons added by packages built on this UI. Drawn last so the built-ins keep their
             // positions. The icon is resolved here rather than at registration time.
             foreach (var extra in TopBarButtons.All)
@@ -1233,6 +1228,12 @@ namespace Thry
                     footer.DrawAt(buttonRect);
                     buttonX -= INTER_PADDING;
                 }
+
+                const float THRY_ICON_SIZE = 24;
+                Rect thryRect = new Rect(buttonX - THRY_ICON_SIZE,
+                    footerRect.y + 10, THRY_ICON_SIZE, THRY_ICON_SIZE);
+                if (GUILib.ButtonWithCursor(thryRect, Icons.thryIcon, "Thryrallo"))
+                    Application.OpenURL("https://www.twitter.com/thryrallo");
             }
             catch (Exception ex)
             {

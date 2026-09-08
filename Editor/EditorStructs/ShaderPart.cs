@@ -700,10 +700,14 @@ namespace Thry.ThryEditor
             if (_doOptionsNeedInitilization)
                 InitOptions();
 
+            bool editingSection = SectionEditing.IsEditing(this);
+            if (SectionEditing.IsHidden(this))
+                return;
+
             if (has_not_searchedFor)
                 return;
 
-            if (SkipDrawBecauseEmpty)
+            if (SkipDrawBecauseEmpty && !editingSection)
                 return;
 
             if (DrawingData.IsEnabled && Options.condition_enable != null)
@@ -715,7 +719,7 @@ namespace Thry.ThryEditor
                 EditorGUI.BeginDisabledGroup(true);
             }
 
-            if (Options.condition_show.Test())
+            if (editingSection || Options.condition_show.Test())
             {
                 GUILocaleEditing(isInHeader);
                 PerformDraw(content, rect, useEditorIndent, isInHeader);

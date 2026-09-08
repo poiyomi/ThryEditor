@@ -71,7 +71,17 @@ namespace Thry.ThryEditor
             position.width = rightEdge - position.x - (GUILib.EDGE_PADDING - GUILib.UNITY_HEADER_RIGHT_MARGIN);
 
             DrawingData.LastGuiObjectHeaderRect = position;
-            DrawBoxAndContent(position, e, label, options);
+            int sectionToggleWidth = SectionEditing.IsEditing(this) ? SlidingToggle.ReservedWidth : 0;
+            int padding = Styles.flatHeader.padding.left;
+            try
+            {
+                Styles.flatHeader.padding.left += sectionToggleWidth;
+                using (new SectionEditing.HeaderTintScope(this))
+                    DrawBoxAndContent(position, e, label, options, sectionToggleWidth);
+            }
+            finally { Styles.flatHeader.padding.left = padding; }
+            if (sectionToggleWidth > 0)
+                SectionEditing.DrawHeaderToggle?.Invoke(this, new Rect(position.x + 20, position.y + (position.height - 16) / 2, SlidingToggle.Width, 16));
 
             Rect arrowRect = new Rect(position) { y = position.y + (position.height - 18) / 2, height = 18 };
             FoldoutArrow(arrowRect, e);
@@ -79,17 +89,17 @@ namespace Thry.ThryEditor
             HandleToggleInput(position);
         }
 
-        private void DrawBoxAndContent(Rect rect, Event e, GUIContent content, PropertyOptions options)
+        private void DrawBoxAndContent(Rect rect, Event e, GUIContent content, PropertyOptions options, int sectionToggleWidth)
         {
             if (options.reference_property != null && ShaderEditor.Active.PropertyDictionary.ContainsKey(options.reference_property))
             {
                 if(ShaderEditor.Active.Locale.EditInUI)
                 {
-                    GUI.Box(rect, new GUIContent("", MaterialProperty.name), Styles.flatHeader);
+                    SectionEditing.DrawHeaderBox(this, rect, new GUIContent("", MaterialProperty.name), Styles.flatHeader);
                     Rect translationRect = new Rect(rect);
-                    translationRect.x += 40;
+                    translationRect.x += 40 + sectionToggleWidth;
                     translationRect.y += 1;
-                    translationRect.width -= 100;
+                    translationRect.width -= 100 + sectionToggleWidth;
                     translationRect.height -= 4;
                     EditorGUI.BeginChangeCheck();
                     string newTranslation = EditorGUI.DelayedTextField(translationRect, _content.text);
@@ -103,7 +113,7 @@ namespace Thry.ThryEditor
                 else
                 {
                     GUIContent boxContent = new GUIContent("     " + content.text, content.tooltip);
-                    GUI.Box(rect, boxContent, Styles.flatHeader);
+                    SectionEditing.DrawHeaderBox(this, rect, boxContent, Styles.flatHeader);
                     if (Config.Instance.showNotes && !string.IsNullOrWhiteSpace(Note))
                     {
                         Rect noteRect = new Rect(rect);
@@ -117,7 +127,7 @@ namespace Thry.ThryEditor
                 DrawIcons(rect, options, e);
 
                 Rect togglePropertyRect = new Rect(rect);
-                togglePropertyRect.x += 20;
+                togglePropertyRect.x += 20 + sectionToggleWidth;
                 togglePropertyRect.y += 3;
                 togglePropertyRect.height -= 6;
                 togglePropertyRect.width = 15;
@@ -142,11 +152,11 @@ namespace Thry.ThryEditor
             {
                 // Multiple reference property toggles in header (e.g. decals section with 4 enable checkboxes)
                 int validCount = options.reference_properties.Count(p => ShaderEditor.Active.PropertyDictionary.ContainsKey(p));
-                int textOffset = 20 + validCount * 17 + 4;
+                int textOffset = 20 + sectionToggleWidth + validCount * 17 + 4;
 
                 if(ShaderEditor.Active.Locale.EditInUI)
                 {
-                    GUI.Box(rect, new GUIContent("", MaterialProperty.name), Styles.flatHeader);
+                    SectionEditing.DrawHeaderBox(this, rect, new GUIContent("", MaterialProperty.name), Styles.flatHeader);
                     Rect translationRect = new Rect(rect);
                     translationRect.x += textOffset;
                     translationRect.y += 1;
@@ -166,7 +176,7 @@ namespace Thry.ThryEditor
                     int savedPadding = Styles.flatHeader.padding.left;
                     Styles.flatHeader.padding.left = textOffset;
                     GUIContent boxContent = new GUIContent(content.text, content.tooltip);
-                    GUI.Box(rect, boxContent, Styles.flatHeader);
+                    SectionEditing.DrawHeaderBox(this, rect, boxContent, Styles.flatHeader);
                     Styles.flatHeader.padding.left = savedPadding;
                     if (Config.Instance.showNotes && !string.IsNullOrWhiteSpace(Note))
                     {
@@ -192,7 +202,7 @@ namespace Thry.ThryEditor
                     ShaderProperty refProp = ShaderEditor.Active.PropertyDictionary[options.reference_properties[i]];
 
                     Rect toggleRect = new Rect(rect);
-                    toggleRect.x += 20 + drawIndex * 17;
+                    toggleRect.x += 20 + sectionToggleWidth + drawIndex * 17;
                     toggleRect.y += 3;
                     toggleRect.height -= 6;
                     toggleRect.width = 15;
@@ -208,7 +218,7 @@ namespace Thry.ThryEditor
             }
             else
             {
-                GUI.Box(rect, content, Styles.flatHeader);
+                SectionEditing.DrawHeaderBox(this, rect, content, Styles.flatHeader);
                 if(Config.Instance.showNotes && !string.IsNullOrWhiteSpace(Note))
                 {
                     Rect noteRect = new Rect(rect);
@@ -252,6 +262,12 @@ namespace Thry.ThryEditor
         /// <param name="rect"></param>
         /// <param name="e"></param>
         private void DrawIcons(Rect rect, PropertyOptions options, Event e)
+        {
+            using (new SectionEditing.HeaderTintScope(this, graphics: true))
+                DrawIconsInternal(rect, options, e);
+        }
+
+        private void DrawIconsInternal(Rect rect, PropertyOptions options, Event e)
         {
             Rect buttonRect = new Rect(rect);
             buttonRect.width = 16;

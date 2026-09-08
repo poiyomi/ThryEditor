@@ -350,6 +350,16 @@ namespace Thry.ThryEditor
 
         protected override void DrawInternal(GUIContent content, Rect? rect = null, bool useEditorIndent = false, bool isInHeader = false)
         {
+            // Plain groups have no header chrome; expose their inclusion beside their existing label.
+            if (SectionEditing.IsEditing(this))
+            {
+                Rect row = EditorGUILayout.GetControlRect();
+                row.xMin = GUILib.GetPropertyX(XOffset);
+                SectionEditing.DrawExcludedBackground(this, row);
+                using (new SectionEditing.HeaderTintScope(this))
+                    GUI.Label(new Rect(row.x + SlidingToggle.ReservedWidth, row.y, row.width - SlidingToggle.ReservedWidth, row.height), content);
+                SectionEditing.DrawHeaderToggle?.Invoke(this, new Rect(row.x, row.y, SlidingToggle.Width, 16));
+            }
             if (Options.margin_top > 0)
             {
                 GUILayoutUtility.GetRect(0, Options.margin_top);
@@ -384,7 +394,8 @@ namespace Thry.ThryEditor
             {
                 Rect arrowRect = new RectOffset(4, 0, 0, 0).Remove(rect);
                 arrowRect.width = 13;
-                EditorStyles.foldout.Draw(arrowRect, false, false, IsExpanded, false);
+                using (new SectionEditing.HeaderTintScope(this, graphics: true))
+                    EditorStyles.foldout.Draw(arrowRect, false, false, IsExpanded, false);
             }
         }
 
