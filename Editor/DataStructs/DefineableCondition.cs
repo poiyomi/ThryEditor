@@ -190,6 +190,7 @@ namespace Thry.ThryEditor
             private ComparisonType _compareType;
             private bool _isConstant;
             private bool _constant;
+            private bool _isErrorLogged = false;
 
             protected override bool IsConstant => _isConstant;
 
@@ -219,8 +220,9 @@ namespace Thry.ThryEditor
                     if (_compareType == ComparisonType.BIGGER_EQ) return result >= 0;
                     if (_compareType == ComparisonType.SMALLER_EQ) return result <= 0;
                 }
-                else
+                else if (!_isErrorLogged)
                 {
+                    _isErrorLogged = true;
                     ThryLogger.LogDetail(
                         $"Failed to compare values: {_left.Value} and {_right.Value}. Comparision: {this.ToString()}"
                     );
