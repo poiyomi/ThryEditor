@@ -20,7 +20,7 @@ namespace Thry.ThryEditor
     /// and leaves the layout stack unbalanced if it throws, which is what made the old window so
     /// prone to spewing "Getting control N's position in a group with only M controls".
     /// </summary>
-    public class UnlockedMaterialsList : EditorWindow
+    public partial class UnlockedMaterialsList : EditorWindow
     {
         #region Layout constants
 
@@ -144,6 +144,9 @@ namespace Thry.ThryEditor
 
             if (rescan) Rescan();
             if (_needsViewRebuild) RebuildView();
+#if UNITY_2021_3_OR_NEWER
+            RefreshRetainedList();
+#endif
 
             Repaint();
         }
@@ -294,6 +297,9 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if (rootVisualElement.childCount > 0) return;
+#endif
             float y = DrawToolbar(0);
             y = DrawSummary(y);
             y = DrawNotice(y);

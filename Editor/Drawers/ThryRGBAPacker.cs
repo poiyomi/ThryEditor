@@ -8,8 +8,9 @@ using UnityEngine;
 
 namespace Thry.ThryEditor.Drawers
 {
-    public class ThryRGBAPackerDrawer : MaterialPropertyDrawer
+    public partial class ThryRGBAPackerDrawer : MaterialPropertyDrawer
     {
+        private readonly Dictionary<InlinePackerChannelConfig, InspectorPopup> _channelPopups = new Dictionary<InlinePackerChannelConfig, InspectorPopup>();
         // TODO : Load lacale by property name in the future: propname_r, propname_g, propname_b, propname_a
         class ThryRGBAPackerData
         {
@@ -132,7 +133,8 @@ namespace Thry.ThryEditor.Drawers
                 Pack();
             }
 
-            Rect buttonRect = EditorGUI.IndentedRect(EditorGUILayout.GetControlRect());
+            GUILayout.Space(4);
+            Rect buttonRect = EditorGUI.IndentedRect(EditorGUILayout.GetControlRect(false, 24));
             buttonRect.width /= 4;
             EditorGUI.BeginDisabledGroup(!_current._hasConfigChanged);
             if (GUI.Button(buttonRect, "Merge")) Confirm();
@@ -150,6 +152,7 @@ namespace Thry.ThryEditor.Drawers
             EditorGUI.BeginDisabledGroup(!hasAnythingToClear);
             if (GUI.Button(buttonRect, "Clear")) Clear();
             EditorGUI.EndDisabledGroup();
+            GUILayout.Space(6);
         }
 
         bool TexturePackerSlotGUI(InlinePackerChannelConfig input, string label)
@@ -157,7 +160,7 @@ namespace Thry.ThryEditor.Drawers
             bool didChange = false;
             EditorGUI.BeginChangeCheck();
 
-            Rect totalRect = EditorGUILayout.GetControlRect(false);
+            Rect totalRect = EditorGUILayout.GetControlRect(false, InspectorTheme.FieldHeight);
             totalRect = EditorGUI.IndentedRect(totalRect);
             Rect r = totalRect;
 
@@ -167,6 +170,8 @@ namespace Thry.ThryEditor.Drawers
             float texWidth = Math.Max(50, r.width - 130 - 30) - 5;
             r.x = totalRect.x;
             r.width = 30;
+            r.y += (totalRect.height - 18) / 2;
+            r.height = 18; // Taller texture ObjectFields switch to Unity's large preview layout.
             EditorGUI.BeginChangeCheck();
             Texture2D changed = EditorGUI.ObjectField(r, input.Source.Texture, typeof(Texture2D), false) as Texture2D;
             if (EditorGUI.EndChangeCheck())
@@ -175,6 +180,8 @@ namespace Thry.ThryEditor.Drawers
             }
 
             r.x += r.width + 5;
+            r.y = totalRect.y;
+            r.height = totalRect.height;
             r.width = texWidth - 5;
             EditorGUI.LabelField(r, label);
 
@@ -193,11 +200,16 @@ namespace Thry.ThryEditor.Drawers
                 r.width = 50;
                 r.x = totalRect.x + totalRect.width - r.width;
                 if (!_firstTextureIsRGB || input != _current._input_r)
-                    input.Channel = (TexturePacker.TextureChannelIn)EditorGUI.EnumPopup(r, input.Channel);
+                {
+                    InspectorPopup popup;
+                    if (!_channelPopups.TryGetValue(input, out popup)) _channelPopups[input] = popup = new InspectorPopup();
+                    input.Channel = (TexturePacker.TextureChannelIn)popup.DrawEnum(r, input.Channel);
+                }
 
                 r.width = 20;
                 r.x -= r.width;
-                input.Invert = EditorGUI.Toggle(r, input.Invert);
+                var toggleRect = new Rect(r.x, r.center.y - 8, 16, 16);
+                input.Invert = EditorGUI.Toggle(toggleRect, input.Invert);
 
                 r.width = 60;
                 r.x -= r.width;

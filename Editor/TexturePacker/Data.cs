@@ -272,6 +272,7 @@ namespace Thry.ThryEditor.TexturePacker
             if (InputType != InputType.Gradient) return;
             if (GradientTexture != null && GradientTexture.width == size.x && GradientTexture.height == size.y) return;
             if (Gradient == null) Gradient = new Gradient();
+            if (GradientTexture != null) UnityEngine.Object.DestroyImmediate(GradientTexture);
             GradientTexture = Converter.GradientToTexture(Gradient, size.x, size.y, GradientDirection == GradientDirection.Vertical);
         }
 
@@ -279,6 +280,7 @@ namespace Thry.ThryEditor.TexturePacker
         {
             if (InputType != InputType.Color) return;
             if (ColorTexture != null && ColorTexture.GetPixel(0,0) == Color) return;
+            if (ColorTexture != null) UnityEngine.Object.DestroyImmediate(ColorTexture);
             ColorTexture = Converter.ColorToTexture(Color, 16, 16);
         }
 

@@ -9,6 +9,7 @@ namespace Thry.ThryEditor
 {
     public class RenderQueueProperty : ShaderProperty
     {
+        private readonly InspectorPopup _queuePopup = new InspectorPopup();
         public RenderQueueProperty(ShaderEditor shaderEditor) : base(shaderEditor, "RenderQueue", 0, "", "Change the Queue at which the material is rendered.", -1)
         {
             _doCustomDrawLogic = true;
@@ -21,7 +22,7 @@ namespace Thry.ThryEditor
 
         protected override void DrawDefault()
         {
-            Rect r = RectifiedLayout.GetPaddedRect(18);
+            Rect r = RectifiedLayout.GetPaddedRect(InspectorTheme.FieldHeight);
             int queue = MyShaderUI.Materials[0].renderQueue;
             
             using (new GUILib.IndentOverrideScope(0))
@@ -43,7 +44,7 @@ namespace Thry.ThryEditor
                 string[] queueNames = RenderQueueHelper.GetDropdownNames(queue, s_renderQueueNames, s_renderQueueValues, out selectedIndex);
                 
                 EditorGUI.BeginChangeCheck();
-                int newIndex = EditorGUI.Popup(dropdownRect, selectedIndex, queueNames);
+                int newIndex = _queuePopup.Draw(dropdownRect, GUIContent.none, selectedIndex, queueNames);
                 if (EditorGUI.EndChangeCheck() && newIndex != selectedIndex && newIndex < s_renderQueueValues.Length)
                 {
                     queue = s_renderQueueValues[newIndex];
@@ -90,6 +91,9 @@ namespace Thry.ThryEditor
     }
     public class VRCFallbackProperty : ShaderProperty
     {
+        internal static string[] RetainedNames => s_vRCFallbackOptionsPopup;
+        internal static string[] RetainedValues => s_vRCFallbackOptionsValues;
+        private readonly InspectorPopup _fallbackPopup = new InspectorPopup();
         static string[] s_fallbackShaderTypes = { "Standard", "Toon", "Unlit", "VertexLit", "Particle", "Sprite", "Matcap", "MobileToon", "toonstandard", "toonstandardoutline" };
         static string[] s_fallbackRenderTypes = { "Opaque", "Cutout", "Transparent", "Fade" };
         static string[] s_fallbackRenderTypesValues = { "", "Cutout", "Transparent", "Fade" };
@@ -110,13 +114,13 @@ namespace Thry.ThryEditor
 
         protected override void DrawDefault()
         {
-            Rect r = RectifiedLayout.GetPaddedRect(18);
+            Rect r = RectifiedLayout.GetPaddedRect(InspectorTheme.FieldHeight);
             string current = MyShaderUI.Materials[0].GetTag("VRCFallback", false, "None");
             EditorGUI.BeginChangeCheck();
             // Reset indent to 0 since our rect already has padding
             int oldIndent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
-            int selected = EditorGUI.Popup(r, "VRChat Fallback Shader", s_vRCFallbackOptionsValues.Select((f, i) => (f, i)).FirstOrDefault(f => f.f == current).i, s_vRCFallbackOptionsPopup);
+            int selected = _fallbackPopup.Draw(r, new GUIContent("VRChat Fallback Shader"), s_vRCFallbackOptionsValues.Select((f, i) => (f, i)).FirstOrDefault(f => f.f == current).i, s_vRCFallbackOptionsPopup);
             EditorGUI.indentLevel = oldIndent;
             if (EditorGUI.EndChangeCheck())
             {
@@ -196,6 +200,7 @@ namespace Thry.ThryEditor
     }
     public class GIProperty : ShaderProperty
     {
+        private readonly InspectorPopup _emissionPopup = new InspectorPopup();
         public GIProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, int xOffset, string optionsRaw, bool forceOneLine, int property_index) : base(shaderEditor, materialProperty, displayName, xOffset, optionsRaw, forceOneLine, property_index)
         {
             _doCustomDrawLogic = true;
@@ -260,7 +265,8 @@ namespace Thry.ThryEditor
             // Show popup with proper positioning
             Rect r = GUILib.GetPropertyRect(indent, EditorGUIUtility.singleLineHeight);
             EditorGUI.showMixedValue = isMixed;
-            giFlags = (MaterialGlobalIlluminationFlags)EditorGUI.IntPopup(r, lightmapEmissiveLabel, (int)giFlags, lightmapEmissiveStrings, lightmapEmissiveValues);
+            int emissionIndex = _emissionPopup.Draw(r, lightmapEmissiveLabel, System.Array.IndexOf(lightmapEmissiveValues, (int)giFlags), lightmapEmissiveStrings);
+            if (emissionIndex >= 0) giFlags = (MaterialGlobalIlluminationFlags)lightmapEmissiveValues[emissionIndex];
             EditorGUI.showMixedValue = false;
 
             // Apply flags. But only the part that this tool modifies (RealtimeEmissive, BakedEmissive, None)

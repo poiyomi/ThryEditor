@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Thry.ThryEditor.TexturePacker
 {
-    public class NodeGUI : EditorWindow
+    public partial class NodeGUI : EditorWindow
     {
         static NodeGUI s_instance;
         const int MIN_WIDTH = 850;
@@ -116,6 +116,9 @@ namespace Thry.ThryEditor.TexturePacker
 
         void InitializeUIPositions()
         {
+#if UNITY_2021_3_OR_NEWER
+            CreateGUI();
+#endif
             for(int i = 0; i < _config.Sources.Length; i++)
             {
                 if(_config.Sources[i].UIPosition == Vector2.zero)
@@ -148,6 +151,9 @@ namespace Thry.ThryEditor.TexturePacker
         bool _changeCheckForPacking;
         private void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if(rootVisualElement.childCount>0)return;
+#endif
             s_instance = this;
             if (_config == null)
             {
@@ -1062,6 +1068,10 @@ namespace Thry.ThryEditor.TexturePacker
 
         void OnDestroy()
         {
+#if UNITY_2021_3_OR_NEWER
+            _pendingPack?.Pause();
+            if (_retainedChannelPreview != null) { _retainedChannelPreview.Release(); DestroyImmediate(_retainedChannelPreview); }
+#endif
             if (_channelPreviewTexture != null && _channelPreviewTexture != _outputTexture)
                 UnityEngine.Object.DestroyImmediate(_channelPreviewTexture);
             if (_outputTexture != null)

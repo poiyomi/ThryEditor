@@ -12,6 +12,7 @@ namespace Thry.ThryEditor.Drawers
     public class ThryMaskDrawer : MaterialPropertyDrawer
     {
         private string[] _options;
+        private readonly InspectorPopup _popup = new InspectorPopup();
 
         public static bool RenderLabel = true;
 
@@ -56,10 +57,7 @@ namespace Thry.ThryEditor.Drawers
             // Custom Change Check, so it triggers on reselect too
             EditorGUI.BeginChangeCheck();
             int newMask = mask;
-            if (RenderLabel)
-                newMask = EditorGUI.MaskField(position, label, newMask, _options);
-            else
-                newMask = EditorGUI.MaskField(position, newMask, _options);
+            newMask = _popup.DrawMask(position, RenderLabel ? label : GUIContent.none, newMask, _options);
             EditorGUI.showMixedValue = false;
             if (newMask == -1)
             {

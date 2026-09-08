@@ -19,6 +19,8 @@ namespace Thry.ThryEditor.Drawers
         private static int _reloadCountStatic;
 
         public static bool RenderLabel = true;
+        internal static GUIStyle PopupStyle;
+        private readonly InspectorPopup _popup = new InspectorPopup();
 
         // internal Unity AssemblyHelper can't be accessed
         private Type[] TypesFromAssembly(Assembly a)
@@ -97,6 +99,7 @@ namespace Thry.ThryEditor.Drawers
 
         void LoadNames()
         {
+            if (defaultNames == null) return;
             names = new GUIContent[defaultNames.Length];
             for (int i = 0; i < defaultNames.Length; ++i)
             {
@@ -120,15 +123,10 @@ namespace Thry.ThryEditor.Drawers
                 LoadNames();
             }
 
-            // Custom Change Check, so it triggers on reselect too
-            bool wasClickEvent = Event.current.type == EventType.ExecuteCommand;
-            int selIndex;
-            if(RenderLabel)
-                selIndex = EditorGUI.Popup(position, label, selectedIndex, names);
-            else
-                selIndex = EditorGUI.Popup(position, selectedIndex, names);
+            EditorGUI.BeginChangeCheck();
+            int selIndex = _popup.Draw(position, RenderLabel ? label : GUIContent.none, selectedIndex, names, PopupStyle);
             EditorGUI.showMixedValue = false;
-            if (wasClickEvent && Event.current.type == EventType.Used)
+            if (EditorGUI.EndChangeCheck() && selIndex >= 0)
             {
                 // Set GUI.changed to true, so it triggers a change event, even on reselection
                 GUI.changed = true;
@@ -140,6 +138,11 @@ namespace Thry.ThryEditor.Drawers
         {
             ShaderProperty.RegisterDrawer(this);
             return base.GetPropertyHeight(prop, label, editor);
+        }
+
+        private void OpenInspectorPopup(Rect position, MaterialEditor editor, int selectedIndex)
+        {
+            _popup.Open(position, names, selectedIndex, (ShaderEditor)editor.customShaderGUI);
         }
     }
 }

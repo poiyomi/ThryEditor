@@ -44,6 +44,16 @@ namespace Thry.ThryEditor
         }
 
         // Use
+        internal string[] LanguageNames => _allLanguages ?? new[] { DefaultLanguage };
+        internal int LanguageIndex => SelectedLanguage + 1;
+        internal void SelectLanguage(int index)
+        {
+            if (index < 0 || index >= LanguageNames.Length || index == LanguageIndex) return;
+            SelectedLanguage = index - 1;
+            EditorUtility.SetDirty(this);
+            AssetDatabase.SaveAssets();
+        }
+
         public static Localization Load(string guid)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
@@ -994,4 +1004,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-

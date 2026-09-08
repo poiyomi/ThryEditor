@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace Thry.ThryEditor
 {
-    public class GradientEditor : EditorWindow
+    public partial class GradientEditor : EditorWindow
     {
         public class GradientData
         {
@@ -32,6 +32,9 @@ namespace Thry.ThryEditor
             window._show_texture_options = show_texture_options;
             window.minSize = new Vector2(350, 350);
             window.Show();
+#if UNITY_2021_3_OR_NEWER
+            window.CreateGUI();
+#endif
         }
 
         private ColorSpace _colorSpace = ColorSpace.Linear;
@@ -85,6 +88,7 @@ namespace Thry.ThryEditor
 
         public void OnDestroy()
         {
+            if (_data == null) return;
             if (_gradient_has_been_edited)
             {
                 if (_data.PreviewTexture.GetType() == typeof(Texture2D))
@@ -201,6 +205,9 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if (rootVisualElement.childCount > 0) return;
+#endif
             if (!_inited)
                 InitSomeStuff();
             float gradientEditorHeight = Mathf.Min(position.height, 146);

@@ -50,28 +50,9 @@ namespace Thry.ThryEditor
 			}
 		}
 
-		private static GUIStyle _flatHeader;
 		public static GUIStyle flatHeader
 		{
-			get
-			{
-				if (_flatHeader == null)
-				{
-					_flatHeader = new GUIStyle(GUI.skin.button)
-					{
-						font = EditorStyles.label.font,
-						fontSize = 12,
-						alignment = TextAnchor.MiddleLeft,
-						padding = new RectOffset(20, 4, 2, 2),
-						// Must stay even. Together with the header's layout pitch (see ShaderHeader.DrawInternal)
-						// this is what keeps headers rasterizing identically under fractional editor DPI scaling.
-						// At 150% an odd height puts every other header's bottom edge on a half device-pixel,
-						// which thickens the box's bottom border to 2px and widens the gap below it to 4px.
-						fixedHeight = 22
-					};
-				}
-				return _flatHeader;
-			}
+			get => InspectorTheme.Header;
 		}
 
 		public static Color AnimatedColor => EditorGUIUtility.isProSkin ? new Color(0.3f, 1f, 0.3f) : new Color(0f, 0.5f, 0f);

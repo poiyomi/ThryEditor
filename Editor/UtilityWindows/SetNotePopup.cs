@@ -1,5 +1,8 @@
 using UnityEditor;
 using UnityEngine;
+#if UNITY_2021_3_OR_NEWER
+using UnityEngine.UIElements;
+#endif
 
 namespace Thry.ThryEditor
 {
@@ -23,6 +26,9 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if(rootVisualElement.childCount>0)return;
+#endif
             if(ShaderPart == null)
             {
                 Close();
@@ -61,5 +67,17 @@ namespace Thry.ThryEditor
             ShaderPart.Note = TextFieldContent;
             Close();
         }
+#if UNITY_2021_3_OR_NEWER
+        public void CreateGUI()
+        {
+            minSize=new Vector2(320,150);RetainedWindow.Style(rootVisualElement);
+            var text=new TextField {multiline=true,value=TextFieldContent};text.style.flexGrow=1;rootVisualElement.Add(text);
+            text.RegisterValueChangedCallback(e=>TextFieldContent=e.newValue);
+            var actions=new VisualElement();actions.AddToClassList("thry-components");rootVisualElement.Add(actions);
+            actions.Add(new Button(Close){text="Cancel"});actions.Add(new Button(()=>UpdateNoteAndClose(false)){text="Save"});
+            rootVisualElement.RegisterCallback<KeyDownEvent>(e=>{if(e.keyCode==KeyCode.Escape)Close();if(e.keyCode==KeyCode.Return&&(e.ctrlKey||e.commandKey))UpdateNoteAndClose(false);});
+            text.schedule.Execute(text.Focus);
+        }
+#endif
     }
 }

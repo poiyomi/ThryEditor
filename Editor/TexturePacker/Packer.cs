@@ -330,6 +330,15 @@ namespace Thry.ThryEditor.TexturePacker
             {
                 path = Path.Combine(config.FileOutput.SaveFolder, config.FileOutput.FileName + config.FileOutput.SaveType.GetTypeEnding());
             }
+            path = path.Replace('\\', '/');
+            var absolute = Path.GetFullPath(path);
+            var assets = Path.GetFullPath(Application.dataPath) + Path.DirectorySeparatorChar;
+            if (!absolute.StartsWith(assets, StringComparison.OrdinalIgnoreCase))
+            {
+                EditorUtility.DisplayDialog("Choose an asset folder", "Save the packed texture inside this project's Assets folder.", "OK");
+                return null;
+            }
+            path = "Assets/" + absolute.Substring(assets.Length).Replace('\\', '/');
             if (File.Exists(path))
             {
                 // open dialog
@@ -343,7 +352,9 @@ namespace Thry.ThryEditor.TexturePacker
             {
                 case SaveType.PNG: bytes = texture.EncodeToPNG(); break;
                 case SaveType.JPG: bytes = texture.EncodeToJPG(config.FileOutput.SaveQuality); break;
+                case SaveType.EXR: bytes = texture.EncodeToEXR(); break;
             }
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
             System.IO.File.WriteAllBytes(path, bytes);
             AssetDatabase.Refresh();
 

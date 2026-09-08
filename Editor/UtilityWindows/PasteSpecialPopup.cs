@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
+#if UNITY_2021_3_OR_NEWER
+using UnityEngine.UIElements;
+#endif
 
 namespace Thry.ThryEditor
 {
@@ -88,6 +91,29 @@ namespace Thry.ThryEditor
                     }
                 }
             }
+#if UNITY_2021_3_OR_NEWER
+            public VisualElement CreateView()
+            {
+                var root=new VisualElement();
+                var toggle=new Toggle(ShaderPart.Content.text){value=IsEnabled};root.Add(toggle);toggle.RegisterValueChangedCallback(e=>IsEnabled=e.newValue);
+                if(HasChildren)
+                {
+                    var fold=new Foldout{text="Properties",value=false};root.Add(fold);
+                    var actions=new VisualElement();actions.AddToClassList("thry-components");fold.Add(actions);
+                    var list=new VisualElement();
+                    actions.Add(new Button(()=>{SetChildrenEnabled(false);Rebuild();}){text="None"});actions.Add(new Button(()=>{SetChildrenEnabled(true);Rebuild();}){text="All"});
+                    fold.Add(list);
+                    void Rebuild(){list.Clear();foreach(var child in children)list.Add(child.CreateView());}Rebuild();
+                }
+                else if(ShaderPart.MaterialProperty!=null)
+                {
+                    var property=ShaderPart.MaterialProperty;
+                    string value=property.type==MaterialProperty.PropType.Texture?property.textureValue?.name??"None":property.type==MaterialProperty.PropType.Vector?property.vectorValue.ToString():property.type==MaterialProperty.PropType.Color?property.colorValue.ToString():property.GetNumber().ToString();
+                    root.Add(new Label(value));
+                }
+                return root;
+            }
+#endif
 
             public void AddDisabledShaderPartsToListRecursive(ref List<ShaderPart> disabledParts)
             {
@@ -121,6 +147,9 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if(rootVisualElement.childCount>0)return;
+#endif
             if(partAdapter?.ShaderPart == null)
             {
                 Close();
@@ -150,6 +179,15 @@ namespace Thry.ThryEditor
             EditorGUILayout.EndHorizontal();
         }
         
+#if UNITY_2021_3_OR_NEWER
+        public void CreateGUI()
+        {
+            RetainedWindow.Style(rootVisualElement);if(partAdapter==null)return;
+            var scroll=new ScrollView();scroll.style.flexGrow=1;scroll.Add(partAdapter.CreateView());rootVisualElement.Add(scroll);
+            var actions=new VisualElement();actions.AddToClassList("thry-components");rootVisualElement.Add(actions);
+            actions.Add(new Button(Close){text="Cancel"});actions.Add(new Button(()=>{var disabled=new List<ShaderPart>();partAdapter.AddDisabledShaderPartsToListRecursive(ref disabled);OnPasteClicked?.Invoke(disabled);Close();}){text="Paste Selected"});
+        }
+#endif
         static void DrawShaderProperty(MaterialProperty prop, GUILayoutOption propertyWidth)
         {
             using(new EditorGUI.DisabledScope(true))

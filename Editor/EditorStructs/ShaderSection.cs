@@ -10,7 +10,7 @@ namespace Thry.ThryEditor
     {
 
         const int BORDER_WIDTH = 2;
-        const int HEADER_HEIGHT = 20;
+        const int HEADER_HEIGHT = InspectorTheme.SectionHeight;
         const int CHECKBOX_OFFSET = 20;
         const int CONTENT_PADDING = 4; // Additional left offset for children inside sections
         const int CONTENT_RIGHT_PADDING = 2; // Additional right reduction for children inside sections
@@ -39,29 +39,17 @@ namespace Thry.ThryEditor
             border.x = GUILib.GetPropertyX(this.XOffset) - BORDER_WIDTH;
             border.width = rightEdge - border.x - 1;
             border = new RectOffset(0, 0, -2, -2).Add(border);
-            if (IsExpanded)
-            {
-                // Draw as border line
-                Vector4 borderWidths = new Vector4(BORDER_WIDTH, (has_header ? HEADER_HEIGHT : BORDER_WIDTH), BORDER_WIDTH, BORDER_WIDTH);
-                GUI.DrawTexture(border, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0, Colors.backgroundDark, borderWidths, 5);
-            }
-            else
-            {
-                // Draw as solid
-                GUI.DrawTexture(border, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0, Colors.backgroundDark, Vector4.zero, 5);
-            }
+            InspectorTheme.DrawSection(this, border, IsExpanded, has_header, false);
 
             // Draw Reference
-            if (has_header)
-                SectionEditing.DrawExcludedBackground(this, new Rect(border.x, border.y, border.width, HEADER_HEIGHT), 5);
             Rect clickCheckRect = GUILayoutUtility.GetRect(0, height);
             if (reference != null)
             {
                 EditorGUI.BeginChangeCheck();
-                Rect referenceRect = new Rect(border.x + CHECKBOX_OFFSET + sectionToggleWidth, border.y + 1, HEADER_HEIGHT - 2, HEADER_HEIGHT - 2);
+                Rect referenceRect = new Rect(border.x + CHECKBOX_OFFSET + sectionToggleWidth, border.y + (HEADER_HEIGHT - 18) / 2, 18, 18);
                 using (new SectionEditing.HeaderTintScope(this))
                     reference.Draw(referenceRect, new GUIContent(), isInHeader: true, useEditorIndent: true);
-                headerTextX = CHECKBOX_OFFSET + HEADER_HEIGHT + sectionToggleWidth;
+                headerTextX = CHECKBOX_OFFSET + 20 + sectionToggleWidth;
                 // Change expand state if reference is toggled
                 if (EditorGUI.EndChangeCheck() && Options.ref_float_toggles_expand)
                 {
@@ -70,12 +58,12 @@ namespace Thry.ThryEditor
             }
 
             // Draw Header (GUIContent)
-            Rect top_border = new Rect(border.x, border.y - 2, border.width - 16, 22);
+            Rect top_border = new Rect(border.x, border.y, border.width - 20, HEADER_HEIGHT);
             if (has_header)
             {
                 Rect header_rect = new RectOffset(headerTextX, 0, 0, 0).Remove(top_border);
                 using (new SectionEditing.HeaderTintScope(this))
-                    GUI.Label(header_rect, this.Content, EditorStyles.label);
+                    GUI.Label(header_rect, this.Content, InspectorTheme.Section);
             }
 
             // Draw menu icon
@@ -87,7 +75,7 @@ namespace Thry.ThryEditor
 
             // Toggling + Draw Arrow
             if (sectionToggleWidth > 0)
-                SectionEditing.DrawHeaderToggle?.Invoke(this, new Rect(border.x + 18, border.y + 1, SlidingToggle.Width, 16));
+                SectionEditing.DrawHeaderToggle?.Invoke(this, new Rect(border.x + 18, border.y + (HEADER_HEIGHT - 16) / 2, SlidingToggle.Width, 16));
             FoldoutArrow(top_border, Event.current);
             if (Event.current.type == EventType.MouseDown && clickCheckRect.Contains(Event.current.mousePosition))
             {
@@ -117,7 +105,7 @@ namespace Thry.ThryEditor
         {
             Rect buttonRect = new Rect(border);
             buttonRect.x = border.x + border.width - 18;
-            buttonRect.y = border.y + 2;
+            buttonRect.y = border.y + (HEADER_HEIGHT - 16) / 2;
             buttonRect.width = 16;
             buttonRect.height = 16;
 

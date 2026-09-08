@@ -8,10 +8,13 @@ using Thry.ThryEditor.Drawers;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
+#if UNITY_2021_3_OR_NEWER
+using UnityEngine.UIElements;
+#endif
 
 namespace Thry.ThryEditor
 {
-    public class Presets : AssetPostprocessor
+    public partial class Presets : AssetPostprocessor
     {
         const string TAG_IS_MATERIAL_PRESET = "isPreset";
         const string TAG_IS_MATERIAL_SECTIONED_PRESET = "isSectionedPreset";
@@ -1178,6 +1181,15 @@ namespace Thry.ThryEditor
                 foreach (PresetStruct struc in structure)
                     struc.Reset();
             }
+#if UNITY_2021_3_OR_NEWER
+            public VisualElement CreateView(PresetsPopupGUI popup)
+            {
+                var root=new VisualElement();
+                if(hasPreset){var toggle=new Toggle(name){value=isOn};toggle.RegisterValueChangedCallback(e=>{isOn=e.newValue;popup.TogglePreset(Presets.GetPresetMaterial(guid),isOn);});root.Add(toggle);}
+                if(structure.Count>0){var fold=new Foldout{text=name,value=isOpen};foreach(var child in structure)fold.Add(child.CreateView(popup));root.Add(fold);}
+                return root;
+            }
+#endif
         }
 
         Material[] beforePreset;
@@ -1223,6 +1235,9 @@ namespace Thry.ThryEditor
         bool _save;
         void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if(rootVisualElement.childCount>0)return;
+#endif
             if (mainStruct == null) { this.Close(); return; }
 
             GUILayout.BeginHorizontal();
@@ -1247,11 +1262,23 @@ namespace Thry.ThryEditor
         }
         private void OnDestroy()
         {
-            if (!_save)
+            if (!_save && shaderEditor != null)
             {
                 Revert();
             }
+            if(beforePreset!=null)foreach(var material in beforePreset)DestroyImmediate(material);
         }
+#if UNITY_2021_3_OR_NEWER
+        public void CreateGUI()
+        {
+            rootVisualElement.Clear();RetainedWindow.Style(rootVisualElement);minSize=new Vector2(300,240);
+            if(mainStruct==null)return;
+            var list=new ScrollView();list.style.flexGrow=1;rootVisualElement.Add(list);
+            foreach(var item in mainStruct.structure)list.Add(item.CreateView(this));
+            var actions=new VisualElement();actions.AddToClassList("thry-components");rootVisualElement.Add(actions);
+            actions.Add(new Button(()=>{_save=true;Close();}){text="Apply"});actions.Add(new Button(()=>{Revert();CreateGUI();}){text="Discard"});
+        }
+#endif
 
         void TopStructGUI()
         {

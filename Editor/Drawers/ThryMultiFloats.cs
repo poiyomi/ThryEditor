@@ -106,7 +106,7 @@ namespace Thry.ThryEditor.Drawers
                     {
                         string tagLabel = tileDiscardPropName != null ? TileLabelUtility.GetTileLabel(editor.target as Material, tileDiscardPropName) : null;
                         if (!string.IsNullOrEmpty(tagLabel)) val = GUI.Toggle(contentRect, val == 1, tagLabel, "Button") ? 1 : 0;
-                        else val = EditorGUI.Toggle(contentRect, val == 1) ? 1 : 0;
+                        else val = EditorGUI.Toggle(new Rect(contentRect.x, contentRect.center.y - 8, 16, 16), val == 1) ? 1 : 0;
                     }
                     else val = EditorGUI.FloatField(contentRect, val);
 

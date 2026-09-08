@@ -19,7 +19,7 @@ namespace Thry.ThryEditor
         /// <summary>
         /// Desired visual padding from left and right edges (pixels)
         /// </summary>
-        public const int EDGE_PADDING = 5;
+        public const int EDGE_PADDING = 8;
 
         // Unity IMGUI has inconsistent built-in margins across control types.
         // These values compensate for Unity's internal padding to achieve consistent EDGE_PADDING.
@@ -44,6 +44,7 @@ namespace Thry.ThryEditor
         /// </summary>
         public static float SectionContentPadding = 0;
         public static float SectionContentRightPadding = 0;
+        internal static float ValueColumnX;
 
         // Common layout offsets used by drawers
         /// <summary>
@@ -78,9 +79,9 @@ namespace Thry.ThryEditor
             if (height == -2)
                 r = EditorGUILayout.GetControlRect(false, 0);
             else if (height < 0)
-                r = EditorGUILayout.GetControlRect();
+                r = EditorGUILayout.GetControlRect(false, InspectorTheme.FieldHeight);
             else
-                r = EditorGUILayout.GetControlRect(false, height);
+                r = EditorGUILayout.GetControlRect(false, height > 0 && height <= 20 ? InspectorTheme.FieldHeight : height);
             return AdjustPropertyRect(r, xOffset);
         }
 
@@ -113,7 +114,7 @@ namespace Thry.ThryEditor
             private readonly int _savedIndentLevel;
             private readonly float _savedLabelWidth;
 
-            public PropertyIndentScope(int xOffset, int indentAdjustment = 0, float labelWidthAdjustment = 0)
+            public PropertyIndentScope(int xOffset, int indentAdjustment = 0, float labelWidthAdjustment = 0, bool alignToColumn = true)
             {
                 _savedIndentLevel = EditorGUI.indentLevel;
                 _savedLabelWidth = EditorGUIUtility.labelWidth;
@@ -122,7 +123,9 @@ namespace Thry.ThryEditor
 
                 // Adjust labelWidth for section right padding only
                 // The rect positioning handles the left side alignment
-                EditorGUIUtility.labelWidth -= SectionContentRightPadding + labelWidthAdjustment;
+                EditorGUIUtility.labelWidth = alignToColumn && ValueColumnX > 0
+                    ? Mathf.Max(50, ValueColumnX - GetPropertyX(xOffset)) - labelWidthAdjustment
+                    : EditorGUIUtility.labelWidth - SectionContentRightPadding - labelWidthAdjustment;
             }
 
             public void Dispose()
@@ -297,7 +300,11 @@ namespace Thry.ThryEditor
                 thumbnailPos.x += 12;
                 thumbnailPos.width -= 12;
             }
-            DrawTextureMiniThumbnail(thumbnailPos, prop, label, editor);
+            float textureLabelWidth = EditorGUIUtility.labelWidth;
+            if (ValueColumnX > 0 && !DrawingData.CurrentTextureProperty.DoesReferencePropertyExist)
+                EditorGUIUtility.labelWidth = thumbnailPos.width - (prop.textureValue != null ? SMALL_TEXTURE_VRAM_DISPLAY_WIDTH : 0);
+            try { DrawTextureMiniThumbnail(thumbnailPos, prop, label, editor); }
+            finally { EditorGUIUtility.labelWidth = textureLabelWidth; }
             float iconsPositioningHeight = thumbnailPos.y;
             //VRAM
             Rect vramPos = Rect.zero;
@@ -350,7 +357,8 @@ namespace Thry.ThryEditor
                         {
                             var materialsWithProp = prop.targets.Cast<Material>().Where(m => m.HasProperty(prop.name));
                             EditorGUI.showMixedValue = materialsWithProp.Select(m => m.GetTextureScale(prop.name)).Distinct().Count() > 1 || materialsWithProp.Select(m => m.GetTextureOffset(prop.name)).Distinct().Count() > 1;
-                            ShaderEditor.Active.Editor.TextureScaleOffsetProperty(prop);
+                            if (ValueColumnX > 0) DrawTextureTransform(prop, DrawingData.CurrentTextureProperty.XOffset + 1);
+                            else ShaderEditor.Active.Editor.TextureScaleOffsetProperty(prop);
                             EditorGUI.showMixedValue = false;
                             Rect lastRect = GUILayoutUtility.GetLastRect();
                             tooltipRect.height = (lastRect.y - tooltipRect.y) + lastRect.height;
@@ -365,7 +373,13 @@ namespace Thry.ThryEditor
                             foreach (string r_property in options.reference_properties)
                             {
                                 ShaderProperty property = ShaderEditor.Active.PropertyDictionary[r_property];
-                                property.Draw(useEditorIndent: true);
+                                if (ValueColumnX > 0)
+                                {
+                                    property.XOffset.SetTemporaryOffset(DrawingData.CurrentTextureProperty.XOffset + 1);
+                                    try { property.Draw(); }
+                                    finally { property.XOffset.ResetTemporaryOffset(); }
+                                }
+                                else property.Draw(useEditorIndent: true);
                             }
 
                         EditorGUI.indentLevel -= 2;
@@ -390,6 +404,59 @@ namespace Thry.ThryEditor
                 EditorGUILayout.EndVertical();
             }
             // Border Code end
+        }
+
+        private static void DrawTextureTransform(MaterialProperty property, int xOffset)
+        {
+            using (new PropertyIndentScope(xOffset))
+            {
+                Vector4 value = property.textureScaleAndOffset;
+                EditorGUI.BeginChangeCheck();
+                Rect tiling = GetPropertyRect(xOffset);
+                Vector4 scale = VectorField(tiling, new GUIContent("Tiling"), value, 2);
+                Rect offset = GetPropertyRect(xOffset);
+                Vector4 translation = VectorField(offset, new GUIContent("Offset"), new Vector4(value.z, value.w, 0, 0), 2);
+                if (EditorGUI.EndChangeCheck()) property.textureScaleAndOffset = new Vector4(scale.x, scale.y, translation.x, translation.y);
+            }
+        }
+
+        private static readonly GUIContent[] VectorAxes = { new GUIContent("X"), new GUIContent("Y"), new GUIContent("Z"), new GUIContent("W") };
+
+        public static void MultiFloatField(Rect rect, GUIContent[] labels, float[] values)
+        {
+            float width = (rect.width - (values.Length - 1) * 6) / values.Length;
+            float previousLabelWidth = EditorGUIUtility.labelWidth;
+            int previousIndent = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                for (int i = 0; i < values.Length; i++)
+                {
+                    EditorGUIUtility.labelWidth = Mathf.Min(EditorStyles.label.CalcSize(labels[i]).x + 4, width * .45f);
+                    values[i] = EditorGUI.FloatField(new Rect(rect.x + i * (width + 6), rect.y, width, rect.height), labels[i], values[i]);
+                }
+            }
+            finally { EditorGUIUtility.labelWidth = previousLabelWidth; EditorGUI.indentLevel = previousIndent; }
+        }
+
+        public static Vector4 VectorField(Rect position, GUIContent label, Vector4 value, int components)
+        {
+            Rect fields = string.IsNullOrEmpty(label.text) ? position : EditorGUI.PrefixLabel(position, label);
+            float width = (fields.width - (components - 1) * 6) / components;
+            float previousLabelWidth = EditorGUIUtility.labelWidth;
+            int previousIndent = EditorGUI.indentLevel;
+            try
+            {
+                EditorGUI.indentLevel = 0;
+                EditorGUIUtility.labelWidth = 14;
+                for (int i = 0; i < components; i++)
+                {
+                    var component = new Rect(fields.x + i * (width + 6), fields.y, width, fields.height);
+                    value[i] = EditorGUI.FloatField(component, VectorAxes[i], value[i]);
+                }
+            }
+            finally { EditorGUIUtility.labelWidth = previousLabelWidth; EditorGUI.indentLevel = previousIndent; }
+            return value;
         }
 
 
@@ -996,7 +1063,7 @@ namespace Thry.ThryEditor
         {
             Rect r = EditorGUILayout.GetControlRect(false, height);
 #if UNITY_2022_1_OR_NEWER
-            if (ShaderEditor.Active == null || !ShaderEditor.Active.IsCrossEditor)
+            if (ShaderEditor.Active == null || (!ShaderEditor.Active.IsCrossEditor && !ShaderEditor.Active.HasRetainedToolbar))
             {
                 r.x -= 30;
                 r.width += 30;
@@ -1139,6 +1206,7 @@ namespace Thry.ThryEditor
         int _buttonHeight = 40;
         int _textureWidth;
         private ButtonData data;
+        internal ButtonData Data => data;
 
         public FooterButton(ButtonData data)
         {

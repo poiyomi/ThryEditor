@@ -36,6 +36,9 @@ using System.Linq;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
+#if UNITY_2021_3_OR_NEWER
+using UnityEngine.UIElements;
+#endif
 using UnityEngine.Rendering;
 
 namespace Thry.ThryEditor
@@ -606,7 +609,7 @@ namespace Thry.ThryEditor
 
         public static void Popup(ShaderGroup section)
         {
-            Vector2 pos = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
+            Vector2 pos = Event.current != null ? GUIUtility.GUIToScreenPoint(Event.current.mousePosition) : EditorWindow.focusedWindow.position.position + new Vector2(40,80);
             pos.x = Mathf.Min(EditorWindow.focusedWindow.position.x + EditorWindow.focusedWindow.position.width - 300, pos.x);
             pos.y = Mathf.Min(EditorWindow.focusedWindow.position.y + EditorWindow.focusedWindow.position.height - 250, pos.y);
 
@@ -667,6 +670,9 @@ namespace Thry.ThryEditor
 
             void OnGUI()
             {
+#if UNITY_2021_3_OR_NEWER
+                if(rootVisualElement.childCount>0)return;
+#endif
                 if (_section == null)
                 {
                     Close();
@@ -771,6 +777,33 @@ namespace Thry.ThryEditor
                 if (GUILayout.Button("Done")) Close();
             }
 
+#if UNITY_2021_3_OR_NEWER
+            public void CreateGUI()
+            {
+                var root=rootVisualElement;root.Clear();RetainedWindow.Style(root);minSize=new Vector2(340,300);
+                if(_section==null)return;RefreshState();
+                root.Add(new UnityEngine.UIElements.Label(_section.Content.text));
+                if(_hasMixedState||_currentLink!=null)
+                {
+                    root.Add(new UnityEngine.UIElements.HelpBox(_hasMixedState?$"Mixed: {_linkedCount} of {_materials.Length} materials linked.":"Linked to "+_currentLink.name,UnityEngine.UIElements.HelpBoxMessageType.Info));
+                    root.Add(new UnityEngine.UIElements.Button(()=>{Unsubscribe(_materials,_sectionPropertyName);CreateGUI();}){text="Disconnect"});
+                }
+                var list=new UnityEngine.UIElements.ScrollView();list.style.flexGrow=1;root.Add(list);
+                foreach(var link in _availableLinks)
+                {
+                    var row=new UnityEngine.UIElements.VisualElement();row.AddToClassList("thry-components");list.Add(row);
+                    var select=new UnityEngine.UIElements.Button(()=>{SelectLink(link);CreateGUI();}){text=link.name+" ("+link.subscribedMaterialGuids.Length+")"};select.style.flexGrow=1;select.SetEnabled(link!=_currentLink);row.Add(select);
+                    row.Add(new UnityEngine.UIElements.Button(()=>{if(EditorUtility.DisplayDialog("Delete Global Link","Disconnect all materials and delete "+link.name+"?","Delete","Cancel")){DeleteLink(link);CreateGUI();}}){text="×",tooltip="Delete link"});
+                }
+                if(_availableLinks.Count==0)list.Add(new UnityEngine.UIElements.Label("No links for this section yet."));
+                var input=new UnityEngine.UIElements.TextField("New link"){value=_newLinkName};root.Add(input);input.RegisterValueChangedCallback(e=>_newLinkName=e.newValue);
+                root.Add(new UnityEngine.UIElements.Button(()=>{
+                    if(string.IsNullOrWhiteSpace(_newLinkName))return;
+                    if(_availableLinks.Any(l=>l.name==_newLinkName)){EditorUtility.DisplayDialog("Duplicate Name","A link with this name already exists.","OK");return;}
+                    Unsubscribe(_materials,_sectionPropertyName);CreateLink(_newLinkName,_sectionPropertyName,_section,_materials);_newLinkName="";CreateGUI();
+                }){text="Create link"});root.Add(new UnityEngine.UIElements.Button(Close){text="Done"});
+            }
+#endif
             private void SelectLink(GlobalLink link)
             {
                 bool linkHasProperties = link.properties.Length > 0;

@@ -1,0 +1,28 @@
+.thry-stencil-view { padding: 6px; margin: 2px 0; background-color: #333333; border-radius: 4px; min-width: 0; }
+.thry-stencil-byte-row { flex-direction: row; align-items: center; margin: 1px 0; min-height: 24px; }
+.thry-stencil-label { width: 120px; min-width: 80px; flex-shrink: 0; margin: 0; padding-right: 6px; font-size: 11px; white-space: normal; }
+.thry-stencil-values { flex-direction: row; align-items: center; flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; }
+.thry-stencil-bits { flex-direction: row; flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; }
+.thry-stencil-bit { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; height: 22px; min-height: 22px; margin: 0 1px; padding: 0; -unity-text-align: middle-center; font-size: 11px; border-radius: 3px; background-color: #292929; border-color: #494949; border-width: 1px; color: #999999; }
+.thry-stencil-bit.thry-stencil-bit-set { background-color: #425563; border-color: #617b8e; color: #ebebeb; }
+.thry-stencil-bit:hover { border-color: #7aadd6; }
+.thry-stencil-bit:focus { border-color: #7aadd6; }
+.thry-stencil-decimal { width: 46px; min-width: 46px; flex-shrink: 0; margin: 0 0 0 6px; padding: 0; -unity-text-align: middle-right; }
+.thry-stencil-weights .thry-stencil-bit { background-color: transparent; border-width: 0; font-size: 9px; color: #999999; }
+.thry-stencil-weights { min-height: 18px; }
+.thry-stencil-weights .thry-stencil-decimal, .thry-stencil-weights .thry-stencil-label { color: #999999; font-size: 10px; }
+.thry-stencil-derived .thry-stencil-bit:disabled { opacity: 1; background-color: #363636; border-color: #404040; color: #a0a0a0; }
+.thry-stencil-derived .thry-stencil-bit.thry-stencil-bit-set:disabled { color: #d6d6d6; background-color: #434b50; }
+.thry-stencil-operation { min-width: 0; margin: 2px 0; min-height: 24px; }
+.thry-stencil-operation > .unity-base-field__label { width: 120px; min-width: 80px; margin: 0; font-size: 11px; }
+.thry-stencil-explanation { white-space: normal; font-size: 11px; color: #b2b2b2; margin: 2px 0; padding: 2px 0; }
+.thry-stencil-outcome { white-space: normal; font-size: 11px; -unity-font-style: bold; color: #dedede; margin: 2px 0 0; padding: 6px 0 2px; border-top-width: 1px; border-top-color: #474747; }
+.thry-stencil-narrow .thry-stencil-byte-row { flex-direction: column; align-items: stretch; }
+.thry-stencil-narrow .thry-stencil-label { width: auto; min-height: 18px; }
+.thry-stencil-narrow .thry-stencil-values { flex-grow: 0; flex-shrink: 0; flex-basis: auto; width: 100%; }
+.thry-stencil-narrow .thry-stencil-operation { flex-direction: column; align-items: stretch; }
+.thry-stencil-narrow .thry-stencil-operation > .unity-base-field__label { width: auto; margin-bottom: 2px; }
+.thry-light .thry-stencil-view { background-color: #c9c9c9; }
+.thry-light .thry-stencil-bit { background-color: #e4e4e4; border-color: #aaaaaa; color: #555555; }
+.thry-light .thry-stencil-bit.thry-stencil-bit-set { background-color: #aac7db; border-color: #6991b1; color: #202020; }
+.thry-light .thry-stencil-outcome, .thry-light .thry-stencil-explanation { color: #333333; }

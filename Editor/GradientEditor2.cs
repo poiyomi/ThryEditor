@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Thry.ThryEditor
 {
-    public class GradientEditor2 : EditorWindow
+    public partial class GradientEditor2 : EditorWindow
     {
         private Gradient _gradient;
         private bool _allowSizeSelection;
@@ -34,6 +34,9 @@ namespace Thry.ThryEditor
             float height = 400;
             window.position = new Rect(Screen.width / 2 - width / 2, Screen.height / 2 - height / 2, width, height);
             window.Show();
+#if UNITY_2021_3_OR_NEWER
+            window.CreateGUI();
+#endif
         }
 
         static MethodInfo s_gradientEditorGUIMethodInfo = null;
@@ -111,6 +114,9 @@ namespace Thry.ThryEditor
 
         private void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if (rootVisualElement.childCount > 0) return;
+#endif
             if(_gradientEditor == null) _gradientEditor = GetGradientEditor(_gradient);
             if(_gradientLibary == null) _gradientLibary = GetGradientLibary(PresetHasBeenSelected);
 
@@ -156,6 +162,7 @@ namespace Thry.ThryEditor
 
         void Apply()
         {
+            if (_gradient == null) return;
             Texture2D gradientTexture = Converter.GradientToTexture(_gradient, _textureSize.x, _textureSize.y, _makeTextureVertical);
             _onGradientChanged?.Invoke(_gradient, gradientTexture);
         }

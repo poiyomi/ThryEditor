@@ -1,5 +1,6 @@
 using JetBrains.Annotations;
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
@@ -25,6 +26,9 @@ namespace Thry.ThryEditor
         protected List<MaterialPropertyDrawer> _customDecorators = new List<MaterialPropertyDrawer>();
         protected Rect[] _customDecoratorRects;
         protected MaterialPropertyDrawer _drawer = null;
+        private InspectorPopup _enumPopup;
+        private GUIContent[] _enumNames;
+        private int[] _enumValues;
 
         bool _needsDrawerInitlization = true;
         bool _isAnimatedStateResolved = false;
@@ -339,11 +343,16 @@ namespace Thry.ThryEditor
             UpdateIsAnimatedFromTag();
         }
 
+        internal void RefreshRetainedAnimatedState()
+        {
+            if (MaterialProperty != null && MaterialProperty.targets.Length > 0) UpdateIsAnimatedFromTag();
+        }
+
         private void UpdateIsAnimatedFromTag()
         {
             _isAnimatedStateResolved = true;
             // Animatable Stuff
-            bool propHasDuplicate = ShaderEditor.Active.GetMaterialProperty(MaterialProperty.name + "_" + ShaderEditor.Active.RenamedPropertySuffix) != null;
+            bool propHasDuplicate = MyShaderUI.GetMaterialProperty(MaterialProperty.name + "_" + MyShaderUI.RenamedPropertySuffix) != null;
             string tag = null;
             //If prop is og, but is duplicated (locked) dont have it animateable
             if (propHasDuplicate)
@@ -356,9 +365,9 @@ namespace Thry.ThryEditor
                 // Renamed properties are built as "<name>_<suffix>" (see GetAnimatedPropertyName), so only
                 // a trailing match counts. A plain Contains would misfire on any property whose name
                 // happens to include the material name, e.g. _MainTex on a material called "Main".
-                if (MaterialProperty.name.EndsWith("_" + ShaderEditor.Active.RenamedPropertySuffix, StringComparison.Ordinal))
+                if (MaterialProperty.name.EndsWith("_" + MyShaderUI.RenamedPropertySuffix, StringComparison.Ordinal))
                 {
-                    string ogName = MaterialProperty.name.Substring(0, MaterialProperty.name.Length - ShaderEditor.Active.RenamedPropertySuffix.Length - 1);
+                    string ogName = MaterialProperty.name.Substring(0, MaterialProperty.name.Length - MyShaderUI.RenamedPropertySuffix.Length - 1);
                     tag = ShaderOptimizer.GetAnimatedTag(MaterialProperty.targets[0] as Material, ogName);
                 }
                 else
@@ -406,7 +415,7 @@ namespace Thry.ThryEditor
             if (MyShaderUI.IsLockedMaterial)
                 EditorGUI.BeginDisabledGroup(!(IsAnimatable && (IsAnimated || IsRenaming)) && !IsExemptFromLockedDisabling);
 
-            using (useEditorIndent ? null : new GUILib.PropertyIndentScope(XOffset))
+            using (useEditorIndent ? null : new GUILib.PropertyIndentScope(XOffset, alignToColumn: rect == null))
             {
 
             if (_customDecoratorRects != null && _doCustomDrawLogic)
@@ -453,7 +462,7 @@ namespace Thry.ThryEditor
                     : GUILib.GetPropertyRect(XOffset, EditorGUIUtility.singleLineHeight);
                 float labelWidth = (r.width - EditorGUIUtility.labelWidth) / 2;
                 r.width -= labelWidth;
-                MyMaterialEditor.ShaderProperty(r, this.MaterialProperty, content);
+                DrawAlignedProperty(r, content);
 
                 r.x += r.width;
                 r.width = labelWidth;
@@ -470,14 +479,13 @@ namespace Thry.ThryEditor
                 Rect r = useEditorIndent
                     ? EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight)
                     : GUILib.GetPropertyRect(XOffset, EditorGUIUtility.singleLineHeight);
-                MyMaterialEditor.ShaderProperty(r, this.MaterialProperty, content);
+                DrawAlignedProperty(r, content);
             }
             else if (_doCustomHeightOffset)
             {
                 float propHeight = MyMaterialEditor.GetPropertyHeight(this.MaterialProperty, content.text) + _customHeightOffset;
-                Rect r = EditorGUILayout.GetControlRect(false, propHeight);
-                if (!useEditorIndent) r = GUILib.AdjustPropertyRect(r, XOffset);
-                MyMaterialEditor.ShaderProperty(r, this.MaterialProperty, content);
+                Rect r = useEditorIndent ? EditorGUILayout.GetControlRect(false, propHeight) : GUILib.GetPropertyRect(XOffset, propHeight);
+                DrawAlignedProperty(r, content);
             }
             else if (rect != null)
             {
@@ -492,7 +500,7 @@ namespace Thry.ThryEditor
                 }
                 else
                 {
-                    MyMaterialEditor.ShaderProperty(rect.Value, this.MaterialProperty, content);
+                    DrawAlignedProperty(rect.Value, content);
                 }
             }
             else
@@ -503,7 +511,7 @@ namespace Thry.ThryEditor
                     r = EditorGUILayout.GetControlRect(false, propHeight == -2 ? 0 : propHeight);
                 else
                     r = GUILib.GetPropertyRect(XOffset, propHeight);
-                MyMaterialEditor.ShaderProperty(r, this.MaterialProperty, content);
+                DrawAlignedProperty(r, content);
             }
 
             if (_customDecorators != null && _doCustomDrawLogic)
@@ -532,7 +540,7 @@ namespace Thry.ThryEditor
 
         private void AutomaticAnimatedMarking()
         {
-            if (MyShaderUI.ActiveRenderer != null && MyShaderUI.IsInAnimationMode && IsAnimatable && !IsAnimated)
+            if (Config.Instance.autoMarkPropertiesAnimated && MyShaderUI.ActiveRenderer != null && MyShaderUI.IsInAnimationMode && IsAnimatable && !IsAnimated)
             {
                 if (MaterialProperty.GetPropertyType() == ShaderPropertyType.Texture ?
                 AnimationMode.IsPropertyAnimated(MyShaderUI.ActiveRenderer, "material." + MaterialProperty.name + "_ST.x") :
@@ -541,7 +549,104 @@ namespace Thry.ThryEditor
             }
         }
 
+#if UNITY_2021_3_OR_NEWER
+        internal void RetainedValueChanged()
+        {
+            var affectedMaterials = MaterialProperty.targets.OfType<Material>()
+                .Where(m => MyShaderUI.Materials.Contains(m) && m.HasProperty(MaterialProperty.name)).Distinct().ToArray();
+            if (Keyword != null)
+                foreach (var material in affectedMaterials) SetKeywordState(material, material.GetFloat(MaterialProperty.name) == 1);
+            foreach(var attribute in MyShader.GetPropertyAttributes(ShaderPropertyIndex))
+            {
+                if(!attribute.StartsWith("TextureKeyword",StringComparison.Ordinal))continue;
+                int start=attribute.IndexOf('(');
+                string keyword=start<0?"PROP_"+MaterialProperty.name.TrimStart('_').ToUpperInvariant():attribute.Substring(start+1).TrimEnd(')');
+                foreach(var material in affectedMaterials)
+                    if(material.GetTexture(MaterialProperty.name)!=null)material.EnableKeyword(keyword);else material.DisableKeyword(keyword);
+            }
+            RaisePropertyValueChanged();
+            ExecuteOnValueActions(affectedMaterials);
+            AutomaticAnimatedMarking();
+            GlobalLinker.OnPropertyChanged(this);
+        }
+
+        internal void PrepareRetainedMetadata()
+        {
+            var options = Options;
+            EnsureAnimatedStateResolved();
+            var attributes = MyShader.GetPropertyAttributes(ShaderPropertyIndex);
+            if (Array.Exists(attributes, a => a.StartsWith("DoNotAnimate", StringComparison.Ordinal)
+                || a.StartsWith("ThryStencil", StringComparison.Ordinal) || a.StartsWith("ThryShaderOptimizer", StringComparison.Ordinal)
+                || a.StartsWith("TextureKeyword", StringComparison.Ordinal))) IsAnimatable = false;
+            foreach(var attribute in attributes.Select(a=>new DrawerAttribute(a)))
+                if((attribute.Name=="ThryToggle" || attribute.Name=="ThryToggleUI") && attribute.Args.Length>0 && attribute.Args[0]!="true" && attribute.Args[0]!="false")
+                { SetKeyword(attribute.Args[0]); IsAnimatable=false; }
+        }
+
+#endif
         protected virtual void PreDraw() { }
+
+        private void DrawAlignedProperty(Rect position, GUIContent label)
+        {
+            var type = MaterialProperty.GetPropertyType();
+            string drawerName = _drawer?.GetType().Name;
+            if (drawerName == "MaterialEnumDrawer" || drawerName == "MaterialKeywordEnumDrawer")
+            {
+                if (_enumPopup == null)
+                {
+                    var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                    var typeInfo = _drawer.GetType();
+                    _enumNames = typeInfo.GetField(drawerName == "MaterialEnumDrawer" ? "names" : "keywords", flags)?.GetValue(_drawer) as GUIContent[];
+                    _enumValues = typeInfo.GetField("values", flags)?.GetValue(_drawer) as int[];
+                    _enumPopup = new InspectorPopup();
+                }
+                if (_enumNames != null)
+                {
+                    int selected = _enumValues == null ? (int)MaterialProperty.GetNumber() : Array.IndexOf(_enumValues, (int)MaterialProperty.GetNumber());
+                    EditorGUI.BeginChangeCheck();
+                    bool mixed = EditorGUI.showMixedValue;
+                    EditorGUI.showMixedValue = MaterialProperty.hasMixedValue;
+                    selected = _enumPopup.Draw(position, label, selected, _enumNames);
+                    EditorGUI.showMixedValue = mixed;
+                    if (EditorGUI.EndChangeCheck() && selected >= 0)
+                    {
+                        MyMaterialEditor.RegisterPropertyChangeUndo(label.text);
+                        MaterialProperty.SetNumber(_enumValues == null ? selected : _enumValues[selected]);
+                        if (drawerName == "MaterialKeywordEnumDrawer") _drawer.Apply(MaterialProperty);
+                    }
+                    return;
+                }
+            }
+            if (_drawer == null && type == ShaderPropertyType.Vector && GUILib.ValueColumnX > 0
+                && (_customDecorators == null || _customDecorators.Count == 0))
+            {
+                EditorGUI.BeginChangeCheck();
+                bool mixed = EditorGUI.showMixedValue;
+                EditorGUI.showMixedValue = MaterialProperty.hasMixedValue;
+                Vector4 value = GUILib.VectorField(position, label, MaterialProperty.vectorValue, 4);
+                EditorGUI.showMixedValue = mixed;
+                if (EditorGUI.EndChangeCheck())
+                {
+                    MyMaterialEditor.RegisterPropertyChangeUndo(label.text);
+                    MaterialProperty.vectorValue = value;
+                }
+                return;
+            }
+            if (drawerName == "MaterialToggleUIDrawer" || drawerName == "MaterialToggleDrawer" || drawerName == "MaterialToggleOffDrawer")
+            {
+                position.y += Mathf.Max(0, (position.height - 16) / 2);
+                position.height = Mathf.Min(position.height, 16);
+            }
+            if (GUILib.ValueColumnX > 0 && _drawer == null && (_customDecorators == null || _customDecorators.Count == 0)
+                && (type == ShaderPropertyType.Vector || type == ShaderPropertyType.Range) && !string.IsNullOrEmpty(label.text))
+            {
+                // MaterialEditor's vector and range controls reset labelWidth to Unity's default.
+                // Give them an already separated value rect so they cannot move the column boundary.
+                position = EditorGUI.PrefixLabel(position, label);
+                label = GUIContent.none;
+            }
+            MyMaterialEditor.ShaderProperty(position, MaterialProperty, label);
+        }
 
         protected virtual void DrawDefault() { }
 

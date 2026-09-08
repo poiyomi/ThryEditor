@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Thry.ThryEditor
 {
-    public class CrossEditor : EditorWindow
+    public partial class CrossEditor : EditorWindow
     {
         public static CrossEditor GetInstance()
         {
@@ -64,12 +64,16 @@ namespace Thry.ThryEditor
 
         private void UpdateTargets()
         {
+            PruneInvalidTargets();
             _incompatibleMaterials = new HashSet<Material>(
-                _materialList.Where(t => t != null && !t.shader.IsBroken() && !ShaderHelper.IsShaderUsingThryEditor(t)));
+                _materialList.Where(t => t != null && t.shader != null && !t.shader.IsBroken() && !ShaderHelper.IsShaderUsingThryEditor(t)));
             _disabledMaterials.IntersectWith(_materialList);
-            _targets = _materialList.Where(t => t != null && !t.shader.IsBroken() && !_incompatibleMaterials.Contains(t) && !_disabledMaterials.Contains(t)).ToList();
+            _targets = _materialList.Where(t => t != null && t.shader != null && !t.shader.IsBroken() && !_incompatibleMaterials.Contains(t) && !_disabledMaterials.Contains(t)).ToList();
 
             DiscardShaderEditor();
+#if UNITY_2021_3_OR_NEWER
+            CreateGUI();
+#endif
         }
 
         /// <summary>
@@ -84,10 +88,31 @@ namespace Thry.ThryEditor
             _shaderEditor = null;
             if (_materialEditor != null) DestroyImmediate(_materialEditor);
             _materialEditor = null;
+            _materialProperties = null;
+        }
+
+        private void PruneInvalidTargets()
+        {
+            // Keep intentional empty ObjectField rows, but remove destroyed Unity objects.
+            _materialList.RemoveAll(m => m == null && !ReferenceEquals(m, null));
+            _disabledMaterials.RemoveWhere(m => m == null);
+            _incompatibleMaterials.RemoveWhere(m => m == null);
+            if (_targets.RemoveAll(m => m == null || m.shader == null || m.shader.IsBroken()) == 0) return;
+            _targetShaders.Clear(); _targetDirtyCounts.Clear();
+            DiscardShaderEditor();
         }
 
         private void OnDestroy()
         {
+            DiscardShaderEditor();
+        }
+
+        private void OnDisable()
+        {
+#if UNITY_2021_3_OR_NEWER
+            // Detach scheduled retained views before destroying their material editor.
+            rootVisualElement.Clear();
+#endif
             DiscardShaderEditor();
         }
 
@@ -131,6 +156,9 @@ namespace Thry.ThryEditor
 
         private void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if (rootVisualElement.childCount > 0) return;
+#endif
             // Unlike the inspector's container, a plain window does not reset this between passes, and the
             // material list below is drawn before the shader editor gets a chance to clean up after itself.
             EditorGUI.showMixedValue = false;
@@ -255,6 +283,7 @@ namespace Thry.ThryEditor
 
             // Create shader editor
             CreateShaderEditor();
+            if (_shaderEditor == null || _materialEditor == null) return;
 
             // Seperator
             EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
@@ -305,8 +334,75 @@ namespace Thry.ThryEditor
             return occurrences;
         }
 
+        // Group boundaries cannot be merged as ordinary property names: two shaders may
+        // contain different descendants between a shared opening and closing marker.
+        private sealed class PropertyTree
+        {
+            internal PropertyOccurrence? Property;
+            internal PropertyOccurrence? End;
+            internal readonly List<PropertyTree> Children = new List<PropertyTree>();
+        }
+
+        private PropertyTree ReadPropertyTree(Material material, PropertyOccurrence[] occurrences)
+        {
+            var root = new PropertyTree();
+            var preamble = new PropertyTree(); root.Children.Add(preamble);
+            var stack = new Stack<PropertyTree>(); stack.Push(root); stack.Push(preamble);
+            var properties = MaterialEditor.GetMaterialProperties(new UnityEngine.Object[] { material });
+            for (int i = 0; i < properties.Length; i++)
+            {
+                var type = _shaderEditor.GetPropertyType(properties[i]);
+                bool opens = type == ShaderEditor.ThryPropertyType.header || type == ShaderEditor.ThryPropertyType.header_start
+                    || type == ShaderEditor.ThryPropertyType.group_start || type == ShaderEditor.ThryPropertyType.section_start
+                    || type == ShaderEditor.ThryPropertyType.subsection_start;
+                bool closes = type == ShaderEditor.ThryPropertyType.header_end || type == ShaderEditor.ThryPropertyType.group_end
+                    || type == ShaderEditor.ThryPropertyType.section_end || type == ShaderEditor.ThryPropertyType.subsection_end;
+                if (closes)
+                {
+                    if (stack.Count <= 1) throw new InvalidOperationException("Unmatched inspector group end in " + material.shader.name + ": " + properties[i].name);
+                    stack.Pop().End = occurrences[i];
+                    continue;
+                }
+                if (type == ShaderEditor.ThryPropertyType.header && stack.Count > 1) stack.Pop();
+                var node = new PropertyTree { Property = occurrences[i] };
+                stack.Peek().Children.Add(node);
+                if (opens) stack.Push(node);
+            }
+            return root;
+        }
+
+        private static void MergePropertyTrees(PropertyTree target, PropertyTree source)
+        {
+            int insertion = 0;
+            foreach (var child in source.Children)
+            {
+                int existing = target.Children.FindIndex(n => Nullable.Equals(n.Property, child.Property));
+                if (existing < 0)
+                {
+                    target.Children.Insert(insertion, child);
+                    insertion++;
+                }
+                else
+                {
+                    var match = target.Children[existing];
+                    MergePropertyTrees(match, child);
+                    insertion = existing + 1;
+                }
+            }
+        }
+
+        private static IEnumerable<PropertyOccurrence> FlattenPropertyTree(PropertyTree tree)
+        {
+            if (tree.Property.HasValue) yield return tree.Property.Value;
+            foreach (var child in tree.Children)
+                foreach (var property in FlattenPropertyTree(child)) yield return property;
+            if (tree.End.HasValue) yield return tree.End.Value;
+        }
+
         private void CreateShaderEditor()
         {
+            PruneInvalidTargets();
+            if (_targets.Count == 0) return;
             if (_shaderEditor != null) return;
 
             _shaderEditor = new ShaderEditor(){ IsCrossEditor = true };
@@ -316,32 +412,15 @@ namespace Thry.ThryEditor
             IEnumerable<Material> materialsToSearchProperties = _targets.GroupBy(t => t.shader).Select(g => g.First());
             // get properties for each shader, keeping declaration order rather than leaning on the
             // enumeration order of a set, since the merge below is order sensitive
-            List<PropertyOccurrence[]> propertiesPerShader = new List<PropertyOccurrence[]>();
+            var merged = new PropertyTree();
             Dictionary<Shader, HashSet<PropertyOccurrence>> shaderProperties = new Dictionary<Shader, HashSet<PropertyOccurrence>>();
             foreach (Material material in materialsToSearchProperties)
             {
                 PropertyOccurrence[] occurrences = GetPropertyOccurrences(material);
-                propertiesPerShader.Add(occurrences);
+                MergePropertyTrees(merged, ReadPropertyTree(material, occurrences));
                 shaderProperties[material.shader] = new HashSet<PropertyOccurrence>(occurrences);
             }
-            // create intersection of all properties
-            List<PropertyOccurrence> propertiesOrdered = propertiesPerShader.Aggregate((a, b) => a.Intersect(b).ToArray()).ToList();
-            // expand the intersection to be a union, but add each property after the occurence of their predecessor
-            foreach (PropertyOccurrence[] properties in propertiesPerShader)
-            {
-                int index = 0;
-                foreach (PropertyOccurrence property in properties)
-                {
-                    if (!propertiesOrdered.Contains(property))
-                    {
-                        if (index == 0)
-                            propertiesOrdered.Insert(0, property);
-                        else
-                            propertiesOrdered.Insert(propertiesOrdered.IndexOf(properties[index - 1]) + 1, property);
-                    }
-                    index++;
-                }
-            }
+            var propertiesOrdered = FlattenPropertyTree(merged).ToList();
             // For each property get all materials, whos shader has this property. A material only counts
             // for the second declaration of a name if its own shader declares that name twice as well.
             Dictionary<PropertyOccurrence, Material[]> propertyMaterials = new Dictionary<PropertyOccurrence, Material[]>();

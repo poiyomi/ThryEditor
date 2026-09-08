@@ -9,6 +9,7 @@ namespace Thry.ThryEditor
 {
     public class ShaderHeader : ShaderGroup
     {
+        private GUIStyle HeaderStyle => XOffset == 0 ? InspectorTheme.Header : InspectorTheme.NestedHeader;
 
         public ShaderHeader(ShaderEditor shaderEditor) : base(shaderEditor)
         {
@@ -22,12 +23,15 @@ namespace Thry.ThryEditor
         {
             MyShaderUI.CurrentProperty = this;
             EditorGUI.BeginChangeCheck();
-            Rect position = GUILayoutUtility.GetRect(content, Styles.flatHeader);
-            // Reduce spacing between headers. The resulting pitch must stay even:
-            // flatHeader.fixedHeight (22) + margin.bottom (2) + this space (-2) + margin.top (2) = 24.
-            // An odd pitch lands every other header on a half device-pixel at fractional editor DPI
-            // scaling, which makes the gap below it rasterize 1px wider than its neighbours'.
-            GUILayout.Space(-2);
+            Rect body = EditorGUILayout.BeginVertical();
+            if (IsExpanded)
+            {
+                float right = body.xMax;
+                body.x = GUILib.IndentToPixels(XOffset) + GUILib.EDGE_PADDING;
+                body.width = right - body.x - (GUILib.EDGE_PADDING - GUILib.UNITY_HEADER_RIGHT_MARGIN);
+                InspectorTheme.Fill(body, InspectorTheme.Body);
+            }
+            Rect position = GUILayoutUtility.GetRect(content, HeaderStyle);
             DrawHeader(position, content);
             Rect headerRect = DrawingData.LastGuiObjectHeaderRect;
             if (IsExpanded)
@@ -43,15 +47,16 @@ namespace Thry.ThryEditor
                     }
                 }
 
-                GUILayout.Space(2);
+                GUILayout.Space(6);
                 EditorGUI.BeginDisabledGroup(DoDisableChildren);
                 foreach (ShaderPart part in Children)
                 {
                     part.Draw();
                 }
                 EditorGUI.EndDisabledGroup();
-                GUILayout.Space(2);
+                GUILayout.Space(6);
             }
+            EditorGUILayout.EndVertical();
             if (EditorGUI.EndChangeCheck())
             {
                 UpdateLinkedMaterials();
@@ -72,14 +77,14 @@ namespace Thry.ThryEditor
 
             DrawingData.LastGuiObjectHeaderRect = position;
             int sectionToggleWidth = SectionEditing.IsEditing(this) ? SlidingToggle.ReservedWidth : 0;
-            int padding = Styles.flatHeader.padding.left;
+            int padding = HeaderStyle.padding.left;
             try
             {
-                Styles.flatHeader.padding.left += sectionToggleWidth;
+                HeaderStyle.padding.left += sectionToggleWidth;
                 using (new SectionEditing.HeaderTintScope(this))
                     DrawBoxAndContent(position, e, label, options, sectionToggleWidth);
             }
-            finally { Styles.flatHeader.padding.left = padding; }
+            finally { HeaderStyle.padding.left = padding; }
             if (sectionToggleWidth > 0)
                 SectionEditing.DrawHeaderToggle?.Invoke(this, new Rect(position.x + 20, position.y + (position.height - 16) / 2, SlidingToggle.Width, 16));
 
@@ -95,7 +100,7 @@ namespace Thry.ThryEditor
             {
                 if(ShaderEditor.Active.Locale.EditInUI)
                 {
-                    SectionEditing.DrawHeaderBox(this, rect, new GUIContent("", MaterialProperty.name), Styles.flatHeader);
+                    SectionEditing.DrawHeaderBox(this, rect, new GUIContent("", MaterialProperty.name), HeaderStyle);
                     Rect translationRect = new Rect(rect);
                     translationRect.x += 40 + sectionToggleWidth;
                     translationRect.y += 1;
@@ -113,7 +118,7 @@ namespace Thry.ThryEditor
                 else
                 {
                     GUIContent boxContent = new GUIContent("     " + content.text, content.tooltip);
-                    SectionEditing.DrawHeaderBox(this, rect, boxContent, Styles.flatHeader);
+                    SectionEditing.DrawHeaderBox(this, rect, boxContent, HeaderStyle);
                     if (Config.Instance.showNotes && !string.IsNullOrWhiteSpace(Note))
                     {
                         Rect noteRect = new Rect(rect);
@@ -121,18 +126,18 @@ namespace Thry.ThryEditor
                         noteRect.width = Mathf.Max(0f, noteRect.width - reserved);
                         GUI.Label(noteRect, Note, Styles.label_property_note);
                     }
-                    DrawAnimatedDots(rect, boxContent, Styles.flatHeader.padding.left);
+                    DrawAnimatedDots(rect, boxContent, HeaderStyle.padding.left);
                 }
 
                 DrawIcons(rect, options, e);
 
                 Rect togglePropertyRect = new Rect(rect);
                 togglePropertyRect.x += 20 + sectionToggleWidth;
-                togglePropertyRect.y += 3;
-                togglePropertyRect.height -= 6;
-                togglePropertyRect.width = 15;
+                togglePropertyRect.y += (rect.height - 18) / 2;
+                togglePropertyRect.height = 18;
+                togglePropertyRect.width = 16;
                 float fieldWidth = EditorGUIUtility.fieldWidth;
-                EditorGUIUtility.fieldWidth = 15;
+                EditorGUIUtility.fieldWidth = 16;
                 ShaderProperty refProperty = ShaderEditor.Active.PropertyDictionary[options.reference_property];
 
                 EditorGUI.BeginChangeCheck();
@@ -156,7 +161,7 @@ namespace Thry.ThryEditor
 
                 if(ShaderEditor.Active.Locale.EditInUI)
                 {
-                    SectionEditing.DrawHeaderBox(this, rect, new GUIContent("", MaterialProperty.name), Styles.flatHeader);
+                    SectionEditing.DrawHeaderBox(this, rect, new GUIContent("", MaterialProperty.name), HeaderStyle);
                     Rect translationRect = new Rect(rect);
                     translationRect.x += textOffset;
                     translationRect.y += 1;
@@ -173,11 +178,11 @@ namespace Thry.ThryEditor
                 }
                 else
                 {
-                    int savedPadding = Styles.flatHeader.padding.left;
-                    Styles.flatHeader.padding.left = textOffset;
+                    int savedPadding = HeaderStyle.padding.left;
+                    HeaderStyle.padding.left = textOffset;
                     GUIContent boxContent = new GUIContent(content.text, content.tooltip);
-                    SectionEditing.DrawHeaderBox(this, rect, boxContent, Styles.flatHeader);
-                    Styles.flatHeader.padding.left = savedPadding;
+                    SectionEditing.DrawHeaderBox(this, rect, boxContent, HeaderStyle);
+                    HeaderStyle.padding.left = savedPadding;
                     if (Config.Instance.showNotes && !string.IsNullOrWhiteSpace(Note))
                     {
                         Rect noteRect = new Rect(rect);
@@ -203,9 +208,9 @@ namespace Thry.ThryEditor
 
                     Rect toggleRect = new Rect(rect);
                     toggleRect.x += 20 + sectionToggleWidth + drawIndex * 17;
-                    toggleRect.y += 3;
-                    toggleRect.height -= 6;
-                    toggleRect.width = 15;
+                    toggleRect.y += (rect.height - 18) / 2;
+                    toggleRect.height = 18;
+                    toggleRect.width = 16;
 
                     refProp.XOffset.SetTemporaryOffset(0);
                     refProp.Draw(toggleRect, new GUIContent(), isInHeader: true);
@@ -218,7 +223,7 @@ namespace Thry.ThryEditor
             }
             else
             {
-                SectionEditing.DrawHeaderBox(this, rect, content, Styles.flatHeader);
+                SectionEditing.DrawHeaderBox(this, rect, content, HeaderStyle);
                 if(Config.Instance.showNotes && !string.IsNullOrWhiteSpace(Note))
                 {
                     Rect noteRect = new Rect(rect);
@@ -226,7 +231,7 @@ namespace Thry.ThryEditor
                     noteRect.width = Mathf.Max(0f, noteRect.width - reserved);
                     GUI.Label(noteRect, Note, Styles.label_property_note);
                 }
-                DrawAnimatedDots(rect, content, Styles.flatHeader.padding.left);
+                DrawAnimatedDots(rect, content, HeaderStyle.padding.left);
                 DrawIcons(rect, options, e);
             }
 
@@ -241,7 +246,7 @@ namespace Thry.ThryEditor
             bool ra = HasRenameAnimatedDescendant;
             if (!a && !ra) return;
 
-            float pureTextWidth = Styles.flatHeader.CalcSize(drawnContent).x - Styles.flatHeader.padding.horizontal;
+            float pureTextWidth = HeaderStyle.CalcSize(drawnContent).x - HeaderStyle.padding.horizontal;
             float x = rect.x + leftOffset + pureTextWidth + 3f;
             const float dotW = 9f;
 
@@ -263,8 +268,14 @@ namespace Thry.ThryEditor
         /// <param name="e"></param>
         private void DrawIcons(Rect rect, PropertyOptions options, Event e)
         {
-            using (new SectionEditing.HeaderTintScope(this, graphics: true))
-                DrawIconsInternal(rect, options, e);
+            Color previous = GUI.color;
+            try
+            {
+                if (!rect.Contains(e.mousePosition)) GUI.color = new Color(previous.r, previous.g, previous.b, previous.a * .6f);
+                using (new SectionEditing.HeaderTintScope(this, graphics: true))
+                    DrawIconsInternal(rect, options, e);
+            }
+            finally { GUI.color = previous; }
         }
 
         private void DrawIconsInternal(Rect rect, PropertyOptions options, Event e)
@@ -460,6 +471,9 @@ namespace Thry.ThryEditor
         */
 
         void ShowHeaderContextMenu(Rect position, ShaderHeader property, Material[] materials)
+            => RetainedHeaderMenu(property, materials).DropDown(position);
+
+        internal static GenericMenu RetainedHeaderMenu(ShaderGroup property, Material[] materials)
         {
             var menu = new GenericMenu();
             menu.AddItem(new GUIContent("Reset"), false, delegate ()
@@ -467,7 +481,9 @@ namespace Thry.ThryEditor
                 ThryLogger.LogDetail("ShaderHeader", $"Resetting '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
                 int undoGroup = Undo.GetCurrentGroup();
 
-                property.CopyFrom(new Material(materials[0].shader), true);
+                var defaults = new Material(materials[0].shader);
+                try { property.CopyFrom(defaults, true); }
+                finally { Object.DestroyImmediate(defaults); }
                 IEnumerable<Material> linked_materials = MaterialLinker.GetLinked(property.MaterialProperty);
                 if (linked_materials != null)
                     foreach (Material m in linked_materials)
@@ -587,7 +603,7 @@ namespace Thry.ThryEditor
                 menu.AddItem(new GUIContent("Set Note"), false, () =>
                 {
                     var popup = ScriptableObject.CreateInstance<SetNotePopup>();
-                    popup.Init(this, new Rect());
+                    popup.Init(property, new Rect());
                     popup.ShowUtility();
                 });
                 //menu.AddItem(new GUIContent("Clear Note"), false, () => { Note = null; }); // Too easy to missclick when there's no undo?
@@ -598,7 +614,7 @@ namespace Thry.ThryEditor
                 //menu.AddDisabledItem(new GUIContent("Clear Note"));
             }
 
-            menu.DropDown(position);
+            return menu;
         }
 
         private void HandleToggleInput(Rect rect)

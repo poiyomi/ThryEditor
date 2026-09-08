@@ -32,7 +32,7 @@ namespace Thry.ThryEditor.Drawers
 				new GUIContent("W")
 			};
 
-			EditorGUI.MultiFloatField(fieldR, labels, values);
+            GUILib.MultiFloatField(fieldR, labels, values);
 			EditorGUI.indentLevel = oldIndent;
 
 			if (EditorGUI.EndChangeCheck())
@@ -48,5 +48,4 @@ namespace Thry.ThryEditor.Drawers
 		}
 	}
 }
-
 

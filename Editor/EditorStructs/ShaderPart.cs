@@ -181,6 +181,8 @@ namespace Thry.ThryEditor
         public MaterialEditor MyMaterialEditor { protected set; get; } = null;
 
         protected bool has_not_searchedFor = false; //used for property search
+        internal bool RetainedVisible => !SectionEditing.IsHidden(this) && !has_not_searchedFor &&
+            (SectionEditing.IsEditing(this) || (!SkipDrawBecauseEmpty && Options.condition_show.Test()));
 
         // True when this property was drawn inline with an explicit rect and no label
         protected bool _drawnAsLabellessInline = false;
@@ -267,7 +269,9 @@ namespace Thry.ThryEditor
                                 _propertyDefaultValue = FastGetPropertyDefaultValue(MyShader, ShaderPropertyIndex);
                                 break;
                             case ShaderPropertyType.Texture:
-                                Texture tex = ShaderEditor.Active.GetShaderImporter(MyShader).GetDefaultTexture(MaterialProperty.name);
+                                // In-memory shaders have shader defaults but no asset importer.
+                                var importer = ShaderEditor.Active.GetShaderImporter(MyShader);
+                                Texture tex = importer == null ? null : importer.GetDefaultTexture(MaterialProperty.name);
                                 if (tex != null) _propertyDefaultValue = tex.name;
                                 else _propertyDefaultValue = FastGetPropertyTextureDefaultName(MyShader, ShaderPropertyIndex);
                                 break;
@@ -914,6 +918,44 @@ namespace Thry.ThryEditor
 
 #endregion
 #region ContextMenu
+        internal GenericMenu RetainedContextMenu()
+        {
+            _contextMenu = new GenericMenu();
+#if UNITY_2021_3_OR_NEWER
+            if (MyShaderUI.Locale.EditInUI)
+                _contextMenu.AddItem(new GUIContent("Edit label"), false, () => RetainedTextPrompt.Open("Edit label", Content.text, value =>
+                {
+                    MyShaderUI.Locale.Set(MaterialProperty, value); MyShaderUI.Locale.Save(); MyShaderUI.Reload();
+                }));
+            if (Config.Instance.showNotes)
+                _contextMenu.AddItem(new GUIContent("Set note"), false, () =>
+                {
+                    var window = ScriptableObject.CreateInstance<SetNotePopup>(); window.Init(this, new Rect()); window.ShowUtility();
+                });
+#endif
+            if (IsAnimatable && !MyShaderUI.IsLockedMaterial)
+            {
+                _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => SetAnimated(!IsAnimated, false));
+                _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => SetAnimated(true, !IsRenaming));
+            }
+            if (MyShaderUI.IsPresetEditor) _contextMenu.AddItem(new GUIContent("Is part of preset"), IsPreset, ToggleIsPreset);
+            if (MaterialProperty != null)
+            {
+                _contextMenu.AddItem(new GUIContent("Copy Property Name"), false, () => EditorGUIUtility.systemCopyBuffer = MaterialProperty.name);
+                _contextMenu.AddItem(new GUIContent("Copy Animated Property Name"), false, () => EditorGUIUtility.systemCopyBuffer = GetAnimatedPropertyName());
+                _contextMenu.AddItem(new GUIContent("Copy Animated Property Path"), false, CopyPropertyPath);
+                _contextMenu.AddItem(new GUIContent("Copy Property as Keyframe"), false, CopyPropertyAsKeyframe);
+                if (IsAnimationWindowRecording()) _contextMenu.AddItem(new GUIContent("Add Keyframe to Animation"), false, AddKeyToAnimationClip);
+#if UNITY_2022_1_OR_NEWER
+                var targets = MyShaderUI.Materials;
+                DoVariantMenuStuff(_contextMenu, targets.All(m => m.IsPropertyOverriden(ShaderPropertyId)),
+                    targets.Any(m => m.IsPropertyLockedByAncestor(ShaderPropertyId)), targets.Any(m => m.IsPropertyLocked(ShaderPropertyId)), targets, true);
+#else
+                _contextMenu.AddItem(new GUIContent("Reset"), false, ResetMaterialProperties);
+#endif
+            }
+            return _contextMenu;
+        }
         protected virtual void HandleRightClickToggles(bool isInHeader)
         {
             if (this is ShaderGroup) return;
@@ -1448,10 +1490,21 @@ namespace Thry.ThryEditor
 
         public void SetAnimated(bool animated, bool renamed)
         {
-            if (IsAnimated == animated && IsRenaming == renamed) return;
+            renamed = animated && renamed;
+            UpdatedMaterialPropertyReference();
+            if (MaterialProperty == null) return;
+            string tag = animated ? (renamed ? "2" : "1") : "";
+            var targets = MaterialProperty.targets.OfType<Material>().Where(m => m != null && m.HasProperty(MaterialProperty.name)).ToArray();
+            if (targets.Length == 0) return;
+            if (IsAnimated == animated && IsRenaming == renamed && targets.All(m => ShaderOptimizer.GetAnimatedTag(m, MaterialProperty.name) == tag)) return;
+            Undo.RecordObjects(targets, renamed ? "Mark property renamed" : animated ? "Mark property animated" : "Clear animated property");
             IsAnimated = animated;
             IsRenaming = renamed;
-            ShaderOptimizer.SetAnimatedTag(MaterialProperty, IsAnimated ? (IsRenaming ? "2" : "1") : "");
+            foreach (var material in targets)
+            {
+                material.SetOverrideTag(MaterialProperty.name + ShaderOptimizer.AnimatedTagSuffix, tag);
+                EditorUtility.SetDirty(material);
+            }
             (Parent as ShaderGroup)?.SetAnimatedDescendantStateDirty();
             // A/RA is toggled from the context menu, which runs outside the section's change check, so the
             // linker has to be told directly - otherwise the new state never reaches the other subscribers.

@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+#if UNITY_2021_3_OR_NEWER
+using UnityEngine.UIElements;
+using UnityEditor.UIElements;
+#endif
 
 namespace Thry.ThryEditor
 {
@@ -18,10 +22,16 @@ namespace Thry.ThryEditor
             ListTextureUsesPopup window = GetWindow<ListTextureUsesPopup>("Texture Uses");
             window._texture = texture;
             window._textureUses = textureUses;
+#if UNITY_2021_3_OR_NEWER
+            window.CreateGUI();
+#endif
         }
 
         private void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if (rootVisualElement.childCount > 0) return;
+#endif
             if (_texture == null)
             {
                 GUILayout.Label("No texture selected", EditorStyles.boldLabel);
@@ -83,6 +93,29 @@ namespace Thry.ThryEditor
             }
         }
 
+#if UNITY_2021_3_OR_NEWER
+        public void CreateGUI()
+        {
+            var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
+            var texture = new ObjectField("Texture") { objectType = typeof(Texture), allowSceneObjects = false, value = _texture };
+            texture.RegisterValueChangedCallback(e => { if (e.newValue != null) FindReferencesAndOpenEditor(e.newValue as Texture); }); root.Add(texture);
+            var search = RetainedWindow.Search("Find material or property…"); root.Add(search);
+            var list = new ScrollView(); list.style.flexGrow = 1; root.Add(list);
+            if (_textureUses == null || _textureUses.Count == 0) list.Add(new Label("No loaded materials use this texture."));
+            else foreach (var use in _textureUses)
+            {
+                var row = new VisualElement(); row.AddToClassList("thry-components"); list.Add(row);
+                var material = new Button(() => EditorGUIUtility.PingObject(use.material)) { text = use.material.name }; material.style.flexGrow = 1; row.Add(material);
+                var property = new Button(() => { _selectedMaterial = use.material; _selectedPropertyName = use.propertyName; Selection.activeObject = use.material; }) { text = ObjectNames.NicifyVariableName(use.propertyName.TrimStart('_')) }; property.style.flexGrow = 1; row.Add(property);
+                search.RegisterValueChangedCallback(e => row.style.display = (use.material.name + use.propertyName).IndexOf(e.newValue, StringComparison.OrdinalIgnoreCase) >= 0 ? DisplayStyle.Flex : DisplayStyle.None);
+            }
+            root.schedule.Execute(() =>
+            {
+                if (ShaderEditor.Active == null || _selectedMaterial == null || ShaderEditor.Active.Materials[0] != _selectedMaterial) return;
+                ShaderEditor.Active.SetSearchTerm(_selectedPropertyName); _selectedMaterial = null; _selectedPropertyName = null;
+            }).Every(150);
+        }
+#endif
         [MenuItem("Assets/Thry/Textures/Find Uses", true)]
         private static bool FindReferencesValidate()
         {

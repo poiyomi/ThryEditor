@@ -6,6 +6,10 @@ namespace Thry.ThryEditor.Helpers
 {
     public class StencilSummaryView
     {
+        private readonly InspectorPopup _comparePopup = new InspectorPopup();
+        private readonly InspectorPopup _passPopup = new InspectorPopup();
+        private readonly InspectorPopup _zFailPopup = new InspectorPopup();
+        private readonly InspectorPopup _failPopup = new InspectorPopup();
         private const float BlockPadding = 6f;
         private const float OperationColumnGap = 4f;
         private const float ConnectorThickness = 2f;
@@ -196,9 +200,9 @@ namespace Thry.ThryEditor.Helpers
                 EditorLocale.editor.Get("stencil_summary_compare_function"), _neutralStyles.Label);
             compareY += _rowHeight;
             EditorGUI.showMixedValue = values.CompareFunctionIsMixed;
-            values.CompareFunction = (CompareFunction)EditorGUI.EnumPopup(
+            values.CompareFunction = (CompareFunction)_comparePopup.DrawEnum(
                 new Rect(compareContentX, compareY, compareContentWidth, _rowHeight),
-                values.CompareFunction, _neutralStyles.Popup);
+                values.CompareFunction);
             EditorGUI.showMixedValue = false;
             compareY += _rowHeight;
 
@@ -211,26 +215,26 @@ namespace Thry.ThryEditor.Helpers
 
             DrawOperationColumn(GetColumnContentRect(passRect),
                 EditorLocale.editor.Get("stencil_summary_pass_op"), ref values.PassOp,
-                layout.PassExplanation, passStyles, values.PassOpIsMixed);
+                layout.PassExplanation, passStyles, values.PassOpIsMixed, _passPopup);
             DrawOperationColumn(GetColumnContentRect(zFailRect),
                 EditorLocale.editor.Get("stencil_summary_zfail_op"), ref values.ZFailOp,
-                layout.ZFailExplanation, zFailStyles, values.ZFailOpIsMixed);
+                layout.ZFailExplanation, zFailStyles, values.ZFailOpIsMixed, _zFailPopup);
             DrawOperationColumn(GetColumnContentRect(failRect),
                 EditorLocale.editor.Get("stencil_summary_fail_op"), ref values.FailOp,
-                layout.FailExplanation, failStyles, values.FailOpIsMixed);
+                layout.FailExplanation, failStyles, values.FailOpIsMixed, _failPopup);
 
             _model.SaveStencilOperations(values.CompareFunction, values.PassOp, values.FailOp, values.ZFailOp);
         }
 
         private void DrawOperationColumn(Rect rect, string label, ref StencilOp operation,
-            string explanation, SummaryStyles styles, bool hasMixedValue)
+            string explanation, SummaryStyles styles, bool hasMixedValue, InspectorPopup popup)
         {
             GUI.Label(new Rect(rect.x, rect.y, rect.width, _rowHeight), label, styles.Label);
 
             float popupY = rect.y + _rowHeight;
             EditorGUI.showMixedValue = hasMixedValue;
-            operation = (StencilOp)EditorGUI.EnumPopup(
-                new Rect(rect.x, popupY, rect.width, _rowHeight), operation, styles.Popup);
+            operation = (StencilOp)popup.DrawEnum(
+                new Rect(rect.x, popupY, rect.width, _rowHeight), operation);
             EditorGUI.showMixedValue = false;
 
             float explanationY = popupY + _rowHeight;

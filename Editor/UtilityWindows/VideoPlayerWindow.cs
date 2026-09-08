@@ -9,7 +9,7 @@ namespace Thry.ThryEditor
     /// EditorWindow that plays a video file using Unity's VideoPlayer.
     /// Supports local file paths and HTTP URLs to MP4 files.
     /// </summary>
-    public class VideoPlayerWindow : EditorWindow
+    public partial class VideoPlayerWindow : EditorWindow
     {
         private VideoPlayer _videoPlayer;
         private RenderTexture _renderTexture;
@@ -147,6 +147,9 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
+#if UNITY_2021_3_OR_NEWER
+            if (rootVisualElement.childCount > 0) return;
+#endif
             EnsureStyles();
             Rect windowRect = new Rect(0, 0, position.width, position.height);
 

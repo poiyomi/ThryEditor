@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Thry.ThryEditor.Drawers
 {
-	public class LocalMessageDrawer : MaterialPropertyDrawer
+	public partial class LocalMessageDrawer : MaterialPropertyDrawer
 	{
 		protected ButtonData _buttonData;
 		protected bool _isInit;

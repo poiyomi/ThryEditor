@@ -1,0 +1,74 @@
+#if UNITY_2021_3_OR_NEWER
+using System;
+using System.Linq;
+using Thry.ThryEditor.DataStructs;
+using Thry.ThryEditor.Helpers;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.UIElements;
+
+namespace Thry.ThryEditor
+{
+    internal sealed partial class RetainedFields
+    {
+        private void Decorators(VisualElement root,ShaderProperty property,DrawerAttribute[] attributes)
+        {
+            foreach(var attribute in attributes)
+            {
+                if (attribute.Name == "sRGBWarning")
+                {
+                    bool shouldHaveSRGB = attribute.Args.Any(a => a.Equals("gamma", StringComparison.OrdinalIgnoreCase) || a.Equals("true", StringComparison.OrdinalIgnoreCase));
+                    var warning = new VisualElement { name = "colorspace-warning-" + property.MaterialProperty.name };
+                    string message = EditorLocale.editor.Get(shouldHaveSRGB ? "colorSpaceWarningSRGB" : "colorSpaceWarningLinear");
+                    warning.Add(new HelpBox(message, HelpBoxMessageType.Warning));
+                    Func<TextureImporter[]> mismatches = () => Model.Shader.Materials
+                        .Where(m => m.HasProperty(property.MaterialProperty.name))
+                        .Select(m => m.GetTexture(property.MaterialProperty.name)).Where(t => t != null)
+                        .Select(t => AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(t)) as TextureImporter)
+                        .Where(i => i != null && i.sRGBTexture != shouldHaveSRGB).Distinct().ToArray();
+                    var fix = new Button(() =>
+                    {
+                        foreach (var importer in mismatches())
+                        {
+                            Undo.RecordObject(importer, "Fix texture color space");
+                            importer.sRGBTexture = shouldHaveSRGB;
+                            importer.SaveAndReimport();
+                        }
+                        Model.Notify();
+                    }) { text = "Fix Now", name = "fix-colorspace" };
+                    warning.Add(fix); root.Add(warning);
+                    Track(warning, () => warning.style.display = Config.Instance.showColorspaceWarnings && mismatches().Length > 0 ? DisplayStyle.Flex : DisplayStyle.None);
+                }
+                if(attribute.Name=="PoiBakeColorAdjust")
+                {
+                    var type=AppDomain.CurrentDomain.GetAssemblies().Select(a=>a.GetType("Poi.Tools.PoiColorAdjustBaker")).FirstOrDefault(t=>t!=null);
+                    if(type==null)continue;
+                    var method=type.GetMethod("BakeColorAdjust");var check=type.GetMethod("HasColorAdjustChanges");
+                    var button=new Button(()=>{foreach(var material in Model.Shader.Materials)method.Invoke(null,new object[]{material});Model.Notify();}){text="Bake Color Adjust"};
+                    Track(button,()=>button.SetEnabled(Model.Shader.Materials.Any(m=>(bool)check.Invoke(null,new object[]{m}))));root.Add(button);
+                }
+                if(attribute.Name=="ThryDecalPositioning")
+                {
+                    var args=attribute.Args;DecalSceneTool tool=null;var row=new VisualElement();row.AddToClassList("thry-components");root.Add(row);
+                    Action<bool> begin=raycast=>{
+                        if(tool!=null){tool.Deactivate(false);tool=null;return;} Model.Shader.ActivateRetained();
+                        var renderer=Model.Renderers.FirstOrDefault()??Selection.activeTransform?.GetComponent<Renderer>();if(renderer==null)return;
+                        var properties=Model.Shader.PropertyDictionary;
+                        tool=DecalSceneTool.Create(renderer,Model.Shader.Materials[0],(int)properties[args[1]].MaterialProperty.GetNumber(),properties[args[2]].MaterialProperty,properties[args[3]].MaterialProperty,properties[args[4]].MaterialProperty,properties[args[5]].MaterialProperty);
+                        if(raycast)tool.StartRaycastMode();else tool.StartHandleMode();
+                    };
+                    row.Add(new Button(()=>begin(true)){text="Raycast"});row.Add(new Button(()=>begin(false)){text="Scene Tools"});
+                    Track(row,()=>{row.SetEnabled(Model.Renderers.Length>0||Selection.activeTransform?.GetComponent<Renderer>()!=null);if(tool!=null){var p=Model.Shader.PropertyDictionary;tool.SetMaterialProperties(p[args[2]].MaterialProperty,p[args[3]].MaterialProperty,p[args[4]].MaterialProperty,p[args[5]].MaterialProperty);}});
+                    root.RegisterCallback<DetachFromPanelEvent>(e=>{if(tool!=null)tool.Deactivate(false);});
+                    root.RegisterCallback<KeyDownEvent>(e=>{if(e.keyCode==KeyCode.Escape&&tool!=null){tool.Deactivate(true);tool=null;Model.Notify();e.StopPropagation();}});
+                }
+                if(attribute.Name=="ThryStencilCalculator"||attribute.Name=="ThryStencilSummary")
+                {
+                    root.Add(StencilView(StencilConfiguration(attribute), attribute.Name == "ThryStencilSummary"));
+                }
+            }
+        }
+    }
+}
+#endif

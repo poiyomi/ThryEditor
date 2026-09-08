@@ -110,7 +110,7 @@ namespace Thry.ThryEditor.Drawers
 					default:
 						icon = s_IconOff;
 						tooltip = "Mode: Off\nOnly the value you edit will change.\nClick to switch: Off → Ratio → Delta";
-						GUI.color = EditorGUIUtility.isProSkin ? GUI.color : new Color(0f/0f, 0f/0f, 0f/0f);
+						GUI.color = EditorGUIUtility.isProSkin ? GUI.color : Color.black;
 						break;
 				}
 				if (GUI.Button(linkR, new GUIContent(icon, tooltip), GUIStyle.none))
@@ -129,7 +129,7 @@ namespace Thry.ThryEditor.Drawers
                 else if (modeForColor == LinkMode.Delta)
                     GUI.contentColor = new Color(166f/255f, 226f/255f, 46f/255f);
             }
-            EditorGUI.MultiFloatField(fieldR, labels, values);
+            GUILib.MultiFloatField(fieldR, labels, values);
             GUI.contentColor = prevContentColor;
 
             if (EditorGUI.EndChangeCheck())

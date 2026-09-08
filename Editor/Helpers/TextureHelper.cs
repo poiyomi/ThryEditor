@@ -9,7 +9,7 @@ namespace Thry.ThryEditor.Helpers
 {
     public class TextureHelper
     {
-        public static Gradient GetGradient(Texture texture)
+        public static Gradient GetGradient(Texture texture, bool log = true)
         {
             if (texture != null)
             {
@@ -20,11 +20,11 @@ namespace Thry.ThryEditor.Helpers
                 if (gradient_data_string == null) gradient_data_string = FileHelper.LoadValueFromFile(texture.name, PATH.GRADIENT_INFO_FILE);
                 if (gradient_data_string != null)
                 {
-                    Debug.Log(texture.name + " Gradient loaded from file.");
+                    if(log) Debug.Log(texture.name + " Gradient loaded from file.");
                     Gradient g = Parser.Deserialize<Gradient>(gradient_data_string);
                     return g;
                 }
-                Debug.Log(texture.name + " Converted into Gradient.");
+                if(log) Debug.Log(texture.name + " Converted into Gradient.");
                 return Converter.TextureToGradient(GetReadableTexture(texture));
             }
             return new Gradient();

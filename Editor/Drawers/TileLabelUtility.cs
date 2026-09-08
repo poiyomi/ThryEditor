@@ -219,6 +219,9 @@ namespace Thry.ThryEditor.Drawers
 
             void OnGUI()
             {
+#if UNITY_2021_3_OR_NEWER
+                if (rootVisualElement.childCount > 0) return;
+#endif
                 Event e = Event.current;
                 if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
                 {
@@ -258,6 +261,24 @@ namespace Thry.ThryEditor.Drawers
                 }
             }
 
+#if UNITY_2021_3_OR_NEWER
+            public void CreateGUI()
+            {
+                var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
+                var field = new UnityEngine.UIElements.TextField("Label") { value = _value };
+                root.Add(field);
+                var actions = new UnityEngine.UIElements.VisualElement(); actions.AddToClassList("thry-components"); root.Add(actions);
+                System.Action apply = () => { ApplyTagToTargets(_targets, _canonicalPropertyName, field.value); Close(); };
+                actions.Add(new UnityEngine.UIElements.Button(apply) { text = "Save" });
+                actions.Add(new UnityEngine.UIElements.Button(Close) { text = "Cancel" });
+                root.RegisterCallback<UnityEngine.UIElements.KeyDownEvent>(e =>
+                {
+                    if (e.keyCode == KeyCode.Escape) { Close(); e.StopPropagation(); }
+                    else if (e.keyCode == KeyCode.Return) { apply(); e.StopPropagation(); }
+                });
+                field.Focus();
+            }
+#endif
             void OnLostFocus()
             {
                 Close();

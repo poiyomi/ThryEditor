@@ -11,6 +11,10 @@ namespace Thry.ThryEditor
         public static Action<ShaderGroup, Rect> DrawHeaderToggle;
         public static Func<ShaderPart, bool> HidePart;
         public static Func<ShaderGroup, bool> IsExcluded;
+#if UNITY_2021_3_OR_NEWER
+        public static Func<ShaderEditor, UnityEngine.UIElements.VisualElement> CreateToolbar;
+        public static Action<ShaderGroup, bool> SetIncluded;
+#endif
 
         internal readonly struct HeaderTintScope : IDisposable
         {
@@ -34,14 +38,7 @@ namespace Thry.ThryEditor
 
         internal static void DrawHeaderBox(ShaderGroup group, Rect rect, GUIContent content, GUIStyle style)
         {
-            Color previous = GUI.backgroundColor;
-            try
-            {
-                if (IsExcluded?.Invoke(group) == true)
-                    GUI.backgroundColor *= new Color(0.78f, 0.78f, 0.78f, 1);
-                GUI.Box(rect, content, style);
-            }
-            finally { GUI.backgroundColor = previous; }
+            InspectorTheme.DrawHeader(group, rect, content, style);
         }
 
         // Section borders draw their own backgrounds. Shade only the header, before its controls.

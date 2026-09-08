@@ -1,0 +1,12 @@
+.thry-multi-selection { background-color: #3d3d3d; border-radius: 4px; padding: 2px 4px; margin: 0 0 2px; }
+.thry-multi-selection > .unity-foldout { margin: 0; }
+.thry-multi-selection .unity-foldout__toggle { min-height: 24px; margin: 0; -unity-font-style: bold; }
+.thry-multi-hint { white-space: normal; color: #aaaaaa; font-size: 11px; margin: 2px 0; }
+.thry-multi-material-row { flex-direction: row; flex-wrap: wrap; align-items: center; margin: 1px 0; }
+.thry-multi-material-name { flex-grow: 1; flex-basis: 40%; min-width: 80px; margin: 0; padding: 1px 4px; min-height: 22px; background-color: transparent; border-width: 0; -unity-text-align: middle-left; text-overflow: ellipsis; overflow: hidden; }
+.thry-multi-material-name:hover { color: #7aadd6; background-color: #454545; }
+.thry-multi-shader-name { flex-grow: 1; flex-basis: 55%; min-width: 100px; color: #aaaaaa; font-size: 10px; margin: 0; text-overflow: ellipsis; overflow: hidden; }
+.thry-multi-badge { position: absolute; width: 16px; height: 16px; margin: 0; padding: 0; border-width: 0; background-color: transparent; color: #aeb9c0; }
+.thry-light .thry-multi-selection { background-color: #c4c4c4; }
+.thry-light .thry-multi-hint, .thry-light .thry-multi-shader-name { color: #555555; }
+.thry-light .thry-multi-badge { color: #53616a; }

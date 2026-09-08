@@ -17,7 +17,7 @@ using UnityEngine.Rendering;
 
 namespace Thry
 {
-    public class ShaderEditor : ShaderGUI
+    public partial class ShaderEditor : ShaderGUI
     {
         public const string EXTRA_OPTIONS_PREFIX = "--";
         public const string PROPERTY_NAME_MASTER_LABEL = "shader_master_label";
@@ -214,12 +214,12 @@ namespace Thry
             return displayName.Substring(0, index);
         }
 
-        private enum ThryPropertyType
+        internal enum ThryPropertyType
         {
             hidden_property, shown_property, master_label, footer, header, header_end, header_start, group_start, group_end, section_start, section_end, subsection_start, subsection_end, instancing, dsgi, lightmap_flags, locale, on_swap_to, space, shader_version, optimizer, in_shader_presets
         }
 
-        private ThryPropertyType GetPropertyType(MaterialProperty p)
+        internal ThryPropertyType GetPropertyType(MaterialProperty p)
         {
             string name = p.name;
 #if UNITY_6000_2_OR_NEWER
@@ -914,7 +914,9 @@ namespace Thry
             if (ShouldSkipDragEventPass()) return;
             try
             {
-                Draw();
+                if (Event.current.type == EventType.Layout)
+                    while (_pendingViewActions.Count > 0) _pendingViewActions.Dequeue()();
+                using (new InspectorTheme.Scope()) Draw();
                 HandleEvents();
             }
             finally
@@ -1032,7 +1034,7 @@ namespace Thry
 
             IsDrawing = true;
 #if UNITY_2022_1_OR_NEWER
-            if (!IsCrossEditor) EditorGUI.indentLevel -= 2;
+            if (!IsCrossEditor && !HasRetainedToolbar) EditorGUI.indentLevel -= 2;
 #endif
 
             DoVariantWarning();
@@ -1040,34 +1042,36 @@ namespace Thry
             GUIDevloperMode();
             GUIShaderVersioning();
 
-            GUILayout.Space(5);
-            GUITopBar();
+            GUILayout.Space(HasRetainedToolbar ? 2 : 6);
+            if (!HasRetainedToolbar) GUITopBar();
             SectionEditing.DrawToolbar?.Invoke(this);
-            GUILayout.Space(5);
-            GUISearchBar();
+            GUILayout.Space(4);
+            if (!HasRetainedToolbar) GUISearchBar();
             GUILockinButton();
-            GUILayout.Space(-1);
+            GUILayout.Space(4);
             GUIPresetsBar();
 
             Presets.PresetEditorGUI(this);
             ShaderTranslator.SuggestedTranslationButtonGUI(this);
 
 #if UNITY_2022_1_OR_NEWER
-            if (!IsCrossEditor) EditorGUI.indentLevel += 2;
+            if (!IsCrossEditor && !HasRetainedToolbar) EditorGUI.indentLevel += 2;
 #endif
 
-            GUILayout.Space(-8);
+            GUILayout.Space(2);
             //PROPERTIES
             using ( new DetourMaterialPropertyVariantIcon())
             {
                 foreach (ShaderPart part in _mainGroup.Children)
                 {
+                    if (!IsInSearchMode && !string.IsNullOrEmpty(_focusedCategory) && part is ShaderGroup
+                        && part.MaterialProperty?.name != _focusedCategory) continue;
                     part.Draw();
                 }
             }
 
             //Render Queue selection
-            GUILayout.Space(2);
+            GUILayout.Space(10);
             if(VRCInterface.IsVRCSDKInstalled()) _vRCFallbackProperty.Draw();
             if (Config.Instance.showRenderQueue) _renderQueueProperty.Draw();
 
@@ -1076,6 +1080,47 @@ namespace Thry
             GUIFooters();
             IsDrawing = false;
         }
+
+        internal bool HasRetainedToolbar { get; set; }
+        internal Action<Rect, GUIContent[], int[], Action<int>> ShowDropdown;
+        private readonly Queue<Action> _pendingViewActions = new Queue<Action>();
+        private string _focusedCategory;
+        internal string InspectorTitle => _shaderHeader?.Content.text ?? Shader?.name ?? "Material";
+        internal string SearchText => _enteredSearchTerm;
+        internal bool HasSearchResults => !IsInSearchMode || _foundGroups.Count > 0;
+        internal string FocusedCategory => _focusedCategory;
+        internal IEnumerable<ShaderGroup> RootCategories => _mainGroup == null
+            ? Enumerable.Empty<ShaderGroup>() : _mainGroup.Children.OfType<ShaderGroup>();
+        internal bool SupportsRetainedToolbar => _shaderHeader?.Options.texture == null;
+
+        internal void QueueViewAction(Action action)
+        {
+            _pendingViewActions.Enqueue(action);
+            Editor?.Repaint();
+        }
+
+        internal void SearchFromView(string value)
+        {
+            _enteredSearchTerm = value ?? "";
+            if (!string.IsNullOrEmpty(_enteredSearchTerm)) _focusedCategory = null;
+            _appliedSearchTerm = _enteredSearchTerm;
+            UpdateSearch();
+        }
+
+        internal void FocusCategory(string propertyName)
+        {
+            _focusedCategory = propertyName;
+            SearchFromView("");
+            foreach (var group in RootCategories)
+                if (group.MaterialProperty?.name == propertyName) group.ExpandForNavigation(true);
+        }
+
+        internal void CollapseCategories()
+        {
+            foreach (var group in RootCategories) group.ExpandForNavigation(false);
+        }
+
+        internal void OpenToolsFromView(Rect anchor) => PopupTools(anchor);
 
         private void GUIManualReloadButton()
         {
@@ -1170,37 +1215,46 @@ namespace Thry
 
         private void GUIPresetsBar()
         {
-            Rect barRect = RectifiedLayout.GetPaddedRect(25);
+            Rect barRect = RectifiedLayout.GetPaddedRect(30);
 
             Rect inShaderRect = new Rect(barRect);
-            inShaderRect.width /= 3;
+            inShaderRect.width = (barRect.width - 6) / 2;
+            inShaderRect.height = 24;
             inShaderRect.x = barRect.x + barRect.width - inShaderRect.width;
 
             Rect presetsRect = new Rect(barRect);
             presetsRect.width = inShaderRect.width;
-            presetsRect.height = 18;
+            presetsRect.height = 24;
 
             Rect presetsIcon = new Rect(presetsRect);
             presetsIcon.width = 18;
             presetsIcon.height = 18;
+            presetsIcon.y += 3;
             presetsIcon.x = presetsRect.x + presetsRect.width - 20;
 
             if (GUI.Button(presetsRect, "Presets") | GUILib.Button(presetsIcon, Icons.presets))
                 Presets.OpenPresetsMenu(barRect, this, false);
-            ThryWideEnumDrawer.RenderLabel = false;
-            if (InShaderPresetsProperty!= null)
-                InShaderPresetsProperty.Draw(inShaderRect);
-            ThryWideEnumDrawer.RenderLabel = true;
+            bool renderLabel = ThryWideEnumDrawer.RenderLabel;
+            var popupStyle = ThryWideEnumDrawer.PopupStyle;
+            try
+            {
+                ThryWideEnumDrawer.RenderLabel = false;
+                ThryWideEnumDrawer.PopupStyle = InspectorTheme.ToolbarPopup;
+                if (InShaderPresetsProperty != null) InShaderPresetsProperty.Draw(inShaderRect);
+            }
+            finally { ThryWideEnumDrawer.RenderLabel = renderLabel; ThryWideEnumDrawer.PopupStyle = popupStyle; }
         }
 
         private void GUISearchBar()
         {
             // Search field has different built-in margins than buttons, so adjust separately
-            Rect searchRect = RectifiedLayout.GetRect(18);
+            Rect searchRect = RectifiedLayout.GetRect(28);
             float rightEdge = searchRect.x + searchRect.width;
             searchRect.x += GUILib.EDGE_PADDING - 2;  // toolbarSearchField left margin is ~2
             searchRect.width = rightEdge - searchRect.x - (GUILib.EDGE_PADDING - 5);  // toolbarSearchField right margin is ~5
             _enteredSearchTerm = GUI.TextField(searchRect, _enteredSearchTerm, EditorStyles.toolbarSearchField);
+            if (string.IsNullOrEmpty(_enteredSearchTerm) && Event.current.type == EventType.Repaint)
+                GUI.Label(new Rect(searchRect.x + 20, searchRect.y, searchRect.width - 24, searchRect.height), "Search properties...", InspectorTheme.MutedLabel);
             if(_enteredSearchTerm != _appliedSearchTerm)
             {
                 _appliedSearchTerm = _enteredSearchTerm;
@@ -1210,9 +1264,10 @@ namespace Thry
 
         private void GUIFooters()
         {
-            GUILayout.Space(0); // Padding above footer
-            Rect footerRect = RectifiedLayout.GetRect(40);
+            GUILayout.Space(6);
+            Rect footerRect = RectifiedLayout.GetRect(62);
             float rightX = footerRect.x + footerRect.width - GUILib.EDGE_PADDING + GUILib.UNITY_HEADER_RIGHT_MARGIN;
+            InspectorTheme.Fill(new Rect(GUILib.EDGE_PADDING, footerRect.y, rightX - GUILib.EDGE_PADDING, 1), InspectorTheme.Border, 0);
             
             // Social buttons on the right, shifted down 10px
             try
@@ -1224,14 +1279,14 @@ namespace Thry
                     var footer = _footers[i];
                     float buttonWidth = footer.GetWidth();
                     buttonX -= buttonWidth;
-                    Rect buttonRect = new Rect(buttonX, footerRect.y + 10, buttonWidth, 40);
+                    Rect buttonRect = new Rect(buttonX, footerRect.y + 12, buttonWidth, 24);
                     footer.DrawAt(buttonRect);
                     buttonX -= INTER_PADDING;
                 }
 
                 const float THRY_ICON_SIZE = 24;
                 Rect thryRect = new Rect(buttonX - THRY_ICON_SIZE,
-                    footerRect.y + 10, THRY_ICON_SIZE, THRY_ICON_SIZE);
+                    footerRect.y + 12, THRY_ICON_SIZE, THRY_ICON_SIZE);
                 if (GUILib.ButtonWithCursor(thryRect, Icons.thryIcon, "Thryrallo"))
                     Application.OpenURL("https://www.twitter.com/thryrallo");
             }
@@ -1241,8 +1296,8 @@ namespace Thry
             }
             
             // "Made by Thryrallo" on the left
-            Rect madeByRect = new Rect(GUILib.EDGE_PADDING, footerRect.y + (40 - 16) / 2 + 10, 150, 16);
-            if (GUI.Button(madeByRect, "@UI Made by Thryrallo", Styles.madeByLabel))
+            Rect madeByRect = new Rect(GUILib.EDGE_PADDING, footerRect.y + 41, 150, 16);
+            if (GUI.Button(madeByRect, "UI by Thryrallo", InspectorTheme.MutedLabel))
                 Application.OpenURL("https://www.twitter.com/thryrallo");
             EditorGUIUtility.AddCursorRect(madeByRect, MouseCursor.Link);
         }
@@ -1258,6 +1313,9 @@ namespace Thry
         }
 
         private void PopupTools(Rect position)
+            => RetainedToolsMenu().DropDown(position);
+
+        internal GenericMenu RetainedToolsMenu()
         {
             var menu = new GenericMenu();
 
@@ -1391,7 +1449,7 @@ namespace Thry
                 Presets.SetPreset(Materials, !Presets.IsPreset(Materials[0]));
                 this.Reload();
             });
-            menu.DropDown(position);
+            return menu;
         }
 
         public static void Out(string s)

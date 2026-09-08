@@ -60,7 +60,7 @@ namespace Thry.ThryEditor.Drawers
                 bool bit = ((currentValue >> i) & 1) == 1;
                 float toggleX = controlRect.x
                     + (StencilOperationsHelper.BitsPerByte - 1 - i) * toggleStride;
-                bool newBit = EditorGUI.Toggle(new Rect(toggleX, currentY, toggleWidth, lineHeight), bit);
+                bool newBit = EditorGUI.Toggle(new Rect(toggleX, currentY + (lineHeight - 16) / 2, toggleWidth, 16), bit);
                 if (newBit) newValue |= 1 << i;
             }
             EditorGUI.showMixedValue = false;

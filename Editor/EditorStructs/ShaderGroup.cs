@@ -193,6 +193,16 @@ namespace Thry.ThryEditor
             _isSearchExpanded = value;
         }
 
+        // Navigation is a view operation; it must not write persistent material foldout properties.
+        internal void ExpandForNavigation(bool expanded)
+        {
+            _isExpanded = expanded;
+            _isSearchExpanded = expanded;
+        }
+
+        internal bool RetainedExpanded => IsExpanded;
+        internal bool RetainedChildrenEnabled => !DoDisableChildren;
+
         protected bool DoDisableChildren
         {
             get
@@ -392,10 +402,8 @@ namespace Thry.ThryEditor
         {
             if (e.type == EventType.Repaint)
             {
-                Rect arrowRect = new RectOffset(4, 0, 0, 0).Remove(rect);
-                arrowRect.width = 13;
                 using (new SectionEditing.HeaderTintScope(this, graphics: true))
-                    EditorStyles.foldout.Draw(arrowRect, false, false, IsExpanded, false);
+                    InspectorTheme.Chevron(rect, IsExpanded);
             }
         }
 
