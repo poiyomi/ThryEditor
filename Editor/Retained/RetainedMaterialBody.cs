@@ -35,6 +35,9 @@ namespace Thry.ThryEditor
             Add(RetainedMultiMaterial.SelectionSummary(Model));
             Add(Presets.CreateEditorControls(Model, _fields));
             var toolbar = SectionEditing.CreateToolbar?.Invoke(shader); if(toolbar != null) Add(toolbar);
+            var materialActions = new VisualElement { name = "thry-material-actions" };
+            materialActions.AddToClassList("thry-material-actions");
+            Add(materialActions);
             if (shader.RetainedOptimizer != null)
             {
                 var button = new Button(() =>
@@ -50,12 +53,12 @@ namespace Thry.ThryEditor
                     shader.Reload(); Model.Notify();
                 }) { name = "thry-lock-button" };
                 button.AddToClassList("thry-lock-button");
-                _fields.Track(button, () => button.text = shader.IsLockedMaterial ? "Unlock Shader" : "Lock In Optimized Shader"); Add(button);
+                _fields.Track(button, () => button.text = shader.IsLockedMaterial ? "Unlock Shader" : "Lock In Optimized Shader"); materialActions.Add(button);
                 button.SetEnabled(!shader.Materials.Any(m=>m.isVariant));
                 if (Config.Instance.allowCustomLockingRenaming || shader.HasCustomRenameSuffix)
                 {
                     VisualElement suffixInput;
-                    Add(RetainedFields.Row("Locked property suffix", out suffixInput));
+                    materialActions.Add(RetainedFields.Row("Locked property suffix", out suffixInput));
                     var suffix = new TextField { isDelayed = true };
                     suffixInput.Add(suffix);
                     _fields.Track(suffix, () => { suffix.SetValueWithoutNotify(shader.RenamedPropertySuffix); suffix.showMixedValue = shader.HasMixedCustomPropertySuffix; suffix.SetEnabled(Config.Instance.allowCustomLockingRenaming && !shader.IsLockedMaterial); });
@@ -72,7 +75,7 @@ namespace Thry.ThryEditor
             presets = new Button(() => {
                 var names = Presets.GetFullPresetNames();
                 var window=ScriptableObject.CreateInstance<PresetsPopupGUI>();window.Init("_full_",names,Presets.GetFullPresetGuids(),shader);window.titleContent=new GUIContent("Presets");window.ShowUtility();
-            }) { text = "Presets" }; presetRow.Add(presets);
+            }) { name = "thry-presets-button", text = "Presets" }; presetRow.Add(presets);
             if(shader.RetainedPreset != null)
             {
                 var renderingMode = _fields.Field(shader.RetainedPreset, true);
@@ -80,7 +83,7 @@ namespace Thry.ThryEditor
                 renderingMode.tooltip = "Rendering mode";
                 presetRow.Add(renderingMode);
             }
-            Add(presetRow);
+            materialActions.Add(presetRow);
             foreach (var child in shader.RetainedRoot.Children) AddPart(this, child, 0);
             AddFooter();
         }
@@ -159,7 +162,12 @@ namespace Thry.ThryEditor
                 presets.AddToClassList("thry-header-action");
                 presets.Add(HeaderIcon("presets")); header.Add(presets);
             }
-            var menu = HeaderAction("menu", "Section actions", () => _view.ShowLegacyMenu(ShaderHeader.RetainedHeaderMenu(group,Model.Shader.Materials),header)); header.Add(menu);
+            var menu = HeaderAction("menu", "Section actions", () => {
+                var actions = ShaderHeader.RetainedHeaderMenu(group, Model.Shader.Materials);
+                actions.AddSeparator("");
+                actions.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "search_section", "Search in this section")), false, () => _view.SearchSection(group));
+                _view.ShowLegacyMenu(actions, header);
+            }); header.Add(menu);
             var children = new VisualElement(); children.AddToClassList("thry-section-content"); root.Add(children);
             bool built = false;
             Action update = () => {

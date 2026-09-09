@@ -1,0 +1,60 @@
+/* Compact property feedback; hierarchy arrows remain quiet icon controls. */
+.thry-tools > .thry-collapse-tool { align-items: center; justify-content: center; color: #a6e22e; }
+.thry-tools > .thry-language-tool { align-items: center; justify-content: center; color: #fd971f; }
+.thry-light .thry-tools > .thry-collapse-tool { color: #638f14; }
+.thry-light .thry-tools > .thry-language-tool { color: #b86509; }
+.thry-material-controls .thry-property-row:hover { background-color: rgba(255, 255, 255, 0.025); border-radius: 3px; }
+.thry-light .thry-material-controls .thry-property-row:hover { background-color: rgba(0, 0, 0, 0.025); }
+.thry-material-controls .unity-base-text-field__input:focus,
+.thry-material-controls .unity-base-popup-field__input:focus,
+.thry-window .unity-base-text-field__input:focus,
+.thry-window .unity-base-popup-field__input:focus { border-color: var(--thry-focus-color); }
+.thry-light .unity-base-text-field__input:focus,
+.thry-light .unity-base-popup-field__input:focus { border-color: #326f9c; }
+
+/* Axis captions occupy equal slots. Custom component captions keep their width. */
+.thry-components { align-items: center; flex-wrap: nowrap; }
+.thry-components > .thry-component { align-items: center; }
+.thry-components > .thry-component-spaced { margin-left: 4px; }
+.thry-components > .thry-component-axis > .unity-base-field__label { width: 12px; min-width: 12px; max-width: 12px; flex-shrink: 0; margin-right: 2px; -unity-text-align: middle-center; }
+.thry-component > .unity-base-text-field__input { min-width: 0; padding-left: 4px; padding-right: 3px; }
+
+/* The texture row and its revealed controls form one continuous disclosure. */
+.thry-texture-property.thry-texture-expanded { background-color: #333333; border-radius: 4px; }
+.thry-texture-expanded > .thry-texture-heading-row { margin-bottom: 0; }
+.thry-texture-expanded > .thry-texture-details { background-color: transparent; margin: 0 0 3px 7px; padding: 2px 3px 4px 6px; border-radius: 0; border-left-width: 1px; border-left-color: #555555; }
+.thry-texture-details > .thry-texture-card { margin: 0; }
+.thry-texture-card .thry-texture-name { -unity-font-style: normal; }
+.thry-light .thry-texture-property.thry-texture-expanded { background-color: #c9c9c9; }
+.thry-light .thry-texture-expanded > .thry-texture-details { background-color: transparent; border-left-color: #a0a0a0; }
+
+/* Assigned cards use a fixed-height summary; only horizontal preview area grows. */
+.thry-texture-card .thry-texture-summary { padding-bottom: 0; margin-bottom: 2px; }
+.thry-texture-card-with-inputs .thry-texture-summary { border-bottom-width: 0; }
+.thry-texture-card-assigned .thry-texture-summary { height: 68px; min-height: 68px; max-height: 68px; }
+.thry-texture-card .thry-texture-preview { align-self: flex-start; }
+.thry-texture-card .thry-texture-info { min-width: 0; overflow: hidden; }
+.thry-texture-card .thry-texture-name,
+.thry-texture-card .thry-texture-description { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thry-texture-card .thry-texture-description { margin: 0 2px; font-size: 11px; }
+.thry-texture-card .thry-texture-channels { margin-top: 2px; flex-wrap: nowrap; min-width: 0; }
+.thry-texture-card .thry-texture-channels Button { flex-shrink: 1; min-width: 18px; margin-right: 2px; }
+.thry-texture-card .thry-texture-channels #texture-channel-RGB { min-width: 28px; }
+.thry-texture-card-compact .thry-texture-channels Button { width: 22px; height: 20px; min-height: 20px; }
+.thry-texture-card-compact .thry-texture-channels #texture-channel-RGB { width: 30px; }
+.thry-texture-card .thry-texture-channels .thry-texture-gradient-action { width: 62px; min-width: 58px; flex-shrink: 0; margin-left: 4px; padding: 0 4px; font-size: 11px; }
+
+/* Nested disabled containers must not multiply opacity until controls disappear. */
+.thry-material-controls .unity-disabled { opacity: 1; }
+.thry-material-controls .unity-disabled .thry-property-label,
+.thry-material-controls .unity-disabled .thry-texture-caption,
+.thry-material-controls .unity-disabled .unity-base-field__label { color: #969696; }
+.thry-material-controls .unity-disabled .unity-base-text-field__input,
+.thry-material-controls .unity-disabled .unity-base-popup-field__input,
+.thry-material-controls .unity-disabled .unity-object-field__input { color: #969696; background-color: #323232; border-color: #434343; }
+.thry-light .thry-material-controls .unity-disabled .thry-property-label,
+.thry-light .thry-material-controls .unity-disabled .thry-texture-caption,
+.thry-light .thry-material-controls .unity-disabled .unity-base-field__label { color: #696969; }
+.thry-light .thry-material-controls .unity-disabled .unity-base-text-field__input,
+.thry-light .thry-material-controls .unity-disabled .unity-base-popup-field__input,
+.thry-light .thry-material-controls .unity-disabled .unity-object-field__input { color: #696969; background-color: #b9b9b9; border-color: #a6a6a6; }

@@ -21,10 +21,12 @@ namespace Thry
 
         internal bool PrepareRetained(MaterialEditor editor, Renderer[] renderers, Func<MaterialProperty[]> propertyProvider = null)
         {
+            if (!RetainedMaterialModel.HasValidTargets(editor)) return false;
             Active = this;
             ReleaseOrphanedEditors(this);
-            bool rebuild = _isFirstOnGUICall || _doReloadNextDraw || Shader != ((Material)editor.target).shader;
             Properties = propertyProvider != null ? propertyProvider() : MaterialEditor.GetMaterialProperties(editor.targets);
+            // Providers may discover a secondary material's shader change and request a rebuild.
+            bool rebuild = _isFirstOnGUICall || _doReloadNextDraw || Shader != ((Material)editor.target).shader;
             materialPropertyDictionary = null;
             if (rebuild)
             {
@@ -71,12 +73,17 @@ namespace Thry.ThryEditor
         private static readonly MethodInfo PrepareMethod = typeof(MaterialEditor).GetMethod(
             "PrepareMaterialPropertiesForAnimationMode", BindingFlags.Static | BindingFlags.NonPublic,
             null, new[] { typeof(MaterialProperty[]), typeof(Renderer[]), typeof(bool) }, null);
+        private static bool _failed;
+        internal static bool IsSupported => PrepareMethod != null && !_failed;
 
         internal static void Prepare(MaterialProperty[] properties, Renderer[] renderers)
         {
             if (renderers.Length == 0) return;
-            if (PrepareMethod == null) throw new NotSupportedException("This Unity version does not expose material animation preparation.");
-            PrepareMethod.Invoke(null, new object[] { properties, renderers, true });
+            if (!IsSupported) return;
+            try { PrepareMethod.Invoke(null, new object[] { properties, renderers, true }); }
+            catch (TargetInvocationException) { _failed = true; }
+            catch (ArgumentException) { _failed = true; }
+            catch (MemberAccessException) { _failed = true; }
         }
     }
 
@@ -85,14 +92,29 @@ namespace Thry.ThryEditor
     {
         internal readonly MaterialEditor Editor;
         internal readonly ShaderEditor Shader;
+        internal readonly Material[] SelectedMaterials;
         internal Renderer[] Renderers = Array.Empty<Renderer>();
         internal Func<MaterialProperty[]> PropertyProvider;
         internal event Action Changed;
         private readonly Dictionary<Material, int> _animatedMaterialVersions = new Dictionary<Material, int>();
-        internal RetainedMaterialModel(MaterialEditor editor, ShaderEditor shader) { Editor = editor; Shader = shader; }
+        internal RetainedMaterialModel(MaterialEditor editor, ShaderEditor shader)
+        {
+            Editor = editor; Shader = shader;
+            SelectedMaterials = editor.targets.OfType<Material>().Where(m => m != null).ToArray();
+        }
+
+        // Undo and inspector teardown can leave a live editor holding destroyed native targets.
+        // Unity's material-property API does not safely reject those references.
+        internal static bool HasValidTargets(MaterialEditor editor)
+        {
+            if (editor == null || !(editor.target is Material material) || material == null) return false;
+            var targets = editor.targets;
+            return targets.Length > 0 && targets.All(t => t is Material m && m != null && m.shader != null);
+        }
 
         internal void Refresh(bool forceAnimatedState = false)
         {
+            if (!HasValidTargets(Editor)) return;
             bool rebuilt = Shader.PrepareRetained(Editor, Renderers, PropertyProvider);
             var targets = Shader.Materials.Where(m => m != null).ToArray();
             bool changed = rebuilt || forceAnimatedState || _animatedMaterialVersions.Count != targets.Length
@@ -107,7 +129,9 @@ namespace Thry.ThryEditor
 
         internal bool CanEdit(ShaderPart part)
         {
+            if (Shader.IsInAnimationMode && Renderers.Length > 0 && !RetainedAnimation.IsSupported) return false;
             if (part.MaterialProperty == null) return true;
+            if ((part.MaterialProperty.flags & MaterialProperty.PropFlags.NonModifiableTextureData) != 0) return false;
             if (Shader.IsLockedMaterial && !part.IsExemptFromLockedDisabling && !(part.IsAnimatable && part.IsAnimated)) return false;
 #if UNITY_2022_1_OR_NEWER
             if (Shader.Materials.Any(m => m.IsPropertyLockedByAncestor(part.MaterialProperty.name))) return false;
@@ -117,6 +141,7 @@ namespace Thry.ThryEditor
 
         internal void Edit(ShaderProperty property, Action<MaterialProperty> mutation, bool perMaterial = false)
         {
+            if (!HasValidTargets(Editor)) return;
             Refresh();
             if (!CanEdit(property)) return;
             Shader.ActivateRetained();
@@ -159,6 +184,7 @@ namespace Thry.ThryEditor
 
         internal void Mutate(string label, Action<Material> mutation)
         {
+            if (!HasValidTargets(Editor)) return;
             Shader.ActivateRetained();
             Undo.RecordObjects(Editor.targets, label);
             foreach (var material in Shader.Materials) { mutation(material); EditorUtility.SetDirty(material); }
@@ -171,6 +197,7 @@ namespace Thry.ThryEditor
         /// </summary>
         internal void SetExpanded(ShaderGroup group, bool expanded)
         {
+            if (!HasValidTargets(Editor)) return;
             Shader.ActivateRetained();
             // Searching and animation recording both keep the foldout in memory only, so writing
             // an undo entry for them would put an empty step on the stack.
@@ -183,7 +210,7 @@ namespace Thry.ThryEditor
             Changed?.Invoke();
         }
 
-        internal void Notify() { Refresh(true); Changed?.Invoke(); }
+        internal void Notify() { if (!HasValidTargets(Editor)) return; Refresh(true); Changed?.Invoke(); }
     }
 }
 #endif

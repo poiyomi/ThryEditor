@@ -2,6 +2,7 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -13,21 +14,30 @@ namespace Thry.ThryEditor
         internal static VisualElement SelectionSummary(RetainedMaterialModel model)
         {
             var root = new VisualElement { name = "thry-material-selection" };
-            if (model.Shader.Materials.Length < 2) { root.style.display = DisplayStyle.None; return root; }
+            var materials = SelectedMaterials(model);
+            if (materials.Length < 2) { root.style.display = DisplayStyle.None; return root; }
             var sheet = Resources.Load<StyleSheet>("ThryMultiMaterial"); if (sheet != null) root.styleSheets.Add(sheet);
             root.AddToClassList("thry-multi-selection");
-            var materials = model.Shader.Materials;
-            var foldout = new Foldout { text = "Editing " + materials.Length + " materials", value = false, name = "thry-selected-materials" }; root.Add(foldout);
-            var hint = new Label("Edits apply to all selected materials unless a field shows a smaller count."); hint.AddToClassList("thry-multi-hint"); foldout.Add(hint);
+            int editable = model.Shader.Materials.Length;
+            var foldout = new Foldout { text = "Editing " + (editable == materials.Length ? editable.ToString() : editable + " of " + materials.Length) + " materials", value = false, name = "thry-selected-materials" }; root.Add(foldout);
+            RetainedUiState.Bind(foldout, model.Shader.Shader.name, "selected-materials");
+            var hint = new Label(editable == materials.Length ? "Edits apply to all selected materials unless a field shows a smaller count." : "Materials shown in red use an incompatible shader and are excluded from edits."); hint.AddToClassList("thry-multi-hint"); foldout.Add(hint);
             foreach (var material in materials)
             {
-                var row = new VisualElement { name = "selected-material-" + material.GetInstanceID() }; row.AddToClassList("thry-multi-material-row"); foldout.Add(row);
+                var row = new VisualElement { name = "selected-material-" + material.GetObjectId() }; row.AddToClassList("thry-multi-material-row"); foldout.Add(row);
                 var name = new Button(() => EditorGUIUtility.PingObject(material)) { text = MaterialName(material), tooltip = AssetDatabase.GetAssetPath(material) };
                 name.AddToClassList("thry-multi-material-name"); row.Add(name);
+                if (!model.Shader.Materials.Contains(material))
+                {
+                    row.AddToClassList("thry-multi-material-incompatible");
+                    name.tooltip = "Incompatible shader — excluded from edits.\n" + name.tooltip;
+                }
                 var shader = new Label(material.shader != null ? material.shader.name : "Missing shader"); shader.AddToClassList("thry-multi-shader-name"); row.Add(shader);
             }
             return root;
         }
+
+        internal static Material[] SelectedMaterials(RetainedMaterialModel model) => model.SelectedMaterials;
 
         internal static string MaterialName(Material material) => string.IsNullOrEmpty(material.name) ? "Unnamed material" : material.name;
 
@@ -62,7 +72,7 @@ namespace Thry.ThryEditor
     {
         internal void DecorateMultiMaterialProperty(VisualElement root, ShaderProperty property)
         {
-            if (Model.Shader.Materials.Length < 2) return;
+            if (RetainedMultiMaterial.SelectedMaterials(Model).Length < 2) return;
             var sheet = Resources.Load<StyleSheet>("ThryMultiMaterial"); if (sheet != null) root.styleSheets.Add(sheet);
             VisualElement badge = null; VisualElement caption = null;
             StyleLength originalPadding = default(StyleLength);
@@ -105,20 +115,23 @@ namespace Thry.ThryEditor
                     caption.RegisterCallback<GeometryChangedEvent>(e => positionBadge());
                     badge.RegisterCallback<PointerDownEvent>(e => e.StopPropagation());
                     badge.RegisterCallback<PointerUpEvent>(e => e.StopPropagation());
+                    badge.RegisterCallback<TooltipEvent>(e => {
+                        var targets = affected();
+                        bool editable = Model.CanEdit(property) && root.enabledInHierarchy;
+                        var selection = RetainedMultiMaterial.SelectedMaterials(Model);
+                        e.tooltip = (editable ? "Edits affect " : "Read only · property exists on ") + targets.Length + " of " + selection.Length + " selected materials."
+                            + (property.MaterialProperty.hasMixedValue ? " Different values are selected." : "") + "\n"
+                            + string.Join("\n", selection.Select(m => RetainedMultiMaterial.MaterialName(m) + ": "
+                                + (targets.Contains(m) ? RetainedMultiMaterial.DisplayValue(RetainedMultiMaterial.Value(m, property.MaterialProperty)) : "property not available")));
+                        e.rect = badge.worldBound; e.StopImmediatePropagation();
+                    });
                 }
-                var targetsNow = affected(); int total = Model.Shader.Materials.Length;
-                bool mixed = targetsNow.Select(m => RetainedMultiMaterial.Value(m, property.MaterialProperty)).Distinct().Skip(1).Any();
+                var targetsNow = affected(); int total = RetainedMultiMaterial.SelectedMaterials(Model).Length;
+                bool mixed = property.MaterialProperty.hasMixedValue;
                 bool partial = targetsNow.Length != total;
                 badgeVisible = mixed || partial;
                 badge.style.display = badgeVisible ? DisplayStyle.Flex : DisplayStyle.None;
                 positionBadge();
-                bool editableNow = Model.CanEdit(property) && root.enabledInHierarchy;
-                var details = (editableNow ? "Edits affect " : "Read only · property exists on ") + targetsNow.Length + " of " + total + " selected materials."
-                    + (editableNow ? "" : " Editing is disabled for this selection.")
-                    + (mixed ? " Different values are selected." : "") + "\n"
-                    + string.Join("\n", Model.Shader.Materials.Select(m => RetainedMultiMaterial.MaterialName(m) + ": "
-                        + (targetsNow.Contains(m) ? RetainedMultiMaterial.DisplayValue(RetainedMultiMaterial.Value(m, property.MaterialProperty)) : "property not available")));
-                badge.tooltip = details;
                 // Labels also refresh their ordinary tooltip later in the property update list;
                 // the badge remains the dedicated, stable target for material details.
             });

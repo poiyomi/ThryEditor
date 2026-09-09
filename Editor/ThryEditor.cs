@@ -176,13 +176,13 @@ namespace Thry
         Dictionary<string, MaterialEditor> s_editorCache = new Dictionary<string, MaterialEditor>();
         public MaterialEditor GetMaterialEditor(UnityEngine.Object[] targets)
         {
-            string key = string.Join(",", targets.Select(t => t.name));
-            if(s_editorCache.ContainsKey(key))
+            string key = string.Join(",", targets.Select(t => t.GetInstanceID()));
+            if(s_editorCache.TryGetValue(key, out var cached) && cached != null)
             {
-                return s_editorCache[key];
+                return cached;
             }
             MaterialEditor editor = MaterialEditor.CreateEditor(targets) as MaterialEditor;
-            s_editorCache.Add(key, editor);
+            s_editorCache[key] = editor;
             return editor;
         }
 
@@ -607,7 +607,8 @@ namespace Thry
             HookInspectorContainers();
 
             //get material targets
-            Materials = Editor.targets.Select(o => o as Material).ToArray();
+            Materials = Editor.targets.OfType<Material>()
+                .Where(m => m != null && (!IsCrossEditor || ShaderHelper.IsShaderUsingThryEditor(m))).ToArray();
 
             SetShader(Materials[0].shader, LastShader);
 
@@ -1117,7 +1118,7 @@ namespace Thry
 
         internal void CollapseCategories()
         {
-            foreach (var group in RootCategories) group.ExpandForNavigation(false);
+            foreach (var group in RootCategories) group.SetExpandedFromView(false);
         }
 
         internal void OpenToolsFromView(Rect anchor) => PopupTools(anchor);

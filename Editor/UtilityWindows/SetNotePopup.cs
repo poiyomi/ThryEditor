@@ -70,12 +70,12 @@ namespace Thry.ThryEditor
 #if UNITY_2021_3_OR_NEWER
         public void CreateGUI()
         {
-            minSize=new Vector2(320,150);RetainedWindow.Style(rootVisualElement);
+            minSize=new Vector2(320,150);rootVisualElement.Clear();RetainedWindow.Style(rootVisualElement);rootVisualElement.AddToClassList("thry-dialog");
             var text=new TextField {multiline=true,value=TextFieldContent};text.style.flexGrow=1;rootVisualElement.Add(text);
             text.RegisterValueChangedCallback(e=>TextFieldContent=e.newValue);
-            var actions=new VisualElement();actions.AddToClassList("thry-components");rootVisualElement.Add(actions);
-            actions.Add(new Button(Close){text="Cancel"});actions.Add(new Button(()=>UpdateNoteAndClose(false)){text="Save"});
-            rootVisualElement.RegisterCallback<KeyDownEvent>(e=>{if(e.keyCode==KeyCode.Escape)Close();if(e.keyCode==KeyCode.Return&&(e.ctrlKey||e.commandKey))UpdateNoteAndClose(false);});
+            var actions=new VisualElement();actions.AddToClassList("thry-components");actions.AddToClassList("thry-dialog-actions");rootVisualElement.Add(actions);
+            actions.Add(new Button(Close){text=RetainedText.Get("cancel","Cancel")});var save=new Button(()=>UpdateNoteAndClose(false)){text=RetainedText.Get("save","Save")};save.AddToClassList("thry-primary-action");actions.Add(save);
+            RetainedWindow.Shortcuts(rootVisualElement, Close, () => UpdateNoteAndClose(false), true);
             text.schedule.Execute(text.Focus);
         }
 #endif

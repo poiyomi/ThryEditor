@@ -38,6 +38,15 @@ namespace Thry.ThryEditor
             return key;
         }
 
+        public string Get(string key, string language, string fallback)
+        {
+            string[] values;
+            if (!dictionary.TryGetValue(key, out values)) return fallback;
+            int index = System.Array.IndexOf(languages, language);
+            if (index < 0) index = 0;
+            return index < values.Length && !string.IsNullOrEmpty(values[index]) ? values[index] : fallback;
+        }
+
         public bool Constains(string key)
         {
             return dictionary.ContainsKey(key) && string.IsNullOrEmpty(dictionary[key][selected_locale_index]) == false;

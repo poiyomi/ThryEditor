@@ -19,7 +19,7 @@ namespace Thry.ThryEditor
                 : a.Length == 1 ? StencilConfig.WithVariant(a[0], attribute.Name) : StencilConfig.WithDefaults();
         }
 
-        private bool IsLegacyStencilStatus(ShaderProperty property, DrawerAttribute[] attributes)
+        private static bool IsLegacyStencilStatus(ShaderProperty property, DrawerAttribute[] attributes)
         {
             if (!attributes.Any(a => a.Name == "Helpbox") || !(property.Parent is ShaderGroup group)) return false;
             // Only replace the paired presentation boxes next to an actual summary decorator.

@@ -147,10 +147,12 @@ namespace Thry.ThryEditor
         {
             get
             {
+                if (_doOptionsNeedInitilization && MaterialProperty != null) InitOptions();
                 return ShaderEditor.Active.IsInSearchMode ? _isSearchExpanded : _isExpanded;
             }
             set
             {
+                if (_doOptionsNeedInitilization && MaterialProperty != null) InitOptions();
                 if(ShaderEditor.Active.IsInSearchMode)
                 {
                     _isSearchExpanded = value;
@@ -193,9 +195,17 @@ namespace Thry.ThryEditor
             _isSearchExpanded = value;
         }
 
+        // Explicit header actions use the same persistence and animation rules as IMGUI.
+        internal void SetExpandedFromView(bool expanded)
+        {
+            MyShaderUI.ActivateRetained();
+            IsExpanded = expanded;
+        }
+
         // Navigation is a view operation; it must not write persistent material foldout properties.
         internal void ExpandForNavigation(bool expanded)
         {
+            if (_doOptionsNeedInitilization && MaterialProperty != null) InitOptions();
             _isExpanded = expanded;
             _isSearchExpanded = expanded;
         }

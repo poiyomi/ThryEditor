@@ -343,7 +343,7 @@ namespace Thry.ThryEditor
             internal readonly List<PropertyTree> Children = new List<PropertyTree>();
         }
 
-        private PropertyTree ReadPropertyTree(Material material, PropertyOccurrence[] occurrences)
+        private static PropertyTree ReadPropertyTree(ShaderEditor shaderEditor, Material material, PropertyOccurrence[] occurrences)
         {
             var root = new PropertyTree();
             var preamble = new PropertyTree(); root.Children.Add(preamble);
@@ -351,7 +351,7 @@ namespace Thry.ThryEditor
             var properties = MaterialEditor.GetMaterialProperties(new UnityEngine.Object[] { material });
             for (int i = 0; i < properties.Length; i++)
             {
-                var type = _shaderEditor.GetPropertyType(properties[i]);
+                var type = shaderEditor.GetPropertyType(properties[i]);
                 bool opens = type == ShaderEditor.ThryPropertyType.header || type == ShaderEditor.ThryPropertyType.header_start
                     || type == ShaderEditor.ThryPropertyType.group_start || type == ShaderEditor.ThryPropertyType.section_start
                     || type == ShaderEditor.ThryPropertyType.subsection_start;
@@ -407,9 +407,18 @@ namespace Thry.ThryEditor
 
             _shaderEditor = new ShaderEditor(){ IsCrossEditor = true };
             _materialEditor = Editor.CreateEditor(_targets.ToArray()) as MaterialEditor;
+            _materialProperties = CollectProperties(_shaderEditor, _targets.ToArray());
 
+            // This array is now the snapshot everything draws from, so baseline the dirty counts against it.
+            RecordTargetDirtyCounts();
+        }
+
+        // Shared by the cross-shader window and retained inspectors with mixed shader targets.
+        // Callers own target validation and decide when this declaration snapshot needs rebuilding.
+        internal static MaterialProperty[] CollectProperties(ShaderEditor shaderEditor, Material[] targets)
+        {
             // group targets by shader, take one material per shader
-            IEnumerable<Material> materialsToSearchProperties = _targets.GroupBy(t => t.shader).Select(g => g.First());
+            IEnumerable<Material> materialsToSearchProperties = targets.GroupBy(t => t.shader).Select(g => g.First());
             // get properties for each shader, keeping declaration order rather than leaning on the
             // enumeration order of a set, since the merge below is order sensitive
             var merged = new PropertyTree();
@@ -417,7 +426,7 @@ namespace Thry.ThryEditor
             foreach (Material material in materialsToSearchProperties)
             {
                 PropertyOccurrence[] occurrences = GetPropertyOccurrences(material);
-                MergePropertyTrees(merged, ReadPropertyTree(material, occurrences));
+                MergePropertyTrees(merged, ReadPropertyTree(shaderEditor, material, occurrences));
                 shaderProperties[material.shader] = new HashSet<PropertyOccurrence>(occurrences);
             }
             var propertiesOrdered = FlattenPropertyTree(merged).ToList();
@@ -426,14 +435,11 @@ namespace Thry.ThryEditor
             Dictionary<PropertyOccurrence, Material[]> propertyMaterials = new Dictionary<PropertyOccurrence, Material[]>();
             foreach (PropertyOccurrence property in propertiesOrdered)
             {
-                propertyMaterials[property] = _targets.Where(t => shaderProperties[t.shader].Contains(property)).ToArray();
+                propertyMaterials[property] = targets.Where(t => shaderProperties[t.shader].Contains(property)).ToArray();
             }
             // Get MaterialProperties of all materials. Repeated declarations resolve to the same
             // underlying property, exactly as they do in the normal inspector.
-            _materialProperties = propertiesOrdered.Select(p => MaterialEditor.GetMaterialProperty(propertyMaterials[p], p.Name)).ToArray();
-
-            // This array is now the snapshot everything draws from, so baseline the dirty counts against it.
-            RecordTargetDirtyCounts();
+            return propertiesOrdered.Select(p => MaterialEditor.GetMaterialProperty(propertyMaterials[p], p.Name)).ToArray();
         }
     }
 }

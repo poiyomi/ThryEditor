@@ -44,7 +44,7 @@ namespace Thry.ThryEditor
                     case "Vector3Slider":
                         var vectorSliderLabels = property.Content.text.Split('|');
                         var vectorSliderLabel = parent.parent.Q<Label>(className: "thry-property-label");
-                        Track(vectorSliderLabel, () => vectorSliderLabel.text = property.Content.text.Split('|')[0]);
+                        Track(vectorSliderLabel, () => vectorSliderLabel.text = RetainedMaterialBody.SectionCaption(property).Split('|')[0]);
                         Vector(parent, property, new[] { "X", "Y", "Z" });
                         VisualElement lengthInput;
                         parent.parent.parent.Add(Row(vectorSliderLabels.Length > 1 ? vectorSliderLabels[1] : "Length", out lengthInput));
@@ -88,6 +88,8 @@ namespace Thry.ThryEditor
                             int component = (n-offset)/3;
                             var group = new VisualElement();
                             if (!pairs) group.AddToClassList("thry-special-slider-row");
+                            if (!pairs && args[n].Length == 1 && "XYZW".Contains(args[n]))
+                                group.AddToClassList("thry-special-axis-slider");
                             var componentLabel = new Label(args[n]) { tooltip = args[n] }; componentLabel.AddToClassList("thry-special-component-label");
                             group.Add(componentLabel); parent.Add(group);
                             if(pairs) MinMax(group,property,component*2,DrawerAttribute.Number(args[n+1]),DrawerAttribute.Number(args[n+2]));
@@ -149,6 +151,7 @@ namespace Thry.ThryEditor
                         parent.parent.Q<Label>(className:"thry-property-label").style.marginTop = 3;
                         if(attribute.Name=="ByteSlider") { var slider=new SliderInt(0,255) {showInputField=true}; Bind(slider,property,p=>(int)p.GetNumber(),(p,v)=>p.SetNumber(v)); parent.Add(slider); }
                         var bits=new Foldout {text="Bits",value=false,name="byte-bits-"+property.MaterialProperty.name};bits.AddToClassList("thry-bit-options");parent.Add(bits);
+                        RetainedUiState.Bind(bits, property.MyShader.name, bits.name);
                         var bitrow=new VisualElement();bitrow.AddToClassList("thry-bit-row");bits.Add(bitrow);
                         for(int bit=7;bit>=0;bit--) { int mask=1<<bit; var toggle=new Toggle(bit.ToString()) {name="byte-bit-"+bit,tooltip="Bit "+bit+" · value "+mask};toggle.AddToClassList("thry-bit-cell");
                             Track(toggle,()=>{toggle.SetValueWithoutNotify(((int)property.MaterialProperty.GetNumber()&mask)!=0);toggle.showMixedValue=Model.Shader.Materials.Where(m=>m.HasProperty(property.MaterialProperty.name)).Select(m=>(ReadBitValue(m,property)&mask)!=0).Distinct().Skip(1).Any();});

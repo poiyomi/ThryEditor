@@ -1,193 +1,54 @@
-.thry-special-slider-row {
-    flex-direction: row;
-    align-items: center;
-    min-height: 24px;
-    margin: 1px 0;
-}
+.thry-special-slider-row { flex-direction: row; align-items: center; min-height: 24px; margin: 1px 0; }
+.thry-special-slider-row > .thry-special-component-label { width: 30%; max-width: 110px; min-width: 28px; flex-shrink: 1; margin-right: 6px; overflow: hidden; text-overflow: ellipsis; color: #bcbcbc; }
+.thry-special-slider-row > .unity-slider { flex-grow: 1; flex-basis: 0; min-width: 0; margin: 0; }
+.thry-special-axis-slider { min-height: 22px; margin: 0 0 2px; }
+.thry-special-axis-slider > .thry-special-component-label { width: 14px; min-width: 14px; max-width: 14px; flex-shrink: 0; margin: 0 3px 0 0; padding: 0; -unity-text-align: middle-center; color: #a0a0a0; }
+.thry-light .thry-special-axis-slider > .thry-special-component-label { color: #5b5b5b; }
+.thry-multi-value-controls > Button, .thry-multi-value-controls > .unity-base-field { flex-grow: 1; flex-basis: 0; flex-shrink: 1; min-width: 0; margin: 0 2px; }
+.thry-multi-value-controls > Button { min-height: 24px; padding: 2px 4px; overflow: hidden; text-overflow: ellipsis; }
+.thry-multi-value-header > Label { flex-grow: 1; flex-basis: 0; flex-shrink: 1; min-width: 0; margin: 0 2px; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; -unity-text-align: middle-center; }
+.thry-multi-value-controls > .thry-tile-mixed { border-color: #999; border-bottom-width: 2px; }
+.thry-mask-picker { min-height: 24px; -unity-text-align: middle-left; padding: 2px 8px; overflow: hidden; text-overflow: ellipsis; }
+.thry-packer-source-row { margin: 1px 0; }
+.thry-packer-source-value { flex-direction: row; align-items: center; }
+.thry-packer-source-value > .thry-texture-asset { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; }
+.thry-packer-source-value > .thry-packer-source-channel,
+.thry-packer-source-value > .thry-packer-source-fallback { width: 58px; min-width: 58px; flex-grow: 0; flex-shrink: 0; margin-left: 3px; }
+.thry-packer-source-channel .unity-base-popup-field__input { padding-left: 5px; padding-right: 2px; }
+.thry-packer-source-compact .thry-asset-size { display: none; }
+.thry-packer { margin: 0 3px 3px; padding-bottom: 5px; border-bottom-width: 1px; border-bottom-color: #414141; }
+.thry-packer-heading { flex-direction: row; align-items: center; justify-content: space-between; margin: 0 0 3px; min-height: 22px; }
+.thry-packer-heading-label { margin: 0; color: var(--thry-caption-color); font-size: 11px; }
+.thry-packer-channel-badge { width: 18px; min-width: 18px; height: 16px; flex-shrink: 0; margin: 0 4px 0 0; padding: 0; border-radius: 3px; background-color: #414141; color: #c4c4c4; font-size: 10px; -unity-text-align: middle-center; }
+.thry-packer-channel-r { color: #e1a4a4; }
+.thry-packer-channel-g { color: #a6c8a0; }
+.thry-packer-channel-b { color: #9ebfe0; }
+.thry-packer-channel-rgb { width: 27px; min-width: 27px; }
+.thry-packer-source-row .thry-texture-caption { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.thry-packer-source-row > .thry-texture-label { min-height: 22px; margin: 0; }
+.thry-packer-channel-options { margin: 0; padding: 0; background-color: rgba(0, 0, 0, 0.08); border-radius: 3px; }
+.thry-packer-channel-options > .unity-foldout__toggle { display: none; }
+.thry-packer-channel-options > .unity-foldout__content { margin-left: 0; padding: 0; }
+.thry-packer-actions { flex-grow: 0; margin-top: 4px; }
+.thry-packer-actions > Button, .thry-packer-studio-action { background-image: none; background-color: #414141; color: #ddd; border-width: 1px; border-color: #555; border-radius: 4px; height: 24px; min-height: 24px; padding: 2px 6px; margin: 0 2px; font-size: 12px; -unity-text-align: middle-center; }
+.thry-packer-actions > Button { flex-grow: 1; flex-basis: 0; min-width: 0; }
+.thry-packer-heading > .thry-packer-studio-action { height: 20px; min-height: 20px; margin: 0; padding: 0 6px; font-size: 11px; }
+.thry-packer-actions > Button:hover, .thry-packer-studio-action:hover { background-color: #4c4c4c; border-color: #666; }
+.thry-packer-actions > Button:focus, .thry-packer-studio-action:focus { border-color: #7aadd6; }
+.thry-light .thry-packer-actions > Button, .thry-light .thry-packer-studio-action { background-color: #dedede; color: #333; border-color: #aaa; }
+.thry-light .thry-packer { border-bottom-color: #bbb; }
+.thry-light .thry-packer-channel-badge { background-color: #dedede; color: #444; }
+.thry-light .thry-packer-channel-r { color: #973c3c; }
+.thry-light .thry-packer-channel-g { color: #406c38; }
+.thry-light .thry-packer-channel-b { color: #365f8a; }
+.thry-light .thry-special-slider-row > .thry-special-component-label { color: #444; }
+.thry-bit-options > .unity-foldout__content { margin-left: 0; }
+.thry-bit-row { flex-direction: row; min-width: 0; margin: 2px 0; }
+.thry-bit-cell { flex-direction: column; align-items: center; flex-grow: 1; flex-basis: 0; flex-shrink: 1; min-width: 0; margin: 0; padding: 0; }
+.thry-bit-cell > .unity-base-field__label { width: auto; min-width: 0; max-width: none; min-height: 14px; margin: 0 0 2px 0; padding: 0; font-size: 10px; -unity-text-align: middle-center; align-self: center; }
+.thry-bit-cell > .unity-base-field__input { width: 16px; min-width: 16px; max-width: 16px; flex-grow: 0; margin: 0; padding: 0; align-items: center; justify-content: center; }
 
-.thry-special-slider-row > .thry-special-component-label {
-    width: 30%;
-    max-width: 110px;
-    min-width: 28px;
-    flex-shrink: 1;
-    margin-right: 6px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: #bcbcbc;
-}
-
-.thry-special-slider-row > .unity-slider {
-    flex-grow: 1;
-    flex-basis: 0;
-    min-width: 0;
-    margin: 0;
-}
-
-.thry-multi-value-controls > Button, .thry-multi-value-controls > .unity-base-field {
-    flex-grow: 1;
-    flex-basis: 0;
-    flex-shrink: 1;
-    min-width: 0;
-    margin: 0 2px;
-}
-
-.thry-multi-value-controls > Button {
-    min-height: 24px;
-    padding: 2px 4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.thry-multi-value-header > Label {
-    flex-grow: 1;
-    flex-basis: 0;
-    flex-shrink: 1;
-    min-width: 0;
-    margin: 0 2px;
-    padding: 0 4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    -unity-text-align: middle-center;
-}
-
-.thry-multi-value-controls > .thry-tile-mixed {
-    border-color: #999;
-    border-bottom-width: 2px;
-}
-
-.thry-mask-picker {
-    min-height: 24px;
-    -unity-text-align: middle-left;
-    padding: 2px 8px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.thry-packer-source-row {
-    margin: 1px 0;
-}
-
-.thry-packer-source-row > .thry-texture-label {
-    min-height: 22px;
-    margin: 0;
-}
-
-.thry-packer-channel-options {
-    margin: 0;
-    padding: 0;
-}
-
-.thry-packer-channel-options > .unity-foldout__toggle {
-    display: none;
-}
-
-.thry-packer-channel-options > .unity-foldout__content {
-    margin-left: 0;
-    padding: 0;
-}
-
-.thry-packer-actions {
-    flex-grow: 0;
-    margin-top: 4px;
-}
-
-.thry-packer-actions > Button, .thry-packer-studio-action {
-    background-image: none;
-    background-color: #414141;
-    color: #ddd;
-    border-width: 1px;
-    border-color: #555;
-    border-radius: 4px;
-    height: 24px;
-    min-height: 24px;
-    padding: 2px 6px;
-    margin: 0 2px;
-    font-size: 12px;
-    -unity-text-align: middle-center;
-}
-
-.thry-packer-actions > Button {
-    flex-grow: 1;
-    flex-basis: 0;
-    min-width: 0;
-}
-
-.thry-packer-studio-action {
-    margin-top: 4px;
-}
-
-.thry-packer-actions > Button:hover, .thry-packer-studio-action:hover {
-    background-color: #4c4c4c;
-    border-color: #666;
-}
-
-.thry-packer-actions > Button:focus, .thry-packer-studio-action:focus {
-    border-color: #7aadd6;
-}
-
-.thry-light .thry-packer-actions > Button, .thry-light .thry-packer-studio-action {
-    background-color: #dedede;
-    color: #333;
-    border-color: #aaa;
-}
-
-.thry-light .thry-special-slider-row > .thry-special-component-label {
-    color: #444;
-}
-
-.thry-bit-options > .unity-foldout__content {
-    margin-left: 0;
-}
-
-.thry-bit-row {
-    flex-direction: row;
-    min-width: 0;
-    margin: 2px 0;
-}
-
-.thry-bit-cell {
-    flex-direction: column;
-    align-items: center;
-    flex-grow: 1;
-    flex-basis: 0;
-    flex-shrink: 1;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-}
-
-.thry-bit-cell > .unity-base-field__label {
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    min-height: 14px;
-    margin: 0 0 2px 0;
-    padding: 0;
-    font-size: 10px;
-    -unity-text-align: middle-center;
-    align-self: center;
-}
-
-.thry-bit-cell > .unity-base-field__input {
-    width: 16px;
-    min-width: 16px;
-    max-width: 16px;
-    flex-grow: 0;
-    margin: 0;
-    padding: 0;
-    align-items: center;
-    justify-content: center;
-}
-
-.thry-light .thry-multi-value-controls > .thry-tile-mixed {
-    border-color: #777777;
-}
-
-.thry-light .thry-packer-actions > Button:hover, .thry-light .thry-packer-studio-action:hover {
-    background-color: #eeeeee;
-    border-color: #a0a0a0;
-}
-
-.thry-light .thry-packer-actions > Button:focus, .thry-light .thry-packer-studio-action:focus {
-    border-color: #3b78a8;
-}
+/* Light theme contrast and interaction states. */
+.thry-light .thry-multi-value-controls > .thry-tile-mixed { border-color: #777777; }
+.thry-light .thry-packer-actions > Button:hover, .thry-light .thry-packer-studio-action:hover { background-color: #eeeeee; border-color: #a0a0a0; }
+.thry-light .thry-packer-actions > Button:focus, .thry-light .thry-packer-studio-action:focus { border-color: #3b78a8; }

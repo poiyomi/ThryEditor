@@ -48,6 +48,18 @@
     background-color: #454545;
 }
 
+.thry-multi-material-incompatible .thry-multi-material-name,
+.thry-multi-material-incompatible .thry-multi-shader-name,
+.thry-multi-material-incompatible .thry-multi-material-name:hover {
+    color: #f26d78;
+}
+
+.thry-light .thry-multi-material-incompatible .thry-multi-material-name,
+.thry-light .thry-multi-material-incompatible .thry-multi-shader-name,
+.thry-light .thry-multi-material-incompatible .thry-multi-material-name:hover {
+    color: #b52637;
+}
+
 .thry-multi-shader-name {
     flex-grow: 1;
     flex-basis: 55%;

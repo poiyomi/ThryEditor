@@ -19,12 +19,13 @@ namespace Thry.ThryEditor
         public void CreateGUI()
         {
             var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
+            root.AddToClassList("thry-dialog");
             var field = new TextField { value = _value }; root.Add(field);
-            var actions = new VisualElement(); actions.AddToClassList("thry-components"); root.Add(actions);
+            var actions = new VisualElement(); actions.AddToClassList("thry-components"); actions.AddToClassList("thry-dialog-actions"); root.Add(actions);
             Action save = () => { _save?.Invoke(field.value); Close(); };
-            actions.Add(new Button(save) { text = "Save" }); actions.Add(new Button(Close) { text = "Cancel" });
-            root.RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == KeyCode.Return) save(); else if (e.keyCode == KeyCode.Escape) Close(); else return; e.StopPropagation(); });
-            field.Focus();
+            var saveButton = new Button(save) { text = RetainedText.Get("save", "Save") }; saveButton.AddToClassList("thry-primary-action"); actions.Add(saveButton); actions.Add(new Button(Close) { text = RetainedText.Get("cancel", "Cancel") });
+            RetainedWindow.Shortcuts(root, Close, save);
+            field.schedule.Execute(field.Focus);
         }
     }
 }

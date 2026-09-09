@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,7 +15,7 @@ namespace Thry.ThryEditor
         public int Draw(Rect rect, GUIContent label, int selected, GUIContent[] choices, GUIStyle style = null)
         {
             var inspector = ShaderEditor.Active;
-            int owner = inspector.Editor.GetInstanceID();
+            int owner = inspector.Editor.GetObjectId();
             int pending;
             if (Event.current.type == EventType.Layout && _pending.TryGetValue(owner, out pending))
             {
@@ -34,7 +35,7 @@ namespace Thry.ThryEditor
         public int DrawMask(Rect rect, GUIContent label, int mask, string[] options)
         {
             var inspector = ShaderEditor.Active;
-            int owner = inspector.Editor.GetInstanceID();
+            int owner = inspector.Editor.GetObjectId();
             int pending;
             if (Event.current.type == EventType.Layout && _pending.TryGetValue(owner, out pending))
             {
@@ -74,7 +75,7 @@ namespace Thry.ThryEditor
         internal void Open(Rect rect, GUIContent[] choices, int selected, ShaderEditor inspector)
         {
             var editor = inspector.Editor;
-            int owner = editor.GetInstanceID();
+            int owner = editor.GetObjectId();
             Action<int> select = index => { if (editor == null) return; _pending[owner] = index; editor.Repaint(); };
             if (inspector.ShowDropdown != null) inspector.ShowDropdown(rect, choices, new[] { selected }, select);
             else PopupWindow.Show(rect, new InspectorDropdownPopup(choices, selected, rect.width, select));

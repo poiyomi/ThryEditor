@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -842,16 +842,68 @@ namespace Thry.ThryEditor
             }
         }
 
-        public static void ApplyFullList(ShaderEditor shaderEditor, Material[] originals, List<Material> presets)
+#if UNITY_2021_3_OR_NEWER
+        internal static List<string> PreviewChanges(ShaderEditor editor, Material[] originals, IList<Material> presets, ShaderPart parent = null)
+        {
+            var changes = new List<string>();
+            foreach (var original in originals)
+            {
+                var preview = new Material(original);
+                try
+                {
+                    var affected = new HashSet<ShaderProperty>();
+                    foreach (var preset in presets)
+                    {
+                        var properties = new HashSet<ShaderProperty>();
+                        CollectPresetProperties(editor, preset, parent, properties);
+                        var source = new Material(preset);
+                        try
+                        {
+                            MaterialHelper.SwapShaderPreservingSettings(source, editor.Shader);
+                            foreach (var property in properties)
+                            {
+                                var name = property.MaterialProperty?.name;
+                                if (name == null || !preview.HasProperty(name)) continue;
+                                var destination = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { preview }, name);
+                                MaterialHelper.CopyValue(source, destination); affected.Add(property);
+                            }
+                        }
+                        finally { UnityEngine.Object.DestroyImmediate(source); }
+                    }
+                    foreach (var property in affected.OrderBy(p => p.ShaderPropertyIndex))
+                    {
+                        string name = property.MaterialProperty.name;
+                        var before = MaterialHelper.GetValue(original, name); var after = MaterialHelper.GetValue(preview, name);
+                        bool transform = property.MaterialProperty.type == MaterialProperty.PropType.Texture
+                            && (original.GetTextureScale(name) != preview.GetTextureScale(name) || original.GetTextureOffset(name) != preview.GetTextureOffset(name));
+                        if (Equals(before, after) && !transform) continue;
+                        string caption = RetainedMaterialBody.SectionCaption(property).TrimEnd('*');
+                        string prefix = originals.Length > 1 ? original.name + " / " : "";
+                        changes.Add(prefix + caption + ": " + PreviewValue(before) + " → " + PreviewValue(after)
+                            + (transform ? " (tiling / offset)" : ""));
+                    }
+                }
+                finally { UnityEngine.Object.DestroyImmediate(preview); }
+            }
+            return changes;
+        }
+        static string PreviewValue(object value)
+        {
+            var asset = value as UnityEngine.Object;
+            return asset != null ? asset.name : value == null ? RetainedText.Get("none", "None") : value.ToString();
+        }
+#endif
+
+        public static void ApplyFullList(ShaderEditor shaderEditor, Material[] originals, List<Material> presets, ShaderPart parent = null)
         {
             for (int i = 0; i < shaderEditor.Materials.Length && i < originals.Length; i++)
                 shaderEditor.Materials[i].CopyPropertiesFromMaterial(originals[i]);
             shaderEditor.UpdatePropertyReferences();
             foreach (Material preset in presets)
             {
-                ApplyPresetInternal(shaderEditor, preset, preset, null);
-                GlobalLinker.PropagateAfterPreset(shaderEditor, preset, null);
-                PropagateLinkedMaterials(shaderEditor, preset, null);
+                ApplyPresetInternal(shaderEditor, preset, preset, parent);
+                GlobalLinker.PropagateAfterPreset(shaderEditor, preset, parent);
+                PropagateLinkedMaterials(shaderEditor, preset, parent);
             }
             shaderEditor.ApplyDrawers();
             shaderEditor.Reload();
@@ -1087,7 +1139,7 @@ namespace Thry.ThryEditor
 #endregion
     }
 
-    public class PresetsPopupGUI : EditorWindow
+    public partial class PresetsPopupGUI : EditorWindow
     {
         class PresetStruct
         {
@@ -1181,15 +1233,6 @@ namespace Thry.ThryEditor
                 foreach (PresetStruct struc in structure)
                     struc.Reset();
             }
-#if UNITY_2021_3_OR_NEWER
-            public VisualElement CreateView(PresetsPopupGUI popup)
-            {
-                var root=new VisualElement();
-                if(hasPreset){var toggle=new Toggle(name){value=isOn};toggle.RegisterValueChangedCallback(e=>{isOn=e.newValue;popup.TogglePreset(Presets.GetPresetMaterial(guid),isOn);});root.Add(toggle);}
-                if(structure.Count>0){var fold=new Foldout{text=name,value=isOpen};foreach(var child in structure)fold.Add(child.CreateView(popup));root.Add(fold);}
-                return root;
-            }
-#endif
         }
 
         Material[] beforePreset;
@@ -1197,18 +1240,19 @@ namespace Thry.ThryEditor
         PresetStruct mainStruct;
         ShaderEditor shaderEditor;
         string _collection;
+        ShaderPart _parent;
         public void Init(string collection, List<string> names, List<string> guids, ShaderEditor shaderEditor)
         {
             this.shaderEditor = shaderEditor;
             this._collection = collection;
+            _parent = collection == "_full_" ? null : shaderEditor.CurrentProperty;
             ShaderOptimizer.DetourApplyMaterialPropertyDrawers();
-            this.beforePreset = shaderEditor.Materials.Select(m => new Material(m)).ToArray();
-            ShaderOptimizer.RestoreApplyMaterialPropertyDrawers();
+            try { this.beforePreset = shaderEditor.Materials.Select(m => new Material(m)).ToArray(); }
+            finally { ShaderOptimizer.RestoreApplyMaterialPropertyDrawers(); }
             mainStruct = new PresetStruct("");
-            backgroundTextrure = new Texture2D(1,1);
-            if (EditorGUIUtility.isProSkin) backgroundTextrure.SetPixel(0, 0, new Color(0.18f, 0.18f, 0.18f, 1));
-            else backgroundTextrure.SetPixel(0, 0, new Color(0.9f, 0.9f, 0.9f, 1));
-            backgroundTextrure.Apply();
+#if UNITY_2021_3_OR_NEWER
+            InitializeBrowser(names, guids);
+#endif
             for (int i = 0; i < names.Count; i++)
             {
                 string[] path = names[i].Split('/');
@@ -1223,13 +1267,15 @@ namespace Thry.ThryEditor
 
         void TogglePreset(Material m, bool on)
         {
+            if (m == null) return;
             if (tickedPresets.Contains(m) && !on) tickedPresets.Remove(m);
             if (!tickedPresets.Contains(m) && on) tickedPresets.Add(m);
-            Presets.ApplyFullList(shaderEditor, beforePreset, tickedPresets);
+#if UNITY_2021_3_OR_NEWER
+            if (_retainedStaging) { UpdatePreview(); return; }
+#endif
+            Presets.ApplyFullList(shaderEditor, beforePreset, tickedPresets, _parent);
             shaderEditor.Repaint();
         }
-
-        static Texture2D backgroundTextrure;
 
         Vector2 scroll;
         bool _save;
@@ -1262,21 +1308,42 @@ namespace Thry.ThryEditor
         }
         private void OnDestroy()
         {
-            if (!_save && shaderEditor != null)
+#if UNITY_2021_3_OR_NEWER
+            _browserWatch?.Pause();
+#endif
+            if (!_save && shaderEditor != null
+#if UNITY_2021_3_OR_NEWER
+                && !_retainedStaging
+#endif
+                )
             {
                 Revert();
             }
             if(beforePreset!=null)foreach(var material in beforePreset)DestroyImmediate(material);
         }
 #if UNITY_2021_3_OR_NEWER
+        bool _retainedStaging;
+        VisualElement _preview;
+        void ApplyStaged()
+        {
+            if (_save || !CanApplyBrowser()) return;
+            shaderEditor.ActivateRetained();
+            _parent = CurrentBrowserParent();
+            var originals = _browserTargets.Select(m => new Material(m)).ToArray();
+            try
+            {
+                Undo.RecordObjects(_browserTargets, RetainedText.Get("apply_preset", "Apply presets"));
+                Presets.ApplyFullList(shaderEditor, originals, tickedPresets, _parent); _save = true; Close();
+            }
+            finally { foreach (var original in originals) DestroyImmediate(original); }
+        }
+        void UpdatePreview()
+        {
+            RefreshPresetPreview();
+        }
         public void CreateGUI()
         {
-            rootVisualElement.Clear();RetainedWindow.Style(rootVisualElement);minSize=new Vector2(300,240);
-            if(mainStruct==null)return;
-            var list=new ScrollView();list.style.flexGrow=1;rootVisualElement.Add(list);
-            foreach(var item in mainStruct.structure)list.Add(item.CreateView(this));
-            var actions=new VisualElement();actions.AddToClassList("thry-components");rootVisualElement.Add(actions);
-            actions.Add(new Button(()=>{_save=true;Close();}){text="Apply"});actions.Add(new Button(()=>{Revert();CreateGUI();}){text="Discard"});
+            BuildPresetBrowser();
         }
 #endif
 

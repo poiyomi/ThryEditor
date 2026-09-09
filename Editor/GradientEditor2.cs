@@ -17,11 +17,37 @@ namespace Thry.ThryEditor
         private Action<Gradient, Texture2D> _onGradientChanged;
         private object _gradientEditor;
         private object _gradientLibary;
+        private bool _retainedWasBuilt;
+        private TextureData _outputSettings;
+        private bool _fixedOutput;
+        private Action<Gradient, TextureData, int> _onTextureApply;
+        private int _outputDirection;
+        private Func<bool> _canApply;
+
+#if UNITY_2021_3_OR_NEWER
+        internal static GradientEditor2 OpenTexture(Gradient gradient, TextureData settings, bool fixedOutput,
+            Action<Gradient, TextureData, int> apply, Func<bool> canApply, int direction = 0)
+        {
+            var window = CreateInstance<GradientEditor2>();
+            window._gradient = CopyGradient(gradient);
+            window._outputSettings = JsonUtility.FromJson<TextureData>(JsonUtility.ToJson(settings));
+            window._textureSize = new Vector2Int(settings.width, settings.height);
+            window._textureSizeMin = Vector2Int.one; window._textureSizeMax = new Vector2Int(8192, 8192);
+            window._allowSizeSelection = !fixedOutput; window._fixedOutput = fixedOutput;
+            window._onTextureApply = apply; window._canApply = canApply;
+            window._outputDirection = Mathf.Clamp(direction, 0, 2);
+            window.titleContent = new GUIContent("Create gradient texture");
+            window.position = new Rect(100, 100, 420, fixedOutput ? 390 : 470);
+            window.ShowUtility(); window.CreateGUI();
+            return window;
+        }
+#endif
 
         public static void Open(Gradient gradient, Action<Gradient, Texture2D> onGradientChanged, bool textureVertical, bool allowSizeSelection, Vector2Int minTextureSize, Vector2Int maxTextureSize)
         {
-            var window = GetWindow<GradientEditor2>();
-            window._gradient = gradient;
+            var window = CreateInstance<GradientEditor2>();
+            window._gradient = CopyGradient(gradient);
+            window._outputSettings = null; window._onTextureApply = null; window._canApply = null;
             window._allowSizeSelection = allowSizeSelection;
             window._textureSizeMin = minTextureSize;
             window._textureSizeMax = maxTextureSize;
@@ -157,14 +183,64 @@ namespace Thry.ThryEditor
 
         private void OnDestroy()
         {
+#if UNITY_2021_3_OR_NEWER
+            // The retained dialog stages edits until Apply; Cancel, Escape and the
+            // window close control must not manufacture a texture or change a material.
+            if (_retainedWasBuilt) return;
+#endif
             Apply();
+        }
+
+        private static Gradient CopyGradient(Gradient source)
+        {
+            var copy = new Gradient();
+            if (source != null) { copy.SetKeys(source.colorKeys, source.alphaKeys); copy.mode = source.mode; }
+            return copy;
         }
 
         void Apply()
         {
-            if (_gradient == null) return;
+            if (_gradient == null || (_canApply != null && !_canApply())) return;
+            // Delegate bindings do not survive a script reload. Keep the draft
+            // visible, but never create an unassigned texture from a stale tool.
+            if (_outputSettings != null && _onTextureApply == null) return;
+            if (_onTextureApply != null)
+            {
+                var settings = JsonUtility.FromJson<TextureData>(JsonUtility.ToJson(_outputSettings));
+                settings.width = _textureSize.x; settings.height = _textureSize.y;
+                _onTextureApply(CopyGradient(_gradient), settings, _outputDirection);
+                return;
+            }
             Texture2D gradientTexture = Converter.GradientToTexture(_gradient, _textureSize.x, _textureSize.y, _makeTextureVertical);
-            _onGradientChanged?.Invoke(_gradient, gradientTexture);
+            _onGradientChanged?.Invoke(CopyGradient(_gradient), gradientTexture);
+        }
+
+        internal static Texture2D CreateTexture(Gradient gradient, int width, int height, int direction)
+        {
+            width = Mathf.Clamp(width, 1, 8192); height = Mathf.Clamp(height, 1, 8192);
+            bool vertical = direction != 0;
+            int length = vertical ? height : width;
+            var ramp = new Color[length];
+            for (int i = 0; i < length; i++)
+            {
+                float position = length > 1 ? (float)i / (length - 1) : 0;
+                if (direction == 2 && length > 1) position = 1 - position;
+                ramp[i] = gradient.Evaluate(position);
+            }
+            var texture = new Texture2D(width, height, TextureFormat.RGBA64, false);
+            try
+            {
+                var row = vertical ? new Color[width] : ramp;
+                for (int y = 0; y < height; y++)
+                {
+                    if (vertical) for (int x = 0; x < width; x++) row[x] = ramp[y];
+                    texture.SetPixels(0, y, width, 1, row);
+                }
+                texture.wrapMode = TextureWrapMode.Clamp;
+                texture.filterMode = FilterMode.Bilinear; texture.Apply();
+                return texture;
+            }
+            catch { DestroyImmediate(texture); throw; }
         }
     }
 }

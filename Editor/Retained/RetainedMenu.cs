@@ -8,7 +8,6 @@ using UnityEngine.UIElements;
 
 namespace Thry.ThryEditor
 {
-    /// <summary>A panel-local menu with consistent pointer, keyboard and mixed-value behavior.</summary>
     internal sealed class RetainedMenu : VisualElement
     {
         internal sealed class Item
@@ -17,326 +16,157 @@ namespace Thry.ThryEditor
             internal bool Checked;
             internal Action Action;
             internal bool Separator;
+            internal List<Item> Children;
         }
-
-        /// <summary>
-        /// One row of one card. A slash in an item's text starts a category, so "Standard/Opaque/OneSided"
-        /// becomes three rows across three cards rather than one very long row.
-        /// </summary>
-        sealed class Node
-        {
-            internal string Text;
-            internal string Path;
-            internal Item Item;
-            internal bool Separator;
-            internal List<Node> Children;
-            // A category cannot be checked itself, so it reports whether the selection is somewhere
-            // inside it. Without that, finding the current value means opening every branch in turn.
-            internal bool HoldsChecked;
-            internal bool IsCategory { get { return Children != null; } }
-            internal bool IsSelectable { get { return !Separator && (Children != null || Item.Action != null); } }
-        }
-
-        const float RowHeight = 26, SeparatorHeight = 9, CardPadding = 12, MinWidth = 220, Margin = 4;
-
-        readonly VisualElement _panel;
-        readonly VisualElement _target;
-        Level _root, _active;
-        bool _closed;
+        readonly List<VisualElement> _rows = new List<VisualElement>();
+        readonly Stack<Item[]> _parents = new Stack<Item[]>();
+        Item[] _items;
+        readonly VisualElement _target, _panelRoot;
+        readonly ScrollView _scroll;
+        readonly Rect _anchor;
+        int _selected = -1;
+        bool _closed, _populating;
+        string _typed = "";
+        double _typedAt;
 
         internal static void Open(Rect anchor, VisualElement target, IEnumerable<Item> items)
         {
             if (target.panel == null) return;
-            // Unity scopes its editor font and built-in control styles to the window
-            // root. A sibling at the raw panel root has no font, so its labels measure
-            // to zero even though the menu rows themselves still receive input.
             var window = Resources.FindObjectsOfTypeAll<EditorWindow>()
                 .FirstOrDefault(candidate => candidate.rootVisualElement.panel == target.panel && candidate.rootVisualElement.Contains(target));
             var panelRoot = window == null ? target.panel.visualTree : window.rootVisualElement;
-            var previous = panelRoot.Q<RetainedMenu>();
-            previous?.Close(false);
-            var menu = new RetainedMenu(anchor, target, items.ToArray(), panelRoot);
+            panelRoot.Q<RetainedMenu>()?.Close(false);
+            var menu = new RetainedMenu(anchor, target, BuildHierarchy(items), panelRoot);
             panelRoot.Add(menu);
-            menu._root.Focus();
+            menu._scroll.contentContainer.Focus();
+            menu.schedule.Execute(() => { if (!menu._closed && menu._selected >= 0) menu._scroll.ScrollTo(menu._rows[menu._selected]); });
         }
-
+        static bool Enabled(Item item) => !item.Separator && (item.Action != null || item.Children != null);
+        internal static Item[] BuildHierarchy(IEnumerable<Item> source)
+        {
+            var root = new List<Item>();
+            foreach (var original in source)
+            {
+                var path = (original.Text ?? "").Split('/'); var level = root;
+                for (int i = 0; i < path.Length - 1; i++)
+                {
+                    if (string.IsNullOrEmpty(path[i])) continue;
+                    var branch = level.FirstOrDefault(item => item.Text == path[i] && item.Children != null);
+                    if (branch == null) { branch = new Item { Text = path[i], Children = new List<Item>() }; level.Add(branch); }
+                    branch.Checked |= original.Checked;
+                    level = branch.Children;
+                }
+                level.Add(new Item { Text = path[path.Length - 1], Action = original.Action, Checked = original.Checked,
+                    Separator = original.Separator, Children = original.Children });
+            }
+            return root.ToArray();
+        }
         RetainedMenu(Rect anchor, VisualElement target, Item[] items, VisualElement panelRoot)
         {
-            name = "thry-dropdown-menu";
-            _panel = panelRoot;
-            _target = target;
-            AddToClassList("thry-dropdown-menu");
-            RetainedWindow.Style(this);
-            RemoveFromClassList("thry-window");
-            // The overlay catches outside clicks, but must not paint the inspector's
-            // opaque window background over the material underneath the menu card.
-            RemoveFromClassList("thry-inspector");
-            RemoveFromClassList("thry-active");
-            style.position = Position.Absolute;
-            style.left = style.right = style.top = style.bottom = 0;
-
-            var nodes = BuildTree(items);
-            float width = Mathf.Min(Mathf.Max(anchor.width, MinWidth), panelRoot.layout.width - 2 * Margin);
-            _active = _root = new Level(this, null, nodes, width);
-
-            Vector2 local = panelRoot.WorldToLocal(anchor.position);
-            float height = _root.Height;
-            float below = panelRoot.layout.height - local.y - anchor.height - Margin;
-            float above = local.y - Margin;
-            bool openBelow = below >= _root.DesiredHeight || below >= above;
-            _root.Place(local.x, openBelow ? local.y + anchor.height : local.y - height);
-            RegisterCallback<PointerDownEvent>(e =>
-            {
-                if (e.target == this) Close();
-                e.StopPropagation();
-            });
-            RegisterCallback<NavigationMoveEvent>(e =>
-            {
-                if (e.direction == NavigationMoveEvent.Direction.Down || e.direction == NavigationMoveEvent.Direction.Up)
-                    _active.Move(e.direction == NavigationMoveEvent.Direction.Down ? 1 : -1);
-                else if (e.direction == NavigationMoveEvent.Direction.Right) _active.Descend();
-                else if (e.direction == NavigationMoveEvent.Direction.Left) Ascend();
+            name = "thry-dropdown-menu"; _items = items; _target = target; _panelRoot = panelRoot; _anchor = anchor;
+            AddToClassList("thry-dropdown-menu"); RetainedWindow.Style(this);
+            RemoveFromClassList("thry-window"); RemoveFromClassList("thry-inspector"); RemoveFromClassList("thry-active");
+            style.position = Position.Absolute; style.left = style.right = style.top = style.bottom = 0;
+            var local = panelRoot.WorldToLocal(anchor.position);
+            float width = Mathf.Min(Mathf.Max(anchor.width, 220), Mathf.Max(0, panelRoot.layout.width - 8));
+            _scroll = new ScrollView(); _scroll.AddToClassList("thry-menu-card");
+            _scroll.style.position = Position.Absolute;
+            _scroll.style.left = Mathf.Clamp(local.x, 4, Mathf.Max(4, panelRoot.layout.width - width - 4));
+            _scroll.style.width = width;
+            _scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            _scroll.verticalScrollerVisibility = ScrollerVisibility.Auto;
+            _scroll.contentContainer.focusable = true; Add(_scroll); Populate();
+            RegisterCallback<PointerDownEvent>(e => { if (e.target == this) Close(); e.StopPropagation(); });
+            RegisterCallback<NavigationMoveEvent>(e => {
+                if (e.direction == NavigationMoveEvent.Direction.Right) { if (_selected >= 0 && _items[_selected].Children != null) Commit(_selected); }
+                else if (e.direction == NavigationMoveEvent.Direction.Left) Back();
+                else if (e.direction == NavigationMoveEvent.Direction.Down || e.direction == NavigationMoveEvent.Direction.Up)
+                    Move(e.direction == NavigationMoveEvent.Direction.Down ? 1 : -1);
                 else return;
                 e.PreventDefault(); e.StopPropagation();
             });
-            RegisterCallback<NavigationSubmitEvent>(e => { _active.Submit(); e.PreventDefault(); e.StopPropagation(); });
+            RegisterCallback<NavigationSubmitEvent>(e => { if (e.target is Button) return; Commit(_selected); e.PreventDefault(); e.StopPropagation(); });
             RegisterCallback<NavigationCancelEvent>(e => { Close(); e.PreventDefault(); e.StopPropagation(); });
-            RegisterCallback<KeyDownEvent>(e =>
-            {
-                if (e.keyCode == KeyCode.Home) _active.MoveToEdge(1);
-                else if (e.keyCode == KeyCode.End) _active.MoveToEdge(-1);
-                else if (e.keyCode == KeyCode.Escape) Close();
+            RegisterCallback<KeyDownEvent>(e => {
+                if (e.keyCode == KeyCode.Home) { _selected = -1; Move(1); }
+                else if (e.keyCode == KeyCode.End) { _selected = _items.Length; Move(-1); }
+                else if (e.keyCode == KeyCode.Escape || e.keyCode == KeyCode.Tab) Close();
+                else if (e.keyCode == KeyCode.LeftArrow || e.keyCode == KeyCode.Backspace) Back();
+                else if (!e.ctrlKey && !e.commandKey && !e.altKey && !char.IsControl(e.character)) FindTyped(e.character);
                 else return;
                 e.PreventDefault(); e.StopPropagation();
             });
-            RegisterCallback<FocusOutEvent>(e =>
-            {
-                var next = e.relatedTarget as VisualElement;
-                if (next != null && !Contains(next)) Close(false);
-            });
+            RegisterCallback<FocusOutEvent>(e => { var next = e.relatedTarget as VisualElement; if (!_populating && (next == null || !Contains(next))) Close(false); });
             panelRoot.RegisterCallback<GeometryChangedEvent>(OnPanelGeometry);
-            RegisterCallback<DetachFromPanelEvent>(e => panelRoot.UnregisterCallback<GeometryChangedEvent>(OnPanelGeometry));
+            RegisterCallback<DetachFromPanelEvent>(e => { if (e.target == this) panelRoot.UnregisterCallback<GeometryChangedEvent>(OnPanelGeometry); });
         }
-
-        /// <summary>Groups items by the slash-separated categories in their text, keeping author order.</summary>
-        static List<Node> BuildTree(Item[] items)
+        void Populate()
         {
-            var roots = new List<Node>();
-            var categories = new Dictionary<string, Node>();
-            foreach (var item in items)
+            _populating = true;
+            _scroll.Clear(); _rows.Clear(); _selected = -1; _typed = "";
+            if (_parents.Count > 0)
             {
-                if (item.Separator) { roots.Add(new Node { Separator = true }); continue; }
-                var segments = (item.Text ?? "").Split('/');
-                // A stray slash would otherwise produce a nameless category nobody can read or click.
-                if (segments.Length == 1 || segments.Any(string.IsNullOrEmpty))
-                { roots.Add(new Node { Text = item.Text, Path = item.Text, Item = item }); continue; }
-                var level = roots;
-                string path = null;
-                for (int i = 0; i < segments.Length - 1; i++)
+                var back = new Button(Back) { text = "\u2039 " + RetainedText.Get("back", "Back"), name = "thry-menu-back" };
+                back.AddToClassList("thry-menu-back"); _scroll.Add(back);
+            }
+            for (int i = 0; i < _items.Length; i++)
+            {
+                int index = i; var item = _items[i]; var row = new VisualElement();
+                row.AddToClassList(item.Separator ? "thry-menu-separator" : "thry-menu-item");
+                if (!item.Separator)
                 {
-                    path = path == null ? segments[i] : path + "/" + segments[i];
-                    Node category;
-                    if (!categories.TryGetValue(path, out category))
-                    {
-                        category = new Node { Text = segments[i], Path = path, Children = new List<Node>() };
-                        categories.Add(path, category);
-                        level.Add(category);
-                    }
-                    level = category.Children;
+                    var check = new Label(item.Checked ? "\u2713" : ""); check.AddToClassList("thry-menu-check"); row.Add(check);
+                    var caption = new Label(item.Text) { tooltip = item.Text }; caption.style.flexGrow = 1; row.Add(caption);
+                    if (item.Children != null) row.Add(new Label("\u203a"));
+                    row.EnableInClassList("thry-menu-disabled", !Enabled(item));
+                    row.RegisterCallback<PointerMoveEvent>(e => Select(index));
+                    row.RegisterCallback<PointerUpEvent>(e => { if (e.button != 0 || !Enabled(item)) return; e.StopPropagation(); Commit(index); });
                 }
-                level.Add(new Node { Text = segments[segments.Length - 1], Path = item.Text, Item = item });
+                _rows.Add(row); _scroll.Add(row);
             }
-            MarkChecked(roots);
-            return roots;
+            float height = Mathf.Min(_items.Sum(item => item.Separator ? 9 : 26) + 12 + (_parents.Count > 0 ? 26 : 0), Mathf.Max(0, _panelRoot.layout.height - 8));
+            _scroll.style.height = height;
+            var point = _panelRoot.WorldToLocal(_anchor.position);
+            bool below = _panelRoot.layout.height - point.y - _anchor.height >= height;
+            _scroll.style.top = Mathf.Clamp(below ? point.y + _anchor.height : point.y - height, 4, Mathf.Max(4, _panelRoot.layout.height - height - 4));
+            int selected = Array.FindIndex(_items, item => item.Checked && Enabled(item));
+            if (selected < 0) selected = Array.FindIndex(_items, Enabled);
+            if (selected >= 0) Select(selected, false);
+            _scroll.contentContainer.Focus(); _populating = false;
         }
-
-        static bool MarkChecked(List<Node> nodes)
+        void Back() { if (_parents.Count == 0) return; _items = _parents.Pop(); Populate(); }
+        void FindTyped(char character)
         {
-            bool any = false;
-            foreach (var node in nodes)
-            {
-                if (node.IsCategory) node.HoldsChecked = MarkChecked(node.Children);
-                any |= node.HoldsChecked || (node.Item != null && node.Item.Checked);
-            }
-            return any;
+            double now = EditorApplication.timeSinceStartup;
+            _typed = now - _typedAt > .8 ? character.ToString() : _typed + character; _typedAt = now;
+            int index = Array.FindIndex(_items, item => Enabled(item) && item.Text.StartsWith(_typed, StringComparison.OrdinalIgnoreCase));
+            if (index >= 0) Select(index);
         }
-
         void OnPanelGeometry(GeometryChangedEvent e) { if (e.oldRect.size != e.newRect.size) Close(); }
-
-        void Ascend()
+        void Move(int direction)
         {
-            if (_active.Parent == null) return;
-            _active.Parent.CloseChild();
+            int index = _selected; if (index < 0 && direction < 0) index = _items.Length;
+            do { index += direction; } while (index >= 0 && index < _items.Length && !Enabled(_items[index]));
+            if (index >= 0 && index < _items.Length) Select(index);
         }
-
-        void Commit(Action action)
+        void Select(int index, bool reveal = true)
         {
-            Close();
-            action();
+            if (!Enabled(_items[index])) return;
+            if (_selected == index) return;
+            if (_selected >= 0 && _selected < _rows.Count) _rows[_selected].RemoveFromClassList("thry-menu-selected");
+            _selected = index; _rows[index].AddToClassList("thry-menu-selected");
+            if (reveal) _scroll.ScrollTo(_rows[index]);
         }
-
+        void Commit(int index)
+        {
+            if (index < 0 || index >= _items.Length || !Enabled(_items[index])) return;
+            if (_items[index].Children != null) { _parents.Push(_items); _items = _items[index].Children.ToArray(); Populate(); return; }
+            var action = _items[index].Action; Close(); action();
+        }
         void Close(bool focus = true)
         {
-            if (_closed) return;
-            _closed = true;
-            RemoveFromHierarchy();
+            if (_closed) return; _closed = true; RemoveFromHierarchy();
             if (focus && _target.panel != null) _target.Focus();
-        }
-
-        /// <summary>One open card. A category row opens the next card beside it, as a nested menu does.</summary>
-        sealed class Level
-        {
-            internal readonly Level Parent;
-            internal float DesiredHeight, Height;
-            readonly RetainedMenu _menu;
-            readonly List<Node> _nodes;
-            readonly List<VisualElement> _rows = new List<VisualElement>();
-            readonly ScrollView _scroll;
-            readonly float _width;
-            Level _child;
-            int _open = -1, _selected = -1;
-
-            internal Level(RetainedMenu menu, Level parent, List<Node> nodes, float width)
-            {
-                _menu = menu; Parent = parent; _nodes = nodes; _width = width;
-                // Include padding, borders and a little pixel-rounding room. A fixed height
-                // cap or missing border space gives even short menus a needless scrollbar.
-                DesiredHeight = nodes.Sum(n => n.Separator ? SeparatorHeight : RowHeight) + CardPadding;
-                Height = Mathf.Min(DesiredHeight, Mathf.Max(0, menu._panel.layout.height - 2 * Margin));
-                _scroll = new ScrollView();
-                _scroll.AddToClassList("thry-menu-card");
-                _scroll.style.position = Position.Absolute;
-                _scroll.style.width = width;
-                _scroll.style.height = Height;
-                _scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
-                _scroll.verticalScrollerVisibility = ScrollerVisibility.Auto;
-                _scroll.contentContainer.focusable = true;
-                menu.Add(_scroll);
-
-                for (int i = 0; i < nodes.Count; i++)
-                {
-                    int index = i;
-                    var node = nodes[i];
-                    var row = new VisualElement();
-                    row.AddToClassList(node.Separator ? "thry-menu-separator" : "thry-menu-item");
-                    if (!node.Separator)
-                    {
-                        bool ticked = node.IsCategory ? node.HoldsChecked : node.Item.Checked;
-                        var check = new Label(ticked ? "✓" : "");
-                        check.AddToClassList("thry-menu-check");
-                        row.Add(check);
-                        var label = new Label(node.Text) { tooltip = node.Path };
-                        label.AddToClassList("thry-menu-label");
-                        row.Add(label);
-                        if (node.IsCategory)
-                        {
-                            var arrow = new Label("▸");
-                            arrow.AddToClassList("thry-menu-arrow");
-                            row.Add(arrow);
-                        }
-                        row.EnableInClassList("thry-menu-disabled", !node.IsSelectable);
-                        row.RegisterCallback<PointerMoveEvent>(e => Select(index, true));
-                        row.RegisterCallback<PointerUpEvent>(e =>
-                        {
-                            if (e.button != 0 || !node.IsSelectable) return;
-                            e.StopPropagation();
-                            Select(index, true);
-                            if (!node.IsCategory) _menu.Commit(node.Item.Action);
-                        });
-                    }
-                    _rows.Add(row);
-                    _scroll.Add(row);
-                }
-            }
-
-            internal void Focus() { _scroll.contentContainer.Focus(); }
-
-            internal void Place(float left, float top)
-            {
-                var panel = _menu._panel.layout;
-                _scroll.style.left = Mathf.Clamp(left, Margin, Mathf.Max(Margin, panel.width - _width - Margin));
-                _scroll.style.top = Mathf.Clamp(top, Margin, Mathf.Max(Margin, panel.height - Height - Margin));
-            }
-
-            /// <summary>
-            /// Opens beside the row that owns this card. An inspector too narrow for two full cards
-            /// slides the new one over the old, but never past the edge that shows the way back.
-            /// </summary>
-            void PlaceBeside(VisualElement row)
-            {
-                var panel = _menu._panel.layout;
-                // A one pixel overlap keeps the pointer inside a menu the whole way across the seam.
-                float beside = _scroll.layout.x + _width - 1;
-                float left = Mathf.Min(beside, panel.width - _child._width - Margin);
-                _child.Place(left, _menu.WorldToLocal(row.worldBound.position).y - Margin);
-            }
-
-            internal void Select(int index, bool openCategory)
-            {
-                var node = _nodes[index];
-                if (!node.IsSelectable) return;
-                // Pointer movement reports every pixel. Re-scrolling to a row the pointer already
-                // rests on would fight the user's own wheel.
-                if (_selected == index && (!node.IsCategory || _open == index)) return;
-                if (_selected >= 0 && _selected < _rows.Count) _rows[_selected].RemoveFromClassList("thry-menu-selected");
-                _selected = index;
-                _rows[index].AddToClassList("thry-menu-selected");
-                _scroll.ScrollTo(_rows[index]);
-                if (node.IsCategory && openCategory) OpenChild(index);
-                else CloseChild();
-            }
-
-            internal void Move(int direction)
-            {
-                int index = _selected;
-                if (index < 0 && direction < 0) index = _nodes.Count;
-                do { index += direction; }
-                while (index >= 0 && index < _nodes.Count && !_nodes[index].IsSelectable);
-                if (index >= 0 && index < _nodes.Count) Select(index, false);
-            }
-
-            internal void MoveToEdge(int direction)
-            {
-                if (_selected >= 0 && _selected < _rows.Count) _rows[_selected].RemoveFromClassList("thry-menu-selected");
-                _selected = direction > 0 ? -1 : _nodes.Count;
-                Move(direction);
-            }
-
-            internal void Descend()
-            {
-                if (_selected < 0 || !_nodes[_selected].IsCategory) return;
-                OpenChild(_selected);
-                // Hovering already opened this card, and stepping into it should land on its first
-                // row rather than skip past wherever the pointer happened to leave the highlight.
-                if (_child._selected < 0) _child.Move(1);
-            }
-
-            internal void Submit()
-            {
-                if (_selected < 0 || !_nodes[_selected].IsSelectable) return;
-                if (_nodes[_selected].IsCategory) Descend();
-                else _menu.Commit(_nodes[_selected].Item.Action);
-            }
-
-            void OpenChild(int index)
-            {
-                if (_open == index && _child != null) return;
-                CloseChild();
-                _open = index;
-                _child = new Level(_menu, this, _nodes[index].Children,
-                    Mathf.Min(MinWidth, _menu._panel.layout.width - 2 * Margin));
-                PlaceBeside(_rows[index]);
-                _menu._active = _child;
-            }
-
-            internal void CloseChild()
-            {
-                if (_child == null) return;
-                _child.CloseChild();
-                _child._scroll.RemoveFromHierarchy();
-                _child = null; _open = -1;
-                _menu._active = this;
-            }
         }
     }
 }

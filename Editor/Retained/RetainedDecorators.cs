@@ -1,6 +1,7 @@
 #if UNITY_2021_3_OR_NEWER
 using System;
 using System.Linq;
+using System.Reflection;
 using Thry.ThryEditor.DataStructs;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
@@ -16,6 +17,52 @@ namespace Thry.ThryEditor
         {
             foreach(var attribute in attributes)
             {
+                if (attribute.Name == "PoiApplySDFBaker")
+                {
+                    var bakerType = AppDomain.CurrentDomain.GetAssemblies()
+                        .Select(assembly => assembly.GetType("Poi.Raymarching.PoiApplySDFBakerDecorator")).FirstOrDefault(type => type != null);
+                    var bake = bakerType?.GetMethod("RunFullBake", BindingFlags.Static | BindingFlags.NonPublic, null,
+                        new[] { typeof(Renderer), typeof(Material[]), typeof(string) }, null);
+                    bool pending = false;
+                    Func<Renderer> renderer = () => Model.Renderers.FirstOrDefault(candidate => candidate != null) ?? Model.Shader.ActiveRenderer;
+                    Func<bool> hasMesh = () =>
+                    {
+                        var candidate = renderer();
+                        var skinned = candidate as SkinnedMeshRenderer;
+                        return skinned != null ? skinned.sharedMesh != null : candidate != null && candidate.GetComponent<MeshFilter>()?.sharedMesh != null;
+                    };
+                    var button = new Button(() =>
+                    {
+                        if (pending || bake == null || !hasMesh() || !Model.CanEdit(property)) return;
+                        var targetRenderer = renderer();
+                        var materials = Model.Shader.Materials.Where(material => material != null).ToArray();
+                        pending = true;
+                        // The existing baker opens modal panels and pumps the editor.
+                        // Start it after UI event dispatch, as the legacy decorator does.
+                        EditorApplication.delayCall += () =>
+                        {
+                            try
+                            {
+                                if (targetRenderer == null) return;
+                                string path = EditorUtility.SaveFilePanelInProject(RetainedText.Get(Model.Shader, "saveSdfTexture", "Save SDF Texture"),
+                                    targetRenderer.name + "_SDF", "asset", RetainedText.Get(Model.Shader, "saveSdfTexture", "Save SDF Texture"));
+                                if (!string.IsNullOrEmpty(path)) bake.Invoke(null, new object[] { targetRenderer, materials, path });
+                            }
+                            catch (TargetInvocationException exception) { Debug.LogException(exception.InnerException ?? exception); }
+                            finally { pending = false; Model.Notify(); }
+                        };
+                    }) { name = "bake-sdf-bind-data" };
+                    Track(button, () =>
+                    {
+                        bool ready = hasMesh();
+                        button.text = RetainedText.Get(Model.Shader, "bakeSdfBindData", "Bake SDF + Bind Data");
+                        button.tooltip = bake == null ? RetainedText.Get(Model.Shader, "sdfBakerUnavailable", "The SDF baker is unavailable.")
+                            : ready ? RetainedText.Get(Model.Shader, "sdfBakeDescription", "Bake the mesh volume and bind data, then assign the results to the selected materials.")
+                            : RetainedText.Get(Model.Shader, "sdfBakeSelectMesh", "Select a mesh object using this material to bake its volume and bind data.");
+                        button.SetEnabled(!pending && bake != null && ready && Model.CanEdit(property));
+                    });
+                    root.Add(button);
+                }
                 if (attribute.Name == "sRGBWarning")
                 {
                     bool shouldHaveSRGB = attribute.Args.Any(a => a.Equals("gamma", StringComparison.OrdinalIgnoreCase) || a.Equals("true", StringComparison.OrdinalIgnoreCase));
