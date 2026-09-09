@@ -27,6 +27,28 @@ namespace Thry.ThryEditor.Drawers
             return !string.IsNullOrEmpty(propertyName) && CANONICAL_UDIM_NAME.IsMatch(propertyName);
         }
 
+        // A tile's authored label is a UV coordinate, "u1v3". The buttons are laid out as a grid, so
+        // the row and column read better as plain numbers: "1, 3". Anything that is not a u/v pair of
+        // integers is a hand-written label and is returned untouched.
+        internal static string FormatTileLabel(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return raw;
+            if (!(raw[0] == 'u' || raw[0] == 'U')) return raw;
+
+            int vIndex = -1;
+            for (int i = 1; i < raw.Length; i++)
+            {
+                char c = raw[i];
+                if (c == 'v' || c == 'V') { vIndex = i; break; }
+            }
+            if (vIndex <= 1 || vIndex >= raw.Length - 1) return raw;
+
+            int u, v;
+            if (!int.TryParse(raw.Substring(1, vIndex - 1), out u)) return raw;
+            if (!int.TryParse(raw.Substring(vIndex + 1), out v)) return raw;
+            return u + ", " + v;
+        }
+
         internal static string CanonicalPropertyName(string propertyName)
         {
             if (string.IsNullOrEmpty(propertyName)) return propertyName;

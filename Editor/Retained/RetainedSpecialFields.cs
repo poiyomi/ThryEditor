@@ -120,8 +120,9 @@ namespace Thry.ThryEditor
                         for(int i=0;i<ids.Length;i++)
                         {
                             ShaderProperty target; if(!Model.Shader.PropertyDictionary.TryGetValue(ids[i],out target)) continue;
-                            if(tiles) { var button=new Button(()=>{Model.Number(target,target.MaterialProperty.GetNumber()==0?1:0); foreach(var id in ids) Model.Shader.PropertyDictionary[id].SetAnimated(target.IsAnimated,target.IsRenaming);}) {text=attribute.Args[i],name="tile-"+target.MaterialProperty.name}; button.style.flexGrow=1;
-                                string defaultLabel = attribute.Args[i];
+                            // The authored label is a UV coordinate; the grid reads it as row and column.
+                            if(tiles) { string defaultLabel = Drawers.TileLabelUtility.FormatTileLabel(attribute.Args[i]);
+                                var button=new Button(()=>{Model.Number(target,target.MaterialProperty.GetNumber()==0?1:0); foreach(var id in ids) Model.Shader.PropertyDictionary[id].SetAnimated(target.IsAnimated,target.IsRenaming);}) {text=defaultLabel,name="tile-"+target.MaterialProperty.name}; button.style.flexGrow=1;
                                 Track(button,()=>{button.EnableInClassList("thry-selected",target.MaterialProperty.GetNumber()!=0&&!target.MaterialProperty.hasMixedValue); button.EnableInClassList("thry-tile-mixed",target.MaterialProperty.hasMixedValue); button.text = Drawers.TileLabelUtility.GetTileLabel(Model.Shader.Materials[0], target.MaterialProperty.name) ?? defaultLabel;});
                                 if (Drawers.TileLabelUtility.IsUdimProperty(target.MaterialProperty.name))
                                 {
