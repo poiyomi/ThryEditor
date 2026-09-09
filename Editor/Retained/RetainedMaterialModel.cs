@@ -109,7 +109,8 @@ namespace Thry.ThryEditor
         {
             if (editor == null || !(editor.target is Material material) || material == null) return false;
             var targets = editor.targets;
-            return targets.Length > 0 && targets.All(t => t is Material m && m != null && m.shader != null);
+            return targets.Length > 0 && targets.All(t => t is Material m && m != null && m.shader != null)
+                && targets.Cast<Material>().Any(m => Helpers.ShaderHelper.IsShaderUsingThryEditor(m));
         }
 
         internal void Refresh(bool forceAnimatedState = false)

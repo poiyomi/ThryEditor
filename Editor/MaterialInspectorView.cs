@@ -453,16 +453,11 @@ namespace Thry.ThryEditor
         {
             // Leave typing responsive; the debounced refresh uses the latest query.
             if (_searchPending) return;
-            if (!RetainedMaterialModel.HasValidTargets(_editor)) return;
+            if (!RetainedMaterialModel.HasValidTargets(_editor)) { style.display = DisplayStyle.None; return; }
             bool collapsed = IsCollapsedBehindItsFoldout();
             style.display = collapsed ? DisplayStyle.None : DisplayStyle.Flex;
             if (collapsed) return;
             var current = _shaderOverride ?? _editor.customShaderGUI as ShaderEditor;
-            if (current != null && !_editor.targets.OfType<Material>().Any(m => Helpers.ShaderHelper.IsShaderUsingThryEditor(m)))
-            {
-                style.display = DisplayStyle.None;
-                return;
-            }
             if (current == null && _editor.customShaderGUI == null)
             {
                 typeof(MaterialEditor).GetMethod("CreateCustomShaderEditorIfNeeded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
