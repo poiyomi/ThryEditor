@@ -302,9 +302,12 @@ namespace Thry.ThryEditor
         {
             var paths = DragAndDrop.paths;
             if (!_convertArray || paths.Length == 0 || DragAndDrop.objectReferences.OfType<Texture2DArray>().Any()) return false;
-            return (paths.Length == 1 && paths[0].EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
-                || paths.All(p => AssetDatabase.LoadAssetAtPath<Texture2D>(p) != null);
+            return CanConvertFrames(paths);
         }
+
+        internal static bool CanConvertFrames(string[] paths) => paths != null && paths.Length > 0
+            && ((paths.Length == 1 && paths[0].EndsWith(".gif", StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(paths[0]))
+                || paths.All(p => AssetDatabase.LoadAssetAtPath<Texture2D>(p) != null));
 
         void InstallDropTarget(VisualElement target)
         {

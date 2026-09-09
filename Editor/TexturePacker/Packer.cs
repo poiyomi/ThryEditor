@@ -130,9 +130,13 @@ namespace Thry.ThryEditor.TexturePacker
             RenderTexture target = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
             target.enableRandomWrite = true;
             target.filterMode = config.FileOutput.FilterMode;
-            target.Create();
 
             RenderTexture filterInput = null;
+            RenderTexture ownedTarget = target;
+            RenderTexture ownedFilter = null;
+            RenderTexture previousActive = RenderTexture.active;
+            Texture2D atlas = null;
+            bool completed = false;
             ComputeBuffer connectionsBuffer = null;
             ComputeBuffer outputsBuffer = null;
 
@@ -142,6 +146,7 @@ namespace Thry.ThryEditor.TexturePacker
             // filterInput can also be leaked if left unpatched. Yikes!
             try
             {
+                target.Create();
                 PackShader.SetTexture(0, "Result", target);
                 PackShader.SetFloat("Width", width);
                 PackShader.SetFloat("Height", height);
@@ -184,7 +189,8 @@ namespace Thry.ThryEditor.TexturePacker
                     // Settings Vector4s instead of floats because the SetFloats function is broken
                     float[] kernelNone = KernelSettings.GetKernelPreset(KernelPreset.None, false);
                     PackShader.SetVectorArray("Kernel_X", config.KernelSettings.X.Select((f, i) => new Vector4(Mathf.Lerp(kernelNone[i], f, config.KernelSettings.Strength), 0, 0, 0)).ToArray());
-                    PackShader.SetVectorArray("Kernel_Y", config.KernelSettings.X.Select((f, i) => new Vector4(Mathf.Lerp(kernelNone[i], f, config.KernelSettings.Strength), 0, 0, 0)).ToArray());
+                    var kernelY = config.KernelSettings.SplitVerticalHorizontal ? config.KernelSettings.Y : config.KernelSettings.X;
+                    PackShader.SetVectorArray("Kernel_Y", kernelY.Select((f, i) => new Vector4(Mathf.Lerp(kernelNone[i], f, config.KernelSettings.Strength), 0, 0, 0)).ToArray());
                     PackShader.SetBool("Kernel_Grayscale", config.KernelSettings.GrayScale);
                     PackShader.SetBool("Kernel_TwoPass", config.KernelSettings.TwoPass);
                     PackShader.SetVector("Kernel_Channels", new Vector4(config.KernelSettings.Channels[0] ? 1 : 0, config.KernelSettings.Channels[1] ? 1 : 0, config.KernelSettings.Channels[2] ? 1 : 0, config.KernelSettings.Channels[3] ? 1 : 0));
@@ -193,6 +199,7 @@ namespace Thry.ThryEditor.TexturePacker
                     RenderTexture filterTarget = target;
 
                     filterInput = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
+                    ownedFilter = filterInput;
                     filterInput.enableRandomWrite = true;
                     filterInput.filterMode = config.FileOutput.FilterMode;
                     filterInput.Create();
@@ -211,23 +218,24 @@ namespace Thry.ThryEditor.TexturePacker
                     target = filterTarget;
                 }
 
-                Texture2D atlas = new Texture2D(width, height, TextureFormat.RGBA64, true, config.FileOutput.ColorSpace == ColorSpace.Linear);
+                atlas = new Texture2D(width, height, TextureFormat.RGBA64, true, config.FileOutput.ColorSpace == ColorSpace.Linear);
                 RenderTexture.active = target;
                 atlas.ReadPixels(new Rect(0, 0, width, height), 0, 0);
                 atlas.filterMode = config.FileOutput.FilterMode;
                 atlas.wrapMode = TextureWrapMode.Clamp;
                 atlas.alphaIsTransparency = config.FileOutput.AlphaIsTransparency;
                 atlas.Apply();
-                RenderTexture.active = null;
-
+                completed = true;
                 return atlas;
             }
             finally
             {
                 connectionsBuffer?.Release();
                 outputsBuffer?.Release();
-                if (target != null) target.Release();
-                if (filterInput != null && filterInput != target) filterInput.Release();
+                RenderTexture.active = previousActive;
+                if (!completed && atlas != null) UnityEngine.Object.DestroyImmediate(atlas);
+                if (ownedTarget != null) { ownedTarget.Release(); UnityEngine.Object.DestroyImmediate(ownedTarget); }
+                if (ownedFilter != null) { ownedFilter.Release(); UnityEngine.Object.DestroyImmediate(ownedFilter); }
             }
         }
 
@@ -256,9 +264,12 @@ namespace Thry.ThryEditor.TexturePacker
             PackShader.SetVector("Channels_Strength_B", lerpB);
             PackShader.SetVector("Channels_Strength_A", lerpA);
             PackShader.SetVector("Channels_Add", add);
-            PackShader.Dispatch(2, input.width / 8, input.height / 8, 1);
+            PackShader.Dispatch(2, (input.width + 7) / 8, (input.height + 7) / 8, 1);
 
             Texture2D tex = new Texture2D(renderTex.width, renderTex.height, TextureFormat.RGBA64, true, config.FileOutput.ColorSpace == ColorSpace.Linear);
+            var previousActive = RenderTexture.active;
+            try
+            {
             RenderTexture.active = renderTex;
             tex.ReadPixels(new Rect(0, 0, renderTex.width, renderTex.height), 0, 0);
             tex.filterMode = renderTex.filterMode;
@@ -267,6 +278,8 @@ namespace Thry.ThryEditor.TexturePacker
             tex.Apply();
 
             Save(tex, config, overwriteName: config.FileOutput.FileName + namePostfix);
+            }
+            finally { RenderTexture.active = previousActive; UnityEngine.Object.DestroyImmediate(tex); }
         }
 
         public static void ExportChannels(Texture2D input, TexturePackerConfig config, bool[] exportChannels, bool exportAsBlackAndWhite)
@@ -274,9 +287,10 @@ namespace Thry.ThryEditor.TexturePacker
             RenderTexture target = new RenderTexture(input.width, input.height, 24, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
             target.enableRandomWrite = true;
             target.filterMode = input.filterMode;
-            target.Create();
+            var previousActive = RenderTexture.active;
             try
             {
+                target.Create();
                 PackShader.SetTexture(2, "Unpacker_Input", input);
                 PackShader.SetTexture(2, "Result", target);
 
@@ -311,7 +325,8 @@ namespace Thry.ThryEditor.TexturePacker
             }
             finally
             {
-                target.Release();
+                RenderTexture.active = previousActive;
+                target.Release(); UnityEngine.Object.DestroyImmediate(target);
             }
         }
 

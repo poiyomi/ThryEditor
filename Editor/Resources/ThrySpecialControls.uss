@@ -52,3 +52,19 @@
 .thry-light .thry-multi-value-controls > .thry-tile-mixed { border-color: #777777; }
 .thry-light .thry-packer-actions > Button:hover, .thry-light .thry-packer-studio-action:hover { background-color: #eeeeee; border-color: #a0a0a0; }
 .thry-light .thry-packer-actions > Button:focus, .thry-light .thry-packer-studio-action:focus { border-color: #3b78a8; }
+
+/* Uniform vector scaling is an explicit linked/independent toggle, not a symbol cycle. */
+.thry-components > .thry-vector-link { width: 24px; min-width: 24px; max-width: 24px; height: 22px; min-height: 22px; flex-grow: 0; flex-shrink: 0; margin: 0 0 0 4px; padding: 0; flex-direction: row; align-items: center; justify-content: center; background-color: transparent; border-width: 1px; border-color: transparent; border-radius: 3px; }
+.thry-vector-link > .unity-toggle__input { position: absolute; left: 0; right: 0; top: 0; bottom: 0; margin: 0; padding: 0; background-color: transparent; }
+.thry-vector-link .unity-toggle__checkmark { display: none; }
+.thry-vector-link > .thry-vector-link-icon { width: 16px; height: 16px; flex-shrink: 0; --unity-image-tint-color: #bcbcbc; }
+.thry-light .thry-vector-link > .thry-vector-link-icon { --unity-image-tint-color: #555555; }
+.thry-components > .thry-vector-link:hover { background-color: #454545; border-color: #626262; }
+.thry-components > .thry-vector-link:focus { border-color: var(--thry-focus-color); }
+.thry-components > .thry-vector-linked { background-color: #3c515f; border-color: #648ca7; }
+.thry-components > .thry-vector-linked:hover { background-color: #455f70; border-color: #7aadd6; }
+.thry-vector-components-linked > .thry-component > .unity-base-field__label { color: #a8d3e9; }
+.thry-light .thry-components > .thry-vector-link:hover { background-color: #dddddd; border-color: #999999; }
+.thry-light .thry-components > .thry-vector-linked { background-color: #bfd1df; border-color: #648ca7; }
+.thry-light .thry-components > .thry-vector-linked:hover { background-color: #cfe0ec; border-color: #3b78a8; }
+.thry-light .thry-vector-components-linked > .thry-component > .unity-base-field__label { color: #285e7d; }

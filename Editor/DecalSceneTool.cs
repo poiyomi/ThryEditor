@@ -1,6 +1,7 @@
 ﻿using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
+using System.Linq;
 
 namespace Thry.ThryEditor
 {
@@ -45,7 +46,12 @@ namespace Thry.ThryEditor
             tool._propScale = propScale;
             tool._propOffset = propOffset;
             tool._renderer = renderer;
-            tool.Init();
+            try { tool.Init(); }
+            finally
+            {
+                if (renderer is SkinnedMeshRenderer && tool._mesh != null) Object.DestroyImmediate(tool._mesh);
+                tool._mesh = null;
+            }
             return tool;
         }
 
@@ -78,7 +84,9 @@ namespace Thry.ThryEditor
             Selection.selectionChanged += OnSelectionChange;
             _isActive = true;
 
+            Undo.IncrementCurrentGroup();
             _initalUndoGroup = Undo.GetCurrentGroup();
+            Undo.RegisterCompleteObjectUndo(_propPosition.targets, "Position decal");
         }
 
         public void Deactivate(bool discardChanges) 
@@ -92,18 +100,15 @@ namespace Thry.ThryEditor
             if(discardChanges)
             {
                 Undo.RevertAllDownToGroup(_initalUndoGroup);
-            }else if(_mode == Mode.Raycast)
+            }
+            else
             {
-                Undo.SetCurrentGroupName("Apply Decal Raycast Tool");
+                Undo.SetCurrentGroupName(_mode == Mode.Raycast ? "Apply Decal Raycast Tool" : "Apply Decal Scene Tool");
                 Undo.CollapseUndoOperations(_initalUndoGroup);
             }
-            if(Undo.GetCurrentGroup() != _initalUndoGroup + 1)
-            {
-                Undo.SetCurrentGroupName("Apply Decal Scene Tool");
-                Undo.CollapseUndoOperations(_initalUndoGroup);
-            }
-
+            Undo.IncrementCurrentGroup();
             _mode = Mode.None;
+            SceneView.RepaintAll();
         }
 
         public Mode GetMode()
@@ -120,6 +125,8 @@ namespace Thry.ThryEditor
         {
             GetMesh();
 
+            if (_mesh == null) throw new System.InvalidOperationException("The renderer has no mesh for decal positioning.");
+
             int meshTriangleLength = _mesh.triangles.Length;
             _uvTriangles = new Vector2[meshTriangleLength / 3][];
             _worldTriangles = new Vector3[meshTriangleLength / 3][];
@@ -131,11 +138,13 @@ namespace Thry.ThryEditor
             else if(_uvIndex == 3) uvs = _mesh.uv4;
             else uvs = _mesh.uv;
             Vector3[] vertices = _mesh.vertices;
+            if (uvs.Length != vertices.Length) throw new System.InvalidOperationException("The mesh does not contain the selected UV channel.");
             Transform root = _renderer.transform;
             Vector3 inverseScale = new Vector3(1.0f / root.lossyScale.x, 1.0f / root.lossyScale.y, 1.0f / root.lossyScale.z);
             bool isSMR = _renderer is SkinnedMeshRenderer;
 
             Vector3[] meshNormals = _mesh.normals; // Repeatedly accessing _mesh.normals in a loop is veeeery slow
+            if (meshNormals.Length != vertices.Length) meshNormals = Enumerable.Repeat(Vector3.up, vertices.Length).ToArray();
             
             for(int i = 0; i < triangles.Length; i += 3)
             {
@@ -153,7 +162,7 @@ namespace Thry.ThryEditor
                     else
                     {
                         _worldTriangles[i / 3][j] = root.TransformPoint(vertices[triangles[i + j]]);
-                        _worldNormals[i / 3][j] = meshNormals[triangles[i + j]];
+                        _worldNormals[i / 3][j] = root.TransformDirection(meshNormals[triangles[i + j]]);
                     }
                 }
             }

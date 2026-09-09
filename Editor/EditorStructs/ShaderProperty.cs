@@ -555,12 +555,12 @@ namespace Thry.ThryEditor
             var affectedMaterials = MaterialProperty.targets.OfType<Material>()
                 .Where(m => MyShaderUI.Materials.Contains(m) && m.HasProperty(MaterialProperty.name)).Distinct().ToArray();
             if (Keyword != null)
-                foreach (var material in affectedMaterials) SetKeywordState(material, material.GetFloat(MaterialProperty.name) == 1);
+                foreach (var material in affectedMaterials) SetKeywordState(material, Math.Abs(material.GetNumber(MaterialProperty)) > .001f);
             foreach(var attribute in MyShader.GetPropertyAttributes(ShaderPropertyIndex))
             {
                 if(!attribute.StartsWith("TextureKeyword",StringComparison.Ordinal))continue;
                 int start=attribute.IndexOf('(');
-                string keyword=start<0?"PROP_"+MaterialProperty.name.TrimStart('_').ToUpperInvariant():attribute.Substring(start+1).TrimEnd(')');
+                string keyword=start<0?"PROP_"+MaterialProperty.name.TrimStart('_').ToUpperInvariant():attribute.Substring(start+1).TrimEnd(')').Trim().Trim('"');
                 foreach(var material in affectedMaterials)
                     if(material.GetTexture(MaterialProperty.name)!=null)material.EnableKeyword(keyword);else material.DisableKeyword(keyword);
             }

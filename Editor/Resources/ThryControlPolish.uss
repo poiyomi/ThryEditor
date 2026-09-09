@@ -1,10 +1,34 @@
 /* Compact property feedback; hierarchy arrows remain quiet icon controls. */
+.thry-positioning-panel { margin: 3px 0 7px; border-width: 1px; border-color: #515151; border-radius: 5px; background-color: #333333; overflow: hidden; }
+.thry-positioning-panel > .thry-section-header { border-radius: 0; background-color: #444444; }
+.thry-positioning-panel > .thry-section-content { padding: 5px; }
+.thry-positioning-tools { margin: 0 0 5px; padding-bottom: 4px; border-bottom-width: 1px; border-bottom-color: #494949; }
+.thry-positioning-actions { flex-direction: row; }
+.thry-positioning-actions > .thry-positioning-button { flex-grow: 1; flex-basis: 0; min-width: 0; height: 25px; margin: 0; padding: 0 5px; flex-direction: row; align-items: center; justify-content: center; background-color: #444444; border-width: 1px; border-color: #5a5a5a; border-radius: 4px; color: #c4c4c4; }
+.thry-positioning-actions > .thry-positioning-secondary { margin-left: 3px; }
+.thry-positioning-button > Label { margin: 0; font-size: 12px; color: #c4c4c4; }
+.thry-positioning-icon { width: 16px; height: 16px; min-width: 16px; margin-right: 6px; color: #a6e22e; }
+.thry-positioning-actions > .thry-positioning-button:hover { background-color: #515151; border-color: #747474; }
+.thry-positioning-actions > .thry-positioning-button:focus { border-color: #7aadd6; }
+.thry-positioning-actions > .thry-positioning-active { background-color: #435563; border-color: #7aadd6; }
+.thry-positioning-status { margin: 4px 1px 0; white-space: normal; font-size: 11px; color: #aaaaaa; }
+.thry-light .thry-positioning-panel { background-color: #c9c9c9; border-color: #a3a3a3; }
+.thry-light .thry-positioning-panel > .thry-section-header { background-color: #b9b9b9; }
+.thry-light .thry-positioning-tools { border-bottom-color: #acacac; }
+.thry-light .thry-positioning-actions > .thry-positioning-button { background-color: #dedede; border-color: #a3a3a3; color: #333333; }
+.thry-light .thry-positioning-button > Label { color: #333333; }
+.thry-light .thry-positioning-icon { color: #638f14; }
+.thry-light .thry-positioning-status { color: #555555; }
+.thry-light .thry-positioning-actions > .thry-positioning-button:hover { background-color: #eeeeee; }
+.thry-light .thry-positioning-actions > .thry-positioning-active { background-color: #bfd1df; border-color: #3b78a8; }
 .thry-tools > .thry-collapse-tool { align-items: center; justify-content: center; color: #a6e22e; }
 .thry-tools > .thry-language-tool { align-items: center; justify-content: center; color: #fd971f; }
 .thry-light .thry-tools > .thry-collapse-tool { color: #638f14; }
 .thry-light .thry-tools > .thry-language-tool { color: #b86509; }
-.thry-material-controls .thry-property-row:hover { background-color: rgba(255, 255, 255, 0.025); border-radius: 3px; }
-.thry-light .thry-material-controls .thry-property-row:hover { background-color: rgba(0, 0, 0, 0.025); }
+.thry-inspector .thry-property-row.thry-row-alt { background-color: rgba(255, 255, 255, 0.025); border-radius: 3px; }
+.thry-light .thry-property-row.thry-row-alt { background-color: rgba(0, 0, 0, 0.025); }
+.thry-inspector .thry-property-row:hover { background-color: rgba(255, 255, 255, 0.045); border-radius: 3px; }
+.thry-light .thry-property-row:hover { background-color: rgba(0, 0, 0, 0.045); }
 .thry-material-controls .unity-base-text-field__input:focus,
 .thry-material-controls .unity-base-popup-field__input:focus,
 .thry-window .unity-base-text-field__input:focus,

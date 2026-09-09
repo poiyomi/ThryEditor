@@ -92,6 +92,8 @@ namespace Thry.ThryEditor
             var group = part as ShaderGroup;
             if (group == null) { var p = part as ShaderProperty; if(p != null) parent.Add(_fields.Field(p)); return; }
             var root = new VisualElement { name = "section-" + group.PropertyIdentifier, userData = group }; root.AddToClassList("thry-section");
+            bool positioning = group.Children.OfType<ShaderProperty>().Any(RetainedFields.HasDecalPositioning);
+            root.EnableInClassList("thry-positioning-panel", positioning);
             root.EnableInClassList("thry-root-section", depth == 0);
             var header = new VisualElement(); header.AddToClassList("thry-section-header"); root.Add(header);
             var changedProperties = SectionProperties(group);
@@ -117,15 +119,13 @@ namespace Thry.ThryEditor
             }
             var titleArea = new VisualElement { tooltip = group.TooltipText }; titleArea.AddToClassList("thry-section-title-area"); header.Add(titleArea);
             var title = new Label(SectionCaption(group)); title.AddToClassList("thry-section-title"); titleArea.Add(title);
-            var changedDot = new VisualElement { name = "changed-section-indicator", pickingMode = PickingMode.Ignore };
+            var changedDot = new VisualElement { name = "changed-section-indicator" };
             changedDot.AddToClassList("thry-section-changed-dot"); titleArea.Add(changedDot);
-            title.RegisterCallback<TooltipEvent>(e =>
+            changedDot.RegisterCallback<TooltipEvent>(e =>
             {
-                var paths = changedProperties.Where(entry => HasChangedValue(entry.Key) || HasChangedTextureTransform(entry.Key))
-                    .Select(entry => entry.Value + (HasChangedTextureTransform(entry.Key) ? " / Tiling & Offset" : "")).ToArray();
-                e.tooltip = group.TooltipText;
-                if (paths.Length > 0) e.tooltip = (string.IsNullOrEmpty(e.tooltip) ? "" : e.tooltip + "\n\n") + "Changed properties:\n" + string.Join("\n", paths);
-                e.rect = title.worldBound; e.StopPropagation();
+                // Section dots are visual summaries; value details belong to property dots.
+                e.tooltip = string.Empty;
+                e.StopImmediatePropagation();
             });
             var animated = new VisualElement { name = "animated-descendant", pickingMode = PickingMode.Ignore };
             animated.AddToClassList("thry-header-animation-dot"); titleArea.Add(animated);
@@ -188,7 +188,13 @@ namespace Thry.ThryEditor
                     children.Add(presetName);
                     presetName.RegisterValueChangedCallback(e => Model.Mutate("Section preset name", m => Presets.SetSectionPreset(m, group.MaterialProperty.name, e.newValue)));
                 }
-                foreach (var child in group.Children) AddPart(children,child,depth+1);
+                foreach (var child in group.Children)
+                {
+                    // The positioning toolbar provides contextual guidance in place of the legacy banner.
+                    if (positioning && child is ShaderProperty help && help.Content.text.Contains("Raycast")
+                        && help.MyShader.GetPropertyAttributes(help.ShaderPropertyIndex).Any(a => new DrawerAttribute(a).Name == "Helpbox")) continue;
+                    AddPart(children,child,depth+1);
+                }
             };
             Action expand = () => { Model.SetExpanded(group, !group.RetainedExpanded); update(); };
             fold.clicked += expand;

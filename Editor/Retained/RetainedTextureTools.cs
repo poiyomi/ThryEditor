@@ -11,9 +11,10 @@ namespace Thry.ThryEditor
 {
     internal sealed partial class RetainedFields
     {
-        void OpenGradientCreator(ShaderTextureProperty property, DrawerAttribute attribute)
+        void OpenGradientCreator(ShaderTextureProperty property, DrawerAttribute attribute, VisualElement owner)
         {
-            if (!Model.CanEdit(property)) return;
+            Func<bool> canApply = () => owner.panel != null && Model.Editor != null && Model.Editor.target != null && Model.CanEdit(property);
+            if (!canApply()) return;
             var settings = JsonUtility.FromJson<TextureData>(JsonUtility.ToJson(property.Options.texture ?? new TextureData()));
             string settingsKey = "gradient_texture_options_" + property.MaterialProperty.name;
             int direction;
@@ -28,7 +29,7 @@ namespace Thry.ThryEditor
             GradientEditor2.OpenTexture(TextureHelper.GetGradient(property.MaterialProperty.textureValue, false), settings,
                 property.Options.force_texture_options, (gradient, output, outputDirection) =>
                 {
-                    if (!Model.CanEdit(property)) return;
+                    if (!canApply()) return;
                     var texture = GradientEditor2.CreateTexture(gradient, output.width, output.height, outputDirection);
                     try
                     {
@@ -48,13 +49,18 @@ namespace Thry.ThryEditor
                         Model.Edit(property, p => p.textureValue = asset);
                     }
                     finally { if (texture != null) UnityEngine.Object.DestroyImmediate(texture); }
-                }, () => Model.CanEdit(property), direction);
+                }, canApply, direction);
         }
 
         partial void TextureTools(VisualElement parent, RetainedTextureCard card, ShaderTextureProperty property, DrawerAttribute[] attributes)
         {
             foreach(var attribute in attributes)
             {
+                if (attribute.Name == "ThryExternalTextureTool")
+                {
+                    var tool = new RetainedExternalTextureTool(Model, property, attribute);
+                    parent.Add(tool); Track(tool, tool.Synchronize);
+                }
                 if(attribute.Name=="ThryRGBAPacker")
                 {
                     var args=attribute.Args;
@@ -67,20 +73,45 @@ namespace Thry.ThryEditor
                 if(attribute.Name=="Curve")
                 {
                     string key=AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(Model.Shader.Materials[0]))+"_"+property.MaterialProperty.name;
-                    string json=Model.Shader.Materials[0].GetTag(property.MaterialProperty.name+"_curve",false,"");
                     VisualElement curveInput;
                     parent.Add(Row("Curve", out curveInput));
-                    var field=new CurveField { name = "curve-editor" }; field.SetValueWithoutNotify(string.IsNullOrEmpty(json)?AnimationCurve.Linear(0,0,1,1):JsonUtility.FromJson<CurveData>(json).curve); curveInput.Add(field);
-                    var apply = new Button { text = "Apply curve" }; apply.SetEnabled(false); parent.Add(apply);
-                    field.RegisterValueChangedCallback(e => apply.SetEnabled(true));
+                    var field=new CurveField { name = "curve-editor" }; curveInput.Add(field);
+                    var apply = new Button { text = "Apply curve", name = "apply-curve" }; apply.SetEnabled(false); parent.Add(apply);
+                    bool draft = false; string signature = null;
+                    Track(field, () =>
+                    {
+                        var values = property.MaterialProperty.targets.OfType<Material>().Where(m => Model.Shader.Materials.Contains(m) && m.HasProperty(property.MaterialProperty.name))
+                            .Select(m => m.GetTag(property.MaterialProperty.name + "_curve", false, "")).ToArray();
+                        string current = string.Join("|", values);
+                        if (signature != current)
+                        {
+                            signature = current; draft = false;
+                            AnimationCurve curve = null;
+                            try { if (values.Length > 0 && !string.IsNullOrEmpty(values[0])) curve = JsonUtility.FromJson<CurveData>(values[0])?.curve; }
+                            catch (ArgumentException) { }
+                            field.SetValueWithoutNotify(curve ?? AnimationCurve.Linear(0, 0, 1, 1));
+                        }
+                        field.showMixedValue = !draft && values.Distinct().Skip(1).Any();
+                        apply.SetEnabled(draft && Model.CanEdit(property));
+                    });
+                    field.RegisterValueChangedCallback(e => { draft = true; field.showMixedValue = false; apply.SetEnabled(Model.CanEdit(property)); });
                     apply.clicked += () => {
-                        var texture=Converter.CurveToTexture(field.value,property.Options.texture??new TextureData());
+                        if (!draft || parent.panel == null || !Model.CanEdit(property)) return;
+                        var settings = JsonUtility.FromJson<TextureData>(JsonUtility.ToJson(property.Options.texture ?? new TextureData()));
+                        var texture=Converter.CurveToTexture(field.value,settings);
                         try
                         {
-                        var asset=TextureHelper.SaveTextureAsPNG(texture,PATH.TEXTURES_DIR+"/curves/"+key+"_"+Guid.NewGuid().ToString("N")+".png",null);
-                        Model.Edit(property,p=>p.textureValue=asset);
-                        Model.Mutate("Save curve",m=>m.SetOverrideTag(property.MaterialProperty.name+"_curve",JsonUtility.ToJson(new CurveData {curve=field.value})));
-                        apply.SetEnabled(false);
+                            var asset=TextureHelper.SaveTextureAsPNG(texture,PATH.TEXTURES_DIR+"/curves/"+key+"_"+Guid.NewGuid().ToString("N")+".png",settings);
+                            string json = JsonUtility.ToJson(new CurveData { curve = field.value });
+                            var targets = property.MaterialProperty.targets.OfType<Material>().Where(m => Model.Shader.Materials.Contains(m) && m.HasProperty(property.MaterialProperty.name)).ToArray();
+                            Model.Edit(property, p =>
+                            {
+                                var material = p.targets.OfType<Material>().FirstOrDefault();
+                                if (material == null || !targets.Contains(material)) return;
+                                Undo.RegisterCompleteObjectUndo(material, "Apply texture curve");
+                                p.textureValue = asset; material.SetOverrideTag(property.MaterialProperty.name + "_curve", json);
+                            }, true);
+                            draft = false; apply.SetEnabled(false);
                         }
                         finally { if (texture != null) UnityEngine.Object.DestroyImmediate(texture); }
                     };
@@ -99,23 +130,13 @@ namespace Thry.ThryEditor.Drawers
         {
             _prop=property.MaterialProperty;
             _current=new ThryRGBAPackerData(); fields.Model.Shader.ActivateRetained(); Init(); LoadLabels();
+            InitializeRetainedPacker(fields.Model, property);
             var root=new VisualElement { name = "texture-channel-inputs" }; root.AddToClassList("thry-packer"); RetainedFields.StyleSpecialControls(root);
             var heading = new VisualElement(); heading.AddToClassList("thry-packer-heading"); root.Add(heading);
             var headingLabel = new Label("Channel inputs"); headingLabel.AddToClassList("thry-packer-heading-label"); heading.Add(headingLabel);
             var channels=new[]{_current._input_r,_current._input_g,_current._input_b,_current._input_a};
-            Undo.UndoRedoCallback refreshAfterUndo = () =>
-            {
-                fields.Model.Shader.ActivateRetained(); _prop = property.MaterialProperty;
-                for (int i = 0; i < channels.Length; i++)
-                {
-                    var restored = LoadForChannel(fields.Model.Shader.Materials[0], _prop.name, "rgba"[i].ToString());
-                    channels[i].Source = restored.Source; channels[i].Channel = restored.Channel;
-                    channels[i].Invert = restored.Invert; channels[i].Fallback = restored.Fallback; channels[i].Remapping = restored.Remapping;
-                }
-                _current._isInit = true;
-                _current._packedTexture = _prop.textureValue as Texture2D;
-                _current._hasTextureChanged = false; _current._hasConfigChanged = false;
-            };
+            Undo.UndoRedoCallback refreshAfterUndo = RefreshRetainedPacker;
+            fields.Track(root, RefreshRetainedPackerIfChanged);
 #if UNITY_2022_1_OR_NEWER
             // Init also serves the immediate inspector. Retained subscriptions
             // follow panel attachment so temporary removal can safely reattach.
@@ -125,18 +146,12 @@ namespace Thry.ThryEditor.Drawers
             {
                 Undo.undoRedoPerformed -= refreshAfterUndo;
                 Undo.undoRedoPerformed += refreshAfterUndo;
-#if UNITY_2022_1_OR_NEWER
-                Undo.undoRedoEvent -= OnUndoRedo;
-                Undo.undoRedoEvent += OnUndoRedo;
-#endif
                 refreshAfterUndo();
             });
             var labels=new[]{_label1,_label2,_label3,_label4};
-            Action changed=()=>{fields.Model.Shader.ActivateRetained();_prop=property.MaterialProperty;
-                Undo.RecordObjects(fields.Model.Editor.targets,"Edit texture channels");_current._hasConfigChanged=true;Save();
-                fields.Model.Edit(property,p=>{_prop=p;Pack();});};
             for(int i=0;i<4;i++)
             {
+                int channelIndex = i;
                 if(labels[i]==null)continue;var input=channels[i];VisualElement value;
                 var sourceRow=RetainedFields.Row("",out value);sourceRow.AddToClassList("thry-packer-source-row");root.Add(sourceRow);
                 var detail=new Foldout {text=labels[i]+" channel options",value=false,name="packer-options-"+i};detail.AddToClassList("thry-packer-channel-options");root.Add(detail);
@@ -161,9 +176,9 @@ namespace Thry.ThryEditor.Drawers
                 detail.RegisterValueChangedCallback(e=>{if(e.target==detail)caret.image=Resources.Load<Texture2D>("ThryToolbar/header-caret-"+(e.newValue?"down":"right"));});
                 var texture=new ObjectField {objectType=typeof(Texture2D),allowSceneObjects=false,name="packer-source-"+i};value.Add(texture);
                 value.AddToClassList("thry-packer-source-value");
-                fields.Track(texture,()=>texture.SetValueWithoutNotify(input.Source.Texture));
-                texture.RegisterValueChangedCallback(e=>{input.Source.SetInputTexture(e.newValue as Texture2D);changed();});
-                fields.TextureAssetDisplay(texture, () => input.Source.Texture, () => false,
+                fields.Track(texture,()=>{ texture.SetValueWithoutNotify(input.Source.Texture); texture.showMixedValue = RetainedChannelMixed(channelIndex, c => c.Source.Texture); });
+                texture.RegisterValueChangedCallback(e=>ChangeRetainedChannel(channelIndex, c => c.Source.SetInputTexture(e.newValue as Texture2D)));
+                fields.TextureAssetDisplay(texture, () => input.Source.Texture, () => RetainedChannelMixed(channelIndex, c => c.Source.Texture),
                     () => fields.Model.CanEdit(property), () => texture.value = null);
                 texture.RegisterCallback<GeometryChangedEvent>(e => texture.EnableInClassList("thry-packer-source-compact", e.newRect.width < 210));
                 VisualElement invertInput, remapInput;
@@ -173,40 +188,50 @@ namespace Thry.ThryEditor.Drawers
                 channel.SetEnabled(!rgbSource);
                 fields.Track(channel,()=> {
                     channel.SetValueWithoutNotify(rgbSource ? "RGB" : input.Channel.ToString());
+                    channel.showMixedValue = !rgbSource && RetainedChannelMixed(channelIndex, c => c.Channel);
                     channel.style.display = input.Source.Texture != null ? DisplayStyle.Flex : DisplayStyle.None;
                 });
-                channel.RegisterValueChangedCallback(e=>{input.Channel=(TexturePacker.TextureChannelIn)Enum.Parse(typeof(TexturePacker.TextureChannelIn),e.newValue);changed();});
+                channel.RegisterValueChangedCallback(e=>{ if (!rgbSource) ChangeRetainedChannel(channelIndex, c => c.Channel=(TexturePacker.TextureChannelIn)Enum.Parse(typeof(TexturePacker.TextureChannelIn),e.newValue)); });
                 var fallback = new FloatField { name = "packer-source-fallback-" + i, isDelayed = true,
                     tooltip = "Fallback value (0–1) used for the " + outputChannel + " output when no texture is assigned" };
                 fallback.AddToClassList("thry-packer-source-fallback"); value.Add(fallback);
                 fields.Track(fallback, () => {
                     fallback.SetValueWithoutNotify(input.Fallback);
+                    fallback.showMixedValue = RetainedChannelMixed(channelIndex, c => c.Fallback);
                     fallback.style.display = input.Source.Texture == null ? DisplayStyle.Flex : DisplayStyle.None;
                 });
                 fallback.RegisterValueChangedCallback(e => {
                     float next = float.IsNaN(e.newValue) ? 0 : Mathf.Clamp01(e.newValue);
                     fallback.SetValueWithoutNotify(next);
-                    if (!fields.Model.CanEdit(property) || input.Fallback == next) return;
-                    input.Fallback = next; changed();
+                    if (!fields.Model.CanEdit(property) || (input.Fallback == next && !RetainedChannelMixed(channelIndex, c => c.Fallback))) return;
+                    ChangeRetainedChannel(channelIndex, c => c.Fallback = next);
                 });
                 detail.Add(RetainedFields.Row("Invert",out invertInput));
-                var invert=new Toggle();invertInput.Add(invert);fields.Track(invert,()=>invert.SetValueWithoutNotify(input.Invert));invert.RegisterValueChangedCallback(e=>{input.Invert=e.newValue;changed();});
+                var invert=new Toggle();invertInput.Add(invert);fields.Track(invert,()=>{invert.SetValueWithoutNotify(input.Invert);invert.showMixedValue=RetainedChannelMixed(channelIndex,c=>c.Invert);});invert.RegisterValueChangedCallback(e=>ChangeRetainedChannel(channelIndex,c=>c.Invert=e.newValue));
                 detail.Add(RetainedFields.Row("Remap",out remapInput));
-                var remap=new Vector4Field { tooltip="X / Y: input minimum and maximum. Z / W: output minimum and maximum." };remapInput.Add(remap);fields.Track(remap,()=>remap.SetValueWithoutNotify(input.Remapping));remap.RegisterValueChangedCallback(e=>{input.Remapping=e.newValue;changed();});
+                var remap=new Vector4Field { tooltip="X / Y: input minimum and maximum. Z / W: output minimum and maximum." };remapInput.Add(remap);fields.Track(remap,()=>{remap.SetValueWithoutNotify(input.Remapping);remap.showMixedValue=RetainedChannelMixed(channelIndex,c=>c.Remapping);});remap.RegisterValueChangedCallback(e=>ChangeRetainedChannel(channelIndex,c=>c.Remapping=e.newValue));
             }
             var actions=new VisualElement();actions.AddToClassList("thry-components");actions.AddToClassList("thry-packer-actions");root.Add(actions);
-            string[] names={"Merge","Revert","Clear"};Action[] callbacks={Confirm,Revert,Clear};
-            for(int i=0;i<names.Length;i++){int index=i;var button=new Button(()=>{fields.Model.Shader.ActivateRetained();fields.Model.Edit(property,p=>{_prop=p;callbacks[index]();});}) {text=names[i]};button.style.flexGrow=1;actions.Add(button);}
+            string[] names={"Merge","Revert","Clear"};Action[] callbacks={MergeRetainedPacker,RevertRetainedPacker,ClearRetainedPacker};
+            for(int i=0;i<names.Length;i++)
+            {
+                int index=i;var button=new Button(()=>callbacks[index]()) {text=names[i],name="packer-"+names[i].ToLowerInvariant()};button.style.flexGrow=1;actions.Add(button);
+                fields.Track(button,()=>button.SetEnabled(fields.Model.CanEdit(property) && (index == 0 ? _current._hasConfigChanged : index == 1 ? _current._hasTextureChanged
+                    : RetainedTargets().Any(m=>m.GetTexture(property.MaterialProperty.name)!=null)||channels.Any(c=>c.Source.Texture!=null))));
+            }
             var advanced = new Button(() =>
             {
                 fields.Model.Shader.ActivateRetained();
-                var studio = TexturePacker.NodeGUI.Open(GetConfig());
+                if (!fields.Model.CanEdit(property)) return;
+                var studio = TexturePacker.NodeGUI.Open(RetainedStudioConfig());
                 // Preview stays in the studio; only a saved asset is assigned to the material.
-                studio.OnSave += texture => fields.Model.Edit(property, p =>
+                studio.OnSave += texture =>
                 {
-                    _prop = p;
-                    FullTexturePackerOnSave(texture);
-                });
+                    if (root.panel == null || !fields.Model.CanEdit(property)) return;
+                    fields.Model.Edit(property, p => p.textureValue = texture);
+                    foreach (var material in RetainedTargets()) _retainedSavedInputs[material] = RetainedInputSignature(material);
+                    RefreshRetainedPacker();
+                };
             }) { text = "Texture Studio", name = "open-texture-studio", tooltip = "Open the texture studio for advanced channel packing." };
             advanced.AddToClassList("thry-packer-studio-action");
             heading.Add(advanced);

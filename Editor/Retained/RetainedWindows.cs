@@ -68,10 +68,27 @@ namespace Thry.ThryEditor
             Action show=()=>{
                 field.Focus();
                 RetainedMenu.Open(field.worldBound, field, field.choices.Select((choice, index) => new RetainedMenu.Item
-                { Text = choice, Checked = field.index == index, Action = () => { field.showMixedValue = false; field.value = choice; } }));
+                { Text = choice, Checked = field.index == index, Action = () => SelectDropdownChoice(field, choice) }));
             };
             field.RegisterCallback<PointerDownEvent>(e=>{if(e.button!=0)return;e.PreventDefault();e.StopImmediatePropagation();show();},TrickleDown.TrickleDown);
             field.RegisterCallback<NavigationSubmitEvent>(e=>{e.PreventDefault();e.StopImmediatePropagation();show();},TrickleDown.TrickleDown);
+        }
+
+        internal static void SelectDropdownChoice(DropdownField field, string value)
+        {
+            if (!field.choices.Contains(value)) return;
+            bool applyMixed = field.showMixedValue;
+            string previous = field.value;
+            field.showMixedValue = false;
+            // Selecting the first material's existing option still resolves a mixed
+            // selection. BaseField suppresses ordinary equal-value assignments.
+            if (applyMixed)
+            {
+                field.SetValueWithoutNotify(value);
+                using (var change = ChangeEvent<string>.GetPooled(previous, value))
+                { change.target = field; field.SendEvent(change); }
+            }
+            else field.value = value;
         }
     }
 

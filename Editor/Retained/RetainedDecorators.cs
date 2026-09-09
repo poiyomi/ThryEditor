@@ -29,13 +29,15 @@ namespace Thry.ThryEditor
                     {
                         var candidate = renderer();
                         var skinned = candidate as SkinnedMeshRenderer;
-                        return skinned != null ? skinned.sharedMesh != null : candidate != null && candidate.GetComponent<MeshFilter>()?.sharedMesh != null;
+                        if (skinned != null) return skinned.sharedMesh != null;
+                        var filter = candidate != null ? candidate.GetComponent<MeshFilter>() : null;
+                        return filter != null && filter.sharedMesh != null;
                     };
                     var button = new Button(() =>
                     {
-                        if (pending || bake == null || !hasMesh() || !Model.CanEdit(property)) return;
+                        if (pending || bake == null || !RetainedMaterialModel.HasValidTargets(Model.Editor) || !hasMesh() || !Model.CanEdit(property)) return;
                         var targetRenderer = renderer();
-                        var materials = Model.Shader.Materials.Where(material => material != null).ToArray();
+                        var materials = PresentationTargets(property);
                         pending = true;
                         // The existing baker opens modal panels and pumps the editor.
                         // Start it after UI event dispatch, as the legacy decorator does.
@@ -43,7 +45,8 @@ namespace Thry.ThryEditor
                         {
                             try
                             {
-                                if (targetRenderer == null) return;
+                                if (targetRenderer == null || root.panel == null || !RetainedMaterialModel.HasValidTargets(Model.Editor)
+                                    || !Model.CanEdit(property) || materials.Any(material => material == null || !PresentationTargets(property).Contains(material))) return;
                                 string path = EditorUtility.SaveFilePanelInProject(RetainedText.Get(Model.Shader, "saveSdfTexture", "Save SDF Texture"),
                                     targetRenderer.name + "_SDF", "asset", RetainedText.Get(Model.Shader, "saveSdfTexture", "Save SDF Texture"));
                                 if (!string.IsNullOrEmpty(path)) bake.Invoke(null, new object[] { targetRenderer, materials, path });
@@ -69,13 +72,14 @@ namespace Thry.ThryEditor
                     var warning = new VisualElement { name = "colorspace-warning-" + property.MaterialProperty.name };
                     string message = EditorLocale.editor.Get(shouldHaveSRGB ? "colorSpaceWarningSRGB" : "colorSpaceWarningLinear");
                     warning.Add(new HelpBox(message, HelpBoxMessageType.Warning));
-                    Func<TextureImporter[]> mismatches = () => Model.Shader.Materials
+                    Func<TextureImporter[]> mismatches = () => PresentationTargets(property)
                         .Where(m => m.HasProperty(property.MaterialProperty.name))
                         .Select(m => m.GetTexture(property.MaterialProperty.name)).Where(t => t != null)
                         .Select(t => AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(t)) as TextureImporter)
                         .Where(i => i != null && i.sRGBTexture != shouldHaveSRGB).Distinct().ToArray();
                     var fix = new Button(() =>
                     {
+                        if (!RetainedMaterialModel.HasValidTargets(Model.Editor) || !Model.CanEdit(property)) return;
                         foreach (var importer in mismatches())
                         {
                             Undo.RecordObject(importer, "Fix texture color space");
@@ -92,23 +96,33 @@ namespace Thry.ThryEditor
                     var type=AppDomain.CurrentDomain.GetAssemblies().Select(a=>a.GetType("Poi.Tools.PoiColorAdjustBaker")).FirstOrDefault(t=>t!=null);
                     if(type==null)continue;
                     var method=type.GetMethod("BakeColorAdjust");var check=type.GetMethod("HasColorAdjustChanges");
-                    var button=new Button(()=>{foreach(var material in Model.Shader.Materials)method.Invoke(null,new object[]{material});Model.Notify();}){text="Bake Color Adjust"};
-                    Track(button,()=>button.SetEnabled(Model.Shader.Materials.Any(m=>(bool)check.Invoke(null,new object[]{m}))));root.Add(button);
+                    if (method == null || check == null) continue;
+                    bool pending = false;
+                    var button=new Button(()=>
+                    {
+                        if (pending || !RetainedMaterialModel.HasValidTargets(Model.Editor) || !Model.CanEdit(property)) return;
+                        var materials = PresentationTargets(property).Where(m => (bool)check.Invoke(null, new object[] { m })).ToArray();
+                        if (materials.Length == 0) return;
+                        pending = true;
+                        // Confirmation panels and asset imports must run outside UI event dispatch.
+                        EditorApplication.delayCall += () =>
+                        {
+                            try
+                            {
+                                if (root.panel == null || !RetainedMaterialModel.HasValidTargets(Model.Editor) || !Model.CanEdit(property)) return;
+                                foreach (var material in materials)
+                                    if (material != null && PresentationTargets(property).Contains(material)) method.Invoke(null, new object[] { material });
+                            }
+                            catch (TargetInvocationException exception) { Debug.LogException(exception.InnerException ?? exception); }
+                            finally { pending = false; Model.Notify(); }
+                        };
+                    }) { text="Bake Color Adjust", name="bake-color-adjust" };
+                    Track(button,()=>button.SetEnabled(!pending && RetainedMaterialModel.HasValidTargets(Model.Editor) && Model.CanEdit(property)
+                        && PresentationTargets(property).Any(m=>(bool)check.Invoke(null,new object[]{m}))));root.Add(button);
                 }
                 if(attribute.Name=="ThryDecalPositioning")
                 {
-                    var args=attribute.Args;DecalSceneTool tool=null;var row=new VisualElement();row.AddToClassList("thry-components");root.Add(row);
-                    Action<bool> begin=raycast=>{
-                        if(tool!=null){tool.Deactivate(false);tool=null;return;} Model.Shader.ActivateRetained();
-                        var renderer=Model.Renderers.FirstOrDefault()??Selection.activeTransform?.GetComponent<Renderer>();if(renderer==null)return;
-                        var properties=Model.Shader.PropertyDictionary;
-                        tool=DecalSceneTool.Create(renderer,Model.Shader.Materials[0],(int)properties[args[1]].MaterialProperty.GetNumber(),properties[args[2]].MaterialProperty,properties[args[3]].MaterialProperty,properties[args[4]].MaterialProperty,properties[args[5]].MaterialProperty);
-                        if(raycast)tool.StartRaycastMode();else tool.StartHandleMode();
-                    };
-                    row.Add(new Button(()=>begin(true)){text="Raycast"});row.Add(new Button(()=>begin(false)){text="Scene Tools"});
-                    Track(row,()=>{row.SetEnabled(Model.Renderers.Length>0||Selection.activeTransform?.GetComponent<Renderer>()!=null);if(tool!=null){var p=Model.Shader.PropertyDictionary;tool.SetMaterialProperties(p[args[2]].MaterialProperty,p[args[3]].MaterialProperty,p[args[4]].MaterialProperty,p[args[5]].MaterialProperty);}});
-                    root.RegisterCallback<DetachFromPanelEvent>(e=>{if(tool!=null)tool.Deactivate(false);});
-                    root.RegisterCallback<KeyDownEvent>(e=>{if(e.keyCode==KeyCode.Escape&&tool!=null){tool.Deactivate(true);tool=null;Model.Notify();e.StopPropagation();}});
+                    AddDecalPositioning(root, property, attribute.Args);
                 }
                 if(attribute.Name=="ThryStencilCalculator"||attribute.Name=="ThryStencilSummary")
                 {

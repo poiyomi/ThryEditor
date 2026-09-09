@@ -97,6 +97,7 @@ namespace Thry.ThryEditor
         internal Func<MaterialProperty[]> PropertyProvider;
         internal event Action Changed;
         private readonly Dictionary<Material, int> _animatedMaterialVersions = new Dictionary<Material, int>();
+        private readonly RetainedTextureKeywords _textureKeywords = new RetainedTextureKeywords();
         internal RetainedMaterialModel(MaterialEditor editor, ShaderEditor shader)
         {
             Editor = editor; Shader = shader;
@@ -105,22 +106,26 @@ namespace Thry.ThryEditor
 
         // Undo and inspector teardown can leave a live editor holding destroyed native targets.
         // Unity's material-property API does not safely reject those references.
-        internal static bool HasValidTargets(MaterialEditor editor)
+        internal static bool HasLiveTargets(MaterialEditor editor)
         {
             if (editor == null || !(editor.target is Material material) || material == null) return false;
             var targets = editor.targets;
-            return targets.Length > 0 && targets.All(t => t is Material m && m != null && m.shader != null)
-                && targets.Cast<Material>().Any(m => Helpers.ShaderHelper.IsShaderUsingThryEditor(m));
+            return targets.Length > 0 && targets.All(t => t is Material m && m != null && m.shader != null);
         }
+
+        internal static bool HasValidTargets(MaterialEditor editor) => HasLiveTargets(editor)
+            && editor.targets.Cast<Material>().Any(m => Helpers.ShaderHelper.IsShaderUsingThryEditor(m));
 
         internal void Refresh(bool forceAnimatedState = false)
         {
             if (!HasValidTargets(Editor)) return;
             bool rebuilt = Shader.PrepareRetained(Editor, Renderers, PropertyProvider);
             var targets = Shader.Materials.Where(m => m != null).ToArray();
-            bool changed = rebuilt || forceAnimatedState || _animatedMaterialVersions.Count != targets.Length
-                || targets.Any(m => !_animatedMaterialVersions.ContainsKey(m) || _animatedMaterialVersions[m] != EditorUtility.GetDirtyCount(m));
+            var changedTargets = targets.Where(m => rebuilt || !_animatedMaterialVersions.ContainsKey(m)
+                || _animatedMaterialVersions[m] != EditorUtility.GetDirtyCount(m)).ToArray();
+            bool changed = rebuilt || forceAnimatedState || _animatedMaterialVersions.Count != targets.Length || changedTargets.Length > 0;
             if (!changed) return;
+            _textureKeywords.Synchronize(Shader, changedTargets);
             // Unlike IMGUI, retained inspectors do not receive UndoRedoPerformed GUI events.
             // Refresh tag state after material changes without rebuilding or opening sections.
             foreach (var property in Shader.PropertyDictionary.Values) property.RefreshRetainedAnimatedState();
@@ -150,7 +155,8 @@ namespace Thry.ThryEditor
             Shader.CurrentProperty = property;
             if (perMaterial)
             {
-                foreach (var material in Shader.Materials)
+                foreach (var material in property.MaterialProperty.targets.OfType<Material>()
+                    .Where(m => m != null && Shader.Materials.Contains(m)))
                 {
                     if (!material.HasProperty(property.MaterialProperty.name)) continue;
                     var p = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { material }, property.MaterialProperty.name);

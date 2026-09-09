@@ -33,6 +33,7 @@ namespace Thry.ThryEditor
         private bool _builtTools;
         private bool _toolTheme;
         private readonly IVisualElementScheduledItem _searchRefresh;
+        private readonly IVisualElementScheduledItem _rowBandRefresh;
         private bool _searchPending;
         private string _sectionScope;
         private int _localeIndex = -1;
@@ -46,6 +47,8 @@ namespace Thry.ThryEditor
             _shaderOverride = shaderOverride;
             _propertyProvider = propertyProvider;
             name = "thry-material-inspector";
+            _rowBandRefresh = schedule.Execute(UpdateRowBands); _rowBandRefresh.Pause();
+            RegisterCallback<GeometryChangedEvent>(e => RequestRowBands());
             AddToClassList("thry-inspector");
             var sheet = Resources.Load<StyleSheet>("ThryInspector");
             if (sheet != null) styleSheets.Add(sheet);
@@ -152,8 +155,8 @@ namespace Thry.ThryEditor
                 field.Focus();
                 ShowMenu(field.worldBound, field.choices.Select(s => new GUIContent(s)).ToArray(), new[] { field.index }, i =>
                 {
-                    field.showMixedValue = false;
-                    field.value = field.choices[i];
+                    if (i < 0 || i >= field.choices.Count) return;
+                    RetainedWindow.SelectDropdownChoice(field, field.choices[i]);
                 }, field);
             };
             field.RegisterCallback<PointerDownEvent>(evt => {
@@ -248,6 +251,27 @@ namespace Thry.ThryEditor
             icon.Add(new Label("A") { pickingMode = PickingMode.Ignore });
 #endif
             language.Add(icon);
+        }
+
+        internal void RequestRowBands() => _rowBandRefresh.ExecuteLater(0);
+
+        private void UpdateRowBands()
+        {
+            var indices = new Dictionary<VisualElement, int>();
+            foreach (var row in this.Query<VisualElement>(className: "thry-property-row").ToList())
+            {
+                bool visible = true;
+                VisualElement section = this;
+                for (var ancestor = row; ancestor != null && ancestor != this; ancestor = ancestor.parent)
+                {
+                    if (ancestor.resolvedStyle.display == DisplayStyle.None || ancestor.style.display == DisplayStyle.None) { visible = false; break; }
+                    if (section == this && ancestor.ClassListContains("thry-section-content")) section = ancestor;
+                }
+                if (!visible) { row.RemoveFromClassList("thry-row-alt"); continue; }
+                indices.TryGetValue(section, out int index);
+                row.EnableInClassList("thry-row-alt", index % 2 == 1);
+                indices[section] = index + 1;
+            }
         }
 
         private void OnUndo()
@@ -453,12 +477,13 @@ namespace Thry.ThryEditor
         {
             // Leave typing responsive; the debounced refresh uses the latest query.
             if (_searchPending) return;
-            if (!RetainedMaterialModel.HasValidTargets(_editor)) { style.display = DisplayStyle.None; return; }
+            if (!RetainedMaterialModel.HasLiveTargets(_editor)) { style.display = DisplayStyle.None; return; }
             bool collapsed = IsCollapsedBehindItsFoldout();
             style.display = collapsed ? DisplayStyle.None : DisplayStyle.Flex;
             if (collapsed) return;
-            var current = _shaderOverride ?? _editor.customShaderGUI as ShaderEditor;
-            if (current == null && _editor.customShaderGUI == null)
+            bool compatible = RetainedMaterialModel.HasValidTargets(_editor);
+            var current = compatible ? _shaderOverride ?? _editor.customShaderGUI as ShaderEditor : null;
+            if (compatible && current == null && _editor.customShaderGUI == null)
             {
                 typeof(MaterialEditor).GetMethod("CreateCustomShaderEditorIfNeeded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                     ?.Invoke(_editor,new object[] { ((Material)_editor.target).shader });
@@ -478,7 +503,12 @@ namespace Thry.ThryEditor
                 _retained.Model.Renderers = FindRenderers(); _retained.Model.Refresh();
                 if (_retained.childCount == 0 || !ClassListContains("thry-filtering")) _retained.Synchronize();
             }
-            else if (_fallback.parent == null) { _retained = null; _body.Clear(); _body.Add(_fallback); }
+            else if (_fallback.parent == null)
+            {
+                if (_shader != null) { _shader.HasRetainedToolbar = false; _shader.ShowDropdown = null; }
+                _shader = null; _crossProperties = null; _retained = null;
+                _body.Clear(); _body.Add(_fallback);
+            }
             bool visible = current != null && current.Editor != null && current.SupportsRetainedToolbar;
             _chrome.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
             EnableInClassList("thry-active", visible);

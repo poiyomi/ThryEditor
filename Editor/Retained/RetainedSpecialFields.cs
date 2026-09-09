@@ -77,9 +77,10 @@ namespace Thry.ThryEditor
                         Vector(scalar31, property, new[] { "" }, 3);
                         handled = true; return;
                     case "MultiSlider":
-                        MinMax(parent,property,0,property.MaterialProperty.vectorValue.z,property.MaterialProperty.vectorValue.w); handled=true; return;
+                        MinMax(parent,property,0,0,1,true); handled=true; return;
                     case "VectorToSliders":
-                        var args = attribute.Args; bool pairs = args.Length % 3 == 1; int offset = pairs ? 1 : 0;
+                        var args = attribute.Args; bool hasMode = args.Length % 3 == 1;
+                        bool pairs = hasMode && DrawerAttribute.Number(args[0]) == 1; int offset = hasMode ? 1 : 0;
                         StyleSpecialControls(parent);
                         parent.parent.style.alignItems = Align.FlexStart;
                         parent.parent.Q<Label>(className: "thry-property-label").style.marginTop = 3;
@@ -100,15 +101,39 @@ namespace Thry.ThryEditor
                         handled=true; return;
                     case "ButtonVector": case "Vector4Toggles":
                         var buttons = new VisualElement(); buttons.AddToClassList("thry-components"); parent.Add(buttons);
-                        for(int i=0;i<4;i++)
+                        StyleSpecialControls(buttons); buttons.AddToClassList("thry-multi-value-controls");
+                        bool buttonVector = attribute.Name == "ButtonVector";
+                        int buttonCount = buttonVector ? Mathf.Clamp(attribute.Args.Length, 1, 4) : 4;
+                        Func<float, bool> isOn = value => buttonVector ? value > .5f : value == 1;
+                        for(int i=0;i<buttonCount;i++)
                         {
                             int index=i; string label=attribute.Args.Length>i?attribute.Args[i]:new[]{"X","Y","Z","W"}[i];
-                            if(label=="NA") continue;
-                            var button = new Button(()=>Model.VectorComponent(property,index,property.MaterialProperty.vectorValue[index]==0?1:0)) { text=label }; button.style.flexGrow=1;
-                            Track(button,()=>button.EnableInClassList("thry-selected",property.MaterialProperty.vectorValue[index]!=0)); buttons.Add(button);
+                            bool unavailable = buttonVector && label.Equals("NA", StringComparison.OrdinalIgnoreCase);
+                            var button = new Button(() =>
+                            {
+                                if (unavailable || !Model.CanEdit(property)) return;
+                                bool mixed = property.MaterialProperty.targets.OfType<Material>().Select(m => isOn(m.GetVector(property.MaterialProperty.name)[index])).Distinct().Skip(1).Any();
+                                float value = mixed || !isOn(property.MaterialProperty.vectorValue[index]) ? 1 : 0;
+                                Model.Edit(property, p =>
+                                {
+                                    var v = p.vectorValue; v[index] = value;
+                                    // Authored NA channels are unavailable inputs, not hidden toggles.
+                                    for (int n = 0; buttonVector && n < attribute.Args.Length && n < buttonCount; n++)
+                                        if (attribute.Args[n].Equals("NA", StringComparison.OrdinalIgnoreCase)) v[n] = 0;
+                                    p.vectorValue = v;
+                                }, true);
+                            }) { text=label, name="vector-button-"+index }; button.style.flexGrow=1;
+                            Track(button, () =>
+                            {
+                                bool mixed = !unavailable && property.MaterialProperty.targets.OfType<Material>().Select(m => isOn(m.GetVector(property.MaterialProperty.name)[index])).Distinct().Skip(1).Any();
+                                button.SetEnabled(!unavailable && Model.CanEdit(property));
+                                button.EnableInClassList("thry-selected", !unavailable && !mixed && isOn(property.MaterialProperty.vectorValue[index]));
+                                button.EnableInClassList("thry-tile-mixed", mixed);
+                                button.tooltip = unavailable ? "This channel is unavailable." : mixed ? label+": mixed values. Click to enable for all selected materials." : label;
+                            }); buttons.Add(button);
                         }
                         handled=true; return;
-                    case "ThryMultiFloatHeaderDrawer":
+                    case "ThryMultiFloatHeader": case "ThryMultiFloatHeaderDrawer":
                         var headers = new VisualElement(); headers.AddToClassList("thry-components"); parent.Add(headers);
                         StyleSpecialControls(headers); headers.AddToClassList("thry-multi-value-header");
                         foreach(var label in attribute.Args) { var heading=new Label(label) {tooltip=label}; headers.Add(heading); }
@@ -124,8 +149,8 @@ namespace Thry.ThryEditor
                             ShaderProperty target; if(!Model.Shader.PropertyDictionary.TryGetValue(ids[i],out target)) continue;
                             // The authored label is a UV coordinate; the grid reads it as row and column.
                             if(tiles) { string defaultLabel = Drawers.TileLabelUtility.FormatTileLabel(attribute.Args[i]);
-                                var button=new Button(()=>{Model.Number(target,target.MaterialProperty.GetNumber()==0?1:0); foreach(var id in ids) Model.Shader.PropertyDictionary[id].SetAnimated(target.IsAnimated,target.IsRenaming);}) {text=defaultLabel,name="tile-"+target.MaterialProperty.name}; button.style.flexGrow=1;
-                                Track(button,()=>{button.EnableInClassList("thry-selected",target.MaterialProperty.GetNumber()!=0&&!target.MaterialProperty.hasMixedValue); button.EnableInClassList("thry-tile-mixed",target.MaterialProperty.hasMixedValue); button.text = Drawers.TileLabelUtility.GetTileLabel(Model.Shader.Materials[0], target.MaterialProperty.name) ?? defaultLabel;});
+                                var button=new Button(()=>{if(!Model.CanEdit(target)) return; Model.Number(target,target.MaterialProperty.hasMixedValue||target.MaterialProperty.GetNumber()<=.5f?1:0); foreach(var id in ids) { ShaderProperty linked; if(Model.Shader.PropertyDictionary.TryGetValue(id,out linked)) linked.SetAnimated(target.IsAnimated,target.IsRenaming); }}) {text=defaultLabel,name="tile-"+target.MaterialProperty.name}; button.style.flexGrow=1;
+                                Track(button,()=>{button.SetEnabled(Model.CanEdit(target));button.EnableInClassList("thry-selected",target.MaterialProperty.GetNumber()>.5f&&!target.MaterialProperty.hasMixedValue); button.EnableInClassList("thry-tile-mixed",target.MaterialProperty.hasMixedValue); button.text = Drawers.TileLabelUtility.GetTileLabel(Model.Shader.Materials[0], target.MaterialProperty.name) ?? defaultLabel;});
                                 if (Drawers.TileLabelUtility.IsUdimProperty(target.MaterialProperty.name))
                                 {
                                     button.tooltip = Drawers.TileLabelUtility.ROW_TOOLTIP;
@@ -141,7 +166,8 @@ namespace Thry.ThryEditor
                                     });
                                 }
                                 multi.Add(button); }
-                            else if(attribute.Args[0]=="1"||attribute.Args[0].Equals("true",StringComparison.OrdinalIgnoreCase)) Toggle(multi,target);
+                            else if(attribute.Args[0]=="1"||attribute.Args[0].Equals("true",StringComparison.OrdinalIgnoreCase))
+                            { var toggle=new Toggle(); Bind(toggle,target,p=>p.GetNumber()==1,(p,v)=>p.SetNumber(v?1:0));Track(toggle,()=>toggle.SetEnabled(Model.CanEdit(target)));multi.Add(toggle); }
                             else { var number=new FloatField(); Bind(number,target,p=>p.GetNumber(),(p,v)=>p.SetNumber(v)); multi.Add(number); }
                         }
                         handled=true; return;
@@ -149,49 +175,90 @@ namespace Thry.ThryEditor
                         StyleSpecialControls(parent);
                         parent.parent.style.alignItems = Align.FlexStart;
                         parent.parent.Q<Label>(className:"thry-property-label").style.marginTop = 3;
-                        if(attribute.Name=="ByteSlider") { var slider=new SliderInt(0,255) {showInputField=true}; Bind(slider,property,p=>(int)p.GetNumber(),(p,v)=>p.SetNumber(v)); parent.Add(slider); }
+                        if(attribute.Name=="ByteSlider") { var range=property.MaterialProperty.rangeLimits;var slider=new SliderInt((int)range.x,(int)range.y) {showInputField=true}; Bind(slider,property,p=>(int)p.GetNumber(),(p,v)=>p.SetNumber(v)); parent.Add(slider); }
                         var bits=new Foldout {text="Bits",value=false,name="byte-bits-"+property.MaterialProperty.name};bits.AddToClassList("thry-bit-options");parent.Add(bits);
                         RetainedUiState.Bind(bits, property.MyShader.name, bits.name);
                         var bitrow=new VisualElement();bitrow.AddToClassList("thry-bit-row");bits.Add(bitrow);
                         for(int bit=7;bit>=0;bit--) { int mask=1<<bit; var toggle=new Toggle(bit.ToString()) {name="byte-bit-"+bit,tooltip="Bit "+bit+" · value "+mask};toggle.AddToClassList("thry-bit-cell");
-                            Track(toggle,()=>{toggle.SetValueWithoutNotify(((int)property.MaterialProperty.GetNumber()&mask)!=0);toggle.showMixedValue=Model.Shader.Materials.Where(m=>m.HasProperty(property.MaterialProperty.name)).Select(m=>(ReadBitValue(m,property)&mask)!=0).Distinct().Skip(1).Any();});
-                            toggle.RegisterValueChangedCallback(e=>Model.Edit(property,p=>p.SetNumber(e.newValue?(int)p.GetNumber()|mask:(int)p.GetNumber()&~mask),true)); bitrow.Add(toggle); }
+                            Track(toggle,()=>{toggle.SetValueWithoutNotify((Mathf.Clamp((int)property.MaterialProperty.GetNumber(),0,255)&mask)!=0);toggle.showMixedValue=property.MaterialProperty.targets.OfType<Material>().Select(m=>(Mathf.Clamp(ReadBitValue(m,property),0,255)&mask)!=0).Distinct().Skip(1).Any();});
+                            toggle.RegisterValueChangedCallback(e=>Model.Edit(property,p=>{int value=Mathf.Clamp((int)p.GetNumber(),0,255);p.SetNumber(e.newValue?value|mask:value&~mask);},true)); bitrow.Add(toggle); }
                         handled=true; return;
                     case "Curve4":
                         var curve = new CurveField(); parent.Add(curve); Vector4 last=new Vector4(float.NaN,0,0,0);
                         Track(curve,()=>{ curve.showMixedValue=property.MaterialProperty.hasMixedValue; var v=property.MaterialProperty.vectorValue; if(last==v) return; last=v; var c=new AnimationCurve(new Keyframe(0,v.x),new Keyframe(1f/3,v.y),new Keyframe(2f/3,v.z),new Keyframe(1,v.w));
-                            for(int i=0;i<4;i++){AnimationUtility.SetKeyLeftTangentMode(c,i,AnimationUtility.TangentMode.ClampedAuto); AnimationUtility.SetKeyRightTangentMode(c,i,AnimationUtility.TangentMode.ClampedAuto);} curve.SetValueWithoutNotify(c); curve.showMixedValue=property.MaterialProperty.hasMixedValue; });
+                            for(int i=0;i<4;i++){var mode=i==0||i==3?AnimationUtility.TangentMode.Auto:AnimationUtility.TangentMode.ClampedAuto;AnimationUtility.SetKeyLeftTangentMode(c,i,mode); AnimationUtility.SetKeyRightTangentMode(c,i,mode);} curve.SetValueWithoutNotify(c); curve.showMixedValue=property.MaterialProperty.hasMixedValue; });
                         curve.RegisterValueChangedCallback(e=>Model.Edit(property,p=>p.vectorValue=new Vector4(Mathf.Clamp01(e.newValue.Evaluate(0)),Mathf.Clamp01(e.newValue.Evaluate(1f/3)),Mathf.Clamp01(e.newValue.Evaluate(2f/3)),Mathf.Clamp01(e.newValue.Evaluate(1)))));
                         handled=true; return;
                     case "Ramp4":
                         var ramp=new RetainedRamp(()=>property.MaterialProperty.vectorValue,v=>Model.Edit(property,p=>p.vectorValue=v),attribute.Args); parent.Add(ramp); Track(ramp,ramp.MarkDirtyRepaint);
-                        Vector(parent,property,new[]{"V0","V1","T0","T1"}); handled=true; return;
+                        ComponentInputs(parent,property,new[]{"V0","V1","T0","T1"},0,(index,value)=>
+                        {
+                            if(index>=2) value=attribute.Args.Any(a=>a.Equals(index==2?"unclampedZ":"unclampedW",StringComparison.OrdinalIgnoreCase))?Mathf.Max(0,value):Mathf.Clamp01(value);
+                            Model.VectorComponent(property,index,value);
+                        }); handled=true; return;
                     case "ThryMask":
-                        var type=AppDomain.CurrentDomain.GetAssemblies().SelectMany(a=> {try{return a.GetTypes();}catch(System.Reflection.ReflectionTypeLoadException e){return e.Types.Where(t=>t!=null).ToArray();}}).First(t=>t.IsEnum&&(t.Name==attribute.Args[0]||t.FullName==attribute.Args[0]));
-                        var names=Enum.GetNames(type); var maskButton=new Button(); parent.Add(maskButton);
+                        var type=ResolveEnumType(attribute.Args[0]);
+                        var names=Enum.GetNames(type); int allBits=names.Length>=32?-1:(1<<names.Length)-1;
+                        var choices=new[]{"Nothing","Everything"}.Concat(names).ToArray(); var maskButton=new Button(); parent.Add(maskButton);
                         StyleSpecialControls(maskButton); maskButton.AddToClassList("thry-mask-picker");
-                        Track(maskButton,()=>{string selected=string.Join(", ",names.Where((s,i)=>((int)property.MaterialProperty.GetNumber()&(1<<i))!=0));maskButton.text=property.MaterialProperty.hasMixedValue?"Mixed values":string.IsNullOrEmpty(selected)?"None":selected;maskButton.tooltip=maskButton.text;});
-                        maskButton.clicked+=()=>_view.ShowMenu(maskButton.worldBound,names.Select(n=>new GUIContent(n)).ToArray(),Enumerable.Range(0,names.Length).Where(i=>((int)property.MaterialProperty.GetNumber()&(1<<i))!=0).ToArray(),i=>Model.Edit(property,p=>p.SetNumber((int)p.GetNumber()^(1<<i)),true),maskButton);
+                        Track(maskButton,()=>{int value=(int)property.MaterialProperty.GetNumber();string selected=string.Join(", ",names.Where((s,i)=>(value&(1<<i))!=0));maskButton.text=property.MaterialProperty.hasMixedValue?"Mixed values":value==allBits?"Everything":string.IsNullOrEmpty(selected)?"Nothing":selected;maskButton.tooltip=maskButton.text;});
+                        maskButton.clicked+=()=>_view.ShowMenu(maskButton.worldBound,choices.Select(n=>new GUIContent(n)).ToArray(),Enumerable.Range(0,choices.Length).Where(i=>i==0?property.MaterialProperty.GetNumber()==0:i==1?(int)property.MaterialProperty.GetNumber()==allBits:((int)property.MaterialProperty.GetNumber()&(1<<(i-2)))!=0).ToArray(),i=>
+                        {
+                            if(i<2) { Model.Number(property,i==0?0:allBits); return; }
+                            int bit=1<<(i-2);
+                            bool enable=property.MaterialProperty.targets.OfType<Material>().Any(m=>(ReadBitValue(m,property)&bit)==0);
+                            Model.Edit(property,p=>p.SetNumber(enable?(int)p.GetNumber()|bit:(int)p.GetNumber()&~bit),true);
+                        },maskButton);
                         handled=true; return;
                     case "PoiPrefabSpawner":
-                        var prefab=AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(attribute.Args[0]));
+                        Func<GameObject> findPrefab = () => attribute.Args.Length == 0 ? null : AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(attribute.Args[0]));
                         // An action describes itself on the button; a second caption
                         // repeats the same text and needlessly reserves a label column.
                         var actionCaption = parent.parent.Q<Label>(className: "thry-property-label");
                         if (actionCaption != null) actionCaption.style.display = DisplayStyle.None;
                         parent.parent.AddToClassList("thry-action-row");
-                        var spawn=new Button(()=>{ var instance=PrefabUtility.InstantiatePrefab(prefab); Undo.RegisterCreatedObjectUndo(instance,"Spawn "+prefab.name); Selection.activeObject=instance; }) {name="action-"+property.MaterialProperty.name,text=property.Content.text};
+                        string spawnLabel = string.IsNullOrEmpty(property.Content.text) ? "Spawn Prefab" : property.Content.text;
+                        var spawn=new Button(() => {
+                            if (!Model.CanEdit(property)) return;
+                            Model.Shader.ActivateRetained();
+                            var prefab = findPrefab(); if (prefab == null) return;
+                            var instance=PrefabUtility.InstantiatePrefab(prefab); if (instance == null) return;
+                            Undo.RegisterCreatedObjectUndo(instance,"Spawn "+prefab.name); Selection.activeObject=instance; EditorGUIUtility.PingObject(instance);
+                        }) {name="action-"+property.MaterialProperty.name,text=spawnLabel};
                         spawn.style.marginLeft = 0; spawn.style.marginRight = 0;
-                        spawn.SetEnabled(prefab!=null); parent.Add(spawn); handled=true; return;
+                        bool prefabFound = findPrefab() != null;
+                        spawn.tooltip = prefabFound ? spawnLabel : "Prefab not found.";
+                        Track(spawn, () => spawn.SetEnabled(prefabFound && Model.CanEdit(property)));
+                        parent.Add(spawn); handled=true; return;
                 }
             }
         }
-        private void MinMax(VisualElement parent,ShaderProperty property,int component,float min,float max)
+        private void MinMax(VisualElement parent,ShaderProperty property,int component,float min,float max,bool storedLimits=false)
         {
             var slider=new MinMaxSlider(min,max,min,max); parent.Add(slider);
-            Track(slider,()=>{var v=property.MaterialProperty.vectorValue;slider.SetValueWithoutNotify(new Vector2(v[component],v[component+1]));slider.showMixedValue=property.MaterialProperty.hasMixedValue;});
-            slider.RegisterValueChangedCallback(e=>Model.Edit(property,p=>{var v=p.vectorValue;v[component]=e.newValue.x;v[component+1]=e.newValue.y;p.vectorValue=v;},true));
-            Vector(parent,property,new[]{"Min","Max"},component);
+            bool synchronizing=false;
+            Track(slider,()=>{synchronizing=true;try { var v=property.MaterialProperty.vectorValue;
+                if(storedLimits) { float low=Mathf.Min(v.z,v.w),high=Mathf.Max(v.z,v.w); slider.highLimit=Mathf.Max(slider.lowLimit,high); slider.lowLimit=low; slider.highLimit=high; }
+                slider.SetValueWithoutNotify(new Vector2(v[component],v[component+1]));
+                slider.showMixedValue=property.MaterialProperty.targets.OfType<Material>().Select(m=>{var value=m.GetVector(property.MaterialProperty.name);return new Vector2(value[component],value[component+1]);}).Distinct().Skip(1).Any();} finally { synchronizing=false; }});
+            slider.RegisterValueChangedCallback(e=>{if(!synchronizing)Model.Edit(property,p=>{var v=p.vectorValue;float low=storedLimits?Mathf.Min(v.z,v.w):min, high=storedLimits?Mathf.Max(v.z,v.w):max;v[component]=Mathf.Clamp(e.newValue.x,low,high);v[component+1]=Mathf.Clamp(e.newValue.y,v[component],high);p.vectorValue=v;},true);});
+            ComponentInputs(parent,property,new[]{"Min","Max"},component,(index,value)=>Model.Edit(property,p=>
+            {
+                var v=p.vectorValue;float low=storedLimits?Mathf.Min(v.z,v.w):min, high=storedLimits?Mathf.Max(v.z,v.w):max;
+                v[index]=index==component?Mathf.Clamp(value,low,Mathf.Clamp(v[index+1],low,high)):Mathf.Clamp(value,Mathf.Clamp(v[index-1],low,high),high);p.vectorValue=v;
+            },true));
+        }
+        private void ComponentInputs(VisualElement parent,ShaderProperty property,string[] labels,int start,Action<int,float> write)
+        {
+            var entries = new VisualElement(); entries.AddToClassList("thry-components"); parent.Add(entries);
+            for(int i=0;i<labels.Length;i++)
+            {
+                int index=start+i; var field=new FloatField(labels[i]) { name="component-"+index }; field.AddToClassList("thry-component");
+                field.style.flexGrow=1; field.style.flexBasis=0; field.style.minWidth=0;
+                Track(field,()=>{field.SetValueWithoutNotify(property.MaterialProperty.vectorValue[index]);field.showMixedValue=property.MaterialProperty.targets.OfType<Material>().Select(m=>m.GetVector(property.MaterialProperty.name)[index]).Distinct().Skip(1).Any();});
+                field.RegisterValueChangedCallback(e=>write(index,e.newValue));
+                entries.Add(field);
+            }
         }
     }
 

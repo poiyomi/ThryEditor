@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
@@ -214,7 +215,7 @@ namespace Thry.ThryEditor.TexturePacker
         }
     }
 
-    [Serializable]
+    [Serializable, InitializeOnLoad]
     public class PackerSource : IPackerUIDragable
     {
         public FilterMode FilterMode;
@@ -294,35 +295,62 @@ namespace Thry.ThryEditor.TexturePacker
 
         static Dictionary<Texture2D, Texture2D> _cachedUncompressedTextures = new Dictionary<Texture2D, Texture2D>();
         static Dictionary<Texture2D, DateTime> _cachedTextureLastModifiedTime = new Dictionary<Texture2D, DateTime>();
+        static PackerSource()
+        {
+            AssemblyReloadEvents.beforeAssemblyReload += ClearDecodedTextureCache;
+            EditorApplication.quitting += ClearDecodedTextureCache;
+            EditorApplication.projectChanged += () =>
+            {
+                foreach (var source in _cachedUncompressedTextures.Keys.Where(source => source == null).ToArray()) RemoveDecodedTexture(source);
+            };
+        }
+
+        static void RemoveDecodedTexture(Texture2D source)
+        {
+            Texture2D decoded;
+            if (_cachedUncompressedTextures.TryGetValue(source, out decoded) && decoded != null && decoded != source && !AssetDatabase.Contains(decoded))
+                UnityEngine.Object.DestroyImmediate(decoded);
+            _cachedUncompressedTextures.Remove(source); _cachedTextureLastModifiedTime.Remove(source);
+        }
+
+        internal static void ClearDecodedTextureCache()
+        {
+            foreach (var source in _cachedUncompressedTextures.Keys.ToArray()) RemoveDecodedTexture(source);
+        }
         public Texture2D UncompressedTexture
         {
             get
             {
+                if (Texture == null) return null;
                 if (_cachedUncompressedTextures.ContainsKey(Texture) == false
                     || _cachedUncompressedTextures[Texture] == null
                     || _cachedTextureLastModifiedTime[Texture] != TextureHelper.GetLastModifiedTime(Texture)
                     )
                 {
                     string path = AssetDatabase.GetAssetPath(Texture);
-                    if (path.EndsWith(".png") || path.EndsWith(".jpg"))
+                    string extension = System.IO.Path.GetExtension(path).ToLowerInvariant();
+                    Texture2D decoded = null;
+                    if (extension == ".png" || extension == ".jpg" || extension == ".jpeg")
                     {
                         EditorUtility.DisplayProgressBar("Loading Raw PNG", "Loading " + path, 0.5f);
-                        Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
-                        tex.LoadImage(System.IO.File.ReadAllBytes(path));
-                        tex.filterMode = Texture.filterMode;
-                        _cachedUncompressedTextures[Texture] = tex;
-                        EditorUtility.ClearProgressBar();
+                        try
+                        {
+                            decoded = new Texture2D(2, 2, TextureFormat.RGBA32, false, true) { hideFlags = HideFlags.HideAndDontSave };
+                            if (!decoded.LoadImage(System.IO.File.ReadAllBytes(path))) throw new InvalidOperationException("Could not decode texture " + path);
+                            decoded.filterMode = Texture.filterMode;
+                        }
+                        catch { if (decoded != null) UnityEngine.Object.DestroyImmediate(decoded); throw; }
+                        finally { EditorUtility.ClearProgressBar(); }
                     }
-                    else if (path.EndsWith(".tga"))
+                    else if (extension == ".tga")
                     {
-                        Texture2D tex = TextureHelper.LoadTGA(path, true);
-                        tex.filterMode = Texture.filterMode;
-                        _cachedUncompressedTextures[Texture] = tex;
+                        try { decoded = TextureHelper.LoadTGA(path, true); }
+                        finally { EditorUtility.ClearProgressBar(); }
+                        if (decoded != null) { decoded.filterMode = Texture.filterMode; decoded.hideFlags = HideFlags.HideAndDontSave; }
                     }
-                    else
-                    {
-                        _cachedUncompressedTextures[Texture] = Texture;
-                    }
+                    else decoded = Texture;
+                    RemoveDecodedTexture(Texture);
+                    _cachedUncompressedTextures[Texture] = decoded;
                     _cachedTextureLastModifiedTime[Texture] = TextureHelper.GetLastModifiedTime(Texture);
 
                     if(_cachedUncompressedTextures[Texture] == null)
