@@ -1,15 +1,99 @@
-.thry-property-search-results { margin: 4px 3px 0 3px; padding: 0; }
-.thry-filtering .thry-utility { display: none; }
-.thry-filter-toolbar { flex-direction: row; align-items: center; margin: 0 0 6px 0; }
-.thry-search-summary { flex-grow: 1; color: #aaa; font-size: 12px; margin: 0; }
-.thry-filter-toolbar > Button { background-image: none; background-color: #505050; color: #ddd; border-width: 1px; border-color: #606060; border-radius: 4px; min-height: 24px; padding: 2px 8px; margin: 0 0 0 8px; font-size: 12px; }
-.thry-filter-toolbar > Button:hover { background-color: #5a5a5a; border-color: #707070; }
-.thry-filter-toolbar > Button:focus { border-color: #7aadd6; }
-.thry-search-matches { margin: 0; padding: 0; }
-.thry-filter-group { margin: 0 0 3px 0; }
-.thry-filter-breadcrumb { white-space: normal; -unity-font-style: bold; font-size: 12px; color: #b8b8b8; margin: 0 0 4px 0; padding: 5px 4px; border-bottom-width: 1px; border-bottom-color: #4b4b4b; }
-.thry-filter-control { margin: 0; padding: 0; }
-.thry-search-hint { white-space: normal; color: #aaa; font-size: 12px; padding: 8px 0; }
-.thry-light .thry-search-summary, .thry-light .thry-search-hint { color: #555; }
-.thry-light .thry-filter-breadcrumb { color: #444; border-bottom-color: #aaa; }
-.thry-light .thry-filter-toolbar > Button { background-color: #dedede; color: #333; border-color: #aaa; }
+.thry-property-search-results {
+    margin: 4px 3px 0 3px;
+    padding: 0;
+}
+
+.thry-filtering .thry-utility {
+    display: none;
+}
+
+.thry-filter-toolbar {
+    flex-direction: row;
+    align-items: center;
+    margin: 0 0 6px 0;
+}
+
+.thry-search-summary {
+    flex-grow: 1;
+    color: #aaa;
+    font-size: 12px;
+    margin: 0;
+}
+
+.thry-filter-toolbar > Button {
+    background-image: none;
+    background-color: #505050;
+    color: #ddd;
+    border-width: 1px;
+    border-color: #606060;
+    border-radius: 4px;
+    min-height: 24px;
+    padding: 2px 8px;
+    margin: 0 0 0 8px;
+    font-size: 12px;
+}
+
+.thry-filter-toolbar > Button:hover {
+    background-color: #5a5a5a;
+    border-color: #707070;
+}
+
+.thry-filter-toolbar > Button:focus {
+    border-color: #7aadd6;
+}
+
+.thry-search-matches {
+    margin: 0;
+    padding: 0;
+}
+
+.thry-filter-group {
+    margin: 0 0 3px 0;
+}
+
+.thry-filter-breadcrumb {
+    white-space: normal;
+    -unity-font-style: bold;
+    font-size: 12px;
+    color: #b8b8b8;
+    margin: 0 0 4px 0;
+    padding: 5px 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: #4b4b4b;
+}
+
+.thry-filter-control {
+    margin: 0;
+    padding: 0;
+}
+
+.thry-search-hint {
+    white-space: normal;
+    color: #aaa;
+    font-size: 12px;
+    padding: 8px 0;
+}
+
+.thry-light .thry-search-summary, .thry-light .thry-search-hint {
+    color: #555;
+}
+
+.thry-light .thry-filter-breadcrumb {
+    color: #444;
+    border-bottom-color: #aaa;
+}
+
+.thry-light .thry-filter-toolbar > Button {
+    background-color: #dedede;
+    color: #333;
+    border-color: #aaa;
+}
+
+.thry-light .thry-filter-toolbar > Button:hover {
+    background-color: #eeeeee;
+    border-color: #a0a0a0;
+}
+
+.thry-light .thry-filter-toolbar > Button:focus {
+    border-color: #3b78a8;
+}

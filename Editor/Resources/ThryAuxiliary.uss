@@ -1,21 +1,124 @@
 /* Window-only refinements; these never change the embedded material inspector. */
-.thry-settings .unity-foldout { margin: 2px 0; }
-.thry-settings .unity-foldout__content { padding-top: 2px; padding-bottom: 2px; }
-.thry-texture-workspace .thry-studio-section { margin: 2px 0; }
-.thry-texture-workspace .thry-studio-source { margin: 2px 0; padding: 4px 6px; }
-.thry-texture-workspace .thry-studio-source .thry-studio-section { margin: 0; }
-.thry-lock-manager .thry-lock-material-name { min-width: 0; flex-basis: 0; flex-shrink: 1; -unity-text-align: middle-left; overflow: hidden; text-overflow: ellipsis; }
-.thry-cross-materials { margin: 2px 0; padding: 2px 4px; background-color: #3d3d3d; border-radius: 4px; }
-.thry-cross-materials > .unity-foldout__toggle { min-height: 24px; margin: 0; -unity-font-style: bold; }
-.thry-cross-materials .thry-components { flex-grow: 0; flex-shrink: 0; align-items: center; min-height: 24px; margin: 1px 0; }
-.thry-cross-materials .unity-object-field { min-width: 0; flex-basis: 0; flex-shrink: 1; }
-.thry-cross-materials .unity-object-field__input { min-height: 22px; padding: 0 6px; border-width: 1px; border-color: #494949; background-color: #2c2c2c; border-radius: 4px; }
-.thry-cross-materials Button { height: 24px; margin: 0 2px; padding: 0 8px; border-radius: 4px; background-color: #454545; border-color: #525252; border-width: 1px; }
-.thry-cross-materials Button:hover { background-color: #505050; }
-.thry-cross-materials .unity-toggle__input { align-items: center; }
-.thry-cross-materials .unity-toggle__checkmark { width: 16px; height: 16px; margin: 0; border-radius: 3px; background-color: #2c2c2c; border-color: #535353; border-width: 1px; }
-.thry-cross-materials .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
-.thry-light .thry-cross-materials { background-color: #c4c4c4; }
-.thry-light .thry-cross-materials .unity-object-field__input, .thry-light .thry-cross-materials .unity-toggle__checkmark { background-color: #e4e4e4; border-color: #aaaaaa; }
-.thry-light .thry-cross-materials Button { background-color: #dedede; border-color: #aaaaaa; }
-.thry-light .thry-cross-materials .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
+.thry-settings .unity-foldout {
+    margin: 2px 0;
+}
+
+.thry-settings .unity-foldout__content {
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.thry-texture-workspace .thry-studio-section {
+    margin: 2px 0;
+}
+
+.thry-texture-workspace .thry-studio-source {
+    margin: 2px 0;
+    padding: 4px 6px;
+}
+
+.thry-texture-workspace .thry-studio-source .thry-studio-section {
+    margin: 0;
+}
+
+.thry-lock-manager .thry-lock-material-name {
+    min-width: 0;
+    flex-basis: 0;
+    flex-shrink: 1;
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thry-cross-materials {
+    margin: 2px 0;
+    padding: 2px 4px;
+    background-color: #3d3d3d;
+    border-radius: 4px;
+}
+
+.thry-cross-materials > .unity-foldout__toggle {
+    min-height: 24px;
+    margin: 0;
+    -unity-font-style: bold;
+}
+
+.thry-cross-materials .thry-components {
+    flex-grow: 0;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: 24px;
+    margin: 1px 0;
+}
+
+.thry-cross-materials .unity-object-field {
+    min-width: 0;
+    flex-basis: 0;
+    flex-shrink: 1;
+}
+
+.thry-cross-materials .unity-object-field__input {
+    min-height: 22px;
+    padding: 0 6px;
+    border-width: 1px;
+    border-color: #494949;
+    background-color: #2c2c2c;
+    border-radius: 4px;
+}
+
+.thry-cross-materials Button {
+    height: 24px;
+    margin: 0 2px;
+    padding: 0 8px;
+    border-radius: 4px;
+    background-color: #454545;
+    border-color: #525252;
+    border-width: 1px;
+}
+
+.thry-cross-materials Button:hover {
+    background-color: #505050;
+}
+
+.thry-cross-materials .unity-toggle__input {
+    align-items: center;
+}
+
+.thry-cross-materials .unity-toggle__checkmark {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    border-radius: 3px;
+    background-color: #2c2c2c;
+    border-color: #535353;
+    border-width: 1px;
+}
+
+.thry-cross-materials .unity-foldout__toggle .unity-toggle__checkmark {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.thry-light .thry-cross-materials {
+    background-color: #c4c4c4;
+}
+
+.thry-light .thry-cross-materials .unity-object-field__input, .thry-light .thry-cross-materials .unity-toggle__checkmark {
+    background-color: #e4e4e4;
+    border-color: #aaaaaa;
+}
+
+.thry-light .thry-cross-materials Button {
+    background-color: #dedede;
+    border-color: #aaaaaa;
+}
+
+.thry-light .thry-cross-materials .unity-foldout__toggle .unity-toggle__checkmark {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.thry-light .thry-cross-materials Button:hover {
+    background-color: #eeeeee;
+    border-color: #a0a0a0;
+}

@@ -3,353 +3,1990 @@
     color: #e4e4e4;
     padding-bottom: 8px;
 }
-.thry-chrome { padding: 8px 3px 4px 3px; }
-.thry-masthead { flex-direction: row; align-items: center; margin-bottom: 6px; }
-.thry-branding { flex-grow: 1; flex-shrink: 1; min-width: 100px; }
-.thry-title-row { flex-direction: row; align-items: center; }
-.thry-title { -unity-font-style: bold; font-size: 18px; margin: 0; color: #e4e4e4; white-space: normal; flex-shrink: 1; }
-.thry-version { font-size: 10px; color: #a3a3a3; margin-left: 8px; margin-top: 0; background-color: #414141; padding: 2px 5px; border-radius: 3px; }
-.thry-state { font-size: 10px; color: #a3a3a3; margin: 3px 0 0 0; }
-.thry-state.thry-optimized { color: #a6e22e; }
-.thry-tools { flex-direction: row; align-items: center; flex-shrink: 0; margin-left: 8px; }
+
+.thry-chrome {
+    padding: 8px 3px 4px 3px;
+}
+
+.thry-masthead {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.thry-branding {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 100px;
+}
+
+.thry-title-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.thry-title {
+    -unity-font-style: bold;
+    font-size: 18px;
+    margin: 0;
+    color: #e4e4e4;
+    white-space: normal;
+    flex-shrink: 1;
+}
+
+.thry-version {
+    font-size: 10px;
+    color: #a3a3a3;
+    margin-left: 8px;
+    margin-top: 0;
+    background-color: #414141;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.thry-state {
+    font-size: 10px;
+    color: #a3a3a3;
+    margin: 3px 0 0 0;
+}
+
+.thry-state.thry-optimized {
+    color: #a6e22e;
+}
+
+.thry-tools {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
 .thry-icon-button {
-    width: 26px; height: 26px; padding: 3px; margin: 0 0 0 3px;
-    border-width: 1px; border-color: #505050; border-radius: 4px; background-color: #484848;
+    width: 26px;
+    height: 26px;
+    padding: 3px;
+    margin: 0 0 0 3px;
+    border-width: 1px;
+    border-color: #505050;
+    border-radius: 4px;
+    background-color: #484848;
 }
-.thry-icon-button:hover { background-color: #4c4c4c; border-color: #606060; }
-.thry-icon-button:active { background-color: #2c2c2c; border-color: #7aadd6; }
-.thry-icon-button:focus { border-color: #7aadd6; }
-.thry-icon-button.thry-selected { background-color: #484848; border-color: #686868; }
-.thry-icon-button Image { width: 18px; height: 18px; }
-.thry-navigation { flex-direction: row; align-items: center; }
+
+.thry-icon-button:hover {
+    background-color: #4c4c4c;
+    border-color: #606060;
+}
+
+.thry-icon-button:active {
+    background-color: #2c2c2c;
+    border-color: #7aadd6;
+}
+
+.thry-icon-button:focus {
+    border-color: #7aadd6;
+}
+
+.thry-icon-button.thry-selected {
+    background-color: #484848;
+    border-color: #686868;
+}
+
+.thry-icon-button Image {
+    width: 18px;
+    height: 18px;
+}
+
+.thry-navigation {
+    flex-direction: row;
+    align-items: center;
+}
+
 .thry-search {
-    flex-grow: 1; flex-shrink: 1; min-width: 70px; max-width: none; height: 26px; margin: 0;
-    background-color: #2c2c2c; border-color: #2c2c2c; border-width: 1px; border-radius: 5px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 70px;
+    max-width: none;
+    height: 26px;
+    margin: 0;
+    background-color: #2c2c2c;
+    border-color: #2c2c2c;
+    border-width: 1px;
+    border-radius: 5px;
 }
-.thry-search .unity-search-field-base__text-field { height: 24px; min-height: 24px; margin: 0 0 0 5px; padding: 0; align-self: center; }
+
+.thry-search .unity-search-field-base__text-field {
+    height: 24px;
+    min-height: 24px;
+    margin: 0 0 0 5px;
+    padding: 0;
+    align-self: center;
+}
+
 .thry-search .unity-base-text-field__input {
-    background-color: transparent; border-width: 0; color: #e4e4e4;
-    height: 24px; min-height: 24px; margin: 0; padding: 0;
-    -unity-text-align: middle-left; font-size: 13px;
+    background-color: transparent;
+    border-width: 0;
+    color: #e4e4e4;
+    height: 24px;
+    min-height: 24px;
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+    font-size: 13px;
 }
-.thry-search.thry-search-focused { border-color: #7aadd6; }
-.thry-search .unity-text-element--inner-input-field-component { -unity-text-align: middle-left; font-size: 13px; height: 24px; margin: 0; padding: 0; }
-.thry-search .unity-search-field-base__search-button, .thry-search .unity-search-field-base__cancel-button { align-self: center; margin-top: 0; margin-bottom: 0; }
-.thry-search .unity-search-field-base__search-button { width: 18px; height: 18px; min-width: 18px; padding: 0; }
-.thry-search-placeholder { position: absolute; left: 25px; top: 0; bottom: 0; margin: 0; padding: 0; -unity-text-align: middle-left; color: #999999; font-size: 13px; }
-.thry-search-filters { flex-direction: row; align-items: center; flex-shrink: 0; margin-left: 5px; }
-.thry-type-picker { width: 100px; flex-shrink: 0; height: 26px; margin: 0; }
+
+.thry-search.thry-search-focused {
+    border-color: #7aadd6;
+}
+
+.thry-search .unity-text-element--inner-input-field-component {
+    -unity-text-align: middle-left;
+    font-size: 13px;
+    height: 24px;
+    margin: 0;
+    padding: 0;
+}
+
+.thry-search .unity-search-field-base__search-button, .thry-search .unity-search-field-base__cancel-button {
+    align-self: center;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.thry-search .unity-search-field-base__search-button {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    padding: 0;
+}
+
+.thry-search-placeholder {
+    position: absolute;
+    left: 25px;
+    top: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+    color: #999999;
+    font-size: 13px;
+}
+
+.thry-search-filters {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: 5px;
+}
+
+.thry-type-picker {
+    width: 100px;
+    flex-shrink: 0;
+    height: 26px;
+    margin: 0;
+}
+
 .thry-type-picker .unity-base-field__input {
-    background-color: #484848; border-color: #545454; border-width: 1px; border-radius: 5px; padding-left: 9px;
+    background-color: #484848;
+    border-color: #545454;
+    border-width: 1px;
+    border-radius: 5px;
+    padding-left: 9px;
 }
-.thry-type-picker .unity-base-popup-field__text { color: #d4d4d4; font-size: 12px; }
-.thry-utility { flex-direction: row; align-items: center; justify-content: space-between; margin-top: 3px; }
-.thry-text-button { border-width: 0; background-color: transparent; color: #b5b5b5; font-size: 13px; margin: 0; padding: 2px 0; }
-.thry-text-button:hover { color: #7aadd6; }
-.thry-text-button:focus { color: #7aadd6; }
-.thry-language { width: 105px; height: 22px; margin: 0; }
-.thry-language .unity-base-field__input { background-color: transparent; border-width: 0; }
-.thry-language .unity-base-popup-field__text { color: #b5b5b5; font-size: 13px; }
-.thry-material-controls { margin-left: 0; margin-right: 0; }
-.thry-empty { padding: 20px 12px; margin: 4px 8px; border-radius: 6px; background-color: #383838; color: #a3a3a3; font-size: 12px; }
-.thry-empty-title { color: #e4e4e4; -unity-font-style: bold; font-size: 13px; margin-bottom: 4px; }
-.thry-compact .thry-title { font-size: 17px; }
-.thry-compact .thry-version { margin-left: 5px; }
-.thry-narrow .thry-masthead { flex-direction: column; align-items: stretch; margin-bottom: 6px; }
-.thry-narrow .thry-tools { margin: 4px 0 0 -3px; }
-.thry-changed-filter { height: 26px; margin: 0 0 0 5px; padding: 0 7px; flex-shrink: 0; background-color: #484848; border-width: 1px; border-color: #545454; border-radius: 5px; }
-.thry-changed-filter .unity-base-field__input { align-items: center; padding: 0; background-color: transparent; }
-.thry-changed-filter .unity-toggle__text { color: #d4d4d4; font-size: 12px; margin-left: 5px; }
-.thry-changed-filter:hover { background-color: #4b4b4b; }
-.thry-changed-filter:focus { border-color: #7aadd6; }
-.thry-compact .thry-navigation { flex-direction: column; align-items: stretch; }
-.thry-compact .thry-navigation > .thry-search { flex-shrink: 0; width: auto; align-self: stretch; }
-.thry-compact .thry-search-filters { margin: 4px 0 0 0; }
-.thry-compact .thry-type-picker { flex-grow: 1; }
-.thry-compact .thry-changed-filter { flex-grow: 1; }
-.thry-light .thry-changed-filter { background-color: #dedede; border-color: #b5b5b5; }
-.thry-light .thry-changed-filter .unity-toggle__text { color: #454545; }
-.thry-light.thry-active { background-color: #c8c8c8; color: #252525; }
-.thry-light .thry-title { color: #252525; }
-.thry-light .thry-version, .thry-light .thry-icon-button { background-color: #dedede; }
-.thry-light .thry-icon-button { border-color: #b5b5b5; }
-.thry-light .thry-version, .thry-light .thry-state, .thry-light .thry-text-button { color: #5b5b5b; }
-.thry-light .thry-icon-button:hover { background-color: #ffffff; border-color: #b5b5b5; }
-.thry-light .thry-search { background-color: #ffffff; border-color: #b5b5b5; }
-.thry-light .thry-search .unity-base-text-field__input { color: #252525; }
-.thry-light .thry-search.thry-search-focused { border-color: #3b78a8; }
-.thry-light .thry-type-picker .unity-base-field__input { background-color: #dedede; border-color: #b5b5b5; }
-.thry-light .thry-type-picker .unity-base-popup-field__text, .thry-light .thry-language .unity-base-popup-field__text { color: #454545; }
-.thry-light .thry-search-placeholder { color: #696969; }
-.thry-light .thry-state.thry-optimized { color: #4c7020; }
-.thry-light .thry-icon-button.thry-selected { background-color: #e5e5e5; border-color: #aaaaaa; }
-.thry-light .thry-empty { background-color: #dedede; color: #5b5b5b; }
-.thry-light .thry-empty-title { color: #252525; }
 
-.thry-dropdown-menu { position: absolute; }
+.thry-type-picker .unity-base-popup-field__text {
+    color: #d4d4d4;
+    font-size: 12px;
+}
+
+.thry-utility {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 3px;
+}
+
+.thry-text-button {
+    border-width: 0;
+    background-color: transparent;
+    color: #b5b5b5;
+    font-size: 13px;
+    margin: 0;
+    padding: 2px 0;
+}
+
+.thry-text-button:hover {
+    color: #7aadd6;
+}
+
+.thry-text-button:focus {
+    color: #7aadd6;
+}
+
+.thry-language {
+    width: 105px;
+    height: 22px;
+    margin: 0;
+}
+
+.thry-language .unity-base-field__input {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.thry-language .unity-base-popup-field__text {
+    color: #b5b5b5;
+    font-size: 13px;
+}
+
+.thry-material-controls {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.thry-empty {
+    padding: 20px 12px;
+    margin: 4px 8px;
+    border-radius: 6px;
+    background-color: #383838;
+    color: #a3a3a3;
+    font-size: 12px;
+}
+
+.thry-empty-title {
+    color: #e4e4e4;
+    -unity-font-style: bold;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.thry-compact .thry-title {
+    font-size: 17px;
+}
+
+.thry-compact .thry-version {
+    margin-left: 5px;
+}
+
+.thry-narrow .thry-masthead {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 6px;
+}
+
+.thry-narrow .thry-tools {
+    margin: 4px 0 0 -3px;
+}
+
+.thry-changed-filter {
+    height: 26px;
+    margin: 0 0 0 5px;
+    padding: 0 7px;
+    flex-shrink: 0;
+    background-color: #484848;
+    border-width: 1px;
+    border-color: #545454;
+    border-radius: 5px;
+}
+
+.thry-changed-filter .unity-base-field__input {
+    align-items: center;
+    padding: 0;
+    background-color: transparent;
+}
+
+.thry-changed-filter .unity-toggle__text {
+    color: #d4d4d4;
+    font-size: 12px;
+    margin-left: 5px;
+}
+
+.thry-changed-filter:hover {
+    background-color: #4b4b4b;
+}
+
+.thry-changed-filter:focus {
+    border-color: #7aadd6;
+}
+
+.thry-compact .thry-navigation {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.thry-compact .thry-navigation > .thry-search {
+    flex-shrink: 0;
+    width: auto;
+    align-self: stretch;
+}
+
+.thry-compact .thry-search-filters {
+    margin: 4px 0 0 0;
+}
+
+.thry-compact .thry-type-picker {
+    flex-grow: 1;
+}
+
+.thry-compact .thry-changed-filter {
+    flex-grow: 1;
+}
+
+.thry-light .thry-changed-filter {
+    background-color: #dedede;
+    border-color: #b5b5b5;
+}
+
+.thry-light .thry-changed-filter .unity-toggle__text {
+    color: #454545;
+}
+
+.thry-light.thry-active {
+    background-color: #c8c8c8;
+    color: #252525;
+}
+
+.thry-light .thry-title {
+    color: #252525;
+}
+
+.thry-light .thry-version, .thry-light .thry-icon-button {
+    background-color: #dedede;
+}
+
+.thry-light .thry-icon-button {
+    border-color: #b5b5b5;
+}
+
+.thry-light .thry-version, .thry-light .thry-state, .thry-light .thry-text-button {
+    color: #5b5b5b;
+}
+
+.thry-light .thry-icon-button:hover {
+    background-color: #ffffff;
+    border-color: #b5b5b5;
+}
+
+.thry-light .thry-search {
+    background-color: #ffffff;
+    border-color: #b5b5b5;
+}
+
+.thry-light .thry-search .unity-base-text-field__input {
+    color: #252525;
+}
+
+.thry-light .thry-search.thry-search-focused {
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-type-picker .unity-base-field__input {
+    background-color: #dedede;
+    border-color: #b5b5b5;
+}
+
+.thry-light .thry-type-picker .unity-base-popup-field__text, .thry-light .thry-language .unity-base-popup-field__text {
+    color: #454545;
+}
+
+.thry-light .thry-search-placeholder {
+    color: #696969;
+}
+
+.thry-light .thry-state.thry-optimized {
+    color: #4c7020;
+}
+
+.thry-light .thry-icon-button.thry-selected {
+    background-color: #e5e5e5;
+    border-color: #aaaaaa;
+}
+
+.thry-light .thry-empty {
+    background-color: #dedede;
+    color: #5b5b5b;
+}
+
+.thry-light .thry-empty-title {
+    color: #252525;
+}
+
+.thry-dropdown-menu {
+    position: absolute;
+}
+
 .thry-dropdown-menu .unity-base-dropdown__container-outer {
-    position: absolute; background-color: #383838; border-color: #555555; border-width: 1px; border-radius: 6px; padding: 0;
+    position: absolute;
+    background-color: #383838;
+    border-color: #555555;
+    border-width: 1px;
+    border-radius: 6px;
+    padding: 0;
 }
-.thry-dropdown-menu .unity-base-dropdown__container-inner { background-color: #383838; border-width: 0; padding: 4px; flex-shrink: 0; }
-.thry-dropdown-menu .unity-base-dropdown__item { flex-direction: row; align-items: center; height: 26px; min-height: 26px; margin: 0; padding: 0 8px; border-radius: 4px; }
-.thry-dropdown-menu .unity-base-dropdown__checkmark { width: 16px; height: 16px; margin-right: 6px; }
-.thry-dropdown-menu .unity-base-dropdown__label { color: #e4e4e4; font-size: 13px; -unity-text-align: middle-left; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.thry-dropdown-menu .unity-base-dropdown__item:hover, .thry-dropdown-menu .unity-base-dropdown__item:checked { background-color: #4c4c4c; }
-.thry-dropdown-menu.thry-light .unity-base-dropdown__container-outer, .thry-dropdown-menu.thry-light .unity-base-dropdown__container-inner { background-color: #dedede; border-color: #b5b5b5; }
-.thry-dropdown-menu.thry-light .unity-base-dropdown__label { color: #252525; }
-.thry-dropdown-menu.thry-light .unity-base-dropdown__item:hover, .thry-dropdown-menu.thry-light .unity-base-dropdown__item:checked { background-color: #eeeeee; }
-/* Native material controls share one responsive label/value grid. */
-.thry-material-controls { margin: 0 3px; }
-.thry-property-row { flex-direction: row; align-items: center; min-height: 22px; margin: 1px 0; }
-.thry-property-label { width: 38%; min-width: 80px; max-width: 240px; flex-shrink: 0; margin: 0; padding: 0 8px 0 0; -unity-text-align: middle-left; color: #c4c4c4; font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
-.thry-property-value { flex-grow: 1; flex-shrink: 1; min-width: 0; }
-.thry-property-value > .unity-base-field { margin: 0; min-width: 0; min-height: 22px; }
-.thry-input, .thry-component { font-size: 13px; }
-.thry-material-controls .unity-base-text-field__input, .thry-material-controls .unity-base-popup-field__input, .thry-material-controls .unity-object-field__input { background-color: #2c2c2c; border-color: #494949; border-width: 1px; border-radius: 4px; min-height: 22px; padding: 0 6px; -unity-text-align: middle-left; }
-.thry-material-controls .unity-base-text-field__input:focus, .thry-material-controls .unity-base-popup-field__input:focus { border-color: #7aadd6; }
-.thry-material-controls .unity-base-slider .unity-base-text-field { width: 54px; margin: 0 0 0 6px; }
-.thry-material-controls .unity-base-slider__drag-container { margin: 0 4px; min-height: 22px; }
-.thry-components { flex-direction: row; flex-grow: 1; min-width: 0; }
-.thry-components > .thry-component { flex-grow: 1; flex-basis: 0; flex-shrink: 1; min-width: 0; margin: 0; }
-.thry-components > .thry-component-spaced { margin-left: 8px; }
-.thry-component > .unity-base-field__label { min-width: 10px; width: auto; margin: 0 4px 0 0; padding: 0; -unity-text-align: middle-center; color: #969696; }
-.thry-inline .thry-property-label { display: none; }
-.thry-inline { flex-grow: 1; }
-.thry-section { margin: 0 0 3px; }
-.thry-section-header { flex-direction: row; align-items: center; height: 20.2px; background-color: #494949; border-radius: 4px; padding: 0 4px; overflow: hidden; }
-.thry-root-section > .thry-section-header { height: 23px; background-color: #4d4d4d; border-radius: 5px; }
-.thry-section-title-area { flex-direction: row; align-items: center; flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0 4px; }
-.thry-section-title { flex-grow: 0; flex-shrink: 1; min-width: 0; -unity-font-style: bold; margin: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.thry-header-animation-dot, .thry-section-changed-dot { width: 5px; height: 5px; min-width: 5px; min-height: 5px; flex-shrink: 0; margin-left: 5px; border-radius: 3px; }
-.thry-section-content { padding: 4px 0 4px 8px; }
-.thry-root-section > .thry-section-content { padding-top: 7px; }
-.thry-header-action, .thry-fold-arrow { border-width: 0; border-radius: 3px; background-color: transparent; width: 24px; height: 100%; min-height: 0; min-width: 24px; flex-shrink: 0; align-items: center; justify-content: center; margin: 0; padding: 0; color: #b8b8b8; }
-.thry-header-icon { width: 14px; height: 14px; flex-shrink: 0; --unity-image-tint-color: #b8b8b8; }
-.thry-fold-arrow .thry-header-icon { width: 14px; height: 14px; }
-.thry-header-action:hover .thry-header-icon, .thry-fold-arrow:hover .thry-header-icon { --unity-image-tint-color: #e4e4e4; }
-.thry-linked .thry-header-icon { --unity-image-tint-color: #7aadd6; }
-.thry-light .thry-header-icon { --unity-image-tint-color: #5d5d5d; }
-.thry-light .thry-header-action:hover .thry-header-icon, .thry-light .thry-fold-arrow:hover .thry-header-icon { --unity-image-tint-color: #252525; }
-.thry-light .thry-linked .thry-header-icon { --unity-image-tint-color: #326f9c; }
-.thry-header-action:hover { background-color: #595959; }
-.thry-section-header > .thry-fold-arrow:hover, .thry-section-header > .thry-fold-arrow:active, .thry-section-header > .thry-fold-arrow:focus { background-color: transparent; border-width: 0; }
-.thry-fold-arrow:focus .thry-header-icon { --unity-image-tint-color: #e4e4e4; }
-.thry-light .thry-fold-arrow:focus .thry-header-icon { --unity-image-tint-color: #252525; }
-.thry-header-reference .unity-toggle { margin: 0; }
-.thry-material-controls .unity-toggle__input { align-items: center; }
-.thry-material-controls .unity-toggle__checkmark { width: 16px; height: 16px; margin: 0; border-radius: 3px; background-color: #2c2c2c; border-color: #535353; border-width: 1px; }
-.thry-section-switch { margin: 0 5px 0 0; }
-.thry-section-switch .unity-toggle__checkmark { width: 30px; height: 16px; border-radius: 8px; background-image: none; }
-.thry-excluded { background-color: #3d3d3d; color: #858585; }
-.thry-excluded .thry-section-title { color: #858585; }
-.thry-texture-label { flex-direction: row; align-items: center; justify-content: flex-start; background-color: transparent; border-width: 0; padding-left: 0; }
-.thry-texture-label .thry-texture-caret { width: 14px; height: 14px; margin-right: 2px; }
-.thry-texture-caption { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; padding: 0; -unity-text-align: middle-left; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
-.thry-texture-details { background-color: #333333; padding: 8px; margin: 3px 0 5px; border-radius: 5px; }
-.thry-texture-preview { height: 80px; margin-bottom: 6px; }
-.thry-lock-button { font-size: 13px; height: 24px; margin: 0 0 3px; background-color: #505050; border-width: 1px; border-color: #606060; border-radius: 4px; }
-.thry-section-toolbar { flex-direction: row; padding: 2px; margin-bottom: 6px; }
-.thry-section-toolbar Button { flex-grow: 1; flex-basis: 0; margin: 0 1px; height: 26px; border-width: 0; border-radius: 4px; }
-.thry-section-action-0 { background-color: #39734f; }
-.thry-section-action-1 { background-color: #525252; }
-.thry-section-action-2 { background-color: #385e85; }
-.thry-section-action-3 { background-color: #7d454a; }
-.thry-footer { flex-direction: row; align-items: center; margin-top: 16px; }
-.thry-footer-credit { flex-grow: 1; font-size: 10px; color: #a3a3a3; }
-.thry-footer Button { width: 26px; height: 26px; background-color: transparent; border-width: 0; margin: 0 2px; padding: 1px; }
-.thry-footer Image { width: 24px; height: 24px; }
-.thry-animation-letter { width: 18px; min-width: 18px; height: 16px; flex-shrink: 0; margin: 0 2px 0 0; padding: 0; font-size: 9px; -unity-font-style: bold; -unity-text-align: middle-center; }
-.thry-recording > .thry-property-row > .thry-property-value { border-left-width: 2px; border-left-color: #f92672; }
-.thry-field-heading { -unity-font-style: bold; margin-top: 8px; margin-bottom: 4px; }
-.thry-description { white-space: normal; overflow: hidden; margin: 3px 0; }
-#thry-separator { height: 1px; background-color: #444444; margin: 4px 0; }
-.thry-presets-row { flex-direction: row; align-items: center; margin-bottom: 8px; }
-.thry-presets-row > * { flex-grow: 1; flex-basis: 0; min-width: 0; }
-.thry-presets-row > Button { font-size: 13px; height: 24px; background-color: #505050; border-width: 1px; border-color: #606060; border-radius: 4px; margin: 0 6px 0 0; }
-.thry-lock-button:hover, .thry-presets-row > Button:hover { background-color: #5a5a5a; border-color: #707070; }
-.thry-lock-button:active, .thry-presets-row > Button:active { background-color: #414141; border-color: #7aadd6; }
-.thry-lock-button:focus, .thry-presets-row > Button:focus { border-color: #7aadd6; }
-.thry-rendering-mode .thry-property-row { height: 24px; min-height: 24px; margin: 0; }
-.thry-rendering-mode .unity-base-popup-field { height: 24px; min-height: 24px; margin: 0; }
-.thry-rendering-mode .unity-base-popup-field__input { height: 24px; min-height: 24px; background-color: #505050; border-color: #606060; padding-left: 10px; }
-.thry-rendering-mode .unity-base-popup-field__input:hover { background-color: #5a5a5a; border-color: #707070; }
-.thry-rendering-mode .unity-base-popup-field__text { -unity-text-align: middle-left; font-size: 13px; }
-.thry-light .thry-lock-button, .thry-light .thry-presets-row > Button, .thry-light .thry-rendering-mode .unity-base-popup-field__input { background-color: #dedede; border-color: #b5b5b5; }
-.thry-light .thry-lock-button:hover, .thry-light .thry-presets-row > Button:hover, .thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: #eeeeee; border-color: #a0a0a0; }
-.thry-with-reference { flex-direction: row-reverse; align-items: center; }
-.thry-with-reference > * { flex-grow: 1; flex-basis: 0; min-width: 0; }
-.thry-with-reference > .thry-property { margin-left: 4px; }
-.thry-ramp { background-color: #2c2c2c; border-radius: 4px; margin-bottom: 4px; }
-.thry-components > Button { min-width: 0; border-width: 1px; border-color: #505050; border-radius: 4px; background-color: #414141; }
-.thry-components > Button.thry-selected { border-color: #7aadd6; background-color: #435563; }
-.thry-property-label { min-width: 40px; max-width: none; }
-.thry-window { padding: 12px; min-width: 0; }
-.thry-window .unity-foldout { margin: 8px 0; }
-.thry-window .unity-foldout__toggle { min-height: 28px; background-color: #414141; border-radius: 4px; -unity-font-style: bold; }
-.thry-window .unity-base-text-field__input, .thry-window .unity-base-popup-field__input { background-color: #2c2c2c; border-color: #494949; border-width: 1px; border-radius: 4px; min-height: 22px; padding: 0 6px; }
-.thry-window Button { border-width: 1px; border-color: #525252; border-radius: 4px; min-height: 26px; background-color: #454545; }
-.thry-window Button:hover { background-color: #505050; }
-.thry-material-controls .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
-.thry-switch-knob { position: absolute; top: 2px; width: 10px; height: 10px; border-radius: 5px; background-color: #bcbcbc; }
-.thry-note { font-size: 10px; color: #a3a3a3; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
-.thry-material-controls .unity-help-box { background-color: #3d3d3d; border-color: #505050; border-radius: 4px; padding: 5px 6px; }
-.thry-inspector .unity-help-box__label, .thry-window .unity-help-box__label { font-size: 13px; white-space: normal; -unity-font-style: normal; color: #c4c4c4; }
-.thry-light .unity-help-box__label { color: #292929; }
-.thry-inspector .unity-help-box__icon, .thry-window .unity-help-box__icon { width: 22px; height: 22px; min-width: 22px; min-height: 22px; flex-shrink: 0; align-self: center; margin: 0 8px 0 0; -unity-background-scale-mode: scale-to-fit; }
-.thry-light .thry-material-controls .unity-help-box { background-color: #d4d4d4; border-color: #aaaaaa; }
-.thry-stencil { background-color: #333333; padding: 8px; margin-bottom: 6px; border-radius: 5px; }
-.thry-light .thry-section-header, .thry-light.thry-window .unity-foldout__toggle { background-color: #c4c4c4; }
-.thry-light .thry-root-section > .thry-section-header { background-color: #bebebe; }
-.thry-light .thry-property-label, .thry-light .thry-section-title { color: #292929; }
-.thry-light .thry-texture-details, .thry-light .thry-stencil { background-color: #c9c9c9; }
-.thry-light .thry-material-controls .unity-base-text-field__input, .thry-light .thry-material-controls .unity-base-popup-field__input, .thry-light .thry-material-controls .unity-object-field__input, .thry-light.thry-window .unity-base-text-field__input, .thry-light.thry-window .unity-base-popup-field__input { background-color: #e4e4e4; border-color: #aaaaaa; color: #292929; }
-.thry-light .thry-material-controls .unity-toggle__checkmark { background-color: #e4e4e4; border-color: #999999; }
-.thry-light .thry-excluded { background-color: #b5b5b5; }
 
-.thry-texture-workspace { padding: 16px; }
-.thry-studio-columns { flex-direction: row; flex-grow: 1; min-height: 0; margin-top: 12px; margin-bottom: 12px; }
-.thry-studio-controls { flex-basis: 56%; flex-grow: 1; margin-right: 16px; }
-.thry-studio-preview { flex-basis: 40%; flex-grow: 1; min-width: 200px; padding: 12px; background-color: #303030; border-radius: 6px; }
-.thry-studio-preview > .unity-image { margin-bottom: 12px; }
-.thry-studio-section { margin-top: 6px; margin-bottom: 6px; }
-.thry-studio-section > .unity-foldout__toggle { min-height: 28px; background-color: #444444; border-radius: 4px; padding-left: 6px; -unity-font-style: bold; }
-.thry-studio-section .unity-foldout__content { margin-left: 8px; padding-top: 4px; }
-.thry-studio-route { padding: 8px; margin-bottom: 6px; background-color: #303030; border-radius: 4px; }
-.thry-studio-columns .unity-base-field__label { min-width: 90px; width: 38%; }
-.thry-studio-columns .unity-base-field { min-height: 24px; margin-bottom: 4px; }
-.thry-studio-columns .unity-base-field__input { min-width: 0; }
-.thry-studio-columns .thry-components .unity-base-field__label { min-width: 0; width: auto; }
-.thry-primary-action { min-height: 32px; background-color: #386b51; color: #f0f0f0; -unity-font-style: bold; }
-.thry-light .thry-studio-preview, .thry-light .thry-studio-route { background-color: #c5c5c5; }
-.thry-light .thry-studio-section > .unity-foldout__toggle { background-color: #b9b9b9; }
-.thry-menu-card { background-color: #383838; border-color: #575757; border-width: 1px; border-radius: 5px; padding: 4px; }
-.thry-menu-item { flex-direction: row; align-items: center; min-height: 26px; max-height: 26px; padding: 0 8px; border-radius: 3px; }
-.thry-menu-item Label { color: #dedede; font-size: 13px; -unity-text-align: middle-left; overflow: hidden; text-overflow: ellipsis; }
-.thry-menu-item .thry-menu-check { width: 18px; flex-shrink: 0; margin-right: 4px; }
-.thry-menu-selected { background-color: #505050; }
-.thry-menu-disabled { opacity: .45; }
-.thry-menu-separator { height: 1px; margin: 4px 6px; background-color: #505050; }
-.thry-light .thry-menu-card { background-color: #dedede; border-color: #a8a8a8; }
-.thry-light .thry-menu-item Label { color: #252525; }
-.thry-light .thry-menu-selected { background-color: #c4c4c4; }
-.thry-texture-summary { flex-direction: row; align-items: center; padding-bottom: 8px; margin-bottom: 4px; border-bottom-width: 1px; border-bottom-color: #414141; }
-.thry-texture-summary .thry-texture-preview { width: 64px; height: 64px; margin: 0 12px 0 0; flex-shrink: 0; background-color: #292929; border-radius: 4px; }
-.thry-texture-name { -unity-font-style: bold; overflow: hidden; text-overflow: ellipsis; }
-.thry-muted { color: #a0a0a0; font-size: 12px; white-space: normal; }
-.thry-studio-source { margin: 4px 0; padding: 6px 8px; background-color: #323232; border-radius: 4px; }
-.thry-studio-source > .thry-components > Label { -unity-font-style: bold; -unity-text-align: middle-left; }
-.thry-studio-source > .thry-components > .unity-popup-field { width: 100px; flex-grow: 0; }
-.thry-studio-source > .thry-studio-section > .unity-foldout__toggle { background-color: transparent; min-height: 22px; -unity-font-style: normal; color: #a8a8a8; }
-.thry-studio-source .thry-studio-section { margin: 0; }
-.thry-texture-workspace .thry-primary-action { background-color: #386b51; }
-.thry-footer { flex-wrap: wrap; }
-.thry-footer-credit { min-width: 110px; margin-bottom: 4px; }
-.thry-footer Button { flex-shrink: 0; }
-.thry-material-controls .unity-base-popup-field__text { min-width: 0; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
-.thry-excluded .thry-header-action, .thry-excluded .thry-fold-arrow, .thry-excluded .thry-header-reference { opacity: .55; }
-.thry-window > .thry-components { flex-grow: 0; flex-shrink: 0; min-height: 28px; margin: 4px 0; }
-.thry-window > .thry-components > .unity-base-field { flex-grow: 1; flex-basis: 0; min-width: 0; }
-.thry-lock-manager .unity-base-field__label { min-width: 64px; width: 64px; }
-.thry-lock-manager > .unity-toggle > .unity-base-field__label { min-width: 120px; width: 120px; }
-.thry-window .thry-search .unity-base-text-field__input { background-color: transparent; border-width: 0; padding: 0; }
-.thry-window .thry-search Button { min-height: 14px; height: 14px; width: 14px; padding: 0; border-width: 0; border-radius: 0; background-color: transparent; }
-.thry-window .thry-search { flex-grow: 0; flex-shrink: 0; }
-.thry-window > .thry-components > .thry-search { flex-grow: 1; flex-shrink: 1; }
+.thry-dropdown-menu .unity-base-dropdown__container-inner {
+    background-color: #383838;
+    border-width: 0;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.thry-dropdown-menu .unity-base-dropdown__item {
+    flex-direction: row;
+    align-items: center;
+    height: 26px;
+    min-height: 26px;
+    margin: 0;
+    padding: 0 8px;
+    border-radius: 4px;
+}
+
+.thry-dropdown-menu .unity-base-dropdown__checkmark {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+}
+
+.thry-dropdown-menu .unity-base-dropdown__label {
+    color: #e4e4e4;
+    font-size: 13px;
+    -unity-text-align: middle-left;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thry-dropdown-menu .unity-base-dropdown__item:hover, .thry-dropdown-menu .unity-base-dropdown__item:checked {
+    background-color: #4c4c4c;
+}
+
+.thry-dropdown-menu.thry-light .unity-base-dropdown__container-outer, .thry-dropdown-menu.thry-light .unity-base-dropdown__container-inner {
+    background-color: #dedede;
+    border-color: #b5b5b5;
+}
+
+.thry-dropdown-menu.thry-light .unity-base-dropdown__label {
+    color: #252525;
+}
+
+.thry-dropdown-menu.thry-light .unity-base-dropdown__item:hover, .thry-dropdown-menu.thry-light .unity-base-dropdown__item:checked {
+    background-color: #eeeeee;
+}
+
+/* Native material controls share one responsive label/value grid. */
+.thry-material-controls {
+    margin: 0 3px;
+}
+
+.thry-property-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 22px;
+    margin: 1px 0;
+}
+
+.thry-property-label {
+    width: 38%;
+    min-width: 80px;
+    max-width: 240px;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0 8px 0 0;
+    -unity-text-align: middle-left;
+    color: #c4c4c4;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thry-property-value {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.thry-property-value > .unity-base-field {
+    margin: 0;
+    min-width: 0;
+    min-height: 22px;
+}
+
+.thry-input, .thry-component {
+    font-size: 13px;
+}
+
+.thry-material-controls .unity-base-text-field__input, .thry-material-controls .unity-base-popup-field__input, .thry-material-controls .unity-object-field__input {
+    background-color: #2c2c2c;
+    border-color: #494949;
+    border-width: 1px;
+    border-radius: 4px;
+    min-height: 22px;
+    padding: 0 6px;
+    -unity-text-align: middle-left;
+}
+
+.thry-material-controls .unity-base-text-field__input:focus, .thry-material-controls .unity-base-popup-field__input:focus {
+    border-color: #7aadd6;
+}
+
+.thry-material-controls .unity-base-slider .unity-base-text-field {
+    width: 54px;
+    margin: 0 0 0 6px;
+}
+
+.thry-material-controls .unity-base-slider__drag-container {
+    margin: 0 4px;
+    min-height: 22px;
+}
+
+.thry-components {
+    flex-direction: row;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.thry-components > .thry-component {
+    flex-grow: 1;
+    flex-basis: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.thry-components > .thry-component-spaced {
+    margin-left: 8px;
+}
+
+.thry-component > .unity-base-field__label {
+    min-width: 10px;
+    width: auto;
+    margin: 0 4px 0 0;
+    padding: 0;
+    -unity-text-align: middle-center;
+    color: #969696;
+}
+
+.thry-inline .thry-property-label {
+    display: none;
+}
+
+.thry-inline {
+    flex-grow: 1;
+}
+
+.thry-section {
+    margin: 0 0 3px;
+}
+
+.thry-section-header {
+    flex-direction: row;
+    align-items: center;
+    height: 20.2px;
+    background-color: #494949;
+    border-radius: 4px;
+    padding: 0 4px;
+    overflow: hidden;
+}
+
+.thry-root-section > .thry-section-header {
+    height: 23px;
+    background-color: #4d4d4d;
+    border-radius: 5px;
+}
+
+.thry-section-title-area {
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0 4px;
+}
+
+.thry-section-title {
+    flex-grow: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    -unity-font-style: bold;
+    margin: 0;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thry-header-animation-dot, .thry-section-changed-dot {
+    width: 5px;
+    height: 5px;
+    min-width: 5px;
+    min-height: 5px;
+    flex-shrink: 0;
+    margin-left: 5px;
+    border-radius: 3px;
+}
+
+.thry-section-content {
+    padding: 4px 0 4px 8px;
+}
+
+.thry-root-section > .thry-section-content {
+    padding-top: 7px;
+}
+
+.thry-header-action, .thry-fold-arrow {
+    border-width: 0;
+    border-radius: 3px;
+    background-color: transparent;
+    width: 24px;
+    height: 100%;
+    min-height: 0;
+    min-width: 24px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    color: #b8b8b8;
+}
+
+.thry-header-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    --unity-image-tint-color: #b8b8b8;
+}
+
+.thry-fold-arrow .thry-header-icon {
+    width: 14px;
+    height: 14px;
+}
+
+.thry-header-action:hover .thry-header-icon, .thry-fold-arrow:hover .thry-header-icon {
+    --unity-image-tint-color: #e4e4e4;
+}
+
+.thry-linked .thry-header-icon {
+    --unity-image-tint-color: #7aadd6;
+}
+
+.thry-light .thry-header-icon {
+    --unity-image-tint-color: #5d5d5d;
+}
+
+.thry-light .thry-header-action:hover .thry-header-icon, .thry-light .thry-fold-arrow:hover .thry-header-icon {
+    --unity-image-tint-color: #252525;
+}
+
+.thry-light .thry-linked .thry-header-icon {
+    --unity-image-tint-color: #326f9c;
+}
+
+.thry-header-action:hover {
+    background-color: #595959;
+}
+
+.thry-section-header > .thry-fold-arrow:hover, .thry-section-header > .thry-fold-arrow:active, .thry-section-header > .thry-fold-arrow:focus {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.thry-fold-arrow:focus .thry-header-icon {
+    --unity-image-tint-color: #e4e4e4;
+}
+
+.thry-light .thry-fold-arrow:focus .thry-header-icon {
+    --unity-image-tint-color: #252525;
+}
+
+.thry-header-reference .unity-toggle {
+    margin: 0;
+}
+
+.thry-material-controls .unity-toggle__input {
+    align-items: center;
+}
+
+.thry-material-controls .unity-toggle__checkmark {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    border-radius: 3px;
+    background-color: #2c2c2c;
+    border-color: #535353;
+    border-width: 1px;
+}
+
+.thry-section-switch {
+    margin: 0 5px 0 0;
+}
+
+.thry-section-switch .unity-toggle__checkmark {
+    width: 30px;
+    height: 16px;
+    border-radius: 8px;
+    background-image: none;
+}
+
+.thry-excluded {
+    background-color: #3d3d3d;
+    color: #858585;
+}
+
+.thry-excluded .thry-section-title {
+    color: #858585;
+}
+
+.thry-texture-label {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: transparent;
+    border-width: 0;
+    padding-left: 0;
+}
+
+.thry-texture-label .thry-texture-caret {
+    width: 14px;
+    height: 14px;
+    margin-right: 2px;
+}
+
+.thry-texture-caption {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+}
+
+.thry-texture-details {
+    background-color: #333333;
+    padding: 8px;
+    margin: 3px 0 5px;
+    border-radius: 5px;
+}
+
+.thry-texture-preview {
+    height: 80px;
+    margin-bottom: 6px;
+}
+
+.thry-lock-button {
+    font-size: 13px;
+    height: 24px;
+    margin: 0 0 3px;
+    background-color: #505050;
+    border-width: 1px;
+    border-color: #606060;
+    border-radius: 4px;
+}
+
+.thry-section-toolbar {
+    flex-direction: row;
+    padding: 2px;
+    margin-bottom: 6px;
+}
+
+.thry-section-toolbar Button {
+    flex-grow: 1;
+    flex-basis: 0;
+    margin: 0 1px;
+    height: 26px;
+    border-width: 0;
+    border-radius: 4px;
+}
+
+.thry-section-action-0 {
+    background-color: #39734f;
+}
+
+.thry-section-action-1 {
+    background-color: #525252;
+}
+
+.thry-section-action-2 {
+    background-color: #385e85;
+}
+
+.thry-section-action-3 {
+    background-color: #7d454a;
+}
+
+.thry-footer {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 16px;
+}
+
+.thry-footer-credit {
+    flex-grow: 1;
+    font-size: 10px;
+    color: #a3a3a3;
+}
+
+.thry-footer Button {
+    width: 26px;
+    height: 26px;
+    background-color: transparent;
+    border-width: 0;
+    margin: 0 2px;
+    padding: 1px;
+}
+
+.thry-footer Image {
+    width: 24px;
+    height: 24px;
+}
+
+.thry-animation-letter {
+    width: 18px;
+    min-width: 18px;
+    height: 16px;
+    flex-shrink: 0;
+    margin: 0 2px 0 0;
+    padding: 0;
+    font-size: 9px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.thry-recording > .thry-property-row > .thry-property-value {
+    border-left-width: 2px;
+    border-left-color: #f92672;
+}
+
+.thry-field-heading {
+    -unity-font-style: bold;
+    margin-top: 8px;
+    margin-bottom: 4px;
+}
+
+.thry-description {
+    white-space: normal;
+    overflow: hidden;
+    margin: 3px 0;
+}
+
+#thry-separator {
+    height: 1px;
+    background-color: #444444;
+    margin: 4px 0;
+}
+
+.thry-presets-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.thry-presets-row > * {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+}
+
+.thry-presets-row > Button {
+    font-size: 13px;
+    height: 24px;
+    background-color: #505050;
+    border-width: 1px;
+    border-color: #606060;
+    border-radius: 4px;
+    margin: 0 6px 0 0;
+}
+
+.thry-lock-button:hover, .thry-presets-row > Button:hover {
+    background-color: #5a5a5a;
+    border-color: #707070;
+}
+
+.thry-lock-button:active, .thry-presets-row > Button:active {
+    background-color: #414141;
+    border-color: #7aadd6;
+}
+
+.thry-lock-button:focus, .thry-presets-row > Button:focus {
+    border-color: #7aadd6;
+}
+
+.thry-rendering-mode .thry-property-row {
+    height: 24px;
+    min-height: 24px;
+    margin: 0;
+}
+
+.thry-rendering-mode .unity-base-popup-field {
+    height: 24px;
+    min-height: 24px;
+    margin: 0;
+}
+
+.thry-rendering-mode .unity-base-popup-field__input {
+    height: 24px;
+    min-height: 24px;
+    background-color: #505050;
+    border-color: #606060;
+    padding-left: 10px;
+}
+
+.thry-rendering-mode .unity-base-popup-field__input:hover {
+    background-color: #5a5a5a;
+    border-color: #707070;
+}
+
+.thry-rendering-mode .unity-base-popup-field__text {
+    -unity-text-align: middle-left;
+    font-size: 13px;
+}
+
+.thry-light .thry-lock-button, .thry-light .thry-presets-row > Button, .thry-light .thry-rendering-mode .unity-base-popup-field__input {
+    background-color: #dedede;
+    border-color: #b5b5b5;
+}
+
+.thry-light .thry-lock-button:hover, .thry-light .thry-presets-row > Button:hover, .thry-light .thry-rendering-mode .unity-base-popup-field__input:hover {
+    background-color: #eeeeee;
+    border-color: #a0a0a0;
+}
+
+.thry-with-reference {
+    flex-direction: row-reverse;
+    align-items: center;
+}
+
+.thry-with-reference > * {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+}
+
+.thry-with-reference > .thry-property {
+    margin-left: 4px;
+}
+
+.thry-ramp {
+    background-color: #2c2c2c;
+    border-radius: 4px;
+    margin-bottom: 4px;
+}
+
+.thry-components > Button {
+    min-width: 0;
+    border-width: 1px;
+    border-color: #505050;
+    border-radius: 4px;
+    background-color: #414141;
+}
+
+.thry-components > Button.thry-selected {
+    border-color: #7aadd6;
+    background-color: #435563;
+}
+
+.thry-property-label {
+    min-width: 40px;
+    max-width: none;
+}
+
+.thry-window {
+    padding: 12px;
+    min-width: 0;
+}
+
+.thry-window .unity-foldout {
+    margin: 8px 0;
+}
+
+.thry-window .unity-foldout__toggle {
+    min-height: 28px;
+    background-color: #414141;
+    border-radius: 4px;
+    -unity-font-style: bold;
+}
+
+.thry-window .unity-base-text-field__input, .thry-window .unity-base-popup-field__input {
+    background-color: #2c2c2c;
+    border-color: #494949;
+    border-width: 1px;
+    border-radius: 4px;
+    min-height: 22px;
+    padding: 0 6px;
+}
+
+.thry-window Button {
+    border-width: 1px;
+    border-color: #525252;
+    border-radius: 4px;
+    min-height: 26px;
+    background-color: #454545;
+}
+
+.thry-window Button:hover {
+    background-color: #505050;
+}
+
+.thry-material-controls .unity-foldout__toggle .unity-toggle__checkmark {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.thry-switch-knob {
+    position: absolute;
+    top: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background-color: #bcbcbc;
+}
+
+.thry-note {
+    font-size: 10px;
+    color: #a3a3a3;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thry-material-controls .unity-help-box {
+    background-color: #3d3d3d;
+    border-color: #505050;
+    border-radius: 4px;
+    padding: 5px 6px;
+}
+
+.thry-inspector .unity-help-box__label, .thry-window .unity-help-box__label {
+    font-size: 13px;
+    white-space: normal;
+    -unity-font-style: normal;
+    color: #c4c4c4;
+}
+
+.thry-light .unity-help-box__label {
+    color: #292929;
+}
+
+.thry-inspector .unity-help-box__icon, .thry-window .unity-help-box__icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    flex-shrink: 0;
+    align-self: center;
+    margin: 0 8px 0 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.thry-light .thry-material-controls .unity-help-box {
+    background-color: #d4d4d4;
+    border-color: #aaaaaa;
+}
+
+.thry-stencil {
+    background-color: #333333;
+    padding: 8px;
+    margin-bottom: 6px;
+    border-radius: 5px;
+}
+
+.thry-light .thry-section-header, .thry-light.thry-window .unity-foldout__toggle {
+    background-color: #b4b4b4;
+}
+
+.thry-light .thry-root-section > .thry-section-header {
+    background-color: #b4b4b4;
+}
+
+.thry-light .thry-property-label, .thry-light .thry-section-title {
+    color: #292929;
+}
+
+.thry-light .thry-texture-details, .thry-light .thry-stencil {
+    background-color: #c9c9c9;
+}
+
+.thry-light .thry-material-controls .unity-base-text-field__input, .thry-light .thry-material-controls .unity-base-popup-field__input, .thry-light .thry-material-controls .unity-object-field__input, .thry-light.thry-window .unity-base-text-field__input, .thry-light.thry-window .unity-base-popup-field__input {
+    background-color: #e4e4e4;
+    border-color: #aaaaaa;
+    color: #292929;
+}
+
+.thry-light .thry-material-controls .unity-toggle__checkmark {
+    background-color: #e4e4e4;
+    border-color: #999999;
+}
+
+.thry-light .thry-excluded {
+    background-color: #ababab;
+}
+
+.thry-texture-workspace {
+    padding: 16px;
+}
+
+.thry-studio-columns {
+    flex-direction: row;
+    flex-grow: 1;
+    min-height: 0;
+    margin-top: 12px;
+    margin-bottom: 12px;
+}
+
+.thry-studio-controls {
+    flex-basis: 56%;
+    flex-grow: 1;
+    margin-right: 16px;
+}
+
+.thry-studio-preview {
+    flex-basis: 40%;
+    flex-grow: 1;
+    min-width: 200px;
+    padding: 12px;
+    background-color: #303030;
+    border-radius: 6px;
+}
+
+.thry-studio-preview > .unity-image {
+    margin-bottom: 12px;
+}
+
+.thry-studio-section {
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+.thry-studio-section > .unity-foldout__toggle {
+    min-height: 28px;
+    background-color: #444444;
+    border-radius: 4px;
+    padding-left: 6px;
+    -unity-font-style: bold;
+}
+
+.thry-studio-section .unity-foldout__content {
+    margin-left: 8px;
+    padding-top: 4px;
+}
+
+.thry-studio-route {
+    padding: 8px;
+    margin-bottom: 6px;
+    background-color: #303030;
+    border-radius: 4px;
+}
+
+.thry-studio-columns .unity-base-field__label {
+    min-width: 90px;
+    width: 38%;
+}
+
+.thry-studio-columns .unity-base-field {
+    min-height: 24px;
+    margin-bottom: 4px;
+}
+
+.thry-studio-columns .unity-base-field__input {
+    min-width: 0;
+}
+
+.thry-studio-columns .thry-components .unity-base-field__label {
+    min-width: 0;
+    width: auto;
+}
+
+.thry-primary-action {
+    min-height: 32px;
+    background-color: #386b51;
+    color: #f0f0f0;
+    -unity-font-style: bold;
+}
+
+.thry-light .thry-studio-preview, .thry-light .thry-studio-route {
+    background-color: #c5c5c5;
+}
+
+.thry-light .thry-studio-section > .unity-foldout__toggle {
+    background-color: #b9b9b9;
+}
+
+.thry-menu-card {
+    background-color: #383838;
+    border-color: #575757;
+    border-width: 1px;
+    border-radius: 5px;
+    padding: 4px;
+}
+
+.thry-menu-item {
+    flex-direction: row;
+    align-items: center;
+    min-height: 26px;
+    max-height: 26px;
+    padding: 0 8px;
+    border-radius: 3px;
+}
+
+.thry-menu-item Label {
+    color: #dedede;
+    font-size: 13px;
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thry-menu-item .thry-menu-check {
+    width: 18px;
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+
+.thry-menu-item .thry-menu-label {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.thry-menu-item .thry-menu-arrow {
+    width: 12px;
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-left: 6px;
+    -unity-text-align: middle-right;
+    opacity: .7;
+}
+
+.thry-menu-selected {
+    background-color: #505050;
+}
+
+.thry-menu-disabled {
+    opacity: .45;
+}
+
+.thry-menu-separator {
+    height: 1px;
+    margin: 4px 6px;
+    background-color: #505050;
+}
+
+.thry-light .thry-menu-card {
+    background-color: #dedede;
+    border-color: #a8a8a8;
+}
+
+.thry-light .thry-menu-item Label {
+    color: #252525;
+}
+
+.thry-light .thry-menu-selected {
+    background-color: #c4c4c4;
+}
+
+.thry-texture-summary {
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: #414141;
+}
+
+.thry-texture-summary .thry-texture-preview {
+    width: 64px;
+    height: 64px;
+    margin: 0 12px 0 0;
+    flex-shrink: 0;
+    background-color: #292929;
+    border-radius: 4px;
+}
+
+.thry-texture-name {
+    -unity-font-style: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thry-muted {
+    color: #a0a0a0;
+    font-size: 12px;
+    white-space: normal;
+}
+
+.thry-studio-source {
+    margin: 4px 0;
+    padding: 6px 8px;
+    background-color: #323232;
+    border-radius: 4px;
+}
+
+.thry-studio-source > .thry-components > Label {
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+}
+
+.thry-studio-source > .thry-components > .unity-popup-field {
+    width: 100px;
+    flex-grow: 0;
+}
+
+.thry-studio-source > .thry-studio-section > .unity-foldout__toggle {
+    background-color: transparent;
+    min-height: 22px;
+    -unity-font-style: normal;
+    color: #a8a8a8;
+}
+
+.thry-studio-source .thry-studio-section {
+    margin: 0;
+}
+
+.thry-texture-workspace .thry-primary-action {
+    background-color: #386b51;
+}
+
+.thry-footer {
+    flex-wrap: wrap;
+}
+
+.thry-footer-credit {
+    min-width: 110px;
+    margin-bottom: 4px;
+}
+
+.thry-footer Button {
+    flex-shrink: 0;
+}
+
+.thry-material-controls .unity-base-popup-field__text {
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thry-excluded .thry-header-action, .thry-excluded .thry-fold-arrow, .thry-excluded .thry-header-reference {
+    opacity: .55;
+}
+
+.thry-window > .thry-components {
+    flex-grow: 0;
+    flex-shrink: 0;
+    min-height: 28px;
+    margin: 4px 0;
+}
+
+.thry-window > .thry-components > .unity-base-field {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+}
+
+.thry-lock-manager .unity-base-field__label {
+    min-width: 64px;
+    width: 64px;
+}
+
+.thry-lock-manager > .unity-toggle > .unity-base-field__label {
+    min-width: 120px;
+    width: 120px;
+}
+
+.thry-window .thry-search .unity-base-text-field__input {
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+}
+
+.thry-window .thry-search Button {
+    min-height: 14px;
+    height: 14px;
+    width: 14px;
+    padding: 0;
+    border-width: 0;
+    border-radius: 0;
+    background-color: transparent;
+}
+
+.thry-window .thry-search {
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.thry-window > .thry-components > .thry-search {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
 
 /* Auxiliary windows use the inspector's controls without its material label grid. */
-.thry-settings > .thry-search { width: auto; max-width: none; align-self: stretch; }
-.thry-settings .unity-foldout { margin: 4px 0; }
-.thry-settings .unity-foldout__content { padding-top: 3px; padding-bottom: 3px; }
-.thry-settings .thry-property-label { width: 52%; white-space: normal; overflow: visible; text-overflow: clip; }
-.thry-settings .thry-property-row { min-height: 24px; }
+.thry-settings > .thry-search {
+    width: auto;
+    max-width: none;
+    align-self: stretch;
+}
+
+.thry-settings .unity-foldout {
+    margin: 4px 0;
+}
+
+.thry-settings .unity-foldout__content {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+.thry-settings .thry-property-label {
+    width: 52%;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.thry-settings .thry-property-row {
+    min-height: 24px;
+}
+
 .thry-settings .thry-property-value > .unity-toggle,
-.thry-lock-manager > .unity-toggle { align-items: center; }
+.thry-lock-manager > .unity-toggle {
+    align-items: center;
+}
+
 .thry-settings .thry-property-value .unity-toggle__input,
-.thry-lock-manager > .unity-toggle .unity-toggle__input { align-items: center; }
+.thry-lock-manager > .unity-toggle .unity-toggle__input {
+    align-items: center;
+}
+
 .thry-settings .thry-property-value .unity-toggle__checkmark,
 .thry-lock-manager > .unity-toggle .unity-toggle__checkmark {
-    width: 16px; height: 16px; min-width: 16px; min-height: 16px; margin: 0;
-    border-radius: 3px; background-color: #2c2c2c; border-color: #535353; border-width: 1px;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    margin: 0;
+    border-radius: 3px;
+    background-color: #2c2c2c;
+    border-color: #535353;
+    border-width: 1px;
 }
+
 .thry-light.thry-settings .thry-property-value .unity-toggle__checkmark,
-.thry-light.thry-lock-manager > .unity-toggle .unity-toggle__checkmark { background-color: #e4e4e4; border-color: #999999; }
+.thry-light.thry-lock-manager > .unity-toggle .unity-toggle__checkmark {
+    background-color: #e4e4e4;
+    border-color: #999999;
+}
 
 /* Keep the object picker inside the field, beside its single text surface. */
 .thry-material-controls .unity-object-field__input {
-    flex-direction: row; align-items: center; padding-left: 0; padding-right: 0;
+    flex-direction: row;
+    align-items: center;
+    padding-left: 0;
+    padding-right: 0;
 }
+
 .thry-material-controls .unity-object-field-display {
-    flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; padding: 0;
-    background-color: transparent; border-width: 0; align-items: center; height: 20px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+    align-items: center;
+    height: 20px;
 }
+
 .thry-material-controls .unity-object-field-display__icon {
-    width: 20px; height: 20px; min-width: 20px; flex-shrink: 0; padding: 0; margin: 0;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    flex-shrink: 0;
+    padding: 0;
+    margin: 0;
 }
+
 .thry-material-controls .unity-object-field-display__label {
-    flex-shrink: 1; min-width: 0; margin: 0 0 0 5px; padding: 0; overflow: hidden; text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0 0 0 5px;
+    padding: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.thry-asset-tile { width: 24px; min-width: 24px; height: 20px; flex-shrink: 0; background-color: #363636; border-right-width: 1px; border-right-color: #494949; overflow: hidden; }
-.thry-asset-size { flex-shrink: 0; margin: 0 6px; padding: 0; font-size: 10px; color: #969696; -unity-text-align: middle-right; }
-.thry-texture-asset .unity-object-field-display__label { flex-grow: 1; }
-.thry-asset-tile > .unity-image { width: 23px; height: 20px; flex-shrink: 0; margin: 0; padding: 0; }
-.thry-texture-asset .thry-asset-clear { width: 18px; min-width: 18px; height: 18px; min-height: 18px; flex-shrink: 0; margin: 0 2px 0 0; padding: 0; border-width: 0; border-radius: 3px; background-color: transparent; align-items: center; justify-content: center; }
-.thry-texture-asset .thry-asset-clear:hover, .thry-texture-asset .thry-asset-clear:focus { background-color: #484848; }
-.thry-texture-asset.thry-asset-unassigned .unity-object-field-display__label { color: #969696; }
-.thry-texture-asset:hover .thry-asset-tile { background-color: #414141; }
-.thry-light .thry-asset-tile { background-color: #c4c4c4; border-right-color: #aaaaaa; }
-.thry-light .thry-texture-asset.thry-asset-unassigned .unity-object-field-display__label { color: #666666; }
-.thry-light .thry-texture-asset .thry-asset-clear:hover, .thry-light .thry-texture-asset .thry-asset-clear:focus { background-color: #b5b5b5; }
+
+.thry-asset-tile {
+    width: 24px;
+    min-width: 24px;
+    height: 20px;
+    flex-shrink: 0;
+    background-color: #363636;
+    border-right-width: 1px;
+    border-right-color: #494949;
+    overflow: hidden;
+}
+
+.thry-asset-size {
+    flex-shrink: 0;
+    margin: 0 6px;
+    padding: 0;
+    font-size: 10px;
+    color: #969696;
+    -unity-text-align: middle-right;
+}
+
+.thry-texture-asset .unity-object-field-display__label {
+    flex-grow: 1;
+}
+
+.thry-asset-tile > .unity-image {
+    width: 23px;
+    height: 20px;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.thry-texture-asset .thry-asset-clear {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    min-height: 18px;
+    flex-shrink: 0;
+    margin: 0 2px 0 0;
+    padding: 0;
+    border-width: 0;
+    border-radius: 3px;
+    background-color: transparent;
+    align-items: center;
+    justify-content: center;
+}
+
+.thry-texture-asset .thry-asset-clear:hover, .thry-texture-asset .thry-asset-clear:focus {
+    background-color: #484848;
+}
+
+.thry-texture-asset.thry-asset-unassigned .unity-object-field-display__label {
+    color: #969696;
+}
+
+.thry-texture-asset:hover .thry-asset-tile {
+    background-color: #414141;
+}
+
+.thry-light .thry-asset-tile {
+    background-color: #c4c4c4;
+    border-right-color: #aaaaaa;
+}
+
+.thry-light .thry-texture-asset.thry-asset-unassigned .unity-object-field-display__label {
+    color: #666666;
+}
+
+.thry-light .thry-texture-asset .thry-asset-clear:hover, .thry-light .thry-texture-asset .thry-asset-clear:focus {
+    background-color: #b5b5b5;
+}
+
 .thry-material-controls .unity-object-field__selector {
-    position: relative; left: auto; right: auto; top: auto; bottom: auto;
-    width: 22px; min-width: 22px; height: 20px; min-height: 20px;
-    flex-shrink: 0; align-self: center; margin: 0; padding: 0;
-    border-width: 0; border-top-right-radius: 3px; border-bottom-right-radius: 3px;
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 22px;
+    min-width: 22px;
+    height: 20px;
+    min-height: 20px;
+    flex-shrink: 0;
+    align-self: center;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
 }
-.thry-texture-asset .unity-object-field__selector { border-radius: 0; }
+
+.thry-texture-asset .unity-object-field__selector {
+    border-radius: 0;
+}
 
 /* Channel inspection stays inside the same compact texture card. */
-.thry-texture-card { margin: -6px -6px 0; }
-.thry-texture-card .thry-texture-summary { padding-bottom: 2px; }
-.thry-texture-card .thry-texture-preview { margin-right: 2px; }
-.thry-texture-card-empty .thry-texture-preview { width: 40px; height: 40px; }
-.thry-texture-info { flex-grow: 1; flex-shrink: 1; min-width: 0; }
-.thry-texture-placeholder { flex-grow: 1; margin: 0; padding: 0; -unity-text-align: middle-center; color: #a0a0a0; font-size: 10px; white-space: normal; }
-.thry-texture-summary .thry-texture-preview { border-width: 1px; border-color: #494949; }
-.thry-texture-summary .thry-texture-preview:hover, .thry-texture-summary .thry-texture-preview:focus { border-color: #7aadd6; }
-.thry-texture-summary .thry-texture-channels Button:hover { background-color: #505050; }
-.thry-texture-channels { flex-direction: row; align-items: center; margin-top: 4px; }
-.thry-texture-summary .thry-texture-channels Button { flex-grow: 0; flex-shrink: 0; flex-basis: auto; align-self: center; width: 24px; min-width: 24px; height: 22px; min-height: 22px; margin: 0 3px 0 0; padding: 0; border-radius: 3px; border-width: 1px; border-color: #4b4b4b; background-color: #383838; font-size: 10px; -unity-text-align: middle-center; }
-.thry-texture-summary .thry-texture-channels #texture-channel-RGB { width: 36px; min-width: 36px; }
-.thry-texture-channels Button.thry-selected { background-color: #435563; border-color: #7aadd6; }
-.thry-texture-summary .thry-texture-drag { background-color: #435563; border-color: #7aadd6; }
-.thry-light .thry-texture-placeholder { color: #606060; }
-.thry-light .thry-texture-channels Button { background-color: #dddddd; border-color: #aaaaaa; color: #303030; }
-.thry-light .thry-texture-channels Button.thry-selected { background-color: #bfd1df; border-color: #3b78a8; }
-.thry-texture-title { flex-direction: row; align-items: center; min-width: 0; }
-.thry-texture-title .thry-texture-name { flex-shrink: 1; min-width: 0; }
-.thry-texture-summary .thry-texture-clear { width: 18px; min-width: 18px; height: 18px; min-height: 18px; flex-shrink: 0; align-self: center; align-items: center; justify-content: center; padding: 0; margin: 0 2px 0 0; border-width: 0; border-radius: 3px; background-color: transparent; }
-.thry-texture-clear-icon { width: 14px; height: 14px; --unity-image-tint-color: #999999; }
-.thry-texture-summary .thry-texture-clear:hover, .thry-texture-summary .thry-texture-clear:focus { background-color: #484848; }
-.thry-texture-clear:hover .thry-texture-clear-icon, .thry-texture-clear:focus .thry-texture-clear-icon { --unity-image-tint-color: #dddddd; }
-.thry-light .thry-texture-clear-icon { --unity-image-tint-color: #606060; }
-.thry-light .thry-texture-clear:hover, .thry-light .thry-texture-clear:focus { background-color: #b5b5b5; }
+.thry-texture-card {
+    margin: -6px -6px 0;
+}
+
+.thry-texture-card .thry-texture-summary {
+    padding-bottom: 2px;
+}
+
+.thry-texture-card .thry-texture-preview {
+    margin-right: 2px;
+}
+
+.thry-texture-card-empty .thry-texture-preview {
+    width: 40px;
+    height: 40px;
+}
+
+.thry-texture-info {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.thry-texture-placeholder {
+    flex-grow: 1;
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-center;
+    color: #a0a0a0;
+    font-size: 10px;
+    white-space: normal;
+}
+
+.thry-texture-summary .thry-texture-preview {
+    border-width: 1px;
+    border-color: #494949;
+}
+
+.thry-texture-summary .thry-texture-preview:hover, .thry-texture-summary .thry-texture-preview:focus {
+    border-color: #7aadd6;
+}
+
+.thry-texture-summary .thry-texture-channels Button:hover {
+    background-color: #505050;
+}
+
+.thry-texture-channels {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 4px;
+}
+
+.thry-texture-summary .thry-texture-channels Button {
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: auto;
+    align-self: center;
+    width: 24px;
+    min-width: 24px;
+    height: 22px;
+    min-height: 22px;
+    margin: 0 3px 0 0;
+    padding: 0;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #4b4b4b;
+    background-color: #383838;
+    font-size: 10px;
+    -unity-text-align: middle-center;
+}
+
+.thry-texture-summary .thry-texture-channels #texture-channel-RGB {
+    width: 36px;
+    min-width: 36px;
+}
+
+.thry-texture-channels Button.thry-selected {
+    background-color: #435563;
+    border-color: #7aadd6;
+}
+
+.thry-texture-summary .thry-texture-drag {
+    background-color: #435563;
+    border-color: #7aadd6;
+}
+
+.thry-light .thry-texture-placeholder {
+    color: #606060;
+}
+
+.thry-light .thry-texture-channels Button {
+    background-color: #dddddd;
+    border-color: #aaaaaa;
+    color: #303030;
+}
+
+.thry-light .thry-texture-channels Button.thry-selected {
+    background-color: #bfd1df;
+    border-color: #3b78a8;
+}
+
+.thry-texture-title {
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+}
+
+.thry-texture-title .thry-texture-name {
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.thry-texture-summary .thry-texture-clear {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    min-height: 18px;
+    flex-shrink: 0;
+    align-self: center;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0 2px 0 0;
+    border-width: 0;
+    border-radius: 3px;
+    background-color: transparent;
+}
+
+.thry-texture-clear-icon {
+    width: 14px;
+    height: 14px;
+    --unity-image-tint-color: #999999;
+}
+
+.thry-texture-summary .thry-texture-clear:hover, .thry-texture-summary .thry-texture-clear:focus {
+    background-color: #484848;
+}
+
+.thry-texture-clear:hover .thry-texture-clear-icon, .thry-texture-clear:focus .thry-texture-clear-icon {
+    --unity-image-tint-color: #dddddd;
+}
+
+.thry-light .thry-texture-clear-icon {
+    --unity-image-tint-color: #606060;
+}
+
+.thry-light .thry-texture-clear:hover, .thry-light .thry-texture-clear:focus {
+    background-color: #b5b5b5;
+}
 
 /* Texture assignment and its inline strength/reference share one value row. */
-.thry-texture-value { flex-direction: row; align-items: center; min-width: 0; }
-.thry-texture-value > .thry-texture-asset { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; }
-.thry-texture-has-reference > .thry-texture-asset { min-width: 76px; }
-.thry-texture-value > .thry-texture-reference { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 92px; margin-left: 6px; }
-.thry-texture-reference > .thry-property-row { min-height: 22px; margin-top: 0; margin-bottom: 0; }
-.thry-texture-value-compact > .thry-texture-reference { min-width: 80px; }
-.thry-texture-value-compact > .thry-texture-reference.thry-animated { min-width: 100px; }
-.thry-texture-value-compact .thry-asset-size { width: 0; min-width: 0; max-width: 0; margin-left: 0; margin-right: 0; padding: 0; overflow: hidden; }
-.thry-texture-value-compact .unity-object-field-display__label { margin-left: 3px; }
-.thry-texture-value-compact .thry-texture-reference .unity-base-slider .unity-base-text-field { width: 44px; margin-left: 4px; }
+.thry-texture-value {
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+}
 
+.thry-texture-value > .thry-texture-asset {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0;
+}
 
+.thry-texture-has-reference > .thry-texture-asset {
+    min-width: 76px;
+}
 
+.thry-texture-value > .thry-texture-reference {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 92px;
+    margin-left: 6px;
+}
+
+.thry-texture-reference > .thry-property-row {
+    min-height: 22px;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.thry-texture-value-compact > .thry-texture-reference {
+    min-width: 80px;
+}
+
+.thry-texture-value-compact > .thry-texture-reference.thry-animated {
+    min-width: 100px;
+}
+
+.thry-texture-value-compact .thry-asset-size {
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.thry-texture-value-compact .unity-object-field-display__label {
+    margin-left: 3px;
+}
+
+.thry-texture-value-compact .thry-texture-reference .unity-base-slider .unity-base-text-field {
+    width: 44px;
+    margin-left: 4px;
+}
 
 /* Default-state markers match their captions without changing the text weight. */
-.thry-section-title, .thry-property-label, .thry-texture-caption { -unity-font-style: normal; }
-.thry-caption-has-changed-indicator { padding-right: 10px; }
-.thry-property-changed-dot { position: absolute; width: 5px; height: 5px; border-radius: 3px; }
+.thry-section-title, .thry-property-label, .thry-texture-caption {
+    -unity-font-style: normal;
+}
+
+.thry-caption-has-changed-indicator {
+    padding-right: 10px;
+}
+
+.thry-property-changed-dot {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 3px;
+}
+
+.thry-light .thry-icon-button:active {
+    background-color: #c4c4c4;
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-icon-button:focus {
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-text-button:hover, .thry-light .thry-text-button:focus {
+    color: #326f9c;
+}
+
+.thry-light .thry-changed-filter:hover {
+    background-color: #eeeeee;
+}
+
+.thry-light .thry-changed-filter:focus {
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-material-controls .unity-base-text-field__input:focus, .thry-light .thry-material-controls .unity-base-popup-field__input:focus {
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-component > .unity-base-field__label {
+    color: #5b5b5b;
+}
+
+.thry-light .thry-header-action, .thry-light .thry-fold-arrow {
+    color: #5d5d5d;
+}
+
+.thry-light .thry-header-action:hover {
+    background-color: #d6d6d6;
+}
+
+/* Excluded still has to be readable, just plainly quieter than an included title. */
+.thry-light .thry-excluded, .thry-light .thry-excluded .thry-section-title {
+    color: #5b5b5b;
+}
+
+/* Section chips invert: a saturated fill under light text becomes a tint under dark text. */
+.thry-light .thry-section-action-0 {
+    background-color: #bdd8c6;
+}
+
+.thry-light .thry-section-action-1 {
+    background-color: #cccccc;
+}
+
+.thry-light .thry-section-action-2 {
+    background-color: #bfd1df;
+}
+
+.thry-light .thry-section-action-3 {
+    background-color: #e0c3c5;
+}
+
+.thry-light .thry-footer-credit, .thry-light .thry-note, .thry-light .thry-muted, .thry-light .thry-asset-size {
+    color: #5b5b5b;
+}
+
+/* Animation recording keeps its hue, darkened enough to read against a light ground. */
+.thry-light .thry-recording > .thry-property-row > .thry-property-value {
+    border-left-color: #c2185b;
+}
+
+.thry-light #thry-separator {
+    background-color: #b0b0b0;
+}
+
+.thry-light .thry-lock-button:active, .thry-light .thry-presets-row > Button:active {
+    background-color: #c4c4c4;
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-lock-button:focus, .thry-light .thry-presets-row > Button:focus {
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-ramp {
+    background-color: #b8b8b8;
+}
+
+.thry-light .thry-components > Button {
+    background-color: #dedede;
+    border-color: #b5b5b5;
+}
+
+.thry-light .thry-components > Button.thry-selected {
+    background-color: #bfd1df;
+    border-color: #3b78a8;
+}
+
+.thry-light.thry-window Button {
+    background-color: #dedede;
+    border-color: #b5b5b5;
+}
+
+.thry-light.thry-window Button:hover {
+    background-color: #eeeeee;
+}
+
+/* The switch reads by knob position, so the knob has to be the dark half of the pair. */
+.thry-light .thry-switch-knob {
+    background-color: #5d5d5d;
+}
+
+.thry-light .thry-primary-action, .thry-light .thry-texture-workspace .thry-primary-action {
+    background-color: #33684d;
+    color: #ffffff;
+}
+
+.thry-light .thry-menu-separator {
+    background-color: #b5b5b5;
+}
+
+.thry-light .thry-texture-summary {
+    border-bottom-color: #b0b0b0;
+}
+
+.thry-light .thry-texture-summary .thry-texture-preview {
+    background-color: #b8b8b8;
+    border-color: #aaaaaa;
+}
+
+.thry-light .thry-texture-summary .thry-texture-preview:hover, .thry-light .thry-texture-summary .thry-texture-preview:focus {
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-texture-summary .thry-texture-channels Button:hover {
+    background-color: #eeeeee;
+}
+
+.thry-light .thry-texture-summary .thry-texture-drag {
+    background-color: #bfd1df;
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-texture-clear:hover .thry-texture-clear-icon, .thry-light .thry-texture-clear:focus .thry-texture-clear-icon {
+    --unity-image-tint-color: #252525;
+}
+
+.thry-light .thry-texture-asset:hover .thry-asset-tile {
+    background-color: #b5b5b5;
+}
+
+.thry-light .thry-studio-source {
+    background-color: #c5c5c5;
+}
+
+.thry-light .thry-studio-source > .thry-studio-section > .unity-foldout__toggle {
+    color: #555555;
+}
