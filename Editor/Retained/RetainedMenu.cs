@@ -88,9 +88,13 @@ namespace Thry.ThryEditor
             RegisterCallback<NavigationSubmitEvent>(e => { if (e.target is Button) return; Commit(_selected); e.PreventDefault(); e.StopPropagation(); });
             RegisterCallback<NavigationCancelEvent>(e => { Close(); e.PreventDefault(); e.StopPropagation(); });
             RegisterCallback<KeyDownEvent>(e => {
-                if (e.keyCode == KeyCode.Home) { _selected = -1; Move(1); }
-                else if (e.keyCode == KeyCode.End) { _selected = _items.Length; Move(-1); }
-                else if (e.keyCode == KeyCode.Escape || e.keyCode == KeyCode.Tab) Close();
+                if (e.keyCode == KeyCode.Home || e.keyCode == KeyCode.End)
+                {
+                    int index = e.keyCode == KeyCode.Home ? Array.FindIndex(_items, Enabled) : Array.FindLastIndex(_items, Enabled);
+                    if (index >= 0) Select(index);
+                }
+                else if (e.keyCode == KeyCode.Escape) Close();
+                else if (e.keyCode == KeyCode.Tab) CloseAndTraverse(e.shiftKey);
                 else if (e.keyCode == KeyCode.LeftArrow || e.keyCode == KeyCode.Backspace) Back();
                 else if (!e.ctrlKey && !e.commandKey && !e.altKey && !char.IsControl(e.character)) FindTyped(e.character);
                 else return;
@@ -167,6 +171,17 @@ namespace Thry.ThryEditor
         {
             if (_closed) return; _closed = true; RemoveFromHierarchy();
             if (focus && _target.panel != null) _target.Focus();
+        }
+        void CloseAndTraverse(bool backwards)
+        {
+            Close(false);
+            if (_target.panel == null) return;
+            // Use the panel's normal Tab handling, including composite native fields and
+            // their delegated focus targets. A new focus ring can return the opener itself.
+            _target.Focus();
+            using (var key = KeyDownEvent.GetPooled(new Event { type = EventType.KeyDown, keyCode = KeyCode.Tab,
+                character = '\t', modifiers = backwards ? EventModifiers.Shift : EventModifiers.None }))
+            { key.target = _target; _target.SendEvent(key); }
         }
     }
 }

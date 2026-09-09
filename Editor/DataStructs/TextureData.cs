@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace Thry.ThryEditor
 {
+    [Serializable]
     public class TextureData
     {
         public string name = null;

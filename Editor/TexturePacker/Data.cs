@@ -129,6 +129,7 @@ namespace Thry.ThryEditor.TexturePacker
         public bool AlphaIsTransparency;
         public int SaveQuality;
         public Vector2Int Resolution;
+        public bool CustomResolution;
 
         public FileOutput(string saveFolder, string fileName, SaveType saveType, ColorSpace colorSpace, FilterMode filterMode, bool alphaIsTransparency, int saveQuality, Vector2Int resolution)
         {
@@ -144,7 +145,7 @@ namespace Thry.ThryEditor.TexturePacker
 
         public FileOutput Copy()
         {
-            return new FileOutput(
+            var copy = new FileOutput(
                 SaveFolder,
                 FileName,
                 SaveType,
@@ -154,6 +155,8 @@ namespace Thry.ThryEditor.TexturePacker
                 SaveQuality,
                 Resolution
             );
+            copy.CustomResolution = CustomResolution;
+            return copy;
         }
     }
 
@@ -225,6 +228,9 @@ namespace Thry.ThryEditor.TexturePacker
 
         public Texture2D GradientTexture;
         public Texture2D ImageTexture;
+        public string ImageTextureGuid;
+        public long ImageTextureLocalId;
+        public bool MissingImageReference;
         public Texture2D ColorTexture;
         public InputType InputType = InputType.Texture;
         [NonSerialized] public Vector2[] ChannelPositions = new Vector2[5];
@@ -245,11 +251,46 @@ namespace Thry.ThryEditor.TexturePacker
         {
         }
 
+        void ReleaseGeneratedTexture(Texture2D texture)
+        {
+            if (texture == null || texture == ImageTexture || AssetDatabase.Contains(texture)) return;
+            RemoveDecodedTexture(texture);
+            UnityEngine.Object.DestroyImmediate(texture);
+        }
+
+        public void DisposeGeneratedTextures()
+        {
+            ReleaseGeneratedTexture(GradientTexture);
+            ReleaseGeneratedTexture(ColorTexture);
+            GradientTexture = null; ColorTexture = null;
+        }
+
         public void SetInputTexture(Texture2D tex)
         {
             ImageTexture = tex;
+            MissingImageReference = false;
+            CaptureImageIdentity();
             FilterMode = tex != null ? tex.filterMode : FilterMode.Bilinear;
             if (tex != null) InputType = InputType.Texture;
+        }
+
+        internal void CaptureImageIdentity()
+        {
+            ImageTextureGuid = null; ImageTextureLocalId = 0;
+            if (ImageTexture != null && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(ImageTexture, out string guid, out long localId))
+            { ImageTextureGuid = guid; ImageTextureLocalId = localId; }
+        }
+
+        internal void ResolveImageIdentity()
+        {
+            if (string.IsNullOrEmpty(ImageTextureGuid)) return;
+            ImageTexture = null;
+            string path = AssetDatabase.GUIDToAssetPath(ImageTextureGuid);
+            if (string.IsNullOrEmpty(path)) { MissingImageReference = true; return; }
+            foreach (var candidate in AssetDatabase.LoadAllAssetsAtPath(path).OfType<Texture2D>())
+                if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(candidate, out string guid, out long localId)
+                    && guid == ImageTextureGuid && localId == ImageTextureLocalId) { ImageTexture = candidate; break; }
+            MissingImageReference = ImageTexture == null;
         }
 
         public void FixImageTexture()
@@ -259,12 +300,13 @@ namespace Thry.ThryEditor.TexturePacker
             if (string.IsNullOrEmpty(path))
             {
                 ThryLogger.LogWarn("TexturePacker", $"Removing faulty input texture {ImageTexture.name} as it could not be found in the project");
-                SetInputTexture(null);
+                ImageTexture = null; MissingImageReference = true;
             }
-            else if (AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path) is Texture2D == false)
+            else if (!AssetDatabase.Contains(ImageTexture)
+                || !AssetDatabase.TryGetGUIDAndLocalFileIdentifier(ImageTexture, out string guid, out long localId))
             {
                 ThryLogger.LogWarn("TexturePacker", $"Removing faulty input texture {path} as it is not a Texture2D");
-                SetInputTexture(null);
+                ImageTexture = null; MissingImageReference = true;
             }
         }
 
@@ -273,7 +315,7 @@ namespace Thry.ThryEditor.TexturePacker
             if (InputType != InputType.Gradient) return;
             if (GradientTexture != null && GradientTexture.width == size.x && GradientTexture.height == size.y) return;
             if (Gradient == null) Gradient = new Gradient();
-            if (GradientTexture != null) UnityEngine.Object.DestroyImmediate(GradientTexture);
+            ReleaseGeneratedTexture(GradientTexture);
             GradientTexture = Converter.GradientToTexture(Gradient, size.x, size.y, GradientDirection == GradientDirection.Vertical);
         }
 
@@ -281,7 +323,7 @@ namespace Thry.ThryEditor.TexturePacker
         {
             if (InputType != InputType.Color) return;
             if (ColorTexture != null && ColorTexture.GetPixel(0,0) == Color) return;
-            if (ColorTexture != null) UnityEngine.Object.DestroyImmediate(ColorTexture);
+            ReleaseGeneratedTexture(ColorTexture);
             ColorTexture = Converter.ColorToTexture(Color, 16, 16);
         }
 
@@ -295,6 +337,38 @@ namespace Thry.ThryEditor.TexturePacker
 
         static Dictionary<Texture2D, Texture2D> _cachedUncompressedTextures = new Dictionary<Texture2D, Texture2D>();
         static Dictionary<Texture2D, DateTime> _cachedTextureLastModifiedTime = new Dictionary<Texture2D, DateTime>();
+        internal static long DecodedCacheBudgetBytes = 64L * 1024 * 1024;
+        static readonly Dictionary<Texture2D, long> _decodedUse = new Dictionary<Texture2D, long>();
+        static readonly Dictionary<Texture2D, int> _decodedPins = new Dictionary<Texture2D, int>();
+        static long _decodeSequence;
+        internal static IDisposable KeepDecodedSources(IEnumerable<PackerSource> sources) => new DecodedLease(sources);
+        sealed class DecodedLease : IDisposable
+        {
+            readonly Texture2D[] _textures;
+            public DecodedLease(IEnumerable<PackerSource> sources)
+            {
+                _textures = sources.Where(source => source.InputType == InputType.Texture && source.ImageTexture != null).Select(source => source.ImageTexture).Distinct().ToArray();
+                foreach (var texture in _textures) _decodedPins[texture] = _decodedPins.TryGetValue(texture, out int count) ? count + 1 : 1;
+            }
+            public void Dispose()
+            {
+                foreach (var texture in _textures) if (--_decodedPins[texture] == 0) _decodedPins.Remove(texture);
+                TrimDecodedCache(null);
+            }
+        }
+        static void TrimDecodedCache(Texture2D current)
+        {
+            long bytes = _cachedUncompressedTextures.Sum(pair => pair.Value != null && pair.Value != pair.Key && !AssetDatabase.Contains(pair.Value)
+                ? (long)pair.Value.width * pair.Value.height * 4 : 0);
+            foreach (var texture in _decodedUse.OrderBy(pair => pair.Value).Select(pair => pair.Key).ToArray())
+            {
+                if (bytes <= DecodedCacheBudgetBytes) break;
+                if (texture == current || _decodedPins.ContainsKey(texture)) continue;
+                var decoded = _cachedUncompressedTextures[texture];
+                if (decoded != null && decoded != texture && !AssetDatabase.Contains(decoded)) bytes -= (long)decoded.width * decoded.height * 4;
+                RemoveDecodedTexture(texture);
+            }
+        }
         static PackerSource()
         {
             AssemblyReloadEvents.beforeAssemblyReload += ClearDecodedTextureCache;
@@ -311,6 +385,7 @@ namespace Thry.ThryEditor.TexturePacker
             if (_cachedUncompressedTextures.TryGetValue(source, out decoded) && decoded != null && decoded != source && !AssetDatabase.Contains(decoded))
                 UnityEngine.Object.DestroyImmediate(decoded);
             _cachedUncompressedTextures.Remove(source); _cachedTextureLastModifiedTime.Remove(source);
+            _decodedUse.Remove(source);
         }
 
         internal static void ClearDecodedTextureCache()
@@ -358,6 +433,8 @@ namespace Thry.ThryEditor.TexturePacker
                         ThryLogger.LogErr("[TexturePacker]", $"Texture {Texture.name} could not be loaded. Make sure it is a readable texture.");
                     }
                 }
+                _decodedUse[Texture] = ++_decodeSequence;
+                TrimDecodedCache(Texture);
                 return _cachedUncompressedTextures[Texture];
             }
         }

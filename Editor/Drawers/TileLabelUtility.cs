@@ -6,6 +6,7 @@
 // Original Concept created by an anonymous user (refused credit). Implemented officially by BluWizard LABS.
 
 using System.Text.RegularExpressions;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using Thry.ThryEditor.Helpers;
@@ -221,14 +222,18 @@ namespace Thry.ThryEditor.Drawers
         internal class TileLabelRenamePopup : EditorWindow
         {
             Object[] _targets;
+            Shader[] _targetShaders;
+            System.Func<Object[]> _currentTargets;
             string _canonicalPropertyName;
             string _value;
             bool _focusGrabbed;
 
-            public static void Show(Object[] targets, string canonicalPropertyName, string defaultLabel, Vector2 screenPos)
+            public static void Show(Object[] targets, string canonicalPropertyName, string defaultLabel, Vector2 screenPos, System.Func<Object[]> currentTargets = null)
             {
                 var win = CreateInstance<TileLabelRenamePopup>();
-                win._targets = targets;
+                win._targets = targets == null ? new Object[0] : targets.ToArray();
+                win._targetShaders = win._targets.Select(t => (t as Material)?.shader).ToArray();
+                win._currentTargets = currentTargets;
                 win._canonicalPropertyName = canonicalPropertyName;
                 Material firstMat = (targets != null && targets.Length > 0) ? targets[0] as Material : null;
                 string current = firstMat != null ? firstMat.GetTag(TAG_PREFIX + canonicalPropertyName, false, string.Empty) : string.Empty;
@@ -237,6 +242,15 @@ namespace Thry.ThryEditor.Drawers
                 win.position = new Rect(screenPos.x, screenPos.y, 260f, 80f);
                 win.ShowPopup();
                 win.Focus();
+            }
+
+            Object[] CurrentTargets()
+            {
+                var current = _currentTargets == null ? _targets : _currentTargets();
+                if (current == null || _targets == null) return new Object[0];
+                return _targets.Where((target, index) => target is Material material && material != null
+                    && _targetShaders != null && index < _targetShaders.Length && material.shader == _targetShaders[index]
+                    && current.Contains(target)).ToArray();
             }
 
             void OnGUI()
@@ -278,7 +292,7 @@ namespace Thry.ThryEditor.Drawers
                 }
                 if (ok || submitOnEnter)
                 {
-                    ApplyTagToTargets(_targets, _canonicalPropertyName, _value);
+                    ApplyTagToTargets(CurrentTargets(), _canonicalPropertyName, _value);
                     Close();
                 }
             }
@@ -287,11 +301,11 @@ namespace Thry.ThryEditor.Drawers
             public void CreateGUI()
             {
                 var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
-                var field = new UnityEngine.UIElements.TextField("Label") { value = _value };
+                var field = new UnityEngine.UIElements.TextField("Label") { name = "tile-label", value = _value };
                 root.Add(field);
                 var actions = new UnityEngine.UIElements.VisualElement(); actions.AddToClassList("thry-components"); root.Add(actions);
-                System.Action apply = () => { ApplyTagToTargets(_targets, _canonicalPropertyName, field.value); Close(); };
-                actions.Add(new UnityEngine.UIElements.Button(apply) { text = "Save" });
+                System.Action apply = () => { ApplyTagToTargets(CurrentTargets(), _canonicalPropertyName, field.value); Close(); };
+                actions.Add(new UnityEngine.UIElements.Button(apply) { name = "tile-label-save", text = "Save" });
                 actions.Add(new UnityEngine.UIElements.Button(Close) { text = "Cancel" });
                 root.RegisterCallback<UnityEngine.UIElements.KeyDownEvent>(e =>
                 {

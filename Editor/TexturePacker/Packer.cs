@@ -48,6 +48,13 @@ namespace Thry.ThryEditor.TexturePacker
 
         public static void DetermineOutputResolution(TexturePackerConfig config)
         {
+            if (config.FileOutput.CustomResolution)
+            {
+                int maximum = Mathf.Min(8192, Mathf.Max(1, SystemInfo.maxTextureSize));
+                config.FileOutput.Resolution = new Vector2Int(Mathf.Clamp(config.FileOutput.Resolution.x, 1, maximum),
+                    Mathf.Clamp(config.FileOutput.Resolution.y, 1, maximum));
+                return;
+            }
             int width = 16;
             int height = 16;
             foreach (PackerSource source in config.Sources)
@@ -112,6 +119,13 @@ namespace Thry.ThryEditor.TexturePacker
 
         public static Texture2D Pack(TexturePackerConfig config)
         {
+            using (PackerSource.KeepDecodedSources(config.Sources)) return PackInternal(config);
+        }
+
+        static Texture2D PackInternal(TexturePackerConfig config)
+        {
+            RequireSupportedHardware();
+            DetermineOutputResolution(config);
             foreach (PackerSource source in config.Sources)
             {
                 source.UpdateGradientTexture(config.FileOutput.Resolution);
@@ -122,7 +136,6 @@ namespace Thry.ThryEditor.TexturePacker
             {
                 config.ImageAdjust = new ImageAdjust();
             }
-            DetermineOutputResolution(config);
             int width = config.FileOutput.Resolution.x;
             int height = config.FileOutput.Resolution.y;
 
@@ -284,6 +297,7 @@ namespace Thry.ThryEditor.TexturePacker
 
         public static void ExportChannels(Texture2D input, TexturePackerConfig config, bool[] exportChannels, bool exportAsBlackAndWhite)
         {
+            RequireSupportedHardware();
             RenderTexture target = new RenderTexture(input.width, input.height, 24, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
             target.enableRandomWrite = true;
             target.filterMode = input.filterMode;
@@ -334,8 +348,17 @@ namespace Thry.ThryEditor.TexturePacker
 
         #region Save
 
+        public static void RequireSupportedHardware()
+        {
+            if (!SystemInfo.supportsComputeShaders || !SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGB64)
+                || !SystemInfo.SupportsRandomWriteOnRenderTextureFormat(RenderTextureFormat.ARGB64))
+                throw new NotSupportedException("Texture packing requires compute shaders and a writable 16-bit RGBA render texture. Use a supported graphics device/API.");
+            if (PackShader == null) throw new InvalidOperationException("The texture packing shader is missing. Reimport the shader package before packing textures.");
+        }
+
         public static TextureImporter Save(Texture2D texture, TexturePackerConfig config, string overwriteName = null)
         {
+            config.RequireResolvedSources();
             string path;
             if (!string.IsNullOrWhiteSpace(overwriteName))
             {
@@ -348,7 +371,7 @@ namespace Thry.ThryEditor.TexturePacker
             path = path.Replace('\\', '/');
             var absolute = Path.GetFullPath(path);
             var assets = Path.GetFullPath(Application.dataPath) + Path.DirectorySeparatorChar;
-            if (!absolute.StartsWith(assets, StringComparison.OrdinalIgnoreCase))
+            if (!absolute.StartsWith(assets, Application.platform == RuntimePlatform.WindowsEditor ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             {
                 EditorUtility.DisplayDialog("Choose an asset folder", "Save the packed texture inside this project's Assets folder.", "OK");
                 return null;
@@ -369,39 +392,27 @@ namespace Thry.ThryEditor.TexturePacker
                 case SaveType.JPG: bytes = texture.EncodeToJPG(config.FileOutput.SaveQuality); break;
                 case SaveType.EXR: bytes = texture.EncodeToEXR(); break;
             }
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            System.IO.File.WriteAllBytes(path, bytes);
-            AssetDatabase.Refresh();
-
-            TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
-            importer.streamingMipmaps = true;
-            importer.sRGBTexture = config.FileOutput.ColorSpace == ColorSpace.Gamma;
-            importer.filterMode = config.FileOutput.FilterMode;
-            importer.alphaIsTransparency = config.FileOutput.AlphaIsTransparency;
-            importer.textureCompression = TextureImporterCompression.Compressed;
-            TextureImporterFormat overwriteFormat = importer.DoesSourceTextureHaveAlpha() ?
-                Config.Instance.texturePackerCompressionWithAlphaOverwrite : Config.Instance.texturePackerCompressionNoAlphaOverwrite;
-            if (overwriteFormat != TextureImporterFormat.Automatic)
+            return AtomicTextureExport.Write(path, bytes, assetPath =>
             {
-                importer.SetPlatformTextureSettings(new TextureImporterPlatformSettings()
-                {
-                    name = "PC",
-                    overridden = true,
-                    maxTextureSize = 2048,
-                    format = overwriteFormat
-                });
-            }
-            else
-            {
-                importer.SetPlatformTextureSettings(new TextureImporterPlatformSettings()
-                {
-                    name = "PC",
-                    overridden = false,
-                });
-            }
-            config.SaveToImporter(importer);
-            importer.SaveAndReimport();
-            return importer;
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport | ImportAssetOptions.ForceUpdate);
+                var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+                if (importer == null) throw new IOException("No texture importer was created for " + assetPath + ".");
+                importer.streamingMipmaps = true;
+                importer.sRGBTexture = config.FileOutput.ColorSpace == ColorSpace.Gamma;
+                importer.filterMode = config.FileOutput.FilterMode;
+                importer.alphaIsTransparency = config.FileOutput.AlphaIsTransparency;
+                importer.textureCompression = TextureImporterCompression.Compressed;
+                int maximum = Mathf.Clamp(Mathf.NextPowerOfTwo(Mathf.Max(texture.width, texture.height)), 32, 16384);
+                importer.maxTextureSize = maximum;
+                TextureImporterFormat format = importer.DoesSourceTextureHaveAlpha() ?
+                    Config.Instance.texturePackerCompressionWithAlphaOverwrite : Config.Instance.texturePackerCompressionNoAlphaOverwrite;
+                importer.SetPlatformTextureSettings(new TextureImporterPlatformSettings
+                { name = "Standalone", overridden = format != TextureImporterFormat.Automatic, maxTextureSize = maximum, format = format });
+                config.SaveToImporter(importer);
+                importer.SaveAndReimport();
+                if (AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath) == null) throw new IOException("The exported texture could not be loaded at " + assetPath + ".");
+                return importer;
+            });
         }
         #endregion
     }

@@ -870,13 +870,13 @@ namespace Thry.ThryEditor
                 VRCAvatarDescriptor descriptor = root.GetComponent<VRCAvatarDescriptor>();
                 if (descriptor == null) continue;
 
-                IEnumerable<AnimationClip> clips = descriptor.baseAnimationLayers.Select(l => l.animatorController).Where(a => a != null).SelectMany(a => a.animationClips).Distinct();
+                IEnumerable<AnimationClip> clips = descriptor.baseAnimationLayers.Concat(descriptor.specialAnimationLayers).Select(l => l.animatorController).Where(a => a != null).SelectMany(a => a.animationClips).Distinct();
 
                 foreach (AnimationClip clip in clips)
                 {
                     if (clip == null) continue;
 
-                    IEnumerable<Material> clipMaterials = AnimationUtility.GetObjectReferenceCurveBindings(clip).Where(b => b.isPPtrCurve && b.type.IsSubclassOf(typeof(Renderer)) && b.propertyName.StartsWith("m_Materials")).SelectMany(b => AnimationUtility.GetObjectReferenceCurve(clip, b)).Select(r => r.value as Material).Where(m => m != null);
+                    IEnumerable<Material> clipMaterials = AnimationUtility.GetObjectReferenceCurveBindings(clip).Where(b => b.isPPtrCurve && b.type != null && typeof(Renderer).IsAssignableFrom(b.type) && b.propertyName.StartsWith("m_Materials")).SelectMany(b => AnimationUtility.GetObjectReferenceCurve(clip, b)).Select(r => r.value as Material).Where(m => m != null);
 
                     materials.AddRange(clipMaterials);
                 }
@@ -3149,25 +3149,8 @@ namespace Thry.ThryEditor
         {
             if (controller == null) yield break;
 
-            // AnimatorOverrideController wraps another controller and can override clips.
-            AnimatorOverrideController aoc = controller as AnimatorOverrideController;
-            if (aoc != null)
-            {
-                foreach (AnimationClip c in GetClipsFromRuntimeController(aoc.runtimeAnimatorController))
-                {
-                    if (c != null) yield return c;
-                }
-
-                var overrides = new List<KeyValuePair<AnimationClip, AnimationClip>>();
-                aoc.GetOverrides(overrides);
-                foreach (var kv in overrides)
-                {
-                    if (kv.Key != null) yield return kv.Key;
-                    if (kv.Value != null) yield return kv.Value;
-                }
-                yield break;
-            }
-
+            // Unity supplies the effective clips, including overrides. Replaced
+            // originals cannot run and must not cause unrelated materials to lock.
             foreach (AnimationClip c in controller.animationClips)
             {
                 if (c != null) yield return c;
@@ -3185,7 +3168,7 @@ namespace Thry.ThryEditor
                 foreach (var binding in AnimationUtility.GetObjectReferenceCurveBindings(clip))
                 {
                     if (!binding.isPPtrCurve) continue;
-                    if (!binding.type.IsSubclassOf(typeof(Renderer))) continue;
+                    if (binding.type == null || !typeof(Renderer).IsAssignableFrom(binding.type)) continue;
                     if (!binding.propertyName.StartsWith("m_Materials")) continue;
 
                     foreach (var key in AnimationUtility.GetObjectReferenceCurve(clip, binding))
@@ -3217,10 +3200,10 @@ namespace Thry.ThryEditor
                 VRCAvatarDescriptor descriptor = avatarGameObject.GetComponent<VRCAvatarDescriptor>();
                 if (descriptor != null)
                 {
-                    IEnumerable<AnimationClip> clips = descriptor.baseAnimationLayers.Select(l => l.animatorController).Where(a => a != null).SelectMany(a => a.animationClips).Distinct();
+                    IEnumerable<AnimationClip> clips = descriptor.baseAnimationLayers.Concat(descriptor.specialAnimationLayers).Select(l => l.animatorController).Where(a => a != null).SelectMany(a => a.animationClips).Distinct();
                     foreach (AnimationClip clip in clips)
                     {
-                        IEnumerable<Material> clipMaterials = AnimationUtility.GetObjectReferenceCurveBindings(clip).Where(b => b.isPPtrCurve && b.type.IsSubclassOf(typeof(Renderer)) && b.propertyName.StartsWith("m_Materials"))
+                        IEnumerable<Material> clipMaterials = AnimationUtility.GetObjectReferenceCurveBindings(clip).Where(b => b.isPPtrCurve && b.type != null && typeof(Renderer).IsAssignableFrom(b.type) && b.propertyName.StartsWith("m_Materials"))
                             .SelectMany(b => AnimationUtility.GetObjectReferenceCurve(clip, b)).Select(r => r.value as Material);
                         materials.AddRange(clipMaterials);
                     }

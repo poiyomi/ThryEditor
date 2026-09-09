@@ -25,7 +25,7 @@ namespace Thry.ThryEditor
                     if (caption == null) return;
                     originalColor = caption.style.color;
                     originalPadding = labelContainer.style.paddingLeft;
-                    indicator = new Label { name = "animation-indicator-" + property.MaterialProperty.name, pickingMode = PickingMode.Ignore };
+                    indicator = new Label { name = "animation-indicator-" + property.MaterialProperty.name };
                     indicator.AddToClassList("thry-animation-letter");
                     if (texture) labelContainer.Insert(1, indicator);
                     else
@@ -36,7 +36,11 @@ namespace Thry.ThryEditor
                 }
                 bool animated = property.IsAnimated;
                 indicator.style.display = animated ? DisplayStyle.Flex : DisplayStyle.None;
-                indicator.text = property.IsRenaming ? "RA" : "A";
+                indicator.text = property.HasMixedAnimatedOwners ? "A/RA" : property.IsRenaming ? "RA" : "A";
+                if (property.HasMixedAnimatedOwners && !property.HasPlainAnimatedOwners) indicator.text = "RA";
+                if (property.HasMixedAnimatedOwners && !property.HasRenamedAnimatedOwners) indicator.text = "A";
+                indicator.tooltip = property.AnimatedOwnersTooltip;
+                indicator.style.width = indicator.text == "A/RA" ? 32 : 18;
                 var color = property.IsRenaming ? Styles.AnimatedRenamedColor : Styles.AnimatedColor;
                 indicator.style.color = color;
                 caption.style.color = animated ? new StyleColor(color) : originalColor;
@@ -45,12 +49,12 @@ namespace Thry.ThryEditor
                 {
                     // Inline reference values have no caption; reserve a small marker slot
                     // inside their own row, leaving the parent property's column intact.
-                    row.style.paddingLeft = animated ? 20 : 0;
+                    row.style.paddingLeft = animated ? (indicator.text == "A/RA" ? 34 : 20) : 0;
                     indicator.style.left = 0;
                 }
                 else
                 {
-                    labelContainer.style.paddingLeft = animated ? new StyleLength(20) : originalPadding;
+                    labelContainer.style.paddingLeft = animated ? new StyleLength(indicator.text == "A/RA" ? 34 : 20) : originalPadding;
                     indicator.style.left = labelContainer.layout.x;
                 }
                 indicator.style.top = Mathf.Max(0, (row.layout.height - 16) * .5f);

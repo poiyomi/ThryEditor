@@ -35,7 +35,7 @@ namespace Thry.ThryEditor
                     ResolveDescendantAnimatedStates();
                     _hasAnimatedDescendant = Children.Any(p =>
                         (p is ShaderGroup g && g.HasAnimatedDescendant) ||
-                        (p.IsAnimated && !p.IsRenaming));
+                        (p is ShaderProperty property ? property.HasPlainAnimatedOwners : p.IsAnimated && !p.IsRenaming));
                 }
                 return _hasAnimatedDescendant.Value;
             }
@@ -50,7 +50,7 @@ namespace Thry.ThryEditor
                     ResolveDescendantAnimatedStates();
                     _hasRenameAnimatedDescendant = Children.Any(p =>
                         (p is ShaderGroup g && g.HasRenameAnimatedDescendant) ||
-                        (p.IsAnimated && p.IsRenaming));
+                        (p is ShaderProperty property ? property.HasRenamedAnimatedOwners : p.IsAnimated && p.IsRenaming));
                 }
                 return _hasRenameAnimatedDescendant.Value;
             }

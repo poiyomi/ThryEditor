@@ -14,12 +14,114 @@ namespace Thry.ThryEditor.Drawers
     {
         RetainedMaterialModel _retainedModel;
         ShaderTextureProperty _retainedProperty;
-        readonly Dictionary<Material, Texture> _retainedOriginals = new Dictionary<Material, Texture>();
+        UnityEngine.UIElements.Label _retainedPackerMessage;
+        void RunRetainedPackerAction(Action action)
+        {
+            try { action(); if (_retainedPackerMessage != null) _retainedPackerMessage.style.display = UnityEngine.UIElements.DisplayStyle.None; }
+            catch (ExitGUIException) { throw; }
+            catch (Exception exception)
+            {
+                if (_retainedPackerMessage == null) throw;
+                _retainedPackerMessage.text = exception.Message;
+                _retainedPackerMessage.style.display = UnityEngine.UIElements.DisplayStyle.Flex;
+            }
+        }
         readonly Dictionary<Material, string> _retainedSavedInputs = new Dictionary<Material, string>();
         // Undo references these generated objects and their input snapshots. They
         // must outlive inspector detachment; Unity's Undo owns their lifetime.
         readonly Dictionary<Texture2D, InlinePackerChannelConfig[]> _retainedPreviewInputs = new Dictionary<Texture2D, InlinePackerChannelConfig[]>();
         readonly Dictionary<Texture2D, Texture> _retainedPreviewOrigins = new Dictionary<Texture2D, Texture>();
+        [Serializable] sealed class RetainedPreviewState
+        {
+            public Texture2D texture;
+            public string previewName;
+            public bool previewOnly;
+            public Texture origin;
+            public string originGuid;
+            public long originLocalId;
+            public RetainedChannelState[] inputs;
+        }
+        [Serializable] sealed class RetainedChannelState
+        {
+            public PackerSource source;
+            public TextureChannelIn channel;
+            public bool invert;
+            public float fallback;
+            public Vector4 remapping;
+        }
+        string PreviewStateTag => _retainedProperty.MaterialProperty.name + "_texPack_previewState";
+        RetainedPreviewState PendingState(Material material)
+        {
+            string json = material.GetTag(PreviewStateTag, false, "");
+            if (string.IsNullOrEmpty(json)) return null;
+            RetainedPreviewState state;
+            try { state = JsonUtility.FromJson<RetainedPreviewState>(json); }
+            catch (ArgumentException) { return null; }
+            if (state?.inputs == null || state.inputs.Length != 4 || state.inputs.Any(input => input == null)) return null;
+            var current = material.GetTexture(_retainedProperty.MaterialProperty.name);
+            if (current != null && (AssetDatabase.Contains(current) || (state.texture != current && state.previewName != current.name))) return null;
+            return state;
+        }
+
+        static Texture PreviewOrigin(RetainedPreviewState state)
+        {
+            if (state.origin != null) return state.origin;
+            if (string.IsNullOrEmpty(state.originGuid)) return null;
+            string path = AssetDatabase.GUIDToAssetPath(state.originGuid);
+            if (string.IsNullOrEmpty(path)) return null;
+            if (state.originLocalId == 0) return AssetDatabase.LoadAssetAtPath<Texture>(path);
+            return AssetDatabase.LoadAllAssetsAtPath(path).OfType<Texture>().FirstOrDefault(texture =>
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(texture, out string guid, out long localId)
+                && guid == state.originGuid && localId == state.originLocalId);
+        }
+
+        InlinePackerChannelConfig[] PendingInputs(Material material, RetainedPreviewState state) => state.inputs.Select((input, index) =>
+        {
+            var source = input.source == null ? new PackerSource() : JsonUtility.FromJson<PackerSource>(JsonUtility.ToJson(input.source));
+            source.GradientTexture = null; source.ColorTexture = null;
+            if (source.InputType == InputType.Texture && source.ImageTexture == null)
+            {
+                if (!string.IsNullOrEmpty(source.ImageTextureGuid)) source.ResolveImageIdentity();
+                else
+                {
+                    string guid = material.GetTag(_retainedProperty.MaterialProperty.name + "_texPack_" + RetainedChannelIds[index] + "_guid", false, "");
+                    if (!string.IsNullOrEmpty(guid))
+                    {
+                        source.SetInputTexture(AssetDatabase.LoadAssetAtPath<Texture2D>(AssetDatabase.GUIDToAssetPath(guid)));
+                        if (source.ImageTexture == null) source.MissingImageReference = true;
+                    }
+                }
+            }
+            return new InlinePackerChannelConfig { Source = source, Channel = input.channel, Invert = input.invert, Fallback = input.fallback, Remapping = input.remapping };
+        }).ToArray();
+
+        bool HasRetainedPreview(Texture2D texture)
+        {
+            if (texture == null) return false;
+            var material = RetainedTargets().FirstOrDefault(owner => owner.GetTexture(_retainedProperty.MaterialProperty.name) == texture);
+            var state = material == null ? null : PendingState(material);
+            if (state == null) return false;
+            _retainedPreviewOrigins[texture] = PreviewOrigin(state);
+            _retainedPreviewInputs[texture] = PendingInputs(material, state);
+            return true;
+        }
+        void RememberRetainedPreview(Material material, Texture2D texture, Texture origin, InlinePackerChannelConfig[] inputs)
+        {
+            _retainedPreviewInputs[texture] = inputs.Select(CopyChannel).ToArray();
+            _retainedPreviewOrigins[texture] = origin;
+            string originGuid = ""; long originLocalId = 0;
+            if (origin != null) AssetDatabase.TryGetGUIDAndLocalFileIdentifier(origin, out originGuid, out originLocalId);
+            // One material-owned snapshot survives inspector recreation and follows
+            // Undo/Redo. Replacing it never accumulates global cache or session keys.
+            material.SetOverrideTag(PreviewStateTag, JsonUtility.ToJson(new RetainedPreviewState
+            {
+                texture = texture, previewName = texture.name, previewOnly = true, origin = origin,
+                originGuid = originGuid, originLocalId = originLocalId,
+                inputs = inputs.Select(CopyChannel).Select(input => new RetainedChannelState { source = input.Source, channel = input.Channel,
+                    invert = input.Invert, fallback = input.Fallback, remapping = input.Remapping }).ToArray()
+            }));
+        }
+        internal Func<Texture2D, string, Texture> SavePackedTexture = (texture, path) => TextureHelper.SaveTextureAsPNG(texture, path);
         readonly Dictionary<Material, InlinePackerChannelConfig[]> _retainedDisplayInputs = new Dictionary<Material, InlinePackerChannelConfig[]>();
         readonly Dictionary<Material, string> _retainedDisplaySignatures = new Dictionary<Material, string>();
         readonly Dictionary<Material, int> _retainedObservedVersions = new Dictionary<Material, int>();
@@ -35,13 +137,18 @@ namespace Thry.ThryEditor.Drawers
             _retainedModel = model; _retainedProperty = property;
             foreach (var material in RetainedTargets())
             {
-                _retainedOriginals[material] = material.GetTexture(property.MaterialProperty.name);
-                _retainedSavedInputs[material] = RetainedInputSignature(material);
+                _retainedSavedInputs[material] = material.GetTag(SavedInputsTag, false, RetainedInputSignature(material));
             }
         }
 
         string RetainedInputSignature(Material material) => string.Join("|", RetainedChannelIds.SelectMany(channel =>
             RetainedInputTags.Select(tag => material.GetTag(_retainedProperty.MaterialProperty.name + "_texPack_" + channel + "_" + tag, false, ""))));
+        string SavedInputsTag => _retainedProperty.MaterialProperty.name + "_texPack_savedInputs";
+        void PreserveSavedInputs(Material material)
+        {
+            if (string.IsNullOrEmpty(material.GetTag(SavedInputsTag, false, "")))
+                material.SetOverrideTag(SavedInputsTag, RetainedInputSignature(material));
+        }
 
         static InlinePackerChannelConfig CopyChannel(InlinePackerChannelConfig input)
         {
@@ -55,9 +162,11 @@ namespace Thry.ThryEditor.Drawers
 
         InlinePackerChannelConfig[] RetainedInputs(Material material)
         {
+            var pending = PendingState(material);
+            if (pending != null) return PendingInputs(material, pending);
             var texture = material.GetTexture(_retainedProperty.MaterialProperty.name) as Texture2D;
             InlinePackerChannelConfig[] inputs;
-            if (texture != null && _retainedPreviewInputs.TryGetValue(texture, out inputs)) return inputs.Select(CopyChannel).ToArray();
+            if (HasRetainedPreview(texture)) return _retainedPreviewInputs[texture].Select(CopyChannel).ToArray();
             string signature;
             if (_retainedDisplayInputs.TryGetValue(material, out inputs) && _retainedDisplaySignatures.TryGetValue(material, out signature)
                 && signature == RetainedInputSignature(material)) return inputs.Select(CopyChannel).ToArray();
@@ -92,30 +201,68 @@ namespace Thry.ThryEditor.Drawers
             material.SetOverrideTag(prefix + "srcRange", "(" + string.Join(",", Enumerable.Range(0, 4).Select(i => input.Remapping[i].ToString(CultureInfo.InvariantCulture))) + ")");
         }
 
+        sealed class PreparedChannelEdit
+        {
+            internal Texture Origin;
+            internal InlinePackerChannelConfig[] Inputs;
+            internal TexturePackerConfig Config;
+            internal Texture2D Preview;
+            internal bool Assigned;
+        }
+
         void ChangeRetainedChannel(int index, Action<InlinePackerChannelConfig> mutation)
         {
-            if (!_retainedModel.CanEdit(_retainedProperty)) return;
-            var targets = new HashSet<Material>(RetainedTargets());
-            _retainedModel.Edit(_retainedProperty, property =>
+            if (!_retainedModel.CanEdit(_retainedProperty) || AnimationMode.InAnimationMode()) return;
+            _retainedModel.Refresh();
+            var prepared = new Dictionary<Material, PreparedChannelEdit>();
+            try
             {
-                var material = property.targets.OfType<Material>().FirstOrDefault();
-                if (material == null || !targets.Contains(material)) return;
-                var original = material.GetTexture(property.name);
-                if (!(original is Texture2D oldPreview) || !_retainedPreviewInputs.ContainsKey(oldPreview)) _retainedOriginals[material] = original;
-                var inputs = RetainedInputs(material); mutation(inputs[index]);
-                var texture = Packer.Pack(RetainedConfig(inputs));
-                texture.hideFlags = HideFlags.DontSave;
-                Undo.RegisterCreatedObjectUndo(texture, "Edit texture channels");
-                // MaterialProperty assignment records its own native property change.
-                // Keep a complete snapshot before tag writes so the separate tag map
-                // is restored too, after generated-object registration flushes records.
-                Undo.RegisterCompleteObjectUndo(material, "Edit texture channels");
-                _retainedPreviewInputs[texture] = inputs.Select(CopyChannel).ToArray();
-                _retainedPreviewOrigins[texture] = original is Texture2D previous && _retainedPreviewOrigins.ContainsKey(previous)
-                    ? _retainedPreviewOrigins[previous] : original;
-                SaveRetainedChannel(material, index, inputs[index]);
-                property.textureValue = texture;
-            }, true);
+                // Prepare every owner's independent sources before recording Undo or changing
+                // any tags. A missing source on a later owner must leave the entire selection intact.
+                foreach (var material in RetainedTargets())
+                {
+                    var pending = PendingState(material);
+                    var inputs = RetainedInputs(material); mutation(inputs[index]);
+                    var edit = new PreparedChannelEdit {
+                        Origin = pending != null ? PreviewOrigin(pending) : material.GetTexture(_retainedProperty.MaterialProperty.name),
+                        Inputs = inputs, Config = RetainedConfig(inputs)
+                    };
+                    prepared.Add(material, edit);
+                    edit.Config.RequireResolvedSources();
+                    Packer.DetermineOutputResolution(edit.Config);
+                    float scale = Mathf.Min(1, 512f / Mathf.Max(edit.Config.FileOutput.Resolution.x, edit.Config.FileOutput.Resolution.y));
+                    edit.Config.FileOutput.Resolution = new Vector2Int(Mathf.Max(1, Mathf.RoundToInt(edit.Config.FileOutput.Resolution.x * scale)),
+                        Mathf.Max(1, Mathf.RoundToInt(edit.Config.FileOutput.Resolution.y * scale)));
+                    edit.Config.FileOutput.CustomResolution = true;
+                }
+                foreach (var edit in prepared.Values)
+                {
+                    edit.Preview = Packer.Pack(edit.Config);
+                    edit.Preview.hideFlags = HideFlags.DontSave;
+                    edit.Preview.name = "Thry packed preview " + Guid.NewGuid().ToString("N");
+                }
+                _retainedModel.Edit(_retainedProperty, property =>
+                {
+                    var material = property.targets.OfType<Material>().FirstOrDefault();
+                    if (material == null || !prepared.TryGetValue(material, out var edit)) return;
+                    Undo.RegisterCreatedObjectUndo(edit.Preview, "Edit texture channels");
+                    // Complete snapshots preserve the separate tag map alongside native property Undo.
+                    Undo.RegisterCompleteObjectUndo(material, "Edit texture channels");
+                    RememberRetainedPreview(material, edit.Preview, edit.Origin, edit.Inputs);
+                    PreserveSavedInputs(material);
+                    SaveRetainedChannel(material, index, edit.Inputs[index]);
+                    property.textureValue = edit.Preview;
+                    edit.Assigned = true;
+                }, true);
+            }
+            finally
+            {
+                foreach (var edit in prepared.Values)
+                {
+                    foreach (var source in edit.Config.Sources) source.DisposeGeneratedTextures();
+                    if (!edit.Assigned && edit.Preview != null) UnityEngine.Object.DestroyImmediate(edit.Preview);
+                }
+            }
             RefreshRetainedPacker();
         }
 
@@ -123,6 +270,13 @@ namespace Thry.ThryEditor.Drawers
         {
             _retainedModel.Shader.ActivateRetained(); _prop = _retainedProperty.MaterialProperty;
             var targets = RetainedTargets(); if (targets.Length == 0) return;
+            foreach (var preview in _retainedPreviewInputs.Keys.Where(texture => texture == null).ToArray())
+            { _retainedPreviewInputs.Remove(preview); _retainedPreviewOrigins.Remove(preview); }
+            foreach (var material in _retainedDisplayInputs.Keys.Where(material => material == null || !targets.Contains(material)).ToArray())
+            {
+                _retainedDisplayInputs.Remove(material); _retainedDisplaySignatures.Remove(material);
+                _retainedObservedVersions.Remove(material); _retainedSavedInputs.Remove(material);
+            }
             foreach (var material in targets)
             {
                 _retainedDisplayInputs[material] = RetainedInputs(material);
@@ -138,8 +292,9 @@ namespace Thry.ThryEditor.Drawers
             }
             _current._isInit = true;
             _current._packedTexture = _prop.textureValue as Texture2D;
-            _current._hasTextureChanged = targets.Any(material => material.GetTexture(_prop.name) is Texture2D texture && _retainedPreviewInputs.ContainsKey(texture));
-            _current._hasConfigChanged = targets.Any(material => !_retainedSavedInputs.ContainsKey(material) || _retainedSavedInputs[material] != RetainedInputSignature(material));
+            _current._hasTextureChanged = targets.Any(material => PendingState(material) != null);
+            _current._hasConfigChanged = _current._hasTextureChanged || targets.Any(material =>
+                material.GetTag(SavedInputsTag, false, _retainedSavedInputs.TryGetValue(material, out var baseline) ? baseline : "") != RetainedInputSignature(material));
         }
 
         void RefreshRetainedPackerIfChanged()
@@ -157,11 +312,13 @@ namespace Thry.ThryEditor.Drawers
             _retainedModel.Edit(_retainedProperty, property =>
             {
                 var material = property.targets.OfType<Material>().FirstOrDefault();
-                Texture original;
                 if (material == null || !targets.Contains(material)) return;
-                var preview = material.GetTexture(property.name) as Texture2D;
-                if (preview != null && _retainedPreviewOrigins.TryGetValue(preview, out original)) property.textureValue = original;
-                else if (_retainedOriginals.TryGetValue(material, out original)) property.textureValue = original;
+                var pending = PendingState(material);
+                if (pending != null)
+                {
+                    Undo.RegisterCompleteObjectUndo(material, "Revert texture preview");
+                    property.textureValue = PreviewOrigin(pending); material.SetOverrideTag(PreviewStateTag, "");
+                }
             }, true);
             RefreshRetainedPacker();
         }
@@ -173,6 +330,15 @@ namespace Thry.ThryEditor.Drawers
             string assets = Application.dataPath.Replace('\\', '/').TrimEnd('/');
             if (absolute.Equals(assets, StringComparison.OrdinalIgnoreCase)) return "Assets";
             return absolute.StartsWith(assets + "/", StringComparison.OrdinalIgnoreCase) ? "Assets" + absolute.Substring(assets.Length) : null;
+        }
+
+        static string UnusedRetainedMergePath(string requested)
+        {
+            string path = AssetDatabase.GenerateUniqueAssetPath(requested);
+            while (System.IO.File.Exists(path) || System.IO.File.Exists(path + ".meta"))
+                path = AssetDatabase.GenerateUniqueAssetPath(System.IO.Path.ChangeExtension(requested, null)
+                    + "_" + Guid.NewGuid().ToString("N") + System.IO.Path.GetExtension(requested));
+            return path;
         }
 
         void MergeRetainedPacker()
@@ -205,29 +371,56 @@ namespace Thry.ThryEditor.Drawers
                 }
                 directories[material] = directory;
             }
+            var saved = new Dictionary<Material, Texture>();
+            var stagedPaths = new List<string>();
+            // Export the whole selection before mutating any material. A failed
+            // later export must not leave an earlier owner falsely marked saved.
+            try
+            {
+            foreach (var material in directories.Keys)
+            {
+                var config = RetainedConfig(RetainedInputs(material));
+                Texture2D texture = null;
+                try
+                {
+                    config.RequireResolvedSources();
+                    texture = Packer.Pack(config);
+                    string path = UnusedRetainedMergePath(directories[material] + "/" + PackedTextureExport.Filename(material, _retainedProperty.MaterialProperty.name));
+                    stagedPaths.Add(path);
+                    saved[material] = PackedTextureExport.Save(texture, path, config, SavePackedTexture);
+                }
+                finally
+                {
+                    if (texture != null) UnityEngine.Object.DestroyImmediate(texture);
+                    foreach (var source in config.Sources) source.DisposeGeneratedTextures();
+                }
+            }
+            }
+            catch
+            {
+                foreach (string path in stagedPaths)
+                {
+                    try
+                    {
+                        AssetDatabase.DeleteAsset(path);
+                        if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+                        if (System.IO.File.Exists(path + ".meta")) System.IO.File.Delete(path + ".meta");
+                    }
+                    catch (Exception cleanupError)
+                    {
+                        Debug.LogWarning("Could not remove temporary packed texture '" + path + "': " + cleanupError.Message);
+                    }
+                }
+                throw;
+            }
             _retainedModel.Edit(_retainedProperty, property =>
             {
                 var material = property.targets.OfType<Material>().FirstOrDefault();
-                if (material == null || !directories.ContainsKey(material)) return;
-                var config = RetainedConfig(RetainedInputs(material));
-                var texture = Packer.Pack(config);
-                try
-                {
-                    string filename = material.name + property.name;
-                    foreach (char invalid in System.IO.Path.GetInvalidFileNameChars()) filename = filename.Replace(invalid, '_');
-                    string path = AssetDatabase.GenerateUniqueAssetPath(directories[material] + "/" + filename + ".png");
-                    var asset = TextureHelper.SaveTextureAsPNG(texture, path);
-                    var importer = AssetImporter.GetAtPath(path) as TextureImporter;
-                    if (importer != null)
-                    {
-                        importer.streamingMipmaps = true; importer.crunchedCompression = Config.Instance.inlinePackerChrunchCompression;
-                        importer.sRGBTexture = _colorSpace == ColorSpace.Gamma; importer.filterMode = config.FileOutput.FilterMode;
-                        importer.alphaIsTransparency = _alphaIsTransparency; importer.SaveAndReimport();
-                    }
-                    property.textureValue = asset;
-                    _retainedSavedInputs[material] = RetainedInputSignature(material);
-                }
-                finally { if (texture != null) UnityEngine.Object.DestroyImmediate(texture); }
+                if (material == null || !saved.ContainsKey(material)) return;
+                Undo.RegisterCompleteObjectUndo(material, "Save texture channels");
+                property.textureValue = saved[material];
+                material.SetOverrideTag(SavedInputsTag, RetainedInputSignature(material));
+                material.SetOverrideTag(PreviewStateTag, "");
             }, true);
             RefreshRetainedPacker();
         }
@@ -240,6 +433,8 @@ namespace Thry.ThryEditor.Drawers
                 var material = property.targets.OfType<Material>().FirstOrDefault();
                 if (material == null || !targets.Contains(material)) return;
                 Undo.RegisterCompleteObjectUndo(material, "Clear texture channels");
+                PreserveSavedInputs(material);
+                material.SetOverrideTag(PreviewStateTag, "");
                 float fallback = Parser.ParseFloat(GetDefaultFallback(material, property.name));
                 for (int i = 0; i < 4; i++) SaveRetainedChannel(material, i, new InlinePackerChannelConfig { Fallback = fallback });
                 property.textureValue = null;

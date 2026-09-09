@@ -39,14 +39,32 @@ namespace Thry.ThryEditor
             internal bool Tracked = true;
         }
         private readonly List<Binding> _updates = new List<Binding>();
+        private readonly Dictionary<Tuple<ShaderProperty, ShaderProperty>, ShaderProperty> _referenceProjections = new Dictionary<Tuple<ShaderProperty, ShaderProperty>, ShaderProperty>();
+        private ILookup<string, ShaderProperty> _referenceSources;
+        private IEnumerable<ShaderProperty> ScopedReferences(ShaderProperty owner, string name)
+        {
+            if (string.IsNullOrEmpty(name) || name == owner.MaterialProperty.name) yield break;
+            if (_referenceSources == null) _referenceSources = Model.Shader.ShaderParts.OfType<ShaderProperty>().Where(p => p.MaterialProperty != null).ToLookup(p => p.MaterialProperty.name);
+            foreach (var source in _referenceSources[name])
+            {
+                var targets = source.MaterialProperty.targets.OfType<Material>().Where(m => m != null
+                    && Model.Shader.Materials.Contains(m) && owner.MaterialProperty.targets.Contains(m)).ToArray();
+                if (targets.Length == 0) continue;
+                var key = Tuple.Create(owner, source);
+                if (!_referenceProjections.TryGetValue(key, out var reference))
+                { reference = source.CreateRetainedProjection(owner, targets); _referenceProjections.Add(key, reference); }
+                if (reference.RefreshRetainedProjection(Model.Renderers)) yield return reference;
+            }
+        }
         internal RetainedFields(RetainedMaterialModel model, MaterialInspectorView view) { Model = model; _view = view; }
         internal void Synchronize() => Synchronize(null);
         internal int LastSynchronizeCount { get; private set; }
         internal void Synchronize(Func<VisualElement, bool> include)
         {
             LastSynchronizeCount = 0;
-            foreach (var binding in _updates.ToArray())
-                if (include == null || include(binding.Element)) { binding.Update(); LastSynchronizeCount++; }
+            using (RetainedPropertyDefaults.BeginEvaluation(Model.Shader))
+                foreach (var binding in _updates.ToArray())
+                    if (include == null || include(binding.Element)) { binding.Update(); LastSynchronizeCount++; }
         }
         internal void Track(VisualElement element, Action update)
         {
@@ -65,7 +83,8 @@ namespace Thry.ThryEditor
         }
         internal static bool CanRenderProperty(ShaderProperty property)
         {
-            if (property?.MaterialProperty == null || property.ShaderPropertyIndex < 0) return false;
+            if (property?.MaterialProperty == null || property.MyShader == null || property.ShaderPropertyIndex < 0
+                || property.ShaderPropertyIndex >= property.MyShader.GetPropertyCount()) return false;
             var attributes = property.MyShader.GetPropertyAttributes(property.ShaderPropertyIndex).Select(a => new DrawerAttribute(a)).ToArray();
             return !IsLegacyStencilStatus(property, attributes);
         }
@@ -93,6 +112,7 @@ namespace Thry.ThryEditor
                 root.style.display = DisplayStyle.None;
                 return root;
             }
+            Track(root, () => property.RefreshRetainedProjection(Model.Renderers));
             DecorateMultiMaterialProperty(root, property);
             DecorateAnimation(root, property, inline);
             Decorators(root,property,attributes);
@@ -111,9 +131,9 @@ namespace Thry.ThryEditor
             var texture = property as ShaderTextureProperty;
             if (texture != null) { Texture(root, texture, attributes); return root; }
             VisualElement input;
-            var row = Row(inline ? "" : property.Content.text, out input);
+            var row = Row(inline ? "" : RetainedText.PropertyCaption(property), out input);
             var label = row.Q<Label>(className: "thry-property-label");
-            Track(label, () => { label.text = inline ? "" : RetainedMaterialBody.SectionCaption(property).Split('|')[0];
+            Track(label, () => { label.text = inline ? "" : RetainedText.PropertyCaption(property).Split('|')[0];
             label.tooltip = RetainedMaterialBody.Hover(RetainedMaterialBody.SectionCaption(property), property.TooltipText, property.Note); });
             if (!inline) ChangedPropertyIndicator(row, label, property);
             if (inline) row.AddToClassList("thry-inline");
@@ -121,8 +141,7 @@ namespace Thry.ThryEditor
             Context(root, property);
             if (!inline && property.Options.reference_property != null)
             {
-                ShaderProperty reference;
-                if(Model.Shader.PropertyDictionary.TryGetValue(property.Options.reference_property,out reference) && reference != property)
+                foreach (var reference in ScopedReferences(property, property.Options.reference_property))
                 { input.AddToClassList("thry-with-reference"); input.Add(Field(reference,true)); }
             }
             if (Special(input, property, attributes)) return root;
@@ -204,10 +223,52 @@ namespace Thry.ThryEditor
                     });
                     // Native dragging supplies sensitivity, Alt/Shift modifiers, range
                     // clamping, capture and Escape cancellation through the bound field.
-                    var dragger = new FieldMouseDragger<T>(numeric);
+                    var dragger = new FieldMouseDragger<T>(new MaterialNumericDrag<T>(numeric, property, read, write, Model));
                     dragger.SetDragZone(caption);
                 });
             }
+        }
+        private sealed class MaterialNumericDrag<T> : IValueField<T>
+        {
+            private readonly IValueField<T> _field;
+            private readonly ShaderProperty _property;
+            private readonly Func<MaterialProperty,T> _read;
+            private readonly Action<MaterialProperty,T> _write;
+            private readonly RetainedMaterialModel _model;
+            private readonly Dictionary<Material,(Shader Shader,T Value)> _originals = new Dictionary<Material,(Shader,T)>();
+            private bool _dragging;
+
+            internal MaterialNumericDrag(IValueField<T> field,ShaderProperty property,Func<MaterialProperty,T> read,Action<MaterialProperty,T> write,RetainedMaterialModel model)
+            { _field=field; _property=property; _read=read; _write=write; _model=model; }
+
+            public T value
+            {
+                get => _field.value;
+                set
+                {
+                    // FieldMouseDragger assigns its single startValue only on Escape.
+                    // That scalar cannot restore a mixed selection; use each owner's snapshot.
+                    if (!_dragging) { _field.value=value; return; }
+                    _model.Edit(_property,p=>
+                    {
+                        var material=p.targets.OfType<Material>().FirstOrDefault();
+                        if(material!=null && _originals.TryGetValue(material,out var original) && material.shader==original.Shader)
+                            _write(p,original.Value);
+                    },true);
+                }
+            }
+            public void StartDragging()
+            {
+                _originals.Clear();
+                foreach(var material in _property.MaterialProperty.targets.OfType<Material>().Where(m=>m!=null && _model.Shader.Materials.Contains(m)))
+                {
+                    var property=MaterialEditor.GetMaterialProperty(new UnityEngine.Object[]{material},_property.MaterialProperty.name);
+                    _originals[material]=(material.shader,_read(property));
+                }
+                _dragging=true; _field.StartDragging();
+            }
+            public void ApplyInputDeviceDelta(Vector3 delta,DeltaSpeed speed,T startValue) => _field.ApplyInputDeviceDelta(delta,speed,startValue);
+            public void StopDragging() { _field.StopDragging(); _dragging=false; _originals.Clear(); }
         }
         private void ChangedPropertyIndicator(VisualElement row, Label caption, ShaderProperty property)
         {
@@ -280,7 +341,13 @@ namespace Thry.ThryEditor
                     field.SetValueWithoutNotify(v[index]);
                     field.showMixedValue = p.targets.OfType<Material>().Where(m => m.HasProperty(p.name)).Select(m => texture ? new Vector4(m.GetTextureScale(p.name).x, m.GetTextureScale(p.name).y, m.GetTextureOffset(p.name).x, m.GetTextureOffset(p.name).y)[index] : m.GetVector(p.name)[index]).Distinct().Skip(1).Any();
                 });
+                var gesture = new RetainedPropertyGesture(Model, property);
+                var originalBaselines = new Dictionary<Material, Vector4>();
+                gesture.Attach(field, () => linked ? ((1 << labels.Length) - 1) << start : 1 << index, texture,
+                    () => { linkBaselines.Clear(); foreach (var entry in originalBaselines) linkBaselines[entry.Key] = entry.Value; },
+                    () => { originalBaselines.Clear(); foreach (var entry in linkBaselines) originalBaselines[entry.Key] = entry.Value; });
                 field.RegisterValueChangedCallback(e => {
+                    if (gesture.Cancelling) return;
                     if (!linked) Model.VectorComponent(property, index, e.newValue, texture);
                     else Model.Edit(property, p =>
                     {
@@ -359,9 +426,9 @@ namespace Thry.ThryEditor
             foldout.AddToClassList("thry-property-label"); foldout.AddToClassList("thry-texture-label"); row.Insert(0,foldout);
             var foldIcon = new Image { scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             foldIcon.AddToClassList("thry-header-icon"); foldIcon.AddToClassList("thry-texture-caret"); foldout.Add(foldIcon);
-            var foldCaption = new Label(property.Content.text) { pickingMode = PickingMode.Ignore };
+            var foldCaption = new Label(RetainedText.PropertyCaption(property)) { pickingMode = PickingMode.Ignore };
             foldCaption.AddToClassList("thry-texture-caption"); foldout.Add(foldCaption);
-            Track(foldCaption, () => { foldCaption.text = RetainedMaterialBody.SectionCaption(property);
+            Track(foldCaption, () => { foldCaption.text = RetainedText.PropertyCaption(property);
             foldout.tooltip = RetainedMaterialBody.Hover(foldCaption.text, property.TooltipText, property.Note, "Expand or collapse texture settings"); });
             ChangedPropertyIndicator(row, foldCaption, property);
             var dimension = property.MaterialProperty.textureDimension;
@@ -373,7 +440,7 @@ namespace Thry.ThryEditor
                 var texture = e.newValue as Texture;
                 if (texture != null && dimension != UnityEngine.Rendering.TextureDimension.Any && texture.dimension != dimension)
                 { objectField.SetValueWithoutNotify(property.MaterialProperty.textureValue); e.StopImmediatePropagation(); return; }
-                Model.Edit(property, p => { p.textureValue = texture; updateArrayReferences?.Invoke(p, texture as Texture2DArray, 0); });
+                Model.Edit(property, p => { p.textureValue = texture; Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(p, texture); updateArrayReferences?.Invoke(p, texture as Texture2DArray, 0); });
             }); value.Add(objectField);
             Track(objectField, () => objectField.SetEnabled(Model.CanEdit(property)));
             TextureAssetDisplay(objectField, property);
@@ -436,7 +503,8 @@ namespace Thry.ThryEditor
                     Track(offset, () => offset.SetEnabled(Model.CanEdit(property)));
                 }
                 if (property.Options.reference_properties != null)
-                    foreach (var name in property.Options.reference_properties) { ShaderProperty reference; if(Model.Shader.PropertyDictionary.TryGetValue(name,out reference)) details.Add(Field(reference)); }
+                    foreach (var name in property.Options.reference_properties)
+                        foreach (var reference in ScopedReferences(property, name)) details.Add(Field(reference));
                 var textureTools = new VisualElement(); details.Add(textureTools);
                 TextureTools(textureTools, card, property, attributes);
                 Track(textureTools, () => textureTools.SetEnabled(Model.CanEdit(property)));
@@ -448,8 +516,7 @@ namespace Thry.ThryEditor
             Track(root, expand);
             if (property.Options.reference_property != null)
             {
-                ShaderProperty reference;
-                if (Model.Shader.PropertyDictionary.TryGetValue(property.Options.reference_property, out reference))
+                foreach (var reference in ScopedReferences(property, property.Options.reference_property))
                 {
                     value.AddToClassList("thry-texture-has-reference");
                     var inlineReference = Field(reference, true);
@@ -492,7 +559,7 @@ namespace Thry.ThryEditor
         private void TextureAssetDisplay(ObjectField field, ShaderTextureProperty property)
         {
             TextureAssetDisplay(field, () => property.MaterialProperty.textureValue, () => property.MaterialProperty.hasMixedValue,
-                () => Model.CanEdit(property), () => Model.Edit(property, p => p.textureValue = null));
+                () => Model.CanEdit(property), () => Model.Edit(property, p => { p.textureValue = null; Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(p, null); }));
         }
 
         internal void TextureAssetDisplay(ObjectField field, Func<Texture> getTexture, Func<bool> isMixed, Func<bool> canEdit, Action clearTexture)
@@ -560,7 +627,8 @@ namespace Thry.ThryEditor
                 preview.image = !assigned ? null : texture.dimension == UnityEngine.Rendering.TextureDimension.Tex2D
                     ? texture : AssetPreview.GetAssetPreview(texture) ?? AssetPreview.GetMiniThumbnail(texture);
                 preview.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
-                assetName.text = mixed ? "Multiple textures" : assigned ? texture.name : "Choose texture…";
+                assetName.text = mixed ? RetainedText.Get(Model.Shader,"multiple_textures","Multiple textures") : assigned
+                    ? RetainedText.TextureCaption(texture) : RetainedText.Get(Model.Shader,"choose_texture","Choose texture…");
                 assetName.tooltip = assigned ? AssetDatabase.GetAssetPath(texture) : "Click to choose a texture, or drag one here";
                 field.EnableInClassList("thry-asset-unassigned", !assigned);
             });

@@ -81,37 +81,40 @@ namespace Thry.ThryEditor.TexturePacker
 
         NodeGUI InitilizeWithData(TexturePackerConfig config, TextureImporter importer = null)
         {
-            _config = config;
+            // The window owns generated sources in its draft; callers retain
+            // ownership of their configuration and any existing source textures.
+            var draft = JsonUtility.FromJson<TexturePackerConfig>(JsonUtility.ToJson(config));
+            foreach (var source in draft.Sources) { source.GradientTexture = null; source.ColorTexture = null; }
+            draft.Fix();
+            DisposeGeneratedSources();
+            _config = draft;
             _associatedImporter = importer;
-            _config.Fix();
             Packer.DeterminePathAndFileNameIfEmpty(_config);
-            Packer.DetermineImportSettings(_config);
             Packer.DetermineOutputResolution(_config);
+#if UNITY_2021_3_OR_NEWER
+            TryStudioAction(Pack);
+#else
             Pack();
+#endif
             InitializeUIPositions();
             return this;
         }
 
         NodeGUI InitilizeWithOneTexture(Texture2D texture)
         {
-            _config = TexturePackerConfig.GetNewConfig();
-            _config.Sources[0].SetInputTexture(texture);
-            _config.Sources[1].SetInputTexture(texture);
-            _config.Sources[2].SetInputTexture(texture);
-            _config.Sources[3].SetInputTexture(texture);
+            var config = TexturePackerConfig.GetNewConfig();
+            config.Sources[0].SetInputTexture(texture);
+            config.Sources[1].SetInputTexture(texture);
+            config.Sources[2].SetInputTexture(texture);
+            config.Sources[3].SetInputTexture(texture);
             // Add connections
-            _config.Connections.Add(new Connection(0, TextureChannelIn.R, TextureChannelOut.R));
-            _config.Connections.Add(new Connection(1, TextureChannelIn.G, TextureChannelOut.G));
-            _config.Connections.Add(new Connection(2, TextureChannelIn.B, TextureChannelOut.B));
-            _config.Connections.Add(new Connection(3, TextureChannelIn.A, TextureChannelOut.A));
-            // Reset Color Adjust
-            _config.ImageAdjust = new ImageAdjust();
-            Packer.DeterminePathAndFileNameIfEmpty(_config, true);
-            Packer.DetermineImportSettings(_config);
-            Packer.DetermineOutputResolution(_config);
-            Pack();
-            InitializeUIPositions();
-            return this;
+            config.Connections.Add(new Connection(0, TextureChannelIn.R, TextureChannelOut.R));
+            config.Connections.Add(new Connection(1, TextureChannelIn.G, TextureChannelOut.G));
+            config.Connections.Add(new Connection(2, TextureChannelIn.B, TextureChannelOut.B));
+            config.Connections.Add(new Connection(3, TextureChannelIn.A, TextureChannelOut.A));
+            Packer.DeterminePathAndFileNameIfEmpty(config, true);
+            Packer.DetermineImportSettings(config);
+            return InitilizeWithData(config);
         }
 
         void InitializeUIPositions()
@@ -517,14 +520,13 @@ namespace Thry.ThryEditor.TexturePacker
             Rect rButton = new Rect(rObjField.x + rObjField.width + 5, rObjField.y, 90, rObjField.height);
             if (GUI.Button(rButton, "Clear"))
             {
-                _config = TexturePackerConfig.GetNewConfig();
                 if (_channelPreviewTexture != null && _channelPreviewTexture != _outputTexture)
                     UnityEngine.Object.DestroyImmediate(_channelPreviewTexture);
                 if (_outputTexture != null)
                     UnityEngine.Object.DestroyImmediate(_outputTexture);
                 _outputTexture = null;
                 _channelPreviewTexture = null;
-                InitilizeWithData(_config);
+                InitilizeWithData(TexturePackerConfig.GetNewConfig());
             }
         }
 
@@ -1052,21 +1054,45 @@ namespace Thry.ThryEditor.TexturePacker
             // so it must be guarded against double-destroy.
             Texture2D oldOutput = _outputTexture;
             Texture2D oldPreview = _channelPreviewTexture;
-            _outputTexture = null;
-            _channelPreviewTexture = null;
-
-            _outputTexture = Packer.Pack(_config);
-            _channelPreviewTexture = PackForChannelPreview();
+            var nextOutput = Packer.Pack(_config);
+            _outputTexture = nextOutput;
+            try
+            {
+#if UNITY_2021_3_OR_NEWER
+                _channelPreviewTexture = _outputTexture;
+#else
+                _channelPreviewTexture = PackForChannelPreview();
+#endif
+            }
+            catch
+            {
+                _outputTexture = oldOutput; _channelPreviewTexture = oldPreview;
+                UnityEngine.Object.DestroyImmediate(nextOutput); throw;
+            }
 
             if (oldPreview != null && oldPreview != oldOutput)
                 UnityEngine.Object.DestroyImmediate(oldPreview);
             if (oldOutput != null)
                 UnityEngine.Object.DestroyImmediate(oldOutput);
 
+#if UNITY_2021_3_OR_NEWER
+            _retainedError = null;
+            UpdateRetainedPreview();
+#endif
+
             if (OnChange != null) OnChange(_outputTexture, _config);
         }
 
-        void OnDestroy()
+        void DisposeGeneratedSources()
+        {
+            if (_config?.Sources == null) return;
+            foreach (var source in _config.Sources) source?.DisposeGeneratedTextures();
+        }
+
+        void OnDisable() { ReleaseOwnedTextures(); }
+        void OnDestroy() { ReleaseOwnedTextures(); }
+
+        void ReleaseOwnedTextures()
         {
 #if UNITY_2021_3_OR_NEWER
             _pendingPack?.Pause();
@@ -1078,6 +1104,9 @@ namespace Thry.ThryEditor.TexturePacker
                 UnityEngine.Object.DestroyImmediate(_outputTexture);
             _outputTexture = null;
             _channelPreviewTexture = null;
+            DisposeGeneratedSources();
+            if (s_channelPreviewMaterial != null) UnityEngine.Object.DestroyImmediate(s_channelPreviewMaterial);
+            s_channelPreviewMaterial = null;
         }
 
         Texture2D PackForChannelPreview()
@@ -1095,11 +1124,8 @@ namespace Thry.ThryEditor.TexturePacker
             _config.ImageAdjust = tempAdjust;
             _config.KernelSettings = tempKernel;
 
-            Texture2D previewTexture = Packer.Pack(_config);
-
-            _config.ImageAdjust = adjust;
-            _config.KernelSettings = kernel;
-            return previewTexture;
+            try { return Packer.Pack(_config); }
+            finally { _config.ImageAdjust = adjust; _config.KernelSettings = kernel; }
         }
 
         void ExportChannels(bool exportAsBlackAndWhite)
@@ -1118,7 +1144,7 @@ namespace Thry.ThryEditor.TexturePacker
                     TexturePackerConfig.InvalidateImporterCache();
                 }
 
-                if (s_instance == null) return;
+                if (s_instance == null || s_instance._config?.Sources == null) return;
 
                 string[] active_textures = s_instance._config.Sources
                     .Where(source => source.InputType == InputType.Texture && source.Texture != null)
@@ -1128,7 +1154,11 @@ namespace Thry.ThryEditor.TexturePacker
                 if (importedAssets.Any(path => active_textures.Contains(path, StringComparer.OrdinalIgnoreCase)))
                 {
                     ThryLogger.Log("TexturePacker", "Detected external texture change, repacking texture.");
+#if UNITY_2021_3_OR_NEWER
+                    s_instance.TryStudioAction(s_instance.Pack);
+#else
                     s_instance.Pack();
+#endif
                     s_instance.Repaint();
                 }
             }

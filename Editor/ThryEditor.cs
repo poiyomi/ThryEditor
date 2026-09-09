@@ -573,6 +573,7 @@ namespace Thry
                 }
                 if (NewProperty != null)
                 {
+                    NewProperty.SetHidden(type == ThryPropertyType.hidden_property);
                     newPart = NewProperty;
                     if (type != ThryPropertyType.hidden_property && doAssignPropertyToGroup)
                     {
@@ -712,13 +713,31 @@ namespace Thry
         
         //TODO: Handle these in Unity <2022.2
         #if UNITY_2022_2_OR_NEWER
+        private bool HasUndoTargets()
+        {
+            if (!_didRegisterCallbacks || _doReloadNextDraw || Editor == null || ShaderParts == null || Materials == null || Materials.Length == 0
+                || Materials.Any(material => material == null)) return false;
+            var targets = Editor.targets;
+            return targets != null && targets.Length > 0 && targets.All(target => target != null);
+        }
+
         private void UndoRedoEvent(in UndoRedoInfo undo)
         {
-            if(Materials[0] != null && (undo.undoName.EndsWith(Materials[0].name, StringComparison.Ordinal) 
-                || undo.undoName.EndsWith("Materials", StringComparison.Ordinal)))
+            if (!HasUndoTargets()) return;
+            string undoName = undo.undoName ?? "";
+            if(undoName.EndsWith(Materials[0].name, StringComparison.Ordinal)
+                || undoName.EndsWith("Materials", StringComparison.Ordinal))
             {
+                var sourceEditor = Editor;
+                var sourceTargets = Editor.targets;
+                var sourceShaders = Materials.Select(material => material.shader).ToArray();
+                var sourceParts = ShaderParts;
                 EditorApplication.delayCall += () =>
                 {
+                    // The inspector may close, be reused, or lose a secondary
+                    // material between Undo and this delayed native-value refresh.
+                    if (!HasUndoTargets() || Editor != sourceEditor || !Editor.targets.SequenceEqual(sourceTargets)
+                        || !ReferenceEquals(ShaderParts, sourceParts) || !Materials.Select(material => material.shader).SequenceEqual(sourceShaders)) return;
                     bool repaint = false;
                     foreach(ShaderPart part in ShaderParts)
                     {

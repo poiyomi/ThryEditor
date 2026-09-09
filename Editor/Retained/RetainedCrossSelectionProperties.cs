@@ -31,6 +31,40 @@ namespace Thry.ThryEditor
             internal readonly HashSet<string> ChangedNames = new HashSet<string>();
         }
 
+        private sealed class MaterialDependencies
+        {
+            private readonly List<Material> _chain = new List<Material>();
+            private readonly List<int> _versions = new List<int>();
+
+            internal bool Matches(Material owner)
+            {
+                int index = 0;
+                for (var material = owner; material != null; material = Parent(material))
+                {
+                    if (index >= _chain.Count || _chain[index] != material
+                        || _versions[index] != EditorUtility.GetDirtyCount(material)) return false;
+                    index++;
+                }
+                return index == _chain.Count;
+            }
+
+            internal void Capture(Material owner)
+            {
+                _chain.Clear(); _versions.Clear();
+                for (var material = owner; material != null; material = Parent(material))
+                { _chain.Add(material); _versions.Add(EditorUtility.GetDirtyCount(material)); }
+            }
+
+            private static Material Parent(Material material)
+            {
+#if UNITY_2022_1_OR_NEWER
+                return material.parent;
+#else
+                return null;
+#endif
+            }
+        }
+
         private struct PropertySnapshot
         {
             internal object Value;
@@ -53,11 +87,17 @@ namespace Thry.ThryEditor
         private readonly ShaderEditor _shader;
         private Material[] _targets = Array.Empty<Material>();
         private Shader[] _shaders = Array.Empty<Shader>();
-        private int[] _dirtyCounts = Array.Empty<int>();
+        private MaterialDependencies[] _dependencies = Array.Empty<MaterialDependencies>();
+        private bool[] _dirtyTargets = Array.Empty<bool>();
         private MaterialProperty[] _properties;
+        private MaterialProperty[] _homogeneousProperties;
+        private bool _wasInAnimationMode;
         private readonly List<TargetGroup> _groups = new List<TargetGroup>();
         private readonly List<SourceGroup> _sources = new List<SourceGroup>();
+        private readonly Dictionary<Shader,RetainedShaderSchema> _schemas = new Dictionary<Shader,RetainedShaderSchema>();
         internal int BuildCount { get; private set; }
+        internal int HomogeneousReadCount { get; private set; }
+        internal int SourceReadCount { get; private set; }
 
         internal RetainedCrossSelectionProperties(MaterialEditor editor, ShaderEditor shader)
         { _editor = editor; _shader = shader; }
@@ -69,12 +109,16 @@ namespace Thry.ThryEditor
             bool changed = targets.Length != _targets.Length;
             for (int i = 0; !changed && i < targets.Length; i++)
                 changed = targets[i] != _targets[i] || targets[i].shader != _shaders[i];
+            if (!changed) changed = _schemas.Any(entry => !entry.Value.Equals(RetainedShaderSchema.Read(entry.Key)));
             if (changed)
             {
                 _targets = targets;
                 _shaders = targets.Select(m => m.shader).ToArray();
-                _dirtyCounts = new int[targets.Length];
-                _properties = null; _groups.Clear(); _sources.Clear();
+                _dependencies = targets.Select(target => new MaterialDependencies()).ToArray();
+                _dirtyTargets = new bool[targets.Length];
+                _properties = null; _homogeneousProperties = null; _groups.Clear(); _sources.Clear();
+                _schemas.Clear();
+                foreach(var shader in _shaders.Distinct()) _schemas[shader]=RetainedShaderSchema.Read(shader);
                 // Unsupported materials stay visible in the selection list, but never enter a
                 // native property request for this inspector's shader controls.
                 var compatible = targets.Where(m => ShaderHelper.IsShaderUsingThryEditor(m)).ToArray();
@@ -110,11 +154,30 @@ namespace Thry.ThryEditor
                 // A secondary target can swap shaders without changing the inspector's first target.
                 _shader.Reload();
             }
-            if (_properties == null) return MaterialEditor.GetMaterialProperties(targets);
-
             bool valuesChanged = false;
             for (int i = 0; i < _targets.Length; i++)
-                valuesChanged |= _dirtyCounts[i] != EditorUtility.GetDirtyCount(_targets[i]);
+            {
+                // Inherited edits can leave the selected child's dirty count
+                // unchanged. Its complete live parent chain is a value dependency.
+                _dirtyTargets[i] = !_dependencies[i].Matches(_targets[i]);
+                valuesChanged |= _dirtyTargets[i];
+            }
+            if (_properties == null)
+            {
+                // Native MaterialProperty arrays contain value snapshots. Reuse them only
+                // while the owners and shader declarations are unchanged. Animation sampling
+                // can change values without dirtying assets, so it must keep reading live data.
+                bool animation = AnimationMode.InAnimationMode();
+                if (_homogeneousProperties == null || valuesChanged || animation || _wasInAnimationMode != animation)
+                {
+                    _homogeneousProperties = MaterialEditor.GetMaterialProperties(targets);
+                    HomogeneousReadCount++;
+                    RecordDirtyCounts();
+                }
+                _wasInAnimationMode = animation;
+                return _homogeneousProperties;
+            }
+
             if (valuesChanged)
             {
                 // Unity's bulk API assumes every target uses the first target's shader. Read
@@ -122,7 +185,7 @@ namespace Thry.ThryEditor
                 foreach (var source in _sources)
                 {
                     source.ChangedNames.Clear();
-                    source.Dirty = source.TargetIndices.Any(i => _dirtyCounts[i] != EditorUtility.GetDirtyCount(_targets[i]));
+                    source.Dirty = source.TargetIndices.Any(i => _dirtyTargets[i]);
                     if (source.Dirty) ReadSource(source, baseline: false);
                 }
                 foreach (var group in _groups)
@@ -148,8 +211,9 @@ namespace Thry.ThryEditor
             return _properties;
         }
 
-        private static void ReadSource(SourceGroup source, bool baseline)
+        private void ReadSource(SourceGroup source, bool baseline)
         {
+            SourceReadCount++;
             source.Values.Clear();
             foreach (var property in MaterialEditor.GetMaterialProperties(source.Targets))
             {
@@ -167,7 +231,7 @@ namespace Thry.ThryEditor
 
         private void RecordDirtyCounts()
         {
-            for (int i = 0; i < _targets.Length; i++) _dirtyCounts[i] = EditorUtility.GetDirtyCount(_targets[i]);
+            for (int i = 0; i < _targets.Length; i++) _dependencies[i].Capture(_targets[i]);
         }
     }
 }

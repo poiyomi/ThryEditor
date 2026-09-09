@@ -2,6 +2,7 @@
 using UnityEditor;
 using UnityEngine;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace Thry.ThryEditor
 {
@@ -22,7 +23,24 @@ namespace Thry.ThryEditor
         private Mode _mode = Mode.None;
         private HandleMode _handleMode = HandleMode.Position;
         private Tool _previousTool;
-        private int _initalUndoGroup;
+        private readonly List<PositioningValue> _initialValues = new List<PositioningValue>();
+
+        private sealed class PositioningValue
+        {
+            internal Material Material;
+            internal Shader Shader;
+            internal string Name;
+            internal bool Vector;
+            internal Vector4 Value;
+            internal bool Available => Material != null && Material.shader == Shader && Material.HasProperty(Name);
+            internal Vector4 Read() => Vector ? Material.GetVector(Name) : new Vector4(Material.GetFloat(Name), 0, 0, 0);
+            internal void Write(Vector4 value)
+            {
+                if (!Available) return;
+                if (Vector) Material.SetVector(Name, value); else Material.SetFloat(Name, value.x);
+                EditorUtility.SetDirty(Material);
+            }
+        }
 
         public enum Mode
         {
@@ -84,9 +102,19 @@ namespace Thry.ThryEditor
             Selection.selectionChanged += OnSelectionChange;
             _isActive = true;
 
-            Undo.IncrementCurrentGroup();
-            _initalUndoGroup = Undo.GetCurrentGroup();
-            Undo.RegisterCompleteObjectUndo(_propPosition.targets, "Position decal");
+            _initialValues.Clear();
+            foreach (var property in new[] { _propPosition, _propRotation, _propScale, _propOffset })
+            {
+                if (property == null) continue;
+                foreach (var material in property.targets.OfType<Material>())
+                {
+                    if (material == null || !material.HasProperty(property.name)
+                        || _initialValues.Any(v => v.Material == material && v.Name == property.name)) continue;
+                    var value = new PositioningValue { Material = material, Shader = material.shader, Name = property.name,
+                        Vector = property.type == MaterialProperty.PropType.Vector };
+                    value.Value = value.Read(); _initialValues.Add(value);
+                }
+            }
         }
 
         public void Deactivate(bool discardChanges) 
@@ -97,16 +125,21 @@ namespace Thry.ThryEditor
             Tools.current = _previousTool;
             _isActive = false;
 
-            if(discardChanges)
+            // Finish any unrelated pending records before restoring this tool's preview.
+            // A scene tool can stay open across many independent inspector edits.
+            Undo.FlushUndoRecordObjects();
+            var changed = _initialValues.Where(v => v.Available && v.Read() != v.Value).ToArray();
+            var finalValues = changed.Select(v => v.Read()).ToArray();
+            foreach (var value in changed) value.Write(value.Value);
+            if (!discardChanges && changed.Length > 0)
             {
-                Undo.RevertAllDownToGroup(_initalUndoGroup);
+                Undo.IncrementCurrentGroup();
+                Undo.RegisterCompleteObjectUndo(changed.Select(v => v.Material).Distinct().ToArray(),
+                    _mode == Mode.Raycast ? "Apply Decal Raycast Tool" : "Apply Decal Scene Tool");
+                for (int i = 0; i < changed.Length; i++) changed[i].Write(finalValues[i]);
+                Undo.IncrementCurrentGroup();
             }
-            else
-            {
-                Undo.SetCurrentGroupName(_mode == Mode.Raycast ? "Apply Decal Raycast Tool" : "Apply Decal Scene Tool");
-                Undo.CollapseUndoOperations(_initalUndoGroup);
-            }
-            Undo.IncrementCurrentGroup();
+            _initialValues.Clear();
             _mode = Mode.None;
             SceneView.RepaintAll();
         }
@@ -118,7 +151,7 @@ namespace Thry.ThryEditor
 
         void OnSelectionChange() 
         {
-            this.Deactivate(false);
+            this.Deactivate(_mode == Mode.Raycast);
         }
 
         void Init()
@@ -170,8 +203,14 @@ namespace Thry.ThryEditor
 
         private void OnSceneGUI(SceneView sceneView) 
         {
+            if (_initialValues.Any(value => !value.Available))
+            {
+                Deactivate(_mode == Mode.Raycast);
+                return;
+            }
             if(Event.current.type == EventType.KeyUp && Event.current.keyCode == KeyCode.Escape)
             {
+                Event.current.Use();
                 Deactivate(true);
                 return;
             }

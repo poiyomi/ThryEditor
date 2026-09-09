@@ -102,10 +102,11 @@ namespace Thry.ThryEditor
         }
         public void CreateGUI()
         {
+            EditorLocale.editor.SetSelectedLocale(Config.Instance.locale);
             var root=rootVisualElement;root.Clear();RetainedWindow.Style(root);root.AddToClassList("thry-settings");
             var title=new Label(RetainedText.Get("settings_title", "Thry Settings"));title.AddToClassList("thry-title");root.Add(title);
             var scroll=new ScrollView();scroll.style.flexGrow=1;root.Add(scroll);
-            var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settingsâ€¦"));search.style.marginTop=8;search.style.marginBottom=8;root.Insert(1,search);
+            var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settings…"));search.style.marginTop=8;search.style.marginBottom=8;root.Insert(1,search);
             string[][] groups={
                 new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes"},
                 new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming"},
@@ -128,7 +129,18 @@ namespace Thry.ThryEditor
                     if(member.FieldType==typeof(bool)){var field=new Toggle {value=(bool)member.GetValue(Config.Instance)};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
                     else if(member.FieldType==typeof(int)){var field=new IntegerField {value=(int)member.GetValue(Config.Instance),isDelayed=true};field.RegisterValueChangedCallback(e=>save(Mathf.Max(0,e.newValue)));value.Add(field);}
                     else if(member.FieldType==typeof(string)){var field=new TextField {value=(string)member.GetValue(Config.Instance),isDelayed=true};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
-                    else if(member.FieldType.IsEnum){var field=new DropdownField(Enum.GetNames(member.FieldType).ToList(),0);field.SetValueWithoutNotify(member.GetValue(Config.Instance).ToString());RetainedWindow.Dropdown(field);field.RegisterValueChangedCallback(e=>save(Enum.Parse(member.FieldType,e.newValue)));value.Add(field);}
+                    else if(member.FieldType.IsEnum)
+                    {
+                        var names = Enum.GetNames(member.FieldType);
+                        var captions = names.Select(name => RetainedText.EnumCaption(member.FieldType, name)).ToList();
+                        int selected = Array.IndexOf(names, member.GetValue(Config.Instance).ToString());
+                        var field = new DropdownField(captions, Mathf.Max(0, selected));
+                        RetainedWindow.Dropdown(field);
+                        field.RegisterValueChangedCallback(e => { if (field.index >= 0 && field.index < names.Length) save(Enum.Parse(member.FieldType, names[field.index])); });
+                        value.Add(field);
+                    }
+                    if (key == "inlinePackerSaveLocationCustom")
+                        row.tooltip = RetainedText.Get("custom_texture_folder_help", "Used when Texture save location is Custom folder. Choose a folder inside Assets.");
                     searchable.Rows.Add(new KeyValuePair<string, VisualElement>(group[0] + " " + label + " " + key, row));
                 }
             }
@@ -158,7 +170,7 @@ namespace Thry.ThryEditor
                 noResults.style.display = active && visibleRows == 0 ? DisplayStyle.Flex : DisplayStyle.None;
                 filtering = active;
             });
-            var language=new DropdownField(RetainedText.Get("locale","Language"),EditorLocale.editor.available_locales.ToList(),EditorLocale.editor.selected_locale_index);RetainedWindow.Dropdown(language);root.Add(language);
+            var language=new DropdownField(RetainedText.Get("editor_language","Editor language"),EditorLocale.editor.available_locales.ToList(),EditorLocale.editor.selected_locale_index);RetainedWindow.Dropdown(language);root.Add(language);
             language.RegisterValueChangedCallback(e=>{Config.Instance.locale=e.newValue;Config.Instance.Save();ShaderEditor.ReloadActive();CreateGUI();});
         }
     }

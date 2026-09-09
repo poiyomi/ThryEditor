@@ -32,6 +32,11 @@ namespace Thry.ThryEditor
 
         bool _needsDrawerInitlization = true;
         bool _isAnimatedStateResolved = false;
+        internal bool HasPlainAnimatedOwners { get; private set; }
+        internal bool HasRenamedAnimatedOwners { get; private set; }
+        internal bool HasMixedAnimatedOwners { get; private set; }
+        internal bool AllOwnersAnimated { get; private set; }
+        internal string AnimatedOwnersTooltip { get; private set; } = "";
 
         public ShaderProperty(ShaderEditor shaderEditor, string propertyIdentifier, int xOffset, string displayName, string tooltip, int propertyIndex) : base(propertyIdentifier, xOffset, displayName, tooltip, shaderEditor)
         {
@@ -348,41 +353,86 @@ namespace Thry.ThryEditor
             if (MaterialProperty != null && MaterialProperty.targets.Length > 0) UpdateIsAnimatedFromTag();
         }
 
+        private sealed class AnimatedOwnerMetadata
+        {
+            internal int DirtyCount = int.MinValue;
+            internal string Suffix;
+        }
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Material, AnimatedOwnerMetadata> AnimatedOwnerCache
+            = new System.Runtime.CompilerServices.ConditionalWeakTable<Material, AnimatedOwnerMetadata>();
+        internal static void InvalidateRetainedAnimatedOwner(Material material) => AnimatedOwnerCache.Remove(material);
+
+        private static string OwnerSuffix(Material material)
+        {
+            var state = AnimatedOwnerCache.GetValue(material, _ => new AnimatedOwnerMetadata());
+            int dirty = EditorUtility.GetDirtyCount(material);
+            if (state.DirtyCount != dirty)
+            { state.Suffix = ShaderOptimizer.GetRenamedPropertySuffix(material); state.DirtyCount = dirty; }
+            return state.Suffix;
+        }
+
+        private bool OwnsAnimatedState(Material material) => material != null && MyShaderUI.Materials.Contains(material)
+            && material.HasProperty(MaterialProperty.name);
+
         private void UpdateIsAnimatedFromTag()
         {
             _isAnimatedStateResolved = true;
-            // Animatable Stuff
-            bool propHasDuplicate = MyShaderUI.GetMaterialProperty(MaterialProperty.name + "_" + MyShaderUI.RenamedPropertySuffix) != null;
-            string tag = null;
-            //If prop is og, but is duplicated (locked) dont have it animateable
-            if (propHasDuplicate)
+            bool previousPlain = HasPlainAnimatedOwners, previousRenamed = HasRenamedAnimatedOwners;
+            bool plain = false, renamed = false, mixed = false, allAnimated = true, allDuplicated = true;
+            int count = 0; string firstTag = null;
+            foreach (var target in MaterialProperty.targets)
             {
-                this.IsAnimatable = false;
+                var material = target as Material;
+                if (!OwnsAnimatedState(material)) continue;
+                bool duplicate;
+                string tag = ReadOwnerAnimatedTag(material, out duplicate);
+                if (!IsAnimatable) tag = "";
+                if (count++ == 0) firstTag = tag; else mixed |= tag != firstTag;
+                plain |= tag != "" && tag != "2";
+                renamed |= tag == "2";
+                allAnimated &= tag != "";
+                allDuplicated &= duplicate;
             }
-            else
+            if (count > 0 && allDuplicated) IsAnimatable = false;
+            HasPlainAnimatedOwners = plain;
+            HasRenamedAnimatedOwners = renamed;
+            HasMixedAnimatedOwners = mixed;
+            AllOwnersAnimated = count > 0 && allAnimated;
+            IsAnimated = plain || renamed;
+            IsRenaming = renamed;
+            // Most properties are unanimated. Avoid building thousands of unused hover strings.
+            AnimatedOwnersTooltip = "";
+            if (IsAnimated)
             {
-                //if prop is a duplicated or renamed get og property to check for animted status
-                // Renamed properties are built as "<name>_<suffix>" (see GetAnimatedPropertyName), so only
-                // a trailing match counts. A plain Contains would misfire on any property whose name
-                // happens to include the material name, e.g. _MainTex on a material called "Main".
-                if (MaterialProperty.name.EndsWith("_" + MyShaderUI.RenamedPropertySuffix, StringComparison.Ordinal))
+                var tooltip = new System.Text.StringBuilder();
+                foreach (var target in MaterialProperty.targets)
                 {
-                    string ogName = MaterialProperty.name.Substring(0, MaterialProperty.name.Length - MyShaderUI.RenamedPropertySuffix.Length - 1);
-                    tag = ShaderOptimizer.GetAnimatedTag(MaterialProperty.targets[0] as Material, ogName);
+                    var material = target as Material;
+                    if (!OwnsAnimatedState(material)) continue;
+                    string tag = IsAnimatable ? GetOwnerAnimatedTag(material) : "";
+                    if (tooltip.Length > 0) tooltip.Append('\n');
+                    tooltip.Append(material.name).Append(": ").Append(tag == "" ? "Not animated" : tag == "2" ? "RA — Animated and renamed" : "A — Animated");
                 }
-                else
-                {
-                    tag = ShaderOptimizer.GetAnimatedTag(MaterialProperty);
-                }
+                AnimatedOwnersTooltip = tooltip.ToString();
             }
-
-            bool wasAnimated = this.IsAnimated;
-            bool wasRenaming = this.IsRenaming;
-            this.IsAnimated = IsAnimatable && tag != "";
-            this.IsRenaming = IsAnimatable && tag == "2";
-            if (wasAnimated != this.IsAnimated || wasRenaming != this.IsRenaming) (Parent as ShaderGroup)?.SetAnimatedDescendantStateDirty();
+            if (previousPlain != plain || previousRenamed != renamed)
+                (Parent as ShaderGroup)?.SetAnimatedDescendantStateDirty();
         }
 
+        internal string GetOwnerAnimatedTag(Material material) => ReadOwnerAnimatedTag(material, out _);
+
+        private string ReadOwnerAnimatedTag(Material material, out bool duplicate)
+        {
+            string name = MaterialProperty.name;
+            string suffix = OwnerSuffix(material);
+            // A retained source slot beside its optimized duplicate is not the animated slot.
+            duplicate = suffix.Length > 0 && material.HasProperty(name + "_" + suffix);
+            if (duplicate) return "";
+            if (suffix.Length > 0 && name.EndsWith("_" + suffix, StringComparison.Ordinal))
+                name = name.Substring(0, name.Length - suffix.Length - 1);
+            string tag = ShaderOptimizer.GetAnimatedTag(material, name);
+            return tag == "0" ? "" : tag;
+        }
         protected override void GUILocaleEditing(bool isInHeader)
         {
             if(!isInHeader && _doEditLocale && ShaderEditor.Active.Locale.EditInUI && MaterialProperty != null)
@@ -550,19 +600,95 @@ namespace Thry.ThryEditor
         }
 
 #if UNITY_2021_3_OR_NEWER
+        private ShaderProperty _retainedProjectionSource;
+        private Material[] _retainedProjectionOwners;
+        private Shader[] _retainedProjectionShaders;
+        private int[] _retainedProjectionVersions;
+        private int _retainedProjectionRevision;
+
+        internal ShaderProperty CreateRetainedProjection(ShaderPart owner, Material[] targets)
+        {
+            var value = MaterialEditor.GetMaterialProperty(targets, MaterialProperty.name);
+            ShaderProperty projection = this is ShaderTextureProperty texture
+                ? new ShaderTextureProperty(MyShaderUI, value, _content.text, XOffset, _optionsRaw, texture.hasScaleOffset, false, ThryPropertyIndex)
+                : new ShaderProperty(MyShaderUI, value, _content.text, XOffset, _optionsRaw, false, ThryPropertyIndex);
+            projection.MyShader = targets[0].shader;
+            projection.ShaderPropertyIndex = targets[0].shader.FindPropertyIndex(value.name);
+            projection.MyMaterialEditor = MyShaderUI.GetMaterialEditor(targets);
+            projection.ThryPropertyIndex = -1;
+            projection.SetParent(owner);
+            projection.SetHidden(IsHidden);
+            projection.AdditionalDefaultCheckProperties = AdditionalDefaultCheckProperties;
+            projection._retainedProjectionSource = this;
+            projection._retainedProjectionOwners = targets;
+            projection._retainedProjectionShaders = targets.Select(m => m.shader).ToArray();
+            projection._retainedProjectionVersions = targets.Select(EditorUtility.GetDirtyCount).ToArray();
+            projection._retainedProjectionRevision = MyShaderUI.RetainedRevision;
+            projection.EnsureOptionsInitialized();
+            projection.PrepareRetainedMetadata();
+            return projection;
+        }
+
+        internal bool RefreshRetainedProjection(Renderer[] renderers = null)
+        {
+            if (_retainedProjectionSource == null) return true;
+            if (_retainedProjectionRevision != MyShaderUI.RetainedRevision) return false;
+            bool changed = false;
+            for (int i = 0; i < _retainedProjectionOwners.Length; i++)
+            {
+                var material = _retainedProjectionOwners[i];
+                if (material == null || material.shader != _retainedProjectionShaders[i] || !MyShaderUI.Materials.Contains(material)
+                    || !_retainedProjectionSource.MaterialProperty.targets.Contains(material)) return false;
+                int dirty = EditorUtility.GetDirtyCount(material);
+                changed |= _retainedProjectionVersions[i] != dirty;
+                _retainedProjectionVersions[i] = dirty;
+            }
+            if (changed || AnimationMode.InAnimationMode())
+            {
+                var value = MaterialEditor.GetMaterialProperty(_retainedProjectionOwners, MaterialProperty.name);
+                if (renderers != null) RetainedAnimation.Prepare(new[] { value }, renderers);
+                if (!IsAnimatable) value.applyPropertyCallback = null;
+                SetRetainedProperty(value);
+                RefreshRetainedAnimatedState();
+            }
+            return true;
+        }
+
+        private readonly Dictionary<Shader, DrawerAttribute[]> _retainedKeywordDeclarations = new Dictionary<Shader, DrawerAttribute[]>();
+        private int _retainedKeywordRevision = -1;
         internal void RetainedValueChanged()
         {
             var affectedMaterials = MaterialProperty.targets.OfType<Material>()
                 .Where(m => MyShaderUI.Materials.Contains(m) && m.HasProperty(MaterialProperty.name)).Distinct().ToArray();
-            if (Keyword != null)
-                foreach (var material in affectedMaterials) SetKeywordState(material, Math.Abs(material.GetNumber(MaterialProperty)) > .001f);
-            foreach(var attribute in MyShader.GetPropertyAttributes(ShaderPropertyIndex))
+            if (_retainedKeywordRevision != MyShaderUI.RetainedRevision)
+            { _retainedKeywordDeclarations.Clear(); _retainedKeywordRevision = MyShaderUI.RetainedRevision; }
+            foreach (var material in affectedMaterials)
             {
-                if(!attribute.StartsWith("TextureKeyword",StringComparison.Ordinal))continue;
-                int start=attribute.IndexOf('(');
-                string keyword=start<0?"PROP_"+MaterialProperty.name.TrimStart('_').ToUpperInvariant():attribute.Substring(start+1).TrimEnd(')').Trim().Trim('"');
-                foreach(var material in affectedMaterials)
-                    if(material.GetTexture(MaterialProperty.name)!=null)material.EnableKeyword(keyword);else material.DisableKeyword(keyword);
+                if (!_retainedKeywordDeclarations.TryGetValue(material.shader, out var attributes))
+                {
+                    int index = material.shader.FindPropertyIndex(MaterialProperty.name);
+                    attributes = index < 0 ? Array.Empty<DrawerAttribute>() : material.shader.GetPropertyAttributes(index)
+                        .Select(a => new DrawerAttribute(a)).Where(a => a.Name == "TextureKeyword" || a.Name == "ThryToggle" || a.Name == "ThryToggleUI").ToArray();
+                    _retainedKeywordDeclarations.Add(material.shader, attributes);
+                }
+                foreach (var attribute in attributes)
+                {
+                    string keyword;
+                    bool enabled;
+                    if (attribute.Name == "TextureKeyword")
+                    {
+                        keyword = attribute.Args.Length == 0 || string.IsNullOrEmpty(attribute.Args[0])
+                            ? "PROP_" + MaterialProperty.name.TrimStart('_').ToUpperInvariant() : attribute.Args[0];
+                        enabled = material.GetTexture(MaterialProperty.name) != null;
+                    }
+                    else
+                    {
+                        if (attribute.Args.Length == 0 || attribute.Args[0] == "true" || attribute.Args[0] == "false") continue;
+                        keyword = attribute.Args[0];
+                        enabled = Math.Abs(material.GetNumber(MaterialProperty)) > .001f;
+                    }
+                    if (enabled) material.EnableKeyword(keyword); else material.DisableKeyword(keyword);
+                }
             }
             RaisePropertyValueChanged();
             ExecuteOnValueActions(affectedMaterials);
@@ -572,6 +698,7 @@ namespace Thry.ThryEditor
 
         internal void PrepareRetainedMetadata()
         {
+            if (MaterialProperty == null || MyShader == null || ShaderPropertyIndex < 0) return;
             var options = Options;
             EnsureAnimatedStateResolved();
             var attributes = MyShader.GetPropertyAttributes(ShaderPropertyIndex);

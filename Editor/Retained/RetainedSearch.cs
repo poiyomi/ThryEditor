@@ -46,9 +46,13 @@ namespace Thry.ThryEditor
         VisualElement _anchorRow;
         float _anchorY, _anchorOffset, _anchorBottomGap;
         bool _anchorPending, _anchorBottom;
+        bool _buildNeedsScan = true;
+        Rect _idleViewport, _idleResultsBounds;
+        int _idlePendingCount;
         internal int MetadataBuildCount { get; private set; }
         internal int MatchEvaluationCount { get; private set; }
         internal int ResultBuildCount { get; private set; }
+        internal int HydrationScanCount { get; private set; }
         internal int PendingFieldCount => _pendingBuild.Count;
         internal int MatchCount { get; private set; }
         internal int SynchronizedFieldCount => _fields?.LastSynchronizeCount ?? 0;
@@ -66,6 +70,7 @@ namespace Thry.ThryEditor
             toolbar.Add(clearButton);
             _results = new VisualElement(); _results.AddToClassList("thry-search-matches"); _results.AddToClassList("thry-material-controls"); Add(_results);
             _results.RegisterCallback<GeometryChangedEvent>(e => {
+                _buildNeedsScan = true;
                 AlignColumns();
                 if (_anchorPending) schedule.Execute(RestoreScrollAnchor).StartingIn(1);
             });
@@ -74,7 +79,7 @@ namespace Thry.ThryEditor
             style.display = DisplayStyle.None;
         }
         internal void PauseBuild() { _buildSchedule.Pause(); _anchorPending = false; }
-        internal void Invalidate() { _stateInvalid = true; }
+        internal void Invalidate() => InvalidateState();
         internal void RefreshLanguage()
         {
             _clearButton.text = T("clear_filters", "Clear filters");
@@ -100,6 +105,13 @@ namespace Thry.ThryEditor
                     Mathf.Min(viewport.xMax, bounds.xMax), Mathf.Min(viewport.yMax, bounds.yMax));
             }
             Rect visibleViewport = viewport;
+            // The viewport and result bounds together include scrolling, resizing and
+            // drawer layout changes. Once no nearby fields remain, avoid revisiting
+            // thousands of offscreen placeholders on every scheduled check.
+            Rect resultBounds = _results.worldBound;
+            if (!_buildNeedsScan && _idlePendingCount == _pendingBuild.Count
+                && _idleViewport == viewport && _idleResultsBounds == resultBounds) return;
+            HydrationScanCount++;
             viewport.yMin -= 200; viewport.yMax += 200;
             double start = EditorApplication.timeSinceStartup;
             int count = 0;
@@ -117,6 +129,8 @@ namespace Thry.ThryEditor
                 if (EditorApplication.timeSinceStartup - start > .005) break;
             }
             if (_anchorPending) schedule.Execute(RestoreScrollAnchor).StartingIn(1);
+            _buildNeedsScan = count > 0;
+            _idleViewport = visibleViewport; _idleResultsBounds = resultBounds; _idlePendingCount = _pendingBuild.Count;
             _buildSchedule.Every(count > 0 ? 16 : 80);
             if (_pendingBuild.Count == 0) _buildSchedule.Pause();
         }
@@ -154,7 +168,7 @@ namespace Thry.ThryEditor
             if (model != null) model.Changed += InvalidateState;
             _stateInvalid = true;
         }
-        void InvalidateState() => _stateInvalid = true;
+        void InvalidateState() { _stateInvalid = true; _buildNeedsScan = true; }
         static int StateStamp(ShaderEditor shader)
         {
             unchecked
@@ -273,13 +287,15 @@ namespace Thry.ThryEditor
             int stamp = StateStamp(model.Shader);
             if (!modelChanged && !queryChanged && !_stateInvalid && stamp == _stateStamp && !model.Shader.IsInAnimationMode)
             { if (_pendingBuild.Count > 0) _buildSchedule.Resume(); return; }
+            _buildNeedsScan = true;
             EnsureMetadata(model.Shader);
             var matches = FindMatches(model.Shader, query);
-            string signature = query + "|" + string.Join("|", matches.Select(m => m.Property.MaterialProperty.name + ":" + m.Path));
+            string signature = query + "|" + string.Join("|", matches.Select(m => m.Property.ThryPropertyIndex + ":" + m.Owner?.ThryPropertyIndex + ":" + m.Property.MaterialProperty.name + ":" + m.Path));
             if (!modelChanged && _signature == signature)
             { _stateStamp = stamp; _stateInvalid = false; if (_pendingBuild.Count > 0) _buildSchedule.Resume(); return; }
             if (!modelChanged && !queryChanged && IsEditingResult()) return;
             _stateStamp = stamp; _stateInvalid = false; ResultBuildCount++;
+            _buildNeedsScan = true;
             _buildSchedule.Pause(); _pendingBuild.Clear(); _rows.Clear(); _firstResult = null; _anchorPending = false;
             _results.Clear();
             _model = model; _revision = model.Shader.RetainedRevision; _query = query; _signature = signature;
@@ -391,26 +407,52 @@ namespace Thry.ThryEditor
             if (_metadataShader == shader && _metadataRevision == shader.RetainedRevision) return;
             _metadataShader = shader; _metadataRevision = shader.RetainedRevision;
             _metadata = new List<Match>(); MetadataBuildCount++;
-            var owners = new Dictionary<string, ShaderPart>();
+            var owners = new Dictionary<string, List<ShaderPart>>();
+            Action<string, ShaderPart> addOwner = (name, owner) => {
+                if (string.IsNullOrEmpty(name)) return;
+                if (!owners.TryGetValue(name, out var candidates)) owners.Add(name, candidates = new List<ShaderPart>());
+                candidates.Add(owner);
+            };
             foreach (var part in shader.ShaderParts)
             {
-                if (!string.IsNullOrEmpty(part.Options.reference_property)) owners[part.Options.reference_property] = part;
-                if (part.Options.reference_properties != null) foreach (var reference in part.Options.reference_properties) owners[reference] = part;
+                if (part.IsHidden) continue;
+                addOwner(part.Options.reference_property, part);
+                if (part.Options.reference_properties != null) foreach (var reference in part.Options.reference_properties) addOwner(reference, part);
             }
             var roots = new HashSet<ShaderGroup>(shader.RootCategories);
-            foreach (var property in shader.PropertyDictionary.Values.OrderBy(p => p.ShaderPropertyIndex))
+            foreach (var property in shader.ShaderParts.OfType<ShaderProperty>().Distinct().OrderBy(p => p.ThryPropertyIndex))
             {
                 if (!RetainedFields.CanRenderProperty(property)) continue;
-                ShaderPart owner; owners.TryGetValue(property.MaterialProperty.name, out owner);
-                if (property.IsHidden && owner == null) continue;
-                var ancestry = Ancestors(owner ?? property).Where(p => p.MaterialProperty != null).Reverse().ToList();
-                if (owner is ShaderTextureProperty || owner is ShaderGroup) ancestry.Add(owner);
-                string path = string.Join(" › ", ancestry.Select(p => Clean(p.Content.text)).Where(label => label.Length > 0));
-                // Root category words should not make "normal" match all Color & Normals properties.
-                var context = ancestry.Where(p => !(p is ShaderGroup && roots.Contains((ShaderGroup)p)));
-                string haystack = Clean(property.Content.text) + " " + property.MaterialProperty.name + " " + string.Join(" ", context.Select(p => Clean(p.Content.text)));
-                string rootCaption = ancestry.Where(p => p is ShaderGroup && roots.Contains((ShaderGroup)p)).Select(p => Clean(p.Content.text)).FirstOrDefault() ?? "";
-                _metadata.Add(new Match { Property = property, Owner = owner, Path = path, Type = PropertyType(property), Haystack = haystack, RootCaption = rootCaption });
+                ShaderPart owner = null;
+                if (owners.TryGetValue(property.MaterialProperty.name, out var candidates))
+                    owner = candidates.FirstOrDefault(candidate => candidate != property && candidate.MaterialProperty != null
+                        && property.MaterialProperty.targets.All(target => candidate.MaterialProperty.targets.Contains(target)));
+                var presentations = new List<KeyValuePair<ShaderProperty, ShaderPart>>();
+                if ((property.IsHidden || property.Parent == null) && owner == null)
+                {
+                    if (candidates == null) continue;
+                    foreach (var candidate in candidates)
+                    {
+                        if (candidate == property || candidate.MaterialProperty == null) continue;
+                        var targets = property.MaterialProperty.targets.OfType<Material>().Where(m => m != null
+                            && shader.Materials.Contains(m) && candidate.MaterialProperty.targets.Contains(m)).ToArray();
+                        if (targets.Length == 0) continue;
+                        presentations.Add(new KeyValuePair<ShaderProperty, ShaderPart>(property.CreateRetainedProjection(candidate, targets), candidate));
+                    }
+                }
+                else presentations.Add(new KeyValuePair<ShaderProperty, ShaderPart>(property, owner));
+                foreach (var presentation in presentations)
+                {
+                    var displayed = presentation.Key; var displayedOwner = presentation.Value;
+                    var ancestry = Ancestors(displayedOwner ?? displayed).Where(p => p.MaterialProperty != null).Reverse().ToList();
+                    if (displayedOwner is ShaderTextureProperty || displayedOwner is ShaderGroup) ancestry.Add(displayedOwner);
+                    string path = string.Join(" › ", ancestry.Select(p => Clean(p.Content.text)).Where(label => label.Length > 0));
+                    // Root category words should not make "normal" match all Color & Normals properties.
+                    var context = ancestry.Where(p => !(p is ShaderGroup && roots.Contains((ShaderGroup)p)));
+                    string haystack = Clean(RetainedText.PropertyCaption(displayed)) + " " + displayed.MaterialProperty.name + " " + string.Join(" ", context.Select(p => Clean(p.Content.text)));
+                    string rootCaption = ancestry.Where(p => p is ShaderGroup && roots.Contains((ShaderGroup)p)).Select(p => Clean(p.Content.text)).FirstOrDefault() ?? "";
+                    _metadata.Add(new Match { Property = displayed, Owner = displayedOwner, Path = path, Type = PropertyType(displayed), Haystack = haystack, RootCaption = rootCaption });
+                }
             }
         }
         List<Match> FindMatches(ShaderEditor shader, string query)
@@ -432,19 +474,21 @@ namespace Thry.ThryEditor
             foreach (var match in _metadata)
             {
                 var property = match.Property;
+                if (!property.RefreshRetainedProjection()) continue;
                 if (types.Count > 0 && !types.Contains(match.Type)) continue;
                 if (scopes.Length > 0 && !Ancestors(match.Owner ?? property).Concat(new[] { match.Owner ?? property })
                     .Any(p => p.MaterialProperty != null && scopes.Contains(p.MaterialProperty.name, StringComparer.OrdinalIgnoreCase))) continue;
                 if (favorite && !RetainedSearchPreferences.IsFavorite(property)) continue;
                 if ((assigned || empty) && match.Type != "texture") continue;
-                if (assigned && !shader.Materials.Any(m => m.HasProperty(property.MaterialProperty.name) && m.GetTexture(property.MaterialProperty.name) != null)) continue;
-                if (empty && !shader.Materials.Any(m => m.HasProperty(property.MaterialProperty.name) && m.GetTexture(property.MaterialProperty.name) == null)) continue;
+                if (assigned && !property.MaterialProperty.targets.OfType<Material>().Any(m => OwnsTexture(m, property) && m.GetTexture(property.MaterialProperty.name) != null)) continue;
+                if (empty && !property.MaterialProperty.targets.OfType<Material>().Any(m => OwnsTexture(m, property) && m.GetTexture(property.MaterialProperty.name) == null)) continue;
                 string haystack = match.RootCaption.Equals(text, StringComparison.OrdinalIgnoreCase) ? match.Haystack + " " + match.RootCaption : match.Haystack;
                 if (words.Any(word => haystack.IndexOf(word, StringComparison.OrdinalIgnoreCase) < 0)) continue;
                 if (!IsVisible(property, match.Owner)) continue;
                 if (changed && !HasChanged(property, shader)) continue;
                 if (animated && !property.IsAnimated) continue;
-                if (missing && !missingNames.Contains(property.MaterialProperty.name)) continue;
+                if (missing && !property.MaterialProperty.targets.OfType<Material>().Any(m => OwnsTexture(m, property)
+                    && missingNames.TryGetValue(m, out var names) && names.Contains(property.MaterialProperty.name))) continue;
                 matches.Add(match);
             }
             var included = new HashSet<ShaderProperty>(matches.Select(m => m.Property));
@@ -454,6 +498,13 @@ namespace Thry.ThryEditor
         static IEnumerable<ShaderPart> Ancestors(ShaderPart property)
         {
             for (var parent = property.Parent; parent != null; parent = parent.Parent) yield return parent;
+        }
+        static bool OwnsTexture(Material material, ShaderProperty property)
+        {
+            if (material == null || material.shader == null || !property.MyShaderUI.Materials.Contains(material)) return false;
+            int index = material.shader.FindPropertyIndex(property.MaterialProperty.name);
+            return index >= 0 && material.shader.GetPropertyType(index) == UnityEngine.Rendering.ShaderPropertyType.Texture
+                && material.shader.GetPropertyTextureDimension(index) == property.MaterialProperty.textureDimension;
         }
         static bool IsVisible(ShaderProperty property, ShaderPart owner)
         {
@@ -475,48 +526,20 @@ namespace Thry.ThryEditor
             return true;
         }
         static string Clean(string text) => (text ?? "").Trim().TrimEnd('*').Split('|')[0];
-        static bool HasChanged(ShaderProperty property, ShaderEditor shader, HashSet<string> visited = null)
+        static bool HasChanged(ShaderProperty property, ShaderEditor shader, HashSet<ShaderProperty> visited = null)
         {
-            visited = visited ?? new HashSet<string>();
-            if (!visited.Add(property.MaterialProperty.name)) return false;
-            var value = property.MaterialProperty;
-            if (value.hasMixedValue) return true;
-            bool changed;
-            switch (value.type)
-            {
-                case MaterialProperty.PropType.Texture:
-                    var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(property.MyShader)) as ShaderImporter;
-                    var defaultTexture = importer == null ? null : importer.GetDefaultTexture(value.name);
-                    changed = (value.textureValue != null && value.textureValue != defaultTexture)
-                        || value.textureScaleAndOffset != new Vector4(1, 1, 0, 0);
-                    break;
-                case MaterialProperty.PropType.Color:
-                    changed = (Vector4)value.colorValue != (Vector4)property.PropertyDefaultValue; break;
-                case MaterialProperty.PropType.Vector:
-                    changed = value.vectorValue != (Vector4)property.PropertyDefaultValue; break;
-#if UNITY_2022_1_OR_NEWER
-                case MaterialProperty.PropType.Int:
-                    changed = value.intValue != Convert.ToInt32(property.PropertyDefaultValue); break;
-#endif
-                default:
-                    changed = value.floatValue != Convert.ToSingle(property.PropertyDefaultValue); break;
-            }
-            if (changed) return true;
-            if (property.AdditionalDefaultCheckProperties == null) return false;
-            foreach (string name in property.AdditionalDefaultCheckProperties)
-            {
-                ShaderProperty additional;
-                if (shader.PropertyDictionary.TryGetValue(name, out additional) && HasChanged(additional, shader, visited)) return true;
-            }
-            return false;
+            return RetainedPropertyDefaults.HasChanged(property, shader, visited);
         }
         // An unassigned texture uses the shader's default and is not a broken reference.
         // Only serialized references which Unity can no longer resolve qualify as missing.
-        static HashSet<string> MissingTextureReferences(Material[] materials)
+        static Dictionary<Material, HashSet<string>> MissingTextureReferences(Material[] materials)
         {
-            var result = new HashSet<string>();
+            var result = new Dictionary<Material, HashSet<string>>();
             foreach (var material in materials)
             {
+                if (material == null) continue;
+                var names = new HashSet<string>();
+                result[material] = names;
                 using (var serialized = new SerializedObject(material))
                 {
                     var textures = serialized.FindProperty("m_SavedProperties.m_TexEnvs");
@@ -531,7 +554,7 @@ namespace Thry.ThryEditor
 #else
                             && texture.objectReferenceInstanceIDValue != 0)
 #endif
-                            result.Add(entry.FindPropertyRelative("first").stringValue);
+                            names.Add(entry.FindPropertyRelative("first").stringValue);
                     }
                 }
             }

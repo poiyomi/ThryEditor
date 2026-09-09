@@ -27,6 +27,9 @@ namespace Thry.ThryEditor
         private readonly ToolbarSearchField _search;
         private readonly DropdownField _typeFilter;
         private readonly DropdownField _statusFilter;
+        static readonly string[] SearchTypes = { "", "t:texture", "t:color", "t:number", "t:vector", "t:toggle" };
+        static readonly string[] SearchStates = { "", "is:changed", "is:assigned", "is:empty", "is:animated", "is:missing", "is:favorite" };
+        bool _typeFromQuery, _statusFromQuery, _multipleQueryTypes, _multipleQueryStates;
         private readonly Button _savedFilters;
         private readonly RetainedSearch _propertySearch;
         private ShaderEditor _shader;
@@ -94,6 +97,7 @@ namespace Thry.ThryEditor
             _searchRefresh = schedule.Execute(ApplySearchNow); _searchRefresh.Pause();
             _search.RegisterValueChangedCallback(evt => {
                 string value = evt.newValue;
+                SynchronizeQueryFilters();
                 _placeholder.style.display = string.IsNullOrEmpty(value) ? DisplayStyle.Flex : DisplayStyle.None;
                 _searchPending = true;
                 _propertySearch?.PauseBuild();
@@ -114,11 +118,11 @@ namespace Thry.ThryEditor
             _typeFilter = new DropdownField(new List<string> { "All types", "Textures", "Colors", "Numbers", "Vectors", "Toggles" }, 0)
                 { name = "thry-type-filter", tooltip = "Filter by property type. Combine Textures with Changed only to find assigned or modified textures." };
             _typeFilter.AddToClassList("thry-type-picker"); UseInspectorMenu(_typeFilter);
-            _typeFilter.RegisterValueChangedCallback(evt => ApplySearchNow()); filters.Add(_typeFilter);
+            _typeFilter.RegisterValueChangedCallback(evt => SelectSearchFilter(true)); filters.Add(_typeFilter);
             _statusFilter = new DropdownField(new List<string> { "Any status", "Changed only", "Assigned textures", "Empty textures", "Animated", "Missing references", "Favorites" }, 0)
                 { name = "thry-status-filter", tooltip = "Filter by value or state. Assigned textures finds actual texture assignments, independent of tiling and offset." };
             _statusFilter.AddToClassList("thry-status-filter"); UseInspectorMenu(_statusFilter);
-            _statusFilter.RegisterValueChangedCallback(evt => ApplySearchNow()); filters.Add(_statusFilter);
+            _statusFilter.RegisterValueChangedCallback(evt => SelectSearchFilter(false)); filters.Add(_statusFilter);
             _savedFilters = new Button(ShowSavedFilters) { name = "thry-saved-filters", text = "☆", tooltip = "Favorites and saved searches" };
             _savedFilters.AddToClassList("thry-saved-filters"); filters.Add(_savedFilters);
             navigation.Add(filters); navigationGroup.Add(navigation);
@@ -315,12 +319,50 @@ namespace Thry.ThryEditor
         private string CurrentQuery()
         {
             string query = _search.value;
-            string[] types = { "", "texture", "color", "number", "vector", "toggle" };
-            if (_typeFilter.index > 0) query += " t:" + types[_typeFilter.index];
-            string[] states = { "", "changed", "assigned", "empty", "animated", "missing", "favorite" };
-            if (_statusFilter.index > 0) query += " is:" + states[_statusFilter.index];
+            if (!_typeFromQuery && _typeFilter.index > 0 && _typeFilter.index < SearchTypes.Length) query += " " + SearchTypes[_typeFilter.index];
+            if (!_statusFromQuery && _statusFilter.index > 0 && _statusFilter.index < SearchStates.Length) query += " " + SearchStates[_statusFilter.index];
             if (!string.IsNullOrEmpty(_sectionScope)) query += " in:" + _sectionScope;
             return query.Trim();
+        }
+        void SynchronizeQueryFilters()
+        {
+            if (_typeFilter == null || _statusFilter == null) return;
+            var tokens = (_search.value ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            SynchronizeQueryFilter(_typeFilter, SearchTypes, tokens, true, ref _typeFromQuery, ref _multipleQueryTypes);
+            SynchronizeQueryFilter(_statusFilter, SearchStates, tokens, false, ref _statusFromQuery, ref _multipleQueryStates);
+        }
+        void SynchronizeQueryFilter(DropdownField field, string[] values, string[] tokens, bool types, ref bool fromQuery, ref bool multiple)
+        {
+            var matches = Enumerable.Range(1, values.Length - 1).Where(i => tokens.Contains(values[i], StringComparer.OrdinalIgnoreCase)).ToArray();
+            int index = matches.Length > 1 ? values.Length : matches.Length == 1 ? matches[0] : fromQuery ? 0 : Mathf.Max(0, field.index);
+            fromQuery = matches.Length > 0;
+            multiple = matches.Length > 1;
+            SetFilterChoices(field, types, multiple);
+            field.SetValueWithoutNotify(field.choices[Mathf.Clamp(index, 0, field.choices.Count - 1)]);
+        }
+        void SetFilterChoices(DropdownField field, bool types, bool multiple)
+        {
+            var captions = (types ? new[] { "All types", "Textures", "Colors", "Numbers", "Vectors", "Toggles" }
+                : new[] { "Any status", "Changed only", "Assigned textures", "Empty textures", "Animated", "Missing references", "Favorites" }).ToList();
+            if (multiple) captions.Add(types ? "Multiple types" : "Multiple states");
+            field.choices = captions.Select(s => Text(s.ToLowerInvariant().Replace(' ', '_'), s)).ToList();
+        }
+        void SelectSearchFilter(bool types)
+        {
+            var field = types ? _typeFilter : _statusFilter;
+            var values = types ? SearchTypes : SearchStates;
+            int selected = field.index;
+            if (selected < 0 || selected >= values.Length) return;
+            // A deliberate dropdown selection replaces tokens of that family; typed
+            // combinations remain visible as Multiple until the user replaces them.
+            var tokens = (_search.value ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            _search.SetValueWithoutNotify(string.Join(" ", tokens.Where(t => !values.Skip(1).Contains(t, StringComparer.OrdinalIgnoreCase))));
+            if (types) { _typeFromQuery = false; _multipleQueryTypes = false; }
+            else { _statusFromQuery = false; _multipleQueryStates = false; }
+            SetFilterChoices(field, types, false);
+            field.SetValueWithoutNotify(field.choices[selected]);
+            _placeholder.style.display = string.IsNullOrEmpty(_search.value) ? DisplayStyle.Flex : DisplayStyle.None;
+            ApplySearchNow();
         }
         internal void SearchSection(ShaderPart section)
         {
@@ -358,18 +400,20 @@ namespace Thry.ThryEditor
         }
         private void LoadSearch(string query)
         {
-            var tokens = query.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
-            string[] types = { "", "t:texture", "t:color", "t:number", "t:vector", "t:toggle" };
-            string[] statuses = { "", "is:changed", "is:assigned", "is:empty", "is:animated", "is:missing", "is:favorite" };
-            int typeIndex = Array.FindIndex(types, t => tokens.Contains(t));
-            int statusIndex = Array.FindIndex(statuses, t => tokens.Contains(t));
-            if (typeIndex > 0) tokens.Remove(types[typeIndex]);
-            if (statusIndex > 0) tokens.Remove(statuses[statusIndex]);
-            _sectionScope = tokens.FirstOrDefault(t => t.StartsWith("in:", StringComparison.OrdinalIgnoreCase))?.Substring(3);
-            tokens.RemoveAll(t => t.StartsWith("in:", StringComparison.OrdinalIgnoreCase));
-            _search.SetValueWithoutNotify(string.Join(" ", tokens));
-            _typeFilter.SetValueWithoutNotify(_typeFilter.choices[Mathf.Max(0, typeIndex)]);
-            _statusFilter.SetValueWithoutNotify(_statusFilter.choices[Mathf.Max(0, statusIndex)]);
+            _sectionScope = null;
+            _typeFilter.SetValueWithoutNotify(_typeFilter.choices[0]);
+            _statusFilter.SetValueWithoutNotify(_statusFilter.choices[0]);
+            _search.SetValueWithoutNotify(query ?? "");
+            SynchronizeQueryFilters();
+            // Saved single constraints have a dedicated visible control. Leave deliberate
+            // combinations in the text, with the dropdown explicitly reporting Multiple.
+            var tokens = (_search.value ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            _search.SetValueWithoutNotify(string.Join(" ", tokens.Where(token =>
+                !(!_multipleQueryTypes && SearchTypes.Skip(1).Contains(token, StringComparer.OrdinalIgnoreCase))
+                && !(!_multipleQueryStates && SearchStates.Skip(1).Contains(token, StringComparer.OrdinalIgnoreCase)))));
+            if (!_multipleQueryTypes) _typeFromQuery = false;
+            if (!_multipleQueryStates) _statusFromQuery = false;
+            _placeholder.style.display = string.IsNullOrEmpty(_search.value) ? DisplayStyle.Flex : DisplayStyle.None;
             ApplySearchNow(); _search.Focus();
         }
         private void ClearSearch()
@@ -378,6 +422,9 @@ namespace Thry.ThryEditor
             _searchRefresh.Pause();
             _search.SetValueWithoutNotify("");
             _sectionScope = null;
+            _typeFromQuery = _statusFromQuery = _multipleQueryTypes = _multipleQueryStates = false;
+            SetFilterChoices(_typeFilter, true, false);
+            SetFilterChoices(_statusFilter, false, false);
             _typeFilter.SetValueWithoutNotify(_typeFilter.choices[0]);
             _statusFilter.SetValueWithoutNotify(_statusFilter.choices[0]);
             UpdateSearch();
@@ -564,10 +611,8 @@ namespace Thry.ThryEditor
         {
             _localeIndex = _shader.Locale.LanguageIndex;
             int typeIndex = _typeFilter.index, statusIndex = _statusFilter.index;
-            _typeFilter.choices = new[] { "All types", "Textures", "Colors", "Numbers", "Vectors", "Toggles" }
-                .Select(s => Text(s.ToLowerInvariant().Replace(' ', '_'), s)).ToList();
-            _statusFilter.choices = new[] { "Any status", "Changed only", "Assigned textures", "Empty textures", "Animated", "Missing references", "Favorites" }
-                .Select(s => Text(s.ToLowerInvariant().Replace(' ', '_'), s)).ToList();
+            SetFilterChoices(_typeFilter, true, _multipleQueryTypes);
+            SetFilterChoices(_statusFilter, false, _multipleQueryStates);
             _typeFilter.SetValueWithoutNotify(_typeFilter.choices[Mathf.Max(0, typeIndex)]);
             _statusFilter.SetValueWithoutNotify(_statusFilter.choices[Mathf.Max(0, statusIndex)]);
             _placeholder.text = Text("search", "Search...");

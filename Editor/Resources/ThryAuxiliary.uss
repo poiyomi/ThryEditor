@@ -1,4 +1,11 @@
 /* Window-only refinements; these never change the embedded material inspector. */
+.thry-light.thry-window .thry-search Button,
+.thry-light.thry-window .thry-search Button:hover,
+.thry-light.thry-window .thry-search Button:active {
+    background-color: transparent;
+    border-color: transparent;
+    -unity-background-image-tint-color: #555555;
+}
 .thry-settings .unity-foldout { margin: 2px 0; }
 .thry-settings .unity-foldout__content { padding-top: 2px; padding-bottom: 2px; }
 .thry-texture-workspace .thry-studio-section { margin: 2px 0; }

@@ -19,6 +19,28 @@ namespace Thry.ThryEditor
 
     internal static class RetainedText
     {
+        internal static string TextureCaption(Texture texture) => texture == null ? ""
+            : !AssetDatabase.Contains(texture) && texture.name.StartsWith("Thry packed preview ", System.StringComparison.Ordinal)
+                ? Get("packed_preview", "Packed texture · preview") : texture.name;
+        static readonly System.Text.RegularExpressions.Regex TextureExpansionHint = new System.Text.RegularExpressions.Regex(
+            @"\s*(?:\[\s*Click\s*(?:to\s*)?Expand\s*\]|\(\s*Expand\s*\))\s*(?=\*?$)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+        internal static string PropertyCaption(ShaderPart property)
+        {
+            string caption = property == null ? "" : RetainedMaterialBody.SectionCaption(property);
+            return property is ShaderTextureProperty ? TextureExpansionHint.Replace(caption, "") : caption;
+        }
+        internal static string EnumCaption(System.Type type, string name)
+        {
+            string caption = ObjectNames.NicifyVariableName(name);
+            if (name == "AutomaticCompressed") caption = "Automatic (compressed)";
+            else if (name == "AutomaticTruecolor") caption = "Automatic (uncompressed)";
+            else if (name == "small") caption = "Small";
+            else if (name == "big") caption = "Large";
+            else if (name == "material") caption = "Beside material";
+            else if (name == "custom") caption = "Custom folder";
+            return Get("enum_" + type.Name + "_" + name, caption);
+        }
         internal static string Get(string key, string fallback)
         {
             var locale = EditorLocale.editor;

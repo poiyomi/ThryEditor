@@ -306,14 +306,21 @@ namespace Thry.ThryEditor
         {
             public readonly string Name;
             public readonly int Occurrence;
+            private readonly int _type, _dimension, _editFlags;
+            private readonly Vector2 _range;
 
-            public PropertyOccurrence(string name, int occurrence)
+            public PropertyOccurrence(MaterialProperty property, int occurrence)
             {
-                Name = name;
+                Name = property.name;
                 Occurrence = occurrence;
+                _type = (int)property.GetPropertyType();
+                _dimension = property.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Texture ? (int)property.textureDimension : 0;
+                _editFlags = (int)(property.flags & MaterialProperty.PropFlags.NonModifiableTextureData);
+                _range = property.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Range ? property.rangeLimits : Vector2.zero;
             }
 
-            public bool Equals(PropertyOccurrence other) => Occurrence == other.Occurrence && Name == other.Name;
+            public bool Equals(PropertyOccurrence other) => Occurrence == other.Occurrence && Name == other.Name
+                && _type == other._type && _dimension == other._dimension && _editFlags == other._editFlags && _range.Equals(other._range);
             public override bool Equals(object obj) => obj is PropertyOccurrence other && Equals(other);
             public override int GetHashCode() => unchecked(((Name?.GetHashCode() ?? 0) * 397) ^ Occurrence);
         }
@@ -329,7 +336,11 @@ namespace Thry.ThryEditor
                 string name = properties[i].name;
                 counts.TryGetValue(name, out int seen);
                 counts[name] = seen + 1;
-                occurrences[i] = new PropertyOccurrence(name, seen);
+                // Different native types/dimensions cannot share a MaterialProperty. Different
+                // ranges get separate rows so neither owner's limits silently win. Compatible
+                // declarations retain the first shader's presentation, with keyword behavior
+                // resolved separately from each owner's declaration when an edit commits.
+                occurrences[i] = new PropertyOccurrence(properties[i], seen);
             }
             return occurrences;
         }

@@ -24,7 +24,8 @@ namespace Thry
             if (!RetainedMaterialModel.HasValidTargets(editor)) return false;
             Active = this;
             ReleaseOrphanedEditors(this);
-            Properties = propertyProvider != null ? propertyProvider() : MaterialEditor.GetMaterialProperties(editor.targets);
+            using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.NativeValues))
+                Properties = propertyProvider != null ? propertyProvider() : MaterialEditor.GetMaterialProperties(editor.targets);
             // Providers may discover a secondary material's shader change and request a rebuild.
             bool rebuild = _isFirstOnGUICall || _doReloadNextDraw || Shader != ((Material)editor.target).shader;
             materialPropertyDictionary = null;
@@ -36,16 +37,20 @@ namespace Thry
                 // IMGUI initializes a part's options the first time it draws. Retained inspectors
                 // never call Draw, so tooltips, offsets and stored foldout states would stay unread.
                 foreach (var part in ShaderParts) part.EnsureOptionsInitialized();
-                foreach (var property in PropertyDictionary.Values) property.PrepareRetainedMetadata();
+                foreach (var property in ShaderParts.OfType<ShaderProperty>()) property.PrepareRetainedMetadata();
                 RetainedRevision++;
             }
             IsInAnimationMode = AnimationMode.InAnimationMode();
             IsLockedMaterial = Materials.Any(m => m.IsLocked());
             ActiveRenderer = renderers.FirstOrDefault();
-            RetainedAnimation.Prepare(Properties, renderers);
+            using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.AnimationPreparation))
+                RetainedAnimation.Prepare(Properties, renderers);
+            using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.PropertyReferences))
+            {
             foreach (var part in ShaderParts) part.UpdatedMaterialPropertyReference();
-            foreach(var property in PropertyDictionary.Values)
-                if(!property.IsAnimatable) property.MaterialProperty.applyPropertyCallback = null;
+            foreach(var property in ShaderParts.OfType<ShaderProperty>())
+                if(!property.IsAnimatable && property.MaterialProperty != null) property.MaterialProperty.applyPropertyCallback = null;
+            }
             // Shader swap actions used to run at the end of the IMGUI event pass.
             // Consume the pending actions here so retained inspectors preserve that one-shot behavior.
             if (_didSwapToShader)
@@ -98,11 +103,15 @@ namespace Thry.ThryEditor
         internal event Action Changed;
         private readonly Dictionary<Material, int> _animatedMaterialVersions = new Dictionary<Material, int>();
         private readonly RetainedTextureKeywords _textureKeywords = new RetainedTextureKeywords();
+        private readonly RetainedAnimationMetadata _animationMetadata = new RetainedAnimationMetadata();
+        internal int AnimationRefreshCount { get; private set; }
+        internal bool DeferSummaryRefresh { get; private set; }
         internal RetainedMaterialModel(MaterialEditor editor, ShaderEditor shader)
         {
             Editor = editor; Shader = shader;
             SelectedMaterials = editor.targets.OfType<Material>().Where(m => m != null).ToArray();
         }
+        internal void ReleaseCaches() => _animationMetadata.Dispose();
 
         // Undo and inspector teardown can leave a live editor holding destroyed native targets.
         // Unity's material-property API does not safely reject those references.
@@ -119,69 +128,133 @@ namespace Thry.ThryEditor
         internal void Refresh(bool forceAnimatedState = false)
         {
             if (!HasValidTargets(Editor)) return;
-            bool rebuilt = Shader.PrepareRetained(Editor, Renderers, PropertyProvider);
+            var readTargets = Editor.targets.OfType<Material>().ToArray();
+            var readVersions = readTargets.Select(EditorUtility.GetDirtyCount).ToArray();
+            bool rebuilt;
+            using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.NativeRefresh))
+                rebuilt = Shader.PrepareRetained(Editor, Renderers, PropertyProvider);
             var targets = Shader.Materials.Where(m => m != null).ToArray();
             var changedTargets = targets.Where(m => rebuilt || !_animatedMaterialVersions.ContainsKey(m)
                 || _animatedMaterialVersions[m] != EditorUtility.GetDirtyCount(m)).ToArray();
-            bool changed = rebuilt || forceAnimatedState || _animatedMaterialVersions.Count != targets.Length || changedTargets.Length > 0;
-            if (!changed) return;
-            _textureKeywords.Synchronize(Shader, changedTargets);
+            bool animationChanged;
+            using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.AnimationMetadata))
+                animationChanged = (!DeferSummaryRefresh || rebuilt || forceAnimatedState) && _animationMetadata.Update(targets);
+            bool changed = rebuilt || forceAnimatedState || animationChanged || _animatedMaterialVersions.Count != targets.Length || changedTargets.Length > 0;
+            if (!changed) { StampSnapshotsIfUnchanged(readTargets, readVersions); return; }
+            using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.TextureKeywords))
+                _textureKeywords.Synchronize(Shader, changedTargets);
             // Unlike IMGUI, retained inspectors do not receive UndoRedoPerformed GUI events.
             // Refresh tag state after material changes without rebuilding or opening sections.
-            foreach (var property in Shader.PropertyDictionary.Values) property.RefreshRetainedAnimatedState();
+            if (rebuilt || forceAnimatedState || animationChanged)
+            using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.AnimationIndicators))
+            {
+                // Parent tags and names can change without dirtying their variant.
+                foreach (var material in targets) ShaderProperty.InvalidateRetainedAnimatedOwner(material);
+                foreach (var property in Shader.ShaderParts.OfType<ShaderProperty>()) property.RefreshRetainedAnimatedState();
+                AnimationRefreshCount++;
+            }
             _animatedMaterialVersions.Clear();
             foreach (var material in targets) _animatedMaterialVersions[material] = EditorUtility.GetDirtyCount(material);
+            StampSnapshotsIfUnchanged(readTargets, readVersions);
+        }
+
+        private void StampSnapshotsIfUnchanged(Material[] targets, int[] versions)
+        {
+            // Shader-swap actions and keyword repair can run after the native read.
+            // Do not certify an older property snapshot against their newer version.
+            for (int i = 0; i < targets.Length; i++)
+                if (targets[i] == null || versions[i] != EditorUtility.GetDirtyCount(targets[i])) return;
+            RetainedPropertyDefaults.MarkSnapshotsFresh(Shader);
         }
 
         internal bool CanEdit(ShaderPart part)
         {
+            if (part == null || Editor == null) return false;
+            if (part is ShaderProperty projected && !projected.RefreshRetainedProjection(Renderers)) return false;
+            Shader.ActivateRetained();
             if (Shader.IsInAnimationMode && Renderers.Length > 0 && !RetainedAnimation.IsSupported) return false;
-            if (part.MaterialProperty == null) return true;
-            if ((part.MaterialProperty.flags & MaterialProperty.PropFlags.NonModifiableTextureData) != 0) return false;
-            if (Shader.IsLockedMaterial && !part.IsExemptFromLockedDisabling && !(part.IsAnimatable && part.IsAnimated)) return false;
+            if (part.MaterialProperty != null)
+            {
+                if ((part.MaterialProperty.flags & MaterialProperty.PropFlags.NonModifiableTextureData) != 0) return false;
+                var owners = Owners(part).ToArray();
+                if (owners.Length == 0) return false;
+                if (!part.IsExemptFromLockedDisabling && owners.Any(m => m.IsLocked()
+                    && !(part.IsAnimatable && part is ShaderProperty property && !string.IsNullOrEmpty(property.GetOwnerAnimatedTag(m))))) return false;
 #if UNITY_2022_1_OR_NEWER
-            if (Shader.Materials.Any(m => m.IsPropertyLockedByAncestor(part.MaterialProperty.name))) return false;
+                if (owners.Any(m => m.IsPropertyLockedByAncestor(part.MaterialProperty.name))) return false;
 #endif
+            }
+            for (var parent = part.Parent; parent != null; parent = parent.Parent)
+            {
+                // Header enable references sit outside the block they enable, so they
+                // must remain usable while that block is disabled.
+                string name = part.MaterialProperty?.name;
+                if (parent is ShaderGroup && name != null && (parent.Options.reference_property == name
+                    || (parent.Options.reference_properties != null && parent.Options.reference_properties.Contains(name)))) continue;
+                if (parent.Options.condition_enable != null && !parent.Options.condition_enable.Test()) return false;
+                if (parent is ShaderGroup group && !group.RetainedChildrenEnabled) return false;
+            }
             return part.Options.condition_enable == null || part.Options.condition_enable.Test();
         }
 
+        internal IEnumerable<Material> Owners(ShaderPart part) => part.MaterialProperty == null
+            ? Enumerable.Empty<Material>() : part.MaterialProperty.targets.OfType<Material>()
+                .Where(m => m != null && Shader.Materials.Contains(m) && m.HasProperty(part.MaterialProperty.name));
+
         internal void Edit(ShaderProperty property, Action<MaterialProperty> mutation, bool perMaterial = false)
         {
-            if (!HasValidTargets(Editor)) return;
-            Refresh();
-            if (!CanEdit(property)) return;
-            Shader.ActivateRetained();
-            Editor.RegisterPropertyChangeUndo(property.Content.text);
-            Shader.CurrentProperty = property;
-            if (perMaterial)
+            bool previousDeferral = DeferSummaryRefresh;
+            DeferSummaryRefresh = true;
+            try
             {
-                foreach (var material in property.MaterialProperty.targets.OfType<Material>()
-                    .Where(m => m != null && Shader.Materials.Contains(m)))
+            using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Total))
+            {
+                using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Prepare))
                 {
-                    if (!material.HasProperty(property.MaterialProperty.name)) continue;
-                    var p = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { material }, property.MaterialProperty.name);
-                    RetainedAnimation.Prepare(new[] { p }, Renderers.Where(r => r != null && r.sharedMaterials.Contains(material)).ToArray());
-                    if (!property.IsAnimatable) p.applyPropertyCallback = null;
-                    mutation(p);
+                    if (!HasValidTargets(Editor)) return;
+                    Refresh();
+                    if (!CanEdit(property)) return;
+                    Shader.ActivateRetained();
+                    Editor.RegisterPropertyChangeUndo(property.Content.text);
+                    Shader.CurrentProperty = property;
                 }
+                using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Mutation))
+                {
+                    if (perMaterial)
+                    {
+                        foreach (var material in property.MaterialProperty.targets.OfType<Material>()
+                            .Where(m => m != null && Shader.Materials.Contains(m)))
+                        {
+                            if (!material.HasProperty(property.MaterialProperty.name)) continue;
+                            var p = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { material }, property.MaterialProperty.name);
+                            RetainedAnimation.Prepare(new[] { p }, Renderers.Where(r => r != null && r.sharedMaterials.Contains(material)).ToArray());
+                            if (!property.IsAnimatable) p.applyPropertyCallback = null;
+                            mutation(p);
+                        }
+                    }
+                    else mutation(property.MaterialProperty);
+                }
+                // Unity resolves the drawer set from the first shader in each target array.
+                // Keep full per-shader application until profiling establishes a safe,
+                // behavior-equivalent narrower operation.
+                using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.ApplyDrawers))
+                    foreach (var targets in property.MaterialProperty.targets.OfType<Material>()
+                        .Where(m => Shader.Materials.Contains(m) && m.HasProperty(property.MaterialProperty.name)).GroupBy(m => m.shader))
+                        MaterialEditor.ApplyMaterialPropertyDrawers(targets.Cast<UnityEngine.Object>().ToArray());
+                using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.PropertyCallbacks)) property.RetainedValueChanged();
+                using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.LinkedMaterials))
+                    for(var parent = property.Parent as ShaderGroup; parent != null; parent = parent.Parent as ShaderGroup)
+                    {
+                        if (parent.MaterialProperty == null) continue;
+                        parent.UpdateLinkedMaterials();
+                        GlobalLinker.OnSectionChanged(parent, reloadUI: false);
+                    }
+                using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.EditorInvalidation)) Editor.PropertiesChanged();
+                using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.FinalRefresh)) Refresh();
+                using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Synchronize)) Changed?.Invoke();
             }
-            else mutation(property.MaterialProperty);
-            // Unity resolves the drawer set from the first shader in each target array.
-            // A cross-shader selection must never apply that set to another shader, or
-            // update an unrelated material that does not own the edited property.
-            foreach (var targets in property.MaterialProperty.targets.OfType<Material>()
-                .Where(m => Shader.Materials.Contains(m) && m.HasProperty(property.MaterialProperty.name)).GroupBy(m => m.shader))
-                MaterialEditor.ApplyMaterialPropertyDrawers(targets.Cast<UnityEngine.Object>().ToArray());
-            property.RetainedValueChanged();
-            for(var parent = property.Parent as ShaderGroup; parent != null; parent = parent.Parent as ShaderGroup)
-            {
-                if (parent.MaterialProperty == null) continue;
-                parent.UpdateLinkedMaterials();
-                GlobalLinker.OnSectionChanged(parent, reloadUI: false);
             }
-            Editor.PropertiesChanged();
-            Refresh();
-            Changed?.Invoke();
+            finally { DeferSummaryRefresh = previousDeferral; }
         }
 
         internal void Number(ShaderProperty property, float value) => Edit(property, p => p.SetNumber(value));

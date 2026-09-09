@@ -177,7 +177,7 @@ namespace Thry.ThryEditor
                 _placeholder.style.display = assigned ? DisplayStyle.None : DisplayStyle.Flex;
                 _placeholder.text = mixed ? Text("mixed", "Mixed") : Text("textureDrop", "Drop\ntexture");
                 _thumbnail.image = assigned ? PreviewSource() : null;
-                _name.text = mixed ? Text("multipleTextures", "Multiple textures") : assigned ? texture.name : Text("noTextureAssigned", "No texture assigned");
+                _name.text = mixed ? Text("multipleTextures", "Multiple textures") : assigned ? RetainedText.TextureCaption(texture) : Text("noTextureAssigned", "No texture assigned");
                 if (assigned) RefreshDescription();
                 else _description.text = Text("textureEmptyHint", "Drop a texture here or use the field above.");
                 _name.tooltip = _name.text;
@@ -206,7 +206,7 @@ namespace Thry.ThryEditor
             string dimensions = _texture.width + " × " + _texture.height;
             if (_texture.dimension == TextureDimension.Tex2DArray || _texture.dimension == TextureDimension.Tex3D)
                 dimensions += " × " + RetainedTexturePreview.SliceCount(_texture);
-            _name.text = _texture.name;
+            _name.text = RetainedText.TextureCaption(_texture);
             _description.text = string.Join(" · ", new[] { dimensions, RetainedTexturePreview.Format(_texture),
                 Text("textureMemory", "Memory") + " ≈ " + Helpers.TextureHelper.VRAM.ToByteString(RetainedTexturePreview.EstimateMemory(_texture)) }.Where(s => !string.IsNullOrEmpty(s)));
             _sourceName = _texture.name; _sourceWidth = _texture.width; _sourceHeight = _texture.height;

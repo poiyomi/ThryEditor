@@ -150,20 +150,34 @@ namespace Thry.ThryEditor
                             // The authored label is a UV coordinate; the grid reads it as row and column.
                             if(tiles) { string defaultLabel = Drawers.TileLabelUtility.FormatTileLabel(attribute.Args[i]);
                                 var button=new Button(()=>{if(!Model.CanEdit(target)) return; Model.Number(target,target.MaterialProperty.hasMixedValue||target.MaterialProperty.GetNumber()<=.5f?1:0); foreach(var id in ids) { ShaderProperty linked; if(Model.Shader.PropertyDictionary.TryGetValue(id,out linked)) linked.SetAnimated(target.IsAnimated,target.IsRenaming); }}) {text=defaultLabel,name="tile-"+target.MaterialProperty.name}; button.style.flexGrow=1;
-                                Track(button,()=>{button.SetEnabled(Model.CanEdit(target));button.EnableInClassList("thry-selected",target.MaterialProperty.GetNumber()>.5f&&!target.MaterialProperty.hasMixedValue); button.EnableInClassList("thry-tile-mixed",target.MaterialProperty.hasMixedValue); button.text = Drawers.TileLabelUtility.GetTileLabel(Model.Shader.Materials[0], target.MaterialProperty.name) ?? defaultLabel;});
+                                Track(button,()=>{button.SetEnabled(Model.CanEdit(target));button.EnableInClassList("thry-selected",target.MaterialProperty.GetNumber()>.5f&&!target.MaterialProperty.hasMixedValue); button.EnableInClassList("thry-tile-mixed",target.MaterialProperty.hasMixedValue); button.text = Drawers.TileLabelUtility.GetTileLabel(Model.Owners(target).FirstOrDefault(), target.MaterialProperty.name) ?? defaultLabel;});
                                 if (Drawers.TileLabelUtility.IsUdimProperty(target.MaterialProperty.name))
                                 {
                                     button.tooltip = Drawers.TileLabelUtility.ROW_TOOLTIP;
                                     button.RegisterCallback<PointerDownEvent>(e =>
                                     {
-                                        if (e.button != 1) return;
+                                        if (e.button != 1 || !Model.CanEdit(target)) return;
+                                        // Avoid the native button's default focus action closing
+                                        // the menu immediately after it receives focus.
+                                        e.PreventDefault(); e.StopImmediatePropagation();
+                                        var captured = Model.Owners(target).Select(m => (Material: m, Shader: m.shader)).ToArray();
+                                        Func<UnityEngine.Object[]> owners = () => {
+                                            if (button.panel == null || !RetainedMaterialModel.HasValidTargets(Model.Editor)) return Array.Empty<UnityEngine.Object>();
+                                            Model.Refresh();
+                                            return button.panel == null || !Model.CanEdit(target) ? Array.Empty<UnityEngine.Object>() : Model.Owners(target)
+                                                .Where(m => captured.Any(entry => entry.Material == m && entry.Shader == m.shader)).Cast<UnityEngine.Object>().ToArray();
+                                        };
                                         RetainedMenu.Open(button.worldBound, button, new[]
                                         {
-                                            new RetainedMenu.Item { Text = "Rename tile", Action = () => Drawers.TileLabelUtility.TileLabelRenamePopup.Show(Model.Editor.targets, Drawers.TileLabelUtility.CanonicalPropertyName(target.MaterialProperty.name), defaultLabel, EditorWindow.focusedWindow.position.position + button.worldBound.position) },
-                                            new RetainedMenu.Item { Text = "Reset label", Action = () => Drawers.TileLabelUtility.ApplyTagToTargets(Model.Editor.targets, Drawers.TileLabelUtility.CanonicalPropertyName(target.MaterialProperty.name), "") }
+                                            new RetainedMenu.Item { Text = "Rename tile", Action = () => {
+                                                var current = owners(); if (current.Length == 0) return;
+                                                var window = Resources.FindObjectsOfTypeAll<EditorWindow>().FirstOrDefault(w => w.rootVisualElement.panel == button.panel);
+                                                Drawers.TileLabelUtility.TileLabelRenamePopup.Show(current, Drawers.TileLabelUtility.CanonicalPropertyName(target.MaterialProperty.name), defaultLabel,
+                                                    (window == null ? Vector2.zero : window.position.position) + button.worldBound.position, owners);
+                                            } },
+                                            new RetainedMenu.Item { Text = "Reset label", Action = () => Drawers.TileLabelUtility.ApplyTagToTargets(owners(), Drawers.TileLabelUtility.CanonicalPropertyName(target.MaterialProperty.name), "") }
                                         });
-                                        e.StopPropagation();
-                                    });
+                                    }, TrickleDown.TrickleDown);
                                 }
                                 multi.Add(button); }
                             else if(attribute.Args[0]=="1"||attribute.Args[0].Equals("true",StringComparison.OrdinalIgnoreCase))
@@ -190,7 +204,23 @@ namespace Thry.ThryEditor
                         curve.RegisterValueChangedCallback(e=>Model.Edit(property,p=>p.vectorValue=new Vector4(Mathf.Clamp01(e.newValue.Evaluate(0)),Mathf.Clamp01(e.newValue.Evaluate(1f/3)),Mathf.Clamp01(e.newValue.Evaluate(2f/3)),Mathf.Clamp01(e.newValue.Evaluate(1)))));
                         handled=true; return;
                     case "Ramp4":
-                        var ramp=new RetainedRamp(()=>property.MaterialProperty.vectorValue,v=>Model.Edit(property,p=>p.vectorValue=v),attribute.Args); parent.Add(ramp); Track(ramp,ramp.MarkDirtyRepaint);
+                        var rampGesture = new RetainedPropertyGesture(Model, property);
+                        var ramp=new RetainedRamp(()=>property.MaterialProperty.vectorValue,(handle,value,mask)=>Model.Edit(property,p=>
+                        {
+                            var owned = p.vectorValue;
+                            if ((mask & (1 << handle)) != 0) owned[handle] = value[handle];
+                            // Editing one endpoint must leave the other owner's endpoint
+                            // intact, including when it has a different time ordering bound.
+                            if ((mask & (1 << (handle+2))) != 0)
+                            {
+                                float maxTime = attribute.Args.Any(a=>a.Equals(handle==0?"unclampedZ":"unclampedW",StringComparison.OrdinalIgnoreCase))
+                                    ? Mathf.Max(1,value[handle+2],owned.z,owned.w) : 1;
+                                owned[handle+2] = handle == 0 ? Mathf.Clamp(value.z,0,Mathf.Clamp(owned.w,0,maxTime))
+                                    : Mathf.Clamp(value.w,Mathf.Clamp(owned.z,0,maxTime),maxTime);
+                            }
+                            p.vectorValue = owned;
+                        },true),attribute.Args,handle=>rampGesture.Begin((1<<handle)|(1<<(handle+2))),rampGesture.Cancel,rampGesture.End);
+                        parent.Add(ramp); Track(ramp,()=> { ramp.SetEnabled(Model.CanEdit(property)); ramp.MarkDirtyRepaint(); });
                         ComponentInputs(parent,property,new[]{"V0","V1","T0","T1"},0,(index,value)=>
                         {
                             if(index>=2) value=attribute.Args.Any(a=>a.Equals(index==2?"unclampedZ":"unclampedW",StringComparison.OrdinalIgnoreCase))?Mathf.Max(0,value):Mathf.Clamp01(value);
@@ -256,7 +286,9 @@ namespace Thry.ThryEditor
                 int index=start+i; var field=new FloatField(labels[i]) { name="component-"+index }; field.AddToClassList("thry-component");
                 field.style.flexGrow=1; field.style.flexBasis=0; field.style.minWidth=0;
                 Track(field,()=>{field.SetValueWithoutNotify(property.MaterialProperty.vectorValue[index]);field.showMixedValue=property.MaterialProperty.targets.OfType<Material>().Select(m=>m.GetVector(property.MaterialProperty.name)[index]).Distinct().Skip(1).Any();});
-                field.RegisterValueChangedCallback(e=>write(index,e.newValue));
+                var gesture = new RetainedPropertyGesture(Model, property);
+                gesture.Attach(field, () => 1 << index);
+                field.RegisterValueChangedCallback(e=> { if (!gesture.Cancelling) write(index,e.newValue); });
                 entries.Add(field);
             }
         }
@@ -264,21 +296,29 @@ namespace Thry.ThryEditor
 
     internal sealed class RetainedRamp : VisualElement
     {
-        private readonly Func<Vector4> _read; private readonly Action<Vector4> _write;
+        private readonly Func<Vector4> _read; private readonly Action<int,Vector4,int> _write;
+        private readonly Action<int> _begin;
+        private readonly Action _cancel, _end;
         private readonly bool _normalized, _unclampedZ, _unclampedW;
         private int _handle=-1;
+        private int _focusedHandle, _pointerId = -1;
+        private Vector4 _original;
         private Vector3 _dragBounds;
         internal RetainedRamp(Func<Vector4> read,Action<Vector4> write,string[] modes)
+            : this(read,(handle,value,mask)=>write(value),modes,null,null,null) {}
+        internal RetainedRamp(Func<Vector4> read,Action<int,Vector4,int> write,string[] modes,Action<int> begin,Action cancel,Action end)
         {
-            _read=read;_write=write;_unclampedZ=modes.Any(m=>m.Equals("unclampedZ",StringComparison.OrdinalIgnoreCase));_unclampedW=modes.Any(m=>m.Equals("unclampedW",StringComparison.OrdinalIgnoreCase));
+            _read=read;_write=write;_begin=begin;_cancel=cancel;_end=end;_unclampedZ=modes.Any(m=>m.Equals("unclampedZ",StringComparison.OrdinalIgnoreCase));_unclampedW=modes.Any(m=>m.Equals("unclampedW",StringComparison.OrdinalIgnoreCase));
             _normalized = modes.Any(m => m.Equals("normalized", StringComparison.OrdinalIgnoreCase));
-            AddToClassList("thry-ramp"); style.height=54; generateVisualContent+=Draw;
+            AddToClassList("thry-ramp"); style.height=54; focusable=true; generateVisualContent+=Draw;
+            tooltip="Drag an endpoint. Escape cancels the drag. Home/End selects an endpoint; arrow keys adjust it. Shift moves faster, Alt moves slower.";
             RegisterCallback<PointerDownEvent>(e =>
             {
                 if (e.button != 0 || !enabledInHierarchy) return;
-                var v = _read(); _dragBounds = Bounds(v);
+                var v = _read(); _original=v; _dragBounds = Bounds(v); Focus();
                 var a = Point(v.z, v.x, v); var b = Point(v.w, v.y, v);
                 _handle = Vector2.Distance(e.localPosition, a) < Vector2.Distance(e.localPosition, b) ? 0 : 1;
+                _focusedHandle=_handle; _pointerId=e.pointerId; _begin?.Invoke(_handle);
                 this.CapturePointer(e.pointerId); e.StopPropagation();
             });
             RegisterCallback<PointerMoveEvent>(e =>
@@ -301,10 +341,43 @@ namespace Thry.ThryEditor
                     v.w = Mathf.Clamp(time, Mathf.Clamp(v.z, 0, maxTime), maxTime);
                     v.y = value;
                 }
-                _write(v); MarkDirtyRepaint(); e.StopPropagation();
+                _write(_handle,v,(1<<_handle)|(1<<(_handle+2))); MarkDirtyRepaint(); e.StopPropagation();
             });
-            RegisterCallback<PointerUpEvent>(e => { _handle = -1; this.ReleasePointer(e.pointerId); MarkDirtyRepaint(); });
-            RegisterCallback<PointerCaptureOutEvent>(e => { _handle = -1; MarkDirtyRepaint(); });
+            RegisterCallback<PointerUpEvent>(e => Finish());
+            RegisterCallback<PointerCaptureOutEvent>(e => { _handle = -1; _pointerId=-1; _end?.Invoke(); MarkDirtyRepaint(); });
+            RegisterCallback<DetachFromPanelEvent>(e => { _handle=-1;_pointerId=-1;_end?.Invoke(); });
+            RegisterCallback<FocusInEvent>(e=>MarkDirtyRepaint());
+            RegisterCallback<FocusOutEvent>(e=>MarkDirtyRepaint());
+            RegisterCallback<KeyDownEvent>(e=>
+            {
+                if(!enabledInHierarchy) return;
+                if(e.keyCode==KeyCode.Escape && _handle>=0)
+                {
+                    if(_cancel!=null) _cancel(); else _write(_handle,_original,(1<<_handle)|(1<<(_handle+2)));
+                    Finish(); e.StopPropagation(); e.PreventDefault(); return;
+                }
+                if(_handle>=0) return;
+                if(e.keyCode==KeyCode.Home || e.keyCode==KeyCode.End)
+                { _focusedHandle=e.keyCode==KeyCode.Home?0:1;MarkDirtyRepaint();e.StopPropagation();e.PreventDefault();return; }
+                bool time=e.keyCode==KeyCode.LeftArrow||e.keyCode==KeyCode.RightArrow;
+                bool value=e.keyCode==KeyCode.UpArrow||e.keyCode==KeyCode.DownArrow;
+                if(!time&&!value) return;
+                var v=_read();var bounds=Bounds(v);float step=e.shiftKey ? .1f : e.altKey ? .001f : .01f;
+                if(time)
+                {
+                    float next=v[_focusedHandle+2]+(e.keyCode==KeyCode.RightArrow?step:-step)*bounds.x;
+                    if(_focusedHandle==0)v.z=Mathf.Clamp(next,0,Mathf.Max(0,Mathf.Min(v.w,_unclampedZ?bounds.x:1)));
+                    else {float max=_unclampedW?bounds.x:1;v.w=Mathf.Clamp(next,Mathf.Clamp(v.z,0,max),max);}
+                }
+                else v[_focusedHandle]=Mathf.Clamp(v[_focusedHandle]+(e.keyCode==KeyCode.UpArrow?step:-step)*(bounds.z-bounds.y),bounds.y,bounds.z);
+                _write(_focusedHandle,v,1<<(_focusedHandle+(time?2:0)));MarkDirtyRepaint();e.StopPropagation();e.PreventDefault();
+            });
+        }
+        private void Finish()
+        {
+            _handle=-1;
+            if(_pointerId>=0 && this.HasPointerCapture(_pointerId)) this.ReleasePointer(_pointerId);
+            _pointerId=-1;_end?.Invoke();MarkDirtyRepaint();
         }
         private Vector3 Bounds(Vector4 v) => new Vector3(
             _unclampedZ || _unclampedW ? Mathf.Max(1, v.z, v.w) : 1,
@@ -319,7 +392,8 @@ namespace Thry.ThryEditor
         private void Draw(MeshGenerationContext context)
         {
             var v=_read(); var p=context.painter2D;p.lineWidth=2;p.strokeColor=new Color(.48f,.68f,.84f);p.BeginPath();p.MoveTo(Point(0,v.x,v));p.LineTo(Point(v.z,v.x,v));p.LineTo(Point(v.w,v.y,v));p.LineTo(Point(Mathf.Max(1,v.w),v.y,v));p.Stroke();
-            p.fillColor=new Color(.8f,.8f,.8f);foreach(var point in new[]{Point(v.z,v.x,v),Point(v.w,v.y,v)}){p.BeginPath();p.Arc(point,4,0,360);p.Fill();}
+            var points=new[]{Point(v.z,v.x,v),Point(v.w,v.y,v)};
+            for(int i=0;i<points.Length;i++){p.fillColor=focusController?.focusedElement==this&&i==_focusedHandle?new Color(.48f,.68f,.84f):new Color(.8f,.8f,.8f);p.BeginPath();p.Arc(points[i],4,0,360);p.Fill();}
         }
     }
 }

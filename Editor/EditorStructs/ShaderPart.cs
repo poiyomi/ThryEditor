@@ -125,6 +125,7 @@ namespace Thry.ThryEditor
     {
         public ShaderPart Parent { private set; get; }
         public MaterialProperty MaterialProperty { private set; get; }
+        internal void SetRetainedProperty(MaterialProperty value) { MaterialProperty = value; }
         public ShaderEditor MyShaderUI { protected set; get; }
         
         protected GUIContent _content, _contentNonDefault;
@@ -162,6 +163,7 @@ namespace Thry.ThryEditor
         public string CustomStringTagID { protected set; get; } = null;
 
         public bool IsHidden { protected set; get; } = false;
+        internal void SetHidden(bool hidden) { IsHidden = hidden; }
         public bool IsPreset { protected set; get; } = false;
 
         public bool IsExemptFromLockedDisabling { protected set; get; } = false;
@@ -938,6 +940,15 @@ namespace Thry.ThryEditor
 
 #endregion
 #region ContextMenu
+        private Material[] PropertyContextTargets()
+        {
+            if (MaterialProperty == null || MyShaderUI == null) return Array.Empty<Material>();
+            return MaterialProperty.targets.OfType<Material>()
+                .Where(material => material != null && material.shader != null
+                    && MyShaderUI.Materials.Contains(material) && material.HasProperty(MaterialProperty.name))
+                .Distinct().ToArray();
+        }
+
         internal GenericMenu RetainedContextMenu()
         {
             _contextMenu = new GenericMenu();
@@ -967,7 +978,7 @@ namespace Thry.ThryEditor
                 _contextMenu.AddItem(new GUIContent("Copy Property as Keyframe"), false, CopyPropertyAsKeyframe);
                 if (IsAnimationWindowRecording()) _contextMenu.AddItem(new GUIContent("Add Keyframe to Animation"), false, AddKeyToAnimationClip);
 #if UNITY_2022_1_OR_NEWER
-                var targets = MyShaderUI.Materials;
+                var targets = PropertyContextTargets();
                 DoVariantMenuStuff(_contextMenu, targets.All(m => m.IsPropertyOverriden(ShaderPropertyId)),
                     targets.Any(m => m.IsPropertyLockedByAncestor(ShaderPropertyId)), targets.Any(m => m.IsPropertyLocked(ShaderPropertyId)), targets, true);
 #else
@@ -1019,7 +1030,8 @@ namespace Thry.ThryEditor
                         bool isLockedInChildren = false;
                         bool isLockedByAncestor = false;
                         bool isOverriden = true;
-                        foreach (Material target in ShaderEditor.Active.Materials)
+                        var targets = PropertyContextTargets();
+                        foreach (Material target in targets)
                         {
                             if (target == null) continue;
                             int nameId = Shader.PropertyToID(MaterialProperty.name);
@@ -1027,7 +1039,7 @@ namespace Thry.ThryEditor
                             isLockedByAncestor |= target.IsPropertyLockedByAncestor(nameId);
                             isOverriden &= target.IsPropertyOverriden(nameId);
                         }
-                        DoVariantMenuStuff(_contextMenu, isOverriden, isLockedByAncestor, isLockedInChildren, ShaderEditor.Active.Materials, true);
+                        DoVariantMenuStuff(_contextMenu, isOverriden, isLockedByAncestor, isLockedInChildren, targets, true);
 #endif
                     }
                     if (_contextMenu.GetItemCount() > 0) _contextMenu.ShowAsContext();
@@ -1041,6 +1053,7 @@ namespace Thry.ThryEditor
 
         void DoVariantMenuStuff(GenericMenu menu, bool overriden, bool lockedByAncestor, bool isLockedInChildren, Material[] targets, bool allowLocking)
         {
+            if (targets.Length == 0) return;
             if (lockedByAncestor)
             {
                 if (targets.Length != 1)
@@ -1052,7 +1065,7 @@ namespace Thry.ThryEditor
             else if (GUI.enabled)
             {
                 DoRegularMenu(menu, overriden, targets);
-                DoLockPropertiesMenu(_contextMenu, !isLockedInChildren, ShaderEditor.Active.Materials, true);
+                DoLockPropertiesMenu(menu, !isLockedInChildren, targets, allowLocking);
             }
         }
 
@@ -1112,10 +1125,16 @@ namespace Thry.ThryEditor
 
         void SetLockedProperty(Material[] targets, bool value)
         {
+            var owners = PropertyContextTargets();
+            targets = targets.Where(target => owners.Contains(target)).ToArray();
+            if (targets.Length == 0) return;
+            Undo.RegisterCompleteObjectUndo(targets, value ? "Lock material property" : "Unlock material property");
             foreach (Material target in targets)
             {
                 target.SetPropertyLock(ShaderPropertyId, value);
+                EditorUtility.SetDirty(target);
             }
+            if (MyMaterialEditor != null) MyMaterialEditor.PropertiesChanged();
         }
 
         void GotoLockOriginAction(Material[] targets)
@@ -1194,6 +1213,9 @@ namespace Thry.ThryEditor
 
         void ResetMaterialProperties()
         {
+#if UNITY_2021_3_OR_NEWER
+            MyShaderUI?.ActivateRetained();
+#endif
             ResetSingleProperty(this);
             
             // Also reset additional properties (for multi-property drawers like ThryMultiFloatButtons)
@@ -1215,38 +1237,58 @@ namespace Thry.ThryEditor
             RaisePropertyValueChanged();
             // Context menu callbacks run outside the section's change check, so the linker has to be told directly.
             GlobalLinker.OnPropertyChanged(this);
+            if (MyMaterialEditor != null) MyMaterialEditor.PropertiesChanged();
         }
 
         static void ResetSingleProperty(ShaderPart shaderPart)
         {
             MaterialProperty prop = shaderPart.MaterialProperty;
-            Shader shader = ShaderEditor.Active.Shader;
-            switch (prop.GetPropertyType())
+            if (prop == null || (prop.flags & PropFlags.NonModifiableTextureData) != 0) return;
+            var owners = shaderPart.PropertyContextTargets();
+            if (owners.Length == 0) return;
+            Undo.RegisterCompleteObjectUndo(owners, "Reset " + shaderPart.Content.text);
+            foreach (var material in owners)
             {
-                case ShaderPropertyType.Float:
-                case ShaderPropertyType.Range:
-                    prop.floatValue = shader.GetPropertyDefaultFloatValue(shaderPart.ShaderPropertyIndex);
-                    break;
-                case ShaderPropertyType.Vector:
-                    prop.vectorValue = shader.GetPropertyDefaultVectorValue(shaderPart.ShaderPropertyIndex);
-                    break;
-                case ShaderPropertyType.Color:
-                    prop.colorValue = shader.GetPropertyDefaultVectorValue(shaderPart.ShaderPropertyIndex);
-                    break;
+                Shader shader = material.shader;
+                int index = shader.FindPropertyIndex(prop.name);
+                if (index < 0) continue;
 #if UNITY_2022_1_OR_NEWER
-                case ShaderPropertyType.Int:
-                    prop.intValue = shader.GetPropertyDefaultIntValue(shaderPart.ShaderPropertyIndex);
-                    break;
+                if (material.IsPropertyLockedByAncestor(prop.name)) continue;
 #endif
-                case ShaderPropertyType.Texture:
-                    Texture texture = null;
-                    var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(shader)) as ShaderImporter;
-                    if (importer != null)
-                        texture = importer.GetDefaultTexture(prop.name);
-                    prop.textureValue = texture;
-                    prop.textureScaleAndOffset = new Vector4(1, 1, 0, 0);
-                    break;
+                var target = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { material }, prop.name);
+                // Retain Unity's animation-recording callback while narrowing its owners.
+                target.applyPropertyCallback = prop.applyPropertyCallback;
+                switch (target.GetPropertyType())
+                {
+                    case ShaderPropertyType.Float:
+                    case ShaderPropertyType.Range:
+                        target.floatValue = shader.GetPropertyDefaultFloatValue(index);
+                        break;
+                    case ShaderPropertyType.Vector:
+                        target.vectorValue = shader.GetPropertyDefaultVectorValue(index);
+                        break;
+                    case ShaderPropertyType.Color:
+                        target.colorValue = shader.GetPropertyDefaultVectorValue(index);
+                        break;
+#if UNITY_2022_1_OR_NEWER
+                    case ShaderPropertyType.Int:
+                        target.intValue = shader.GetPropertyDefaultIntValue(index);
+                        break;
+#endif
+                    case ShaderPropertyType.Texture:
+                        Thry.ThryEditor.Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(target);
+                        var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(shader)) as ShaderImporter;
+                        target.textureValue = importer != null ? importer.GetDefaultTexture(prop.name) : null;
+                        target.textureScaleAndOffset = new Vector4(1, 1, 0, 0);
+                        break;
+                }
+                MaterialEditor.ApplyMaterialPropertyDrawers(new UnityEngine.Object[] { material });
+                EditorUtility.SetDirty(material);
             }
+            // Callbacks and linked materials must see the new aggregate immediately,
+            // before the retained inspector's next scheduled property refresh.
+            shaderPart.MaterialProperty = MaterialEditor.GetMaterialProperty(owners.Cast<UnityEngine.Object>().ToArray(), prop.name);
+            shaderPart.MaterialProperty.applyPropertyCallback = prop.applyPropertyCallback;
         }
 #endif
 
@@ -1525,6 +1567,7 @@ namespace Thry.ThryEditor
                 material.SetOverrideTag(MaterialProperty.name + ShaderOptimizer.AnimatedTagSuffix, tag);
                 EditorUtility.SetDirty(material);
             }
+            (this as ShaderProperty)?.RefreshRetainedAnimatedState();
             (Parent as ShaderGroup)?.SetAnimatedDescendantStateDirty();
             // A/RA is toggled from the context menu, which runs outside the section's change check, so the
             // linker has to be told directly - otherwise the new state never reaches the other subscribers.

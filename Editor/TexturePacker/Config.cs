@@ -10,6 +10,7 @@ namespace Thry.ThryEditor.TexturePacker
     [Serializable]
     public class TexturePackerConfig
     {
+        public int Version;
         public PackerSource[] Sources;
         public OutputTarget[] Targets;
         public List<Connection> Connections;
@@ -22,14 +23,37 @@ namespace Thry.ThryEditor.TexturePacker
 
         public string Serialize()
         {
-            return "ThryTexturePackerConfig:" + JsonUtility.ToJson(this);
+            var saved = JsonUtility.FromJson<TexturePackerConfig>(JsonUtility.ToJson(this));
+            saved.Version = 2;
+            foreach (var source in saved.Sources)
+            {
+                if (source.ImageTexture != null) source.CaptureImageIdentity();
+                source.ImageTexture = null;
+                source.ColorTexture = null; source.GradientTexture = null;
+            }
+            return "ThryTexturePackerConfig:" + JsonUtility.ToJson(saved);
         }
+
+        [Serializable] sealed class LegacyReference { public int instanceID; }
+        [Serializable] sealed class LegacySource { public LegacyReference ImageTexture; }
+        [Serializable] sealed class LegacySources { public LegacySource[] Sources; }
 
         public static TexturePackerConfig Deserialize(string json)
         {
             if (json.StartsWith("ThryTexturePackerConfig:"))
             {
-                return JsonUtility.FromJson<TexturePackerConfig>(json.Substring("ThryTexturePackerConfig:".Length));
+                string payload = json.Substring("ThryTexturePackerConfig:".Length);
+                var config = JsonUtility.FromJson<TexturePackerConfig>(payload);
+                var legacy = config.Version < 2 ? JsonUtility.FromJson<LegacySources>(payload) : null;
+                for (int i = 0; i < config.Sources.Length; i++)
+                {
+                    var source = config.Sources[i];
+                    if (config.Version < 2 && source.ImageTexture != null) source.CaptureImageIdentity();
+                    if (!string.IsNullOrEmpty(source.ImageTextureGuid)) source.ResolveImageIdentity();
+                    else if (legacy?.Sources != null && i < legacy.Sources.Length && legacy.Sources[i]?.ImageTexture?.instanceID != 0
+                        && legacy.Sources[i]?.ImageTexture != null && source.ImageTexture == null) source.MissingImageReference = true;
+                }
+                return config;
             }
             return null;
         }
@@ -37,6 +61,7 @@ namespace Thry.ThryEditor.TexturePacker
         public static TexturePackerConfig GetNewConfig()
         {
             TexturePackerConfig config = new TexturePackerConfig();
+            config.Version = 2;
             config.Sources = new PackerSource[]
             {
                 new PackerSource(),
@@ -106,14 +131,22 @@ namespace Thry.ThryEditor.TexturePacker
             }
         }
 
+        public void RequireResolvedSources()
+        {
+            foreach (var source in Sources)
+                if (source.InputType == InputType.Texture && source.ImageTexture == null && !string.IsNullOrEmpty(source.ImageTextureGuid)) source.ResolveImageIdentity();
+            var missing = Sources.Select((source, index) => new { source, index })
+                .Where(item => item.source.InputType == InputType.Texture && item.source.MissingImageReference)
+                .Select(item => (item.index + 1).ToString()).ToArray();
+            if (missing.Length > 0) throw new InvalidOperationException("Source " + string.Join(", ", missing)
+                + " could not be restored. Choose its texture again or explicitly clear that source before saving.");
+        }
+
         public void SaveToImporter(TextureImporter importer)
         {
             if (importer == null || this == null) return;
             importer.userData = this.Serialize();
-            if (!s_textureImporterList.Values.Contains(importer))
-            {
-                s_textureImporterList.Add(importer.assetPath.Replace("Assets/", ""), importer);
-            }
+            s_textureImporterList[importer.assetPath.Replace("Assets/", "")] = importer;
         }
 
         private static SortedList<string, TextureImporter> s_textureImporterList = new SortedList<string, TextureImporter>();

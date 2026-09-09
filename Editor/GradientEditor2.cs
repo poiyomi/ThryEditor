@@ -133,7 +133,7 @@ namespace Thry.ThryEditor
             PropertyInfo show_header = gradient_preset_libary_editor_type.GetProperty("showHeader");
             show_header.SetValue(preset_libary_editor, true, null);
             PropertyInfo minMaxPreviewHeight = gradient_preset_libary_editor_type.GetProperty("minMaxPreviewHeight");
-            minMaxPreviewHeight.SetValue(preset_libary_editor, new Vector2(14f, 14f), null);
+            minMaxPreviewHeight.SetValue(preset_libary_editor, new Vector2(24f, 24f), null);
 
             return preset_libary_editor;
         }

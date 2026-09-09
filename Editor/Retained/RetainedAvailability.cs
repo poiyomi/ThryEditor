@@ -78,10 +78,12 @@ namespace Thry.ThryEditor
             {
                 if ((part.MaterialProperty.flags & UnityEditor.MaterialProperty.PropFlags.NonModifiableTextureData) != 0)
                     return RetainedText.Get(shader, "texture_shader_owned", "This texture is supplied by the shader and cannot be reassigned.");
-                if (shader.IsLockedMaterial && !part.IsExemptFromLockedDisabling && !(part.IsAnimatable && part.IsAnimated))
+                if (!part.IsExemptFromLockedDisabling && part.MaterialProperty.targets.OfType<Material>()
+                    .Any(material => material != null && shader.Materials.Contains(material) && material.HasProperty(part.MaterialProperty.name) && material.IsLocked()
+                        && !(part.IsAnimatable && part is ShaderProperty property && !string.IsNullOrEmpty(property.GetOwnerAnimatedTag(material)))))
                     return "Unlock the shader to edit this property.";
 #if UNITY_2022_1_OR_NEWER
-                foreach (var material in shader.Materials)
+                foreach (var material in part.MaterialProperty.targets.OfType<Material>().Where(m => shader.Materials.Contains(m)))
                     if (material != null && material.HasProperty(part.MaterialProperty.name) && material.IsPropertyLockedByAncestor(part.MaterialProperty.name))
                         return "This property is locked by a parent material. Edit or unlock it on the parent material.";
 #endif

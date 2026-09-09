@@ -25,7 +25,9 @@ namespace Thry.ThryEditor.Helpers
                     return g;
                 }
                 if(log) Debug.Log(texture.name + " Converted into Gradient.");
-                return Converter.TextureToGradient(GetReadableTexture(texture));
+                var readable = GetReadableTexture(texture);
+                try { return Converter.TextureToGradient(readable); }
+                finally { UnityEngine.Object.DestroyImmediate(readable); }
             }
             return new Gradient();
         }
@@ -60,17 +62,24 @@ namespace Thry.ThryEditor.Helpers
         }
 
         public static Texture SaveTextureAsPNG(Texture2D texture, string path, TextureData settings = null)
+            => SaveTextureAsPNGCore(texture, path, settings, FileHelper.WriteBytesToFile, assetPath =>
+            {
+                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceSynchronousImport);
+                if (settings != null) settings.ApplyModes(assetPath);
+                return AssetDatabase.LoadAssetAtPath<Texture>(assetPath);
+            });
+
+        internal static Texture SaveTextureAsPNGCore(Texture2D texture, string path, TextureData settings,
+            Func<byte[], string, bool> write, Func<string, Texture> import)
         {
             if (!path.EndsWith(".png"))
                 path += ".png";
             byte[] encoding = texture.EncodeToPNG();
+            if (encoding == null || encoding.Length == 0 || !write(encoding, path))
+                throw new IOException("Could not write texture at \"" + path + "\". The material was not changed.");
+            Texture saved = import(path);
+            if (saved == null) throw new IOException("Could not import the saved texture at \"" + path + "\". The material was not changed.");
             Debug.Log("Texture saved at \"" + path + "\".");
-            FileHelper.WriteBytesToFile(encoding, path);
-
-            AssetDatabase.ImportAsset(path);
-            if (settings != null)
-                settings.ApplyModes(path);
-            Texture saved = AssetDatabase.LoadAssetAtPath<Texture>(path);
             return saved;
         }
 
@@ -104,32 +113,38 @@ namespace Thry.ThryEditor.Helpers
 
         public static Texture2D GetReadableTexture(Texture texture)
         {
-            RenderTexture temp = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
-            Graphics.Blit(texture, temp);
             RenderTexture previous = RenderTexture.active;
-            RenderTexture.active = temp;
-            Texture2D ret = new Texture2D(texture.width, texture.height);
-            ret.ReadPixels(new Rect(0, 0, temp.width, temp.height), 0, 0);
-            ret.Apply();
-            RenderTexture.active = previous;
-            RenderTexture.ReleaseTemporary(temp);
-            return ret;
+            RenderTexture temp = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
+            Texture2D ret = null;
+            try
+            {
+                Graphics.Blit(texture, temp); RenderTexture.active = temp;
+                ret = new Texture2D(texture.width, texture.height);
+                ret.ReadPixels(new Rect(0, 0, temp.width, temp.height), 0, 0); ret.Apply();
+                return ret;
+            }
+            catch { if (ret != null) UnityEngine.Object.DestroyImmediate(ret); throw; }
+            finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(temp); }
         }
 
         public static Texture2D Resize(Texture2D texture, int width, int height)
         {
             Texture2D ret = new Texture2D(width, height, texture.format, texture.mipmapCount > 0);
-            float scaleX = ((float)texture.width) / width;
-            float scaleY = ((float)texture.height) / height;
-            for (int x = 0; x < width; x++)
+            try
             {
-                for (int y = 0; y < height; y++)
+                float scaleX = ((float)texture.width) / width;
+                float scaleY = ((float)texture.height) / height;
+                for (int x = 0; x < width; x++)
                 {
-                    ret.SetPixel(x, y, texture.GetPixel((int)(scaleX * x), (int)(scaleY * y)));
+                    for (int y = 0; y < height; y++)
+                    {
+                        ret.SetPixel(x, y, texture.GetPixel((int)(scaleX * x), (int)(scaleY * y)));
+                    }
                 }
+                ret.Apply();
+                return ret;
             }
-            ret.Apply();
-            return ret;
+            catch { UnityEngine.Object.DestroyImmediate(ret); throw; }
         }
 
         public static DateTime GetLastModifiedTime(Texture2D texture)

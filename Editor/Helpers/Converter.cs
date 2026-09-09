@@ -48,18 +48,33 @@ namespace Thry.ThryEditor.Helpers
         //--Start--Gradient
         public static Gradient TextureToGradient(Texture2D texture)
         {
-            texture = Gradient_Resize(texture);
-            Color[] values = Gradient_Sample(texture);
-            //values = Gradient_Smooth(values);
+            var resized = Gradient_Resize(texture);
+            try
+            {
+                Color[] values = Gradient_Sample(resized);
+                var gradient = ConstructGradient(GradientChanges(values), values);
+                // Opacity needs its own change samples; RGB may be constant while
+                // the texture still contains an authored opacity ramp.
+                var alphaValues = values.Select(value => new Color(value.a, value.a, value.a, 1)).ToArray();
+                var alphaChanges = GradientChanges(alphaValues);
+                var alphas = alphaChanges.Take(6).Select(change => new GradientAlphaKey(change[1].r, change[0].a)).ToList();
+                alphas.Add(new GradientAlphaKey(values[0].a, 0));
+                alphas.Add(new GradientAlphaKey(values[values.Length - 1].a, 1));
+                gradient.alphaKeys = alphas.ToArray();
+                return gradient;
+            }
+            finally { UnityEngine.Object.DestroyImmediate(resized); }
+        }
+
+        static List<Color[]> GradientChanges(Color[] values)
+        {
             Color[] delta = CalcDelta(values);
             delta[0] = delta[1];
             Color[] delta_delta = CalcDelta(delta);
-            //PrintColorArray(delta_delta);
             List<Color[]> changes = DeltaDeltaToChanges(delta_delta, values);
             changes = RemoveChangesUnderDistanceThreshold(changes);
             SortChanges(changes);
-            //PrintColorList(changes);
-            return ConstructGradient(changes, values);
+            return changes;
         }
 
         private static Texture2D Gradient_Resize(Texture2D texture)
@@ -126,6 +141,7 @@ namespace Thry.ThryEditor.Helpers
         private static List<Color[]> RemoveChangesUnderDistanceThreshold(List<Color[]> changes)
         {
             List<Color[]> new_changes = new List<Color[]>();
+            if (changes.Count == 0) return new_changes;
             new_changes.Add(changes[0]);
             for (int i = 1; i < changes.Count; i++)
             {

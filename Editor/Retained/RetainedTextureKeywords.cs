@@ -27,7 +27,7 @@ namespace Thry.ThryEditor
             {
                 _bindings.Clear();
                 var metadata = new Dictionary<Shader,Dictionary<string,string[]>>();
-                foreach (var property in shader.PropertyDictionary.Values)
+                foreach (var property in shader.ShaderParts.OfType<ShaderProperty>())
                 {
                     if (property.MaterialProperty == null || property.MaterialProperty.type != UnityEditor.MaterialProperty.PropType.Texture) continue;
                     string name = property.MaterialProperty.name;

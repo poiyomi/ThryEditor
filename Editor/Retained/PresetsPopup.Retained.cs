@@ -300,8 +300,11 @@ namespace Thry.ThryEditor
                 var material = tickedPresets[i]; int index = i;
                 var row = new VisualElement { name = "preset-selected-" + i }; row.AddToClassList("thry-preset-selected-row"); _browserSelection.Add(row);
                 row.Add(BrowserLabel((i + 1).ToString(), "thry-preset-order"));
-                row.Add(BrowserLabel(material == null ? PresetText("missing_preset", "Missing preset")
-                    : _browserEntries.FirstOrDefault(e => e.Material == material)?.Path ?? material.name, "thry-preset-caption"));
+                var entry = _browserEntries.FirstOrDefault(e => e.Material == material);
+                var caption = BrowserLabel(material == null ? PresetText("missing_preset", "Missing preset")
+                    : entry?.Name ?? material.name, "thry-preset-caption");
+                caption.tooltip = entry?.Path ?? (material == null ? "" : material.name);
+                row.Add(caption);
                 Action<string, string, string, Action, bool> action = (name, text, tooltip, callback, enabled) => {
                     var button = new Button(callback) { name = name + "-" + index, text = text, tooltip = tooltip };
                     button.AddToClassList("thry-preset-small-action"); button.SetEnabled(enabled); row.Add(button);
