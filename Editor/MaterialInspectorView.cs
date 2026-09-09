@@ -225,9 +225,27 @@ namespace Thry.ThryEditor
             }
             RetainedMenu.Open(target.worldBound, target, choices);
         }
+        // Unity draws a material below a renderer behind a foldout: it renders the header itself and
+        // then gates the body on MaterialEditor.isVisible. A UI Toolkit inspector is built once and
+        // never asked, so a collapsed material slot still showed the whole inspector. Reading the same
+        // flag restores the foldout, but only where a foldout actually exists: the editor Unity lists
+        // first owns no header of its own, and a view hosted outside the inspector window (the cross
+        // editor, tests) has no foldout at all. Both of those, and a Unity that no longer exposes the
+        // internal flag, keep the view visible - this may only ever hide a nested, collapsed material.
+        static readonly System.Reflection.PropertyInfo FirstInspectedEditor = typeof(Editor) .GetProperty("firstInspectedEditor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        private bool IsCollapsedBehindItsFoldout()
+        {
+            if (FirstInspectedEditor == null) return false;
+            if (GetFirstAncestorOfType<InspectorElement>() == null) return false;
+            if (FirstInspectedEditor.GetValue(_editor) as bool? != false) return false;
+            return !_editor.isVisible;
+        }
         private void UpdateState()
         {
             if (_editor == null || _editor.target == null) return;
+            bool collapsed = IsCollapsedBehindItsFoldout();
+            style.display = collapsed ? DisplayStyle.None : DisplayStyle.Flex;
+            if (collapsed) return;
             var current = _shaderOverride ?? _editor.customShaderGUI as ShaderEditor;
             if (current == null && _editor.customShaderGUI == null)
             {
