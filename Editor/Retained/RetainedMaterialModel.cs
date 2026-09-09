@@ -31,6 +31,9 @@ namespace Thry
                 InitEditorData(editor);
                 InitlizeThryUI();
                 _doReloadNextDraw = false;
+                // IMGUI initializes a part's options the first time it draws. Retained inspectors
+                // never call Draw, so tooltips, offsets and stored foldout states would stay unread.
+                foreach (var part in ShaderParts) part.EnsureOptionsInitialized();
                 foreach (var property in PropertyDictionary.Values) property.PrepareRetainedMetadata();
                 RetainedRevision++;
             }
@@ -160,6 +163,24 @@ namespace Thry.ThryEditor
             Undo.RecordObjects(Editor.targets, label);
             foreach (var material in Shader.Materials) { mutation(material); EditorUtility.SetDirty(material); }
             Editor.PropertiesChanged(); Refresh(); Changed?.Invoke();
+        }
+
+        /// <summary>
+        /// Toggles a section's foldout. A persistent foldout stores its state in the section's own
+        /// material property, so opening one is a material edit and has to be undoable and saved.
+        /// </summary>
+        internal void SetExpanded(ShaderGroup group, bool expanded)
+        {
+            Shader.ActivateRetained();
+            // Searching and animation recording both keep the foldout in memory only, so writing
+            // an undo entry for them would put an empty step on the stack.
+            if (!group.PersistsExpanded || Shader.IsInSearchMode || Shader.IsInAnimationMode)
+            { group.RetainedExpanded = expanded; return; }
+            Editor.RegisterPropertyChangeUndo(group.Content.text);
+            group.RetainedExpanded = expanded;
+            Editor.PropertiesChanged();
+            Refresh();
+            Changed?.Invoke();
         }
 
         internal void Notify() { Refresh(true); Changed?.Invoke(); }

@@ -57,7 +57,7 @@ namespace Thry.ThryEditor
         internal VisualElement Field(ShaderProperty property, bool inline = false)
         {
             var attributes = property.MyShader.GetPropertyAttributes(property.ShaderPropertyIndex).Select(a => new DrawerAttribute(a)).ToArray();
-            var root = new VisualElement { name = "property-" + property.MaterialProperty.name, userData = property, tooltip = property.Content.tooltip };
+            var root = new VisualElement { name = "property-" + property.MaterialProperty.name, userData = property, tooltip = property.TooltipText };
             root.AddToClassList("thry-property");
             if (IsLegacyStencilStatus(property, attributes))
             {
@@ -105,7 +105,8 @@ namespace Thry.ThryEditor
             VisualElement input;
             var row = Row(inline ? "" : property.Content.text, out input);
             var label = row.Q<Label>(className: "thry-property-label");
-            Track(label, () => { label.text = inline ? "" : RetainedMaterialBody.SectionCaption(property).Split('|')[0]; label.tooltip = RetainedMaterialBody.SectionCaption(property) + (string.IsNullOrEmpty(property.Note) ? "" : "\n" + property.Note); });
+            Track(label, () => { label.text = inline ? "" : RetainedMaterialBody.SectionCaption(property).Split('|')[0];
+            label.tooltip = RetainedMaterialBody.Hover(RetainedMaterialBody.SectionCaption(property), property.TooltipText, property.Note); });
             if (!inline) ChangedPropertyIndicator(row, label, property);
             if (inline) row.AddToClassList("thry-inline");
             root.Add(row);
@@ -249,13 +250,16 @@ namespace Thry.ThryEditor
             VisualElement value; var row = Row("", out value); root.Add(row);
             value.AddToClassList("thry-texture-value");
             var caption = row.Q<Label>(); caption.RemoveFromHierarchy();
-            var foldout = new Button { tooltip = "Expand or collapse texture settings" };
+            // The label is the only hoverable part of a texture row, so it also has to carry the
+            // tooltip that a plain property row shows on its own label.
+            var foldout = new Button();
             foldout.AddToClassList("thry-property-label"); foldout.AddToClassList("thry-texture-label"); row.Insert(0,foldout);
             var foldIcon = new Image { scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             foldIcon.AddToClassList("thry-header-icon"); foldIcon.AddToClassList("thry-texture-caret"); foldout.Add(foldIcon);
             var foldCaption = new Label(property.Content.text) { pickingMode = PickingMode.Ignore };
             foldCaption.AddToClassList("thry-texture-caption"); foldout.Add(foldCaption);
-            Track(foldCaption, () => foldCaption.text = RetainedMaterialBody.SectionCaption(property));
+            Track(foldCaption, () => { foldCaption.text = RetainedMaterialBody.SectionCaption(property);
+            foldout.tooltip = RetainedMaterialBody.Hover(foldCaption.text, property.TooltipText, property.Note, "Expand or collapse texture settings"); });
             ChangedPropertyIndicator(row, foldCaption, property);
             var dimension = property.MaterialProperty.textureDimension;
             var textureType = dimension == UnityEngine.Rendering.TextureDimension.Cube ? typeof(Cubemap)

@@ -131,7 +131,7 @@ namespace Thry.ThryEditor
         {
             PropertyValueChanged += (PropertyValueEventArgs args) => 
             {
-                if(!_doOptionsNeedInitilization && Options.persistent_expand)
+                if(!_doOptionsNeedInitilization && PersistsExpanded)
                     _isExpanded = this.MaterialProperty.GetNumber() == 1;
             };
         }
@@ -139,7 +139,7 @@ namespace Thry.ThryEditor
         protected override void InitOptions()
         {
             base.InitOptions();
-            if (Options.persistent_expand) _isExpanded = this.MaterialProperty.GetNumber() == 1;
+            if (PersistsExpanded) _isExpanded = this.MaterialProperty.GetNumber() == 1;
             else _isExpanded = Options.default_expand;
         }
 
@@ -156,7 +156,7 @@ namespace Thry.ThryEditor
                     _isSearchExpanded = value;
                     return;
                 }
-                if (Options.persistent_expand)
+                if (PersistsExpanded)
                 {
                     if (AnimationMode.InAnimationMode())
                     {
@@ -200,7 +200,14 @@ namespace Thry.ThryEditor
             _isSearchExpanded = expanded;
         }
 
-        internal bool RetainedExpanded => IsExpanded;
+        /// <summary>
+        /// A section whose foldout state lives on the material, rather than only in this editor.
+        /// The root group owns no property, so it can only ever expand in memory.
+        /// </summary>
+        internal bool PersistsExpanded => Options.persistent_expand && MaterialProperty != null;
+
+        // Retained inspectors toggle through this, so a click persists exactly like the IMGUI header.
+        internal bool RetainedExpanded { get { return IsExpanded; } set { IsExpanded = value; } }
         internal bool RetainedChildrenEnabled => !DoDisableChildren;
 
         protected bool DoDisableChildren

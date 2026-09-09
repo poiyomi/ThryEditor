@@ -112,7 +112,7 @@ namespace Thry.ThryEditor
                     var holder = new VisualElement(); holder.AddToClassList("thry-header-reference"); _fields.Toggle(holder,reference); header.Add(holder);
                 }
             }
-            var titleArea = new VisualElement { tooltip = group.Content.tooltip }; titleArea.AddToClassList("thry-section-title-area"); header.Add(titleArea);
+            var titleArea = new VisualElement { tooltip = group.TooltipText }; titleArea.AddToClassList("thry-section-title-area"); header.Add(titleArea);
             var title = new Label(SectionCaption(group)); title.AddToClassList("thry-section-title"); titleArea.Add(title);
             var changedDot = new VisualElement { name = "changed-section-indicator", pickingMode = PickingMode.Ignore };
             changedDot.AddToClassList("thry-section-changed-dot"); titleArea.Add(changedDot);
@@ -120,7 +120,7 @@ namespace Thry.ThryEditor
             {
                 var paths = changedProperties.Where(entry => HasChangedValue(entry.Key) || HasChangedTextureTransform(entry.Key))
                     .Select(entry => entry.Value + (HasChangedTextureTransform(entry.Key) ? " / Tiling & Offset" : "")).ToArray();
-                e.tooltip = group.Content.tooltip;
+                e.tooltip = group.TooltipText;
                 if (paths.Length > 0) e.tooltip = (string.IsNullOrEmpty(e.tooltip) ? "" : e.tooltip + "\n\n") + "Changed properties:\n" + string.Join("\n", paths);
                 e.rect = title.worldBound; e.StopPropagation();
             });
@@ -182,7 +182,7 @@ namespace Thry.ThryEditor
                 }
                 foreach (var child in group.Children) AddPart(children,child,depth+1);
             };
-            Action expand = () => { Model.Shader.ActivateRetained(); group.ExpandForNavigation(!group.RetainedExpanded); update(); };
+            Action expand = () => { Model.SetExpanded(group, !group.RetainedExpanded); update(); };
             fold.clicked += expand;
             header.RegisterCallback<PointerDownEvent>(e =>
             {
@@ -193,6 +193,15 @@ namespace Thry.ThryEditor
             });
             _fields.Track(root,update); parent.Add(root);
         }
+        /// <summary>
+        /// Builds hover text out of the parts that are worth showing, in reading order: the label,
+        /// which the inspector may have clipped, then the shader's `tooltip:`, then the user's note.
+        /// </summary>
+        internal static string Hover(params string[] lines)
+        {
+            return string.Join("\n\n", lines.Where(line => !string.IsNullOrEmpty(line)).ToArray());
+        }
+
         internal static string SectionCaption(ShaderPart part)
         {
             string text = part.Content.text ?? "";
@@ -300,12 +309,19 @@ namespace Thry.ThryEditor
             var row = RetainedFields.Row("Render Queue",out input);
             _fields.Track(row, () => row.style.display = Config.Instance.showRenderQueue ? DisplayStyle.Flex : DisplayStyle.None);
             input.AddToClassList("thry-components");
-            string[] queueNames = { "From shader", "Background", "Geometry", "Alpha test", "Transparent", "Overlay" };
+            string[] queueNames = { "From Shader", "Background", "Geometry", "AlphaTest", "Transparent", "Overlay" };
             int[] queueValues = { -1, 1000, 2000, 2450, 3000, 4000 };
             var queuePreset = new DropdownField(queueNames.ToList(), 0); _view.UseInspectorMenu(queuePreset); input.Add(queuePreset); queuePreset.style.flexGrow = 1;
             queuePreset.style.flexBasis = 0; queuePreset.style.flexShrink = 1; queuePreset.style.minWidth = 0;
-            _fields.Track(queuePreset, () => { var material = Model.Shader.Materials[0]; int index = Array.IndexOf(queueValues, material.renderQueue); queuePreset.SetValueWithoutNotify(index < 0 ? "Custom" : queueNames[index]); queuePreset.showMixedValue = Model.Shader.Materials.Select(m => m.renderQueue).Distinct().Skip(1).Any(); });
-            queuePreset.RegisterValueChangedCallback(e => { if (queuePreset.index >= 0) Model.Mutate("Render Queue", m => m.renderQueue = queueValues[queuePreset.index]); });
+            _fields.Track(queuePreset, () => {
+                int value = Model.Shader.Materials[0].renderQueue;
+                int index = Array.IndexOf(queueValues, value);
+                // A queue matching no preset is named by its offset from the nearest one, as Unity
+                // does: 2225 reads "Geometry +225". The word "Custom" named nothing at all.
+                queuePreset.SetValueWithoutNotify(index < 0 ? Helpers.RenderQueueHelper.GetDisplayName(value, queueNames, queueValues) : queueNames[index]);
+                queuePreset.showMixedValue = Model.Shader.Materials.Select(m => m.renderQueue).Distinct().Skip(1).Any(); });
+                queuePreset.RegisterValueChangedCallback(e => { if (queuePreset.index >= 0) Model.Mutate("Render Queue", m => m.renderQueue = queueValues[queuePreset.index]);
+            });
             var queue = new UnityEngine.UIElements.IntegerField(); input.Add(queue);
             queue.style.width = 64;
             queue.style.flexShrink = 0;

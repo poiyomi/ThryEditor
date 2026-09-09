@@ -151,6 +151,11 @@ namespace Thry.ThryEditor
             }
         }
         public BetterTooltips.Tooltip Tooltip { protected set; get; }
+        /// <summary>
+        /// The plain text behind <see cref="Tooltip"/>. IMGUI draws the tooltip itself, retained
+        /// inspectors hand the text to UI Toolkit, so both need to read the same source.
+        /// </summary>
+        public string TooltipText { protected set; get; } = "";
         public System.Object PropertyData { protected set; get; } = null;
 
         public string  PropertyIdentifier { protected set; get; }
@@ -415,6 +420,7 @@ namespace Thry.ThryEditor
 
         protected void SetTooltip(string tooltip)
         {
+            this.TooltipText = tooltip ?? "";
             this.Tooltip.SetText(tooltip);
         }
 
@@ -459,6 +465,7 @@ namespace Thry.ThryEditor
             this.PropertyIdentifier = propertyIdentifier;
             this.XOffset = new XOffsetManager(xOffset);
             this.Content = new GUIContent(displayName);
+            this.TooltipText = tooltip ?? "";
             this.Tooltip = new BetterTooltips.Tooltip(tooltip);
             this.IsPreset = shaderEditor.IsPresetEditor && Presets.IsPreset(shaderEditor.Materials[0], this);
         }
@@ -566,10 +573,23 @@ namespace Thry.ThryEditor
             }
         }
 
+        /// <summary>
+        /// Runs the one-time option setup. IMGUI does this on a part's first <see cref="Draw"/>, but
+        /// retained inspectors build visual elements and never draw a part, so they call this instead.
+        /// </summary>
+        internal void EnsureOptionsInitialized()
+        {
+            if (_doOptionsNeedInitilization)
+                InitOptions();
+        }
+
         protected virtual void InitOptions()
         {
             _doOptionsNeedInitilization = false;
-            this.Tooltip = new BetterTooltips.Tooltip(Options.tooltip);
+            // A part built in code carries its tooltip from the constructor, one built from a shader
+            // property carries it in `tooltip:`. The shader wins whenever it names one.
+            if (!string.IsNullOrEmpty(Options.tooltip)) this.TooltipText = Options.tooltip;
+            this.Tooltip = new BetterTooltips.Tooltip(this.TooltipText);
             this.DoReferencePropertiesExist = Options.reference_properties != null && Options.reference_properties.Length > 0;
             this.DoesReferencePropertyExist = Options.reference_property != null;
             this.XOffset.ResetTemporaryOffset();
