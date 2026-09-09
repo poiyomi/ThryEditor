@@ -987,6 +987,25 @@
     background-color: #435563;
 }
 
+.thry-components > Button:hover {
+    background-color: #4c4c4c;
+    border-color: #606060;
+}
+
+.thry-components > Button:active {
+    background-color: #383838;
+    border-color: #7aadd6;
+}
+
+.thry-components > Button:focus {
+    border-color: #7aadd6;
+}
+
+.thry-components > Button.thry-selected:hover {
+    background-color: #4d6273;
+    border-color: #7aadd6;
+}
+
 .thry-property-label {
     min-width: 40px;
     max-width: none;
@@ -1927,6 +1946,25 @@
 
 .thry-light .thry-components > Button.thry-selected {
     background-color: #bfd1df;
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-components > Button:hover {
+    background-color: #eeeeee;
+    border-color: #a0a0a0;
+}
+
+.thry-light .thry-components > Button:active {
+    background-color: #c4c4c4;
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-components > Button:focus {
+    border-color: #3b78a8;
+}
+
+.thry-light .thry-components > Button.thry-selected:hover {
+    background-color: #cfe0ec;
     border-color: #3b78a8;
 }
 
