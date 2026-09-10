@@ -261,9 +261,15 @@ namespace Thry.ThryEditor
 
         private void UpdateRowBands()
         {
+            bool banded = Config.Instance.staggeringRowColors;
             var indices = new Dictionary<VisualElement, int>();
             foreach (var row in this.Query<VisualElement>(className: "thry-property-row").ToList())
             {
+                if (!banded)
+                {
+                    row.RemoveFromClassList("thry-row-alt");
+                    continue;
+                }
                 bool visible = true;
                 VisualElement section = this;
                 for (var ancestor = row; ancestor != null && ancestor != this; ancestor = ancestor.parent)

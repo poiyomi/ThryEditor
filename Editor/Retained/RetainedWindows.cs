@@ -108,7 +108,7 @@ namespace Thry.ThryEditor
             var scroll=new ScrollView();scroll.style.flexGrow=1;root.Add(scroll);
             var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settings…"));search.style.marginTop=8;search.style.marginBottom=8;root.Insert(1,search);
             string[][] groups={
-                new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes"},
+                new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes","staggeringRowColors"},
                 new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming"},
                 new[]{"Avatar fixes","autoSetAnchorOverride","humanBoneAnchor","anchorOverrideObjectName"},
                 new[]{"Textures & gradients","default_texture_type","texturePackerCompressionWithAlphaOverwrite","texturePackerCompressionNoAlphaOverwrite","gradientEditorCompressionOverwrite","gradient_name"},

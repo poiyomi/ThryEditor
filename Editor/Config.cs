@@ -42,6 +42,7 @@ namespace Thry.ThryEditor
         public bool showStarNextToNonDefaultProperties = true;
         public bool showAnimatedDotOnHeaders = true;
         public bool showNotes = true;
+        public bool staggeringRowColors = true;
         public TextureImporterFormat texturePackerCompressionWithAlphaOverwrite = TextureImporterFormat.Automatic;
         public TextureImporterFormat texturePackerCompressionNoAlphaOverwrite = TextureImporterFormat.Automatic;
         public TextureImporterFormat gradientEditorCompressionOverwrite = TextureImporterFormat.Automatic;
