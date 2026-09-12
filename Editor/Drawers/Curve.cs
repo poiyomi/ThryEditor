@@ -37,7 +37,7 @@ namespace Thry.ThryEditor.Drawers
         private static string GetCurveKey(MaterialProperty prop)
         {
             string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(prop.targets[0]));
-            if (string.IsNullOrEmpty(guid)) guid = prop.targets[0].GetInstanceID().ToString();
+            if (string.IsNullOrEmpty(guid)) guid = prop.targets[0].GetObjectId().ToString();
             return guid + "_" + prop.name;
         }
 
