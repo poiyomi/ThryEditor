@@ -176,7 +176,7 @@ namespace Thry
         Dictionary<string, MaterialEditor> s_editorCache = new Dictionary<string, MaterialEditor>();
         public MaterialEditor GetMaterialEditor(UnityEngine.Object[] targets)
         {
-            string key = string.Join(",", targets.Select(t => t.GetInstanceID()));
+            string key = string.Join(",", targets.Select(t => t.GetObjectId()));
             if(s_editorCache.TryGetValue(key, out var cached) && cached != null)
             {
                 return cached;

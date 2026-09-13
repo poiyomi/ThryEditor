@@ -138,7 +138,7 @@ namespace Thry.ThryEditor
                     for (int i = 0; i < _properties.Length; i++)
                     {
                         var owners = _properties[i].targets;
-                        string key = string.Join(",", owners.Select(o => o.GetInstanceID()));
+                        string key = string.Join(",", owners.Select(o => o.GetObjectId()));
                         if (!groups.TryGetValue(key, out var group))
                         {
                             var ownerSources = owners.Cast<Material>().Select(m => sources[m.shader]).Distinct().ToArray();

@@ -271,7 +271,7 @@ namespace Thry.ThryEditor
 
         string PreviewSignature()
         {
-            Func<Material, string> key = m => m == null ? "missing" : m.GetInstanceID() + ":" + EditorUtility.GetDirtyCount(m) + ":" + m.shader?.GetInstanceID();
+            Func<Material, string> key = m => m == null ? "missing" : m.GetObjectId() + ":" + EditorUtility.GetDirtyCount(m) + ":" + m.shader?.GetObjectId();
             return BrowserTargetsAvailable() + "|" + string.Join(";", (_browserTargets ?? Array.Empty<Material>()).Select(key))
                 + "|" + string.Join(";", tickedPresets.Select(key));
         }
