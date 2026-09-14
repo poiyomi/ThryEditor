@@ -597,6 +597,10 @@ namespace Thry.ThryEditor
             tile.AddToClassList("thry-asset-tile"); display.Insert(0, tile);
             var preview = new Image { name = "texture-asset-thumbnail", scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             tile.Add(preview);
+            var normalPreview = new RetainedTexturePreview();
+            bool normalMap = false;
+            Action releaseNormalPreview = () => { preview.image = null; normalPreview.Dispose(); };
+            field.RegisterCallback<DetachFromPanelEvent>(_ => releaseNormalPreview());
             // Keep Unity's native picker beside the thumbnail, with metadata and
             // the separate clear action at the trailing edge of the field.
             display.Insert(1, selector);
@@ -613,6 +617,8 @@ namespace Thry.ThryEditor
                 {
                     measuredTexture = texture; measuredVersion = EditorUtility.GetDirtyCount(texture);
                     measuredProjectVersion = RetainedTextureRevision.Version;
+                    normalMap = RetainedTexturePreview.IsNormalMap(texture);
+                    releaseNormalPreview();
                     var path = AssetDatabase.GetAssetPath(texture);
                     long bytes = RetainedTexturePreview.EstimateMemory(texture);
                     size.tooltip = "Estimated texture memory";
@@ -623,9 +629,12 @@ namespace Thry.ThryEditor
                     }
                     size.text = Helpers.TextureHelper.VRAM.ToByteString(bytes);
                 }
-                // Render the texture itself instead of Unity's tiny, padded asset icon.
-                preview.image = !assigned ? null : texture.dimension == UnityEngine.Rendering.TextureDimension.Tex2D
-                    ? texture : AssetPreview.GetAssetPreview(texture) ?? AssetPreview.GetMiniThumbnail(texture);
+                if (!assigned) releaseNormalPreview();
+                // Unattached fields may be discarded without a detach event to release a target.
+                // Normal maps need decoding before UI Toolkit can display them as colors.
+                preview.image = !assigned || field.panel == null ? null : texture.dimension == UnityEngine.Rendering.TextureDimension.Tex2D
+                    ? normalMap ? normalPreview.Target ?? normalPreview.Render(texture, 0, 0) ?? texture : texture
+                    : AssetPreview.GetAssetPreview(texture) ?? AssetPreview.GetMiniThumbnail(texture);
                 preview.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
                 assetName.text = mixed ? RetainedText.Get(Model.Shader,"multiple_textures","Multiple textures") : assigned
                     ? RetainedText.TextureCaption(texture) : RetainedText.Get(Model.Shader,"choose_texture","Choose texture…");

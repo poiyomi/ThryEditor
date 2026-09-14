@@ -21,7 +21,7 @@ Shader "Hidden/Thry/TextureInspection"
             samplerCUBE _Cube;
             sampler3D _Volume;
             UNITY_DECLARE_TEX2DARRAY(_Array);
-            float _TextureKind, _Channel, _Slice, _Depth;
+            float _TextureKind, _Channel, _Slice, _Depth, _NormalMap;
             float3 FaceDirection(float2 uv)
             {
                 float2 p = uv * 2 - 1;
@@ -39,7 +39,19 @@ Shader "Hidden/Thry/TextureInspection"
                 else if (_TextureKind < 1.5) c = texCUBE(_Cube, FaceDirection(i.uv));
                 else if (_TextureKind < 2.5) c = UNITY_SAMPLE_TEX2DARRAY(_Array, float3(i.uv, _Slice));
                 else c = tex3D(_Volume, float3(i.uv, (_Slice + .5) / max(1, _Depth)));
-                if (_Channel < .5) return c;
+                if (_Channel < .5)
+                {
+                    if (_NormalMap > .5)
+                    {
+                        // Imported normals can store X in alpha (DXT5nm) or red (BC5).
+                        // The full preview shows the decoded normal, never packed alpha.
+                        c = fixed4(UnpackNormal(c) * .5 + .5, 1);
+                        #ifndef UNITY_COLORSPACE_GAMMA
+                        c.rgb = GammaToLinearSpace(c.rgb);
+                        #endif
+                    }
+                    return c;
+                }
                 if (_Channel < 1.5) return fixed4(c.r, 0, 0, 1);
                 if (_Channel < 2.5) return fixed4(0, c.g, 0, 1);
                 if (_Channel < 3.5) return fixed4(0, 0, c.b, 1);

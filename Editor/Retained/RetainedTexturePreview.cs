@@ -1,5 +1,6 @@
 #if UNITY_2021_3_OR_NEWER
 using System;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering;
@@ -13,6 +14,15 @@ namespace Thry.ThryEditor
         RenderTexture _target;
         internal RenderTexture Target => _target;
         internal int RenderCount { get; private set; }
+
+        internal static bool IsNormalMap(Texture texture)
+        {
+            if (texture == null || texture.dimension != TextureDimension.Tex2D) return false;
+            string path = AssetDatabase.GetAssetPath(texture);
+            if (string.IsNullOrEmpty(path)) return false;
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            return importer != null && importer.textureType == TextureImporterType.NormalMap;
+        }
 
         internal static bool Supports(Texture texture)
         {
@@ -86,6 +96,7 @@ namespace Thry.ThryEditor
             int kind = source.dimension == TextureDimension.Cube ? 1 : source.dimension == TextureDimension.Tex2DArray ? 2 : source.dimension == TextureDimension.Tex3D ? 3 : 0;
             _material.SetFloat("_TextureKind", kind);
             _material.SetFloat("_Channel", channel);
+            _material.SetFloat("_NormalMap", IsNormalMap(source) ? 1 : 0);
             _material.SetFloat("_Slice", kind == 1 ? Mathf.Clamp(slice, 0, 5) : Mathf.Clamp(slice, 0, SliceCount(source) - 1));
             _material.SetFloat("_Depth", SliceCount(source));
             _material.SetTexture("_Cube", kind == 1 ? source : null);

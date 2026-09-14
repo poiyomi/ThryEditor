@@ -265,7 +265,8 @@ namespace Thry.ThryEditor
             _thumbnail.tooltip = CanInspectChannels ? (_channel == 4 ? Text("textureAlphaHint", "Alpha · black is transparent, white is opaque") : _channel == 0 ? Text("textureFull", "Full texture")
                 : new[] { "", Text("textureRed", "Red channel"), Text("textureGreen", "Green channel"), Text("textureBlue", "Blue channel") }[_channel])
                 : Text("textureUnsupportedChannels", "Asset preview · channel inspection is unavailable for this texture type.");
-            if ((_channel == 0 && _texture != null && _texture.dimension == TextureDimension.Tex2D) || !CanInspectChannels)
+            if ((_channel == 0 && _texture != null && _texture.dimension == TextureDimension.Tex2D
+                && !RetainedTexturePreview.IsNormalMap(_texture)) || !CanInspectChannels)
             {
                 ReleasePreview(); _thumbnail.image = PreviewSource(); _previewReleased = false; return;
             }
