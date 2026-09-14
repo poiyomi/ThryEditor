@@ -1,7 +1,7 @@
 /* Compact property feedback; hierarchy arrows remain quiet icon controls. */
-.thry-positioning-panel { margin: 3px 0 7px; border-width: 1px; border-color: #515151; border-radius: 5px; background-color: #333333; overflow: hidden; }
-.thry-positioning-panel > .thry-section-header { border-radius: 0; background-color: #444444; }
-.thry-positioning-panel > .thry-section-content { padding: 5px; }
+.thry-subsection-panel, .thry-positioning-panel { margin: 3px 0 7px; border-width: 1px; border-color: #515151; border-radius: 5px; background-color: #333333; overflow: hidden; }
+.thry-subsection-panel > .thry-section-header, .thry-positioning-panel > .thry-section-header { border-radius: 0; background-color: #444444; }
+.thry-subsection-panel > .thry-section-content, .thry-positioning-panel > .thry-section-content { padding: 5px; }
 .thry-positioning-tools { margin: 0 0 5px; padding-bottom: 4px; border-bottom-width: 1px; border-bottom-color: #494949; }
 .thry-positioning-actions { flex-direction: row; }
 .thry-positioning-actions > .thry-positioning-button { flex-grow: 1; flex-basis: 0; min-width: 0; height: 25px; margin: 0; padding: 0 5px; flex-direction: row; align-items: center; justify-content: center; background-color: #444444; border-width: 1px; border-color: #5a5a5a; border-radius: 4px; color: #c4c4c4; }
@@ -12,8 +12,8 @@
 .thry-positioning-actions > .thry-positioning-button:focus { border-color: #7aadd6; }
 .thry-positioning-actions > .thry-positioning-active { background-color: #435563; border-color: #7aadd6; }
 .thry-positioning-status { margin: 4px 1px 0; white-space: normal; font-size: 11px; color: #aaaaaa; }
-.thry-light .thry-positioning-panel { background-color: #c9c9c9; border-color: #a3a3a3; }
-.thry-light .thry-positioning-panel > .thry-section-header { background-color: #b9b9b9; }
+.thry-light .thry-subsection-panel, .thry-light .thry-positioning-panel { background-color: #c9c9c9; border-color: #a3a3a3; }
+.thry-light .thry-subsection-panel > .thry-section-header, .thry-light .thry-positioning-panel > .thry-section-header { background-color: #b9b9b9; }
 .thry-light .thry-positioning-tools { border-bottom-color: #acacac; }
 .thry-light .thry-positioning-actions > .thry-positioning-button { background-color: #dedede; border-color: #a3a3a3; color: #333333; }
 .thry-light .thry-positioning-button > Label { color: #333333; }

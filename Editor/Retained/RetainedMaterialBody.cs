@@ -95,6 +95,7 @@ namespace Thry.ThryEditor
             var root = new VisualElement { name = "section-" + group.PropertyIdentifier, userData = group }; root.AddToClassList("thry-section");
             bool positioning = group.Children.OfType<ShaderProperty>().Any(RetainedFields.HasDecalPositioning);
             root.EnableInClassList("thry-positioning-panel", positioning);
+            root.EnableInClassList("thry-subsection-panel", depth > 0);
             root.EnableInClassList("thry-root-section", depth == 0);
             var header = new VisualElement(); header.AddToClassList("thry-section-header"); root.Add(header);
             var changedProperties = SectionProperties(group);
