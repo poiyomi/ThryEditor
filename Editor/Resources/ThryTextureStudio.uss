@@ -1,0 +1,76 @@
+/* A fixed channel-packing board. The graph owns its layout; nodes cannot move. */
+.thry-studio-graph-window { padding: 0; background-color: #24262a; }
+.thry-studio-toolbar { flex-direction: row; align-items: center; flex-shrink: 0; height: 48px; padding: 8px 16px; background-color: #303238; border-bottom-width: 1px; border-bottom-color: #42454d; }
+.thry-studio-heading { flex-grow: 1; font-size: 16px; -unity-font-style: bold; color: #e4e7ed; }
+.thry-studio-toolbar #studio-open-texture { width: 210px; margin: 0 14px 0 0; }
+.thry-studio-toolbar #studio-open-texture > .unity-base-field__label { min-width: 34px; width: 34px; }
+.thry-studio-toolbar #save-texture { height: 28px; margin: 0; padding: 0 16px; background-color: #46667e; border-color: #65849b; border-radius: 4px; -unity-font-style: bold; }
+.thry-studio-toolbar #save-texture:hover { background-color: #567b96; }
+.thry-studio-graph-help { flex-shrink: 0; height: 32px; margin: 0; padding: 0 18px; -unity-text-align: middle-left; font-size: 11px; color: #a6adb9; background-color: #282b30; }
+.thry-studio-graph-workspace { flex-grow: 1; min-height: 0; overflow: hidden; }
+.thry-studio-graph { background-color: #24262a; }
+.thry-studio-graph GridBackground { --grid-background-color: #24262a; --line-color: rgba(90, 98, 112, 0.10); --thick-line-color: rgba(90, 98, 112, 0.18); --spacing: 20; --thick-lines: 5; }
+.thry-studio-graph .thry-studio-node { min-width: 0; min-height: 0; padding: 0; border-width: 0; background-color: transparent; }
+.thry-studio-graph .thry-studio-node > #selection-border { border-width: 0; margin: 0; padding: 0; }
+.thry-studio-graph .thry-studio-node > #node-border { flex-grow: 1; min-height: 0; border-width: 1px; border-color: #4c505b; border-radius: 6px; background-color: #30343b; overflow: hidden; }
+.thry-studio-graph .thry-studio-node #title { height: 25px; min-height: 25px; padding: 0 10px; background-color: #3b414b; border-bottom-width: 1px; border-bottom-color: #474e59; }
+.thry-studio-graph .thry-studio-node #title-label { font-size: 11px; -unity-font-style: bold; margin: 0; padding: 0; color: #dce2ed; }
+.thry-studio-graph .thry-studio-node #title-button-container { display: none; }
+.thry-studio-graph .thry-studio-node #contents { flex-grow: 1; min-height: 0; background-color: transparent; }
+.thry-studio-graph .thry-studio-node #extension { flex-grow: 1; min-height: 0; padding: 0; background-color: transparent; }
+.thry-studio-graph .thry-studio-node #collapsible-area { flex-grow: 1; min-height: 0; }
+.thry-studio-graph .thry-studio-node #divider { display: none; }
+.thry-studio-node-field { flex-direction: row; flex-shrink: 0; align-items: center; margin: 5px 8px 3px; height: 22px; }
+.thry-studio-node-field > .unity-base-field { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; }
+.thry-studio-node-field > Button { width: 22px; min-width: 22px; height: 22px; margin: 0 0 0 4px; padding: 0; border-width: 0; background-color: transparent; color: #b2bbc8; font-size: 16px; }
+.thry-studio-node-field > Button:hover { background-color: #4c5360; }
+.thry-studio-source-body { flex-direction: row; flex-grow: 1; min-height: 0; padding: 0 0 7px 8px; }
+.thry-studio-source-frame { flex-grow: 1; min-width: 0; background-color: #24272d; border-radius: 3px; overflow: hidden; }
+.thry-studio-source-frame > Label { flex-grow: 1; -unity-text-align: middle-center; font-size: 11px; color: #8e98a9; }
+.thry-studio-graph .thry-studio-node #output, .thry-studio-graph .thry-studio-node #input { padding: 0; margin: 0; min-width: 48px; width: 48px; flex-grow: 0; flex-shrink: 0; justify-content: center; background-color: transparent; }
+.thry-studio-graph .thry-studio-node Port { height: 19px; min-height: 14px; flex-shrink: 1; padding: 0 7px; margin: 0; }
+.thry-studio-graph .thry-studio-node Port #type { font-size: 11px; -unity-font-style: bold; color: #c9d2df; padding: 0 3px; }
+.thry-studio-graph .thry-studio-node Port #connector { width: 12px; height: 12px; border-width: 2px; border-radius: 6px; }
+.thry-studio-graph .thry-studio-node Port:hover { background-color: #424b59; border-radius: 3px; }
+.thry-studio-graph .thry-studio-output-node > #node-border { border-color: #698192; }
+.thry-studio-graph .thry-studio-output-node #title { background-color: #3c5364; }
+.thry-studio-output-body { flex-direction: row; flex-grow: 1; min-height: 0; margin: 10px 12px 10px 0; }
+.thry-studio-graph .thry-studio-output-node Port { height: 40px; min-height: 40px; }
+.thry-studio-result-image { flex-grow: 1; flex-shrink: 1; min-width: 0; background-color: #202329; border-radius: 3px; }
+.thry-studio-output-node #extension > .unity-base-popup-field { margin: 0 12px 12px; flex-shrink: 0; }
+.thry-studio-output-node #extension > .unity-base-popup-field > .unity-base-field__label { width: 54px; min-width: 54px; }
+.thry-studio-graph-status { height: 26px; flex-shrink: 0; margin: 0; padding: 0 18px; -unity-text-align: middle-left; font-size: 11px; color: #a6adb9; border-top-width: 1px; border-top-color: #3b4049; background-color: #282b30; }
+.thry-studio-settings-panel { flex-grow: 1; min-height: 0; padding: 8px; border-top-width: 1px; border-top-color: #4c505b; }
+.thry-studio-settings-header { flex-direction: row; height: 26px; flex-shrink: 0; align-items: center; margin-bottom: 6px; }
+.thry-studio-settings-header > Label { flex-grow: 1; -unity-font-style: bold; margin-left: 4px; }
+.thry-studio-settings-panel > ScrollView { flex-grow: 1; min-height: 0; }
+.thry-studio-settings-panel .thry-studio-section { margin-bottom: 6px; }
+.thry-studio-settings-panel .thry-studio-route { padding-bottom: 6px; margin-bottom: 6px; border-bottom-width: 1px; border-bottom-color: #484c54; }
+.thry-studio-graph .thry-studio-source-missing > #node-border { border-color: #c29a5e; }
+.thry-light.thry-studio-graph-window { background-color: #b8bdc5; }
+.thry-light .thry-studio-toolbar { background-color: #d0d3d9; border-color: #9da6b3; }
+.thry-light .thry-studio-heading, .thry-light .thry-studio-graph .thry-studio-node #title-label { color: #293441; }
+.thry-light .thry-studio-graph-help, .thry-light .thry-studio-graph-status { background-color: #c1c6ce; color: #465363; border-color: #a6afbc; }
+.thry-light .thry-studio-graph, .thry-light .thry-studio-graph GridBackground { background-color: #b8bdc5; --grid-background-color: #b8bdc5; --line-color: rgba(66, 80, 100, 0.08); --thick-line-color: rgba(66, 80, 100, 0.15); }
+.thry-light .thry-studio-graph .thry-studio-node > #node-border { background-color: #d5d9df; border-color: #85909f; }
+.thry-light .thry-studio-graph .thry-studio-node #title { background-color: #bfc8d4; border-color: #a3afbe; }
+.thry-light .thry-studio-graph .thry-studio-output-node #title { background-color: #b0c7d9; }
+.thry-light .thry-studio-source-frame, .thry-light .thry-studio-result-image { background-color: #a5afbd; }
+.thry-light .thry-studio-source-frame > Label, .thry-light .thry-studio-graph .thry-studio-node Port #type { color: #37495e; }
+.thry-light .thry-studio-graph .thry-studio-node Port:hover { background-color: #b0c4d7; }
+.thry-light .thry-studio-node-field > Button { color: #435469; }
+
+.thry-studio-graph .thry-studio-output-node #collapsible-area, .thry-studio-graph .thry-studio-output-node #extension { flex-grow: 1; min-height: 0; }
+.thry-studio-graph .thry-studio-node #input, .thry-studio-graph .thry-studio-node #output { flex-basis: auto; }
+.thry-studio-graph .thry-studio-node #top { background-color: transparent; }
+.thry-studio-source-frame, .thry-studio-result-image { flex-basis: 0; }
+.thry-studio-graph .edge { --edge-width: 3; }
+.thry-studio-graph .thry-studio-node Port #connector { min-width: 12px; flex-shrink: 0; margin: 0 3px; }
+.thry-studio-graph .thry-studio-node Port #type { min-width: 12px; margin: 0; padding: 0; flex-shrink: 0; }
+
+.thry-light.thry-studio-graph-window .unity-base-field__label { color: #37495e; }
+.thry-studio-settings-panel .unity-base-field > .unity-base-field__label { min-width: 90px; width: 90px; max-width: 90px; white-space: normal; }
+.thry-studio-settings-panel .unity-base-compound-field__field > .unity-base-field__label { min-width: 12px; width: 12px; max-width: 12px; }
+.thry-studio-settings-panel .unity-base-field .unity-base-field > .unity-base-field__label { min-width: 12px; width: 12px; max-width: 12px; }
+
+.thry-light .thry-studio-settings-panel { border-top-color: #a3afbe; }

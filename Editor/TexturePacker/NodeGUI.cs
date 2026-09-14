@@ -17,7 +17,7 @@ namespace Thry.ThryEditor.TexturePacker
 
         const string CHANNEL_PREVIEW_SHADER = "Hidden/Thry/ChannelPreview";
 
-        TexturePackerConfig _config;
+        [SerializeField] TexturePackerConfig _config;
         TextureImporter _associatedImporter;
         Dictionary<Connection, ConnectionBezierPoints> _connectionPoints = new Dictionary<Connection, ConnectionBezierPoints>();
         IPackerUIDragable _currentlyDraggingNode = null;
@@ -62,7 +62,9 @@ namespace Thry.ThryEditor.TexturePacker
 
         public static NodeGUI Open()
         {
-            return ShowWindow().InitilizeWithData(TexturePackerConfig.GetNewConfig());
+            var config = TexturePackerConfig.GetNewConfig();
+            config.FileOutput.AlphaIsTransparency = false;
+            return ShowWindow().InitilizeWithData(config);
         }
 
         public static NodeGUI Open(Texture2D tex)
@@ -86,6 +88,10 @@ namespace Thry.ThryEditor.TexturePacker
             var draft = JsonUtility.FromJson<TexturePackerConfig>(JsonUtility.ToJson(config));
             foreach (var source in draft.Sources) { source.GradientTexture = null; source.ColorTexture = null; }
             draft.Fix();
+#if UNITY_2021_3_OR_NEWER
+            _graph?.Dispose(); _graph = null;
+            _retainedPreview = null;
+#endif
             DisposeGeneratedSources();
             _config = draft;
             _associatedImporter = importer;
@@ -121,7 +127,7 @@ namespace Thry.ThryEditor.TexturePacker
         {
 #if UNITY_2021_3_OR_NEWER
             CreateGUI();
-#endif
+#else
             for(int i = 0; i < _config.Sources.Length; i++)
             {
                 if(_config.Sources[i].UIPosition == Vector2.zero)
@@ -133,6 +139,7 @@ namespace Thry.ThryEditor.TexturePacker
             {
                 _config.ImageAdjust.UIPosition = new Vector2(500, 150);
             }
+#endif
         }
 
         static NodeGUI ShowWindow()
@@ -155,8 +162,8 @@ namespace Thry.ThryEditor.TexturePacker
         private void OnGUI()
         {
 #if UNITY_2021_3_OR_NEWER
-            if(rootVisualElement.childCount>0)return;
-#endif
+            if (rootVisualElement.childCount == 0) CreateGUI();
+#else
             s_instance = this;
             if (_config == null)
             {
@@ -198,6 +205,7 @@ namespace Thry.ThryEditor.TexturePacker
             DoCanvasContextMenu();
 
             DrawTopBar();
+#endif
         }
 
         Rect GetCanvasRect(float x, float y, int width, int height)
@@ -1095,6 +1103,8 @@ namespace Thry.ThryEditor.TexturePacker
         void ReleaseOwnedTextures()
         {
 #if UNITY_2021_3_OR_NEWER
+            Undo.undoRedoPerformed -= RestoreStudioGraph;
+            _graph?.Dispose(); _graph = null;
             _pendingPack?.Pause();
             if (_retainedChannelPreview != null) { _retainedChannelPreview.Release(); DestroyImmediate(_retainedChannelPreview); }
 #endif

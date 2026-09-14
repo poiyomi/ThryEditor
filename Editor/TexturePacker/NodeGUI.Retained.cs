@@ -16,96 +16,39 @@ namespace Thry.ThryEditor.TexturePacker
         RenderTexture _retainedChannelPreview;
         int _retainedPreviewChannel;
         string _retainedError;
+        DropdownField _retainedPreviewSelector;
 
         public void CreateGUI()
         {
-            if (_config == null) return;
+            if (_config == null)
+            {
+                var config = TexturePackerConfig.GetNewConfig();
+                config.FileOutput.AlphaIsTransparency = false;
+                InitilizeWithData(config);
+                return;
+            }
             if (_config.KernelSettings == null) _config.KernelSettings = new KernelSettings();
             _pendingPack?.Pause();
-            var root = rootVisualElement;
-            root.Clear();
-            RetainedWindow.Style(root);
-            root.AddToClassList("thry-texture-workspace");
-            minSize = new Vector2(620, 480);
-
-            var title = new Label(RetainedText.Get("studio_title", "Texture studio"));
-            title.AddToClassList("thry-title");
-            root.Add(title);
-            var subtitle = new Label(RetainedText.Get("studio_intro", "Combine sources into one texture. Preview changes before saving."));
-            subtitle.AddToClassList("thry-muted");
-            root.Add(subtitle);
-
-            var workspace = new VisualElement();
-            workspace.AddToClassList("thry-studio-columns");
-            root.Add(workspace);
-            var controls = new ScrollView();
-            controls.AddToClassList("thry-studio-controls");
-            workspace.Add(controls);
-            var preview = new VisualElement();
-            preview.AddToClassList("thry-studio-preview");
-            workspace.Add(preview);
-            _retainedPreview = new Image { name = "texture-preview", image = _outputTexture, scaleMode = ScaleMode.ScaleToFit };
-            _retainedPreview.style.flexGrow = 1;
-            _retainedPreview.style.minHeight = 180;
-            preview.Add(_retainedPreview);
-            _retainedStatus = new Label { name = "texture-studio-status" };
-            _retainedStatus.style.whiteSpace = WhiteSpace.Normal;
-            preview.Add(_retainedStatus);
-            var previewChannel = new DropdownField(RetainedText.Get("studio_preview", "Preview"), new System.Collections.Generic.List<string> { RetainedText.Get("studio_combined", "Combined"), RetainedText.Get("red", "Red"), RetainedText.Get("green", "Green"), RetainedText.Get("blue", "Blue"), RetainedText.Get("alpha", "Alpha") }, _retainedPreviewChannel);
-            RetainedWindow.Dropdown(previewChannel);
-            previewChannel.RegisterValueChangedCallback(e => { _retainedPreviewChannel = previewChannel.index; UpdateRetainedPreview(); });
-            preview.Add(previewChannel);
-
-            var exports = new Foldout { text = RetainedText.Get("studio_export_channels", "Export individual channels"), value = false };
-            preview.Add(exports);
-            var channels = new VisualElement();
-            channels.AddToClassList("thry-components");
-            exports.Add(channels);
-            for (int i = 0; i < 4; i++)
-            {
-                int index = i;
-                var channel = new Toggle("RGBA"[i].ToString()) { value = _channel_export[i] };
-                channel.style.flexGrow = 1;
-                channel.RegisterValueChangedCallback(e => _channel_export[index] = e.newValue);
-                channels.Add(channel);
-            }
-            exports.Add(new Button(() => TryStudioAction(() => { _config.RequireResolvedSources(); ExportChannels(true); })) { text = RetainedText.Get("studio_export_grayscale", "Export as grayscale") });
-            exports.Add(new Button(() => TryStudioAction(() => { _config.RequireResolvedSources(); ExportChannels(false); })) { text = RetainedText.Get("studio_export_color", "Export as color") });
-
-            var load = new ObjectField(RetainedText.Get("studio_open_saved", "Open saved texture")) { objectType = typeof(Texture2D), allowSceneObjects = false };
-            controls.Add(load);
-            load.RegisterValueChangedCallback(e =>
-            {
-                var texture = e.newValue as Texture2D;
-                if (texture == null) return;
-                TexturePackerConfig config;
-                TryStudioAction(() => {
-                    if (TexturePackerConfig.TryGetFromTexture(texture, out config)) InitilizeWithData(config);
-                    else InitilizeWithOneTexture(texture);
-                });
-            });
-
-            var sources = Section(controls, RetainedText.Get("studio_sources", "Sources"), true);
-            for (int i = 0; i < _config.Sources.Length; i++) BuildSource(sources, i);
-            BuildRouting(Section(controls, RetainedText.Get("studio_routing", "Channel routing"), true));
-            BuildAdjustments(Section(controls, RetainedText.Get("studio_adjustments", "Image adjustments"), false));
-            BuildFilter(Section(controls, RetainedText.Get("studio_filter", "Filter"), false));
-            BuildOutput(Section(controls, RetainedText.Get("studio_output", "Output"), true));
-
-            var save = new Button(() => TryStudioAction(() =>
-            {
-                _pendingPack?.Pause();
-                _config.RequireResolvedSources();
-                Pack();
-                var importer = Packer.Save(_outputTexture, _config);
-                if (importer == null) return;
-                _associatedImporter = importer;
-                OnSave?.Invoke(AssetDatabase.LoadAssetAtPath<Texture2D>(importer.assetPath));
-                _retainedStatus.text = RetainedText.Get("studio_saved", "Saved") + " " + System.IO.Path.GetFileName(importer.assetPath);
-            })) { text = RetainedText.Get("studio_save", "Save texture"), name = "save-texture" };
-            save.AddToClassList("thry-primary-action");
-            root.Add(save);
+            _graph?.Dispose();
+            rootVisualElement.Clear();
+            RetainedWindow.Style(rootVisualElement);
+            var graphStyle = Resources.Load<StyleSheet>("ThryTextureStudio");
+            if (graphStyle != null) rootVisualElement.styleSheets.Add(graphStyle);
+            rootVisualElement.AddToClassList("thry-texture-workspace");
+            rootVisualElement.AddToClassList("thry-studio-graph-window");
+            minSize = new Vector2(850, 720);
+            titleContent = new GUIContent(RetainedText.Get("studio_title", "Texture studio"));
+            BuildGraphWorkspace();
             UpdateRetainedPreview();
+            if (_outputTexture == null) QueuePack();
+        }
+
+        static Label StudioHint(VisualElement root, string key, string text)
+        {
+            var label = new Label(RetainedText.Get(key, text));
+            label.AddToClassList("thry-studio-hint");
+            root.Add(label);
+            return label;
         }
 
         static Foldout Section(VisualElement root, string title, bool expanded)
@@ -169,46 +112,6 @@ namespace Thry.ThryEditor.TexturePacker
                 root.Add(field);
                 AddEnum(root, RetainedText.Get("studio_direction", "Direction"), source.GradientDirection, v => { source.GradientDirection = v; update(); });
             }
-        }
-
-        void BuildRouting(VisualElement root)
-        {
-            var simple = new VisualElement(); root.Add(simple);
-            for (int i = 0; i < 4; i++)
-            {
-                int output = i;
-                var matches = _config.Connections.Where(c => (int)c.ToChannel == output).ToArray();
-                var row = new VisualElement(); row.AddToClassList("thry-components"); simple.Add(row);
-                var label = new Label("RGBA"[i].ToString()); label.style.width = 24; label.style.alignSelf = Align.Center; row.Add(label);
-                var choices = new[] { RetainedText.Get("none", "None") }.Concat(Enumerable.Range(1, _config.Sources.Length).Select(n => RetainedText.Get("studio_source", "Source") + " " + n)).ToList();
-                var source = new DropdownField(choices, matches.Length == 0 ? 0 : matches[0].FromTextureIndex + 1);
-                source.style.flexGrow = 1; source.style.flexBasis = 0; RetainedWindow.Dropdown(source); row.Add(source);
-                if (matches.Length > 1) source.SetValueWithoutNotify(RetainedText.Get("studio_multiple_sources", "Multiple sources"));
-                var channels = Enum.GetValues(typeof(TextureChannelIn)).Cast<TextureChannelIn>().ToArray();
-                var channel = new DropdownField(channels.Select(item => RetainedText.EnumCaption(typeof(TextureChannelIn), item.ToString())).ToList(), matches.Length == 0 ? i : Array.IndexOf(channels, matches[0].FromChannel));
-                channel.style.width = 70; RetainedWindow.Dropdown(channel); row.Add(channel);
-                Action update = () =>
-                {
-                    if (source.index < 0 || channel.index < 0 || channel.index >= channels.Length) return;
-                    var existing = _config.Connections.Where(c => (int)c.ToChannel == output).ToArray();
-                    var replacement = existing.Length == 1 ? existing[0] : new Connection(-1, TextureChannelIn.None, (TextureChannelOut)output);
-                    replacement.FromTextureIndex = source.index - 1; replacement.FromChannel = channels[channel.index];
-                    replacement.ToChannel = (TextureChannelOut)output;
-                    _config.Connections.RemoveAll(c => (int)c.ToChannel == output);
-                    if (source.index > 0) _config.Connections.Add(replacement);
-                    root.Clear(); BuildRouting(root);
-                    QueuePack();
-                };
-                source.RegisterValueChangedCallback(e => update());
-                channel.RegisterValueChangedCallback(e => update());
-            }
-            var advanced = Section(root, RetainedText.Get("studio_advanced_routing", "Advanced routing"), false);
-            advanced.RegisterValueChangedCallback(e =>
-            {
-                if (e.target != advanced) return;
-                if (e.newValue) { advanced.contentContainer.Clear(); BuildAdvancedRouting(advanced); }
-                else { root.Clear(); BuildRouting(root); }
-            });
         }
 
         void BuildAdvancedRouting(VisualElement root)
@@ -323,22 +226,52 @@ namespace Thry.ThryEditor.TexturePacker
             var sizing = new DropdownField(RetainedText.Get("studio_sizing", "Sizing"), new System.Collections.Generic.List<string> { RetainedText.Get("automatic", "Automatic"), RetainedText.Get("custom", "Custom") }, output.CustomResolution ? 1 : 0);
             RetainedWindow.Dropdown(sizing); root.Add(sizing);
             var size = new Vector2IntField(RetainedText.Get("studio_resolution", "Resolution")) { value = output.Resolution };
+            sizing.tooltip = RetainedText.Get("studio_automatic_size_tip", "Automatic uses the largest source width and height, rounds each up to a power of two, and limits each to 4096. Choose Custom for a different size.");
             size.SetEnabled(output.CustomResolution);
             sizing.RegisterValueChangedCallback(e => { output.CustomResolution = sizing.index == 1; size.SetEnabled(output.CustomResolution); QueuePack(); });
             size.Query<IntegerField>().ForEach(field => field.isDelayed = true);
             size.RegisterValueChangedCallback(e => { output.CustomResolution = true; sizing.SetValueWithoutNotify(RetainedText.Get("custom", "Custom")); output.Resolution = new Vector2Int(Mathf.Clamp(e.newValue.x, 1, 8192), Mathf.Clamp(e.newValue.y, 1, 8192)); size.SetValueWithoutNotify(output.Resolution); QueuePack(); });
             root.Add(size);
-            AddEnum(root, RetainedText.Get("studio_format", "Format"), output.SaveType, v => output.SaveType = v);
-            AddEnum(root, RetainedText.Get("studio_color_space", "Color space"), output.ColorSpace, v => output.ColorSpace = v);
-            AddEnum(root, RetainedText.Get("studio_filtering", "Filtering"), output.FilterMode, v => output.FilterMode = v);
-            AddToggle(root, RetainedText.Get("studio_alpha_transparency", "Alpha is transparency"), output.AlphaIsTransparency, v => output.AlphaIsTransparency = v);
-            AddNumber(root, RetainedText.Get("studio_jpeg_quality", "JPEG quality"), output.SaveQuality, v => output.SaveQuality = Mathf.Clamp(Mathf.RoundToInt(v), 1, 100));
-            var folder = new TextField(RetainedText.Get("studio_folder", "Folder")) { value = output.SaveFolder, isDelayed = true };
-            folder.RegisterValueChangedCallback(e => output.SaveFolder = e.newValue);
-            root.Add(folder);
             var filename = new TextField(RetainedText.Get("name", "Name")) { value = output.FileName, isDelayed = true };
             filename.RegisterValueChangedCallback(e => output.FileName = e.newValue);
             root.Add(filename);
+            var folder = new TextField(RetainedText.Get("studio_folder", "Folder")) { value = output.SaveFolder, isDelayed = true,
+                tooltip = RetainedText.Get("studio_save_folder_tip", "A folder inside your project's Assets folder. It will be created when you save.") };
+            folder.RegisterValueChangedCallback(e => output.SaveFolder = e.newValue);
+            root.Add(folder);
+
+            var advice = new VisualElement(); root.Add(advice);
+            Action updateAdvice = () =>
+            {
+                advice.Clear();
+                if (output.SaveType == SaveType.JPG)
+                    advice.Add(new HelpBox(RetainedText.Get("studio_jpeg_mask_warning", "JPEG loses the Alpha channel and adds compression artifacts. Use PNG to keep all four masks."), HelpBoxMessageType.Warning));
+                if (output.SaveType == SaveType.PNG && output.ColorSpace == ColorSpace.Linear && !output.AlphaIsTransparency)
+                    StudioHint(advice, "studio_mask_settings_help", "PNG keeps all four masks. Alpha is saved as mask data.");
+                else
+                {
+                    StudioHint(advice, "studio_mask_settings_recommendation", "For masks, use PNG, Linear color space, and turn off Alpha is transparency.");
+                    advice.Add(new Button(() =>
+                    {
+                        output.SaveType = SaveType.PNG; output.ColorSpace = ColorSpace.Linear; output.AlphaIsTransparency = false;
+                        root.Clear(); BuildOutput(root); QueuePack();
+                    }) { name = "studio-use-mask-settings", text = RetainedText.Get("studio_use_mask_settings", "Use recommended mask settings") });
+                }
+            };
+            var details = Section(root, RetainedText.Get("studio_file_options", "File options"), false);
+            details.name = "studio-file-options";
+            AddEnum(details, RetainedText.Get("studio_format", "Format"), output.SaveType, v =>
+            {
+                bool expanded = details.value;
+                output.SaveType = v; root.Clear(); BuildOutput(root);
+                root.Q<Foldout>("studio-file-options").value = expanded;
+            });
+            AddEnum(details, RetainedText.Get("studio_color_space", "Color space"), output.ColorSpace, v => { output.ColorSpace = v; updateAdvice(); });
+            AddEnum(details, RetainedText.Get("studio_filtering", "Filtering"), output.FilterMode, v => output.FilterMode = v);
+            AddToggle(details, RetainedText.Get("studio_alpha_transparency", "Alpha is transparency"), output.AlphaIsTransparency, v => { output.AlphaIsTransparency = v; updateAdvice(); });
+            if (output.SaveType == SaveType.JPG)
+                AddNumber(details, RetainedText.Get("studio_jpeg_quality", "JPEG quality"), output.SaveQuality, v => output.SaveQuality = Mathf.Clamp(Mathf.RoundToInt(v), 1, 100));
+            updateAdvice();
         }
 
         void AddEnum<T>(VisualElement root, string label, T value, Action<T> set) where T : struct
@@ -373,6 +306,7 @@ namespace Thry.ThryEditor.TexturePacker
 
         void QueuePack()
         {
+            _graph?.ScheduleConnectionsRefresh();
             _pendingPack?.Pause();
             _pendingPack = rootVisualElement.schedule.Execute(() => TryStudioAction(Pack)).StartingIn(120);
         }
@@ -409,6 +343,7 @@ namespace Thry.ThryEditor.TexturePacker
             }
             else _retainedPreview.image = _outputTexture;
             _retainedPreview.tintColor = Color.white;
+            _graph?.RefreshPreviews();
             _retainedStatus.text = _retainedError ?? (_config.FileOutput.Resolution.x + " × " + _config.FileOutput.Resolution.y + " · " + _config.FileOutput.SaveType);
             rootVisualElement.Query<Vector2IntField>().ToList().FirstOrDefault(field => field.label == RetainedText.Get("studio_resolution", "Resolution"))?.SetValueWithoutNotify(_config.FileOutput.Resolution);
         }

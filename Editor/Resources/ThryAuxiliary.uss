@@ -11,6 +11,8 @@
 .thry-texture-workspace .thry-studio-section { margin: 2px 0; }
 .thry-texture-workspace .thry-studio-source { margin: 2px 0; padding: 4px 6px; }
 .thry-texture-workspace .thry-studio-source .thry-studio-section { margin: 0; }
+.thry-texture-workspace .thry-studio-hint { white-space: normal; color: #b4b4b4; font-size: 11px; margin: 4px 2px 8px; }
+.thry-light.thry-texture-workspace .thry-studio-hint, .thry-light.thry-texture-workspace .thry-muted { color: #505050; }
 .thry-lock-manager .thry-lock-material-name { min-width: 0; flex-basis: 0; flex-shrink: 1; -unity-text-align: middle-left; overflow: hidden; text-overflow: ellipsis; }
 .thry-cross-materials { margin: 2px 0; padding: 2px 4px; background-color: #3d3d3d; border-radius: 4px; }
 .thry-cross-materials > .unity-foldout__toggle { min-height: 24px; margin: 0; -unity-font-style: bold; }
