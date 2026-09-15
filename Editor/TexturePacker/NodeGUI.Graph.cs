@@ -46,10 +46,18 @@ namespace Thry.ThryEditor.TexturePacker
                 });
             });
             toolbar.Add(open);
+            var previous = new Button { name = "studio-previous-packs", text = RetainedText.Get("studio_previous_packs", "Previous packs") };
+            previous.clicked += () => TryStudioAction(() => ShowLoadPreviousProjectDropdown(previous.worldBound));
+            toolbar.Add(previous);
+            var resetView = new Button(() => _graph?.UpdateViewTransform(Vector3.zero, Vector3.one)) {
+                name = "studio-reset-view", text = RetainedText.Get("studio_reset_view", "Reset view")
+            };
+            toolbar.Add(resetView);
             var save = new Button(() => TryStudioAction(SaveGraphTexture)) { name = "save-texture", text = RetainedText.Get("studio_save", "Save texture") };
             save.AddToClassList("thry-primary-action"); toolbar.Add(save);
 
             var help = new Label(RetainedText.Get("studio_graph_pin_help", "Drag pins to connect.  Alt-click a pin to remove its wires.  Shift-drag to combine sources.  Delete removes a selected wire."));
+            help.text += "  " + RetainedText.Get("studio_pan_help", "Middle-drag to pan the canvas.");
             help.AddToClassList("thry-studio-graph-help"); root.Add(help);
             var workspace = new VisualElement(); workspace.AddToClassList("thry-studio-graph-workspace"); root.Add(workspace);
             _graph = new TextureStudioGraph(this);
@@ -241,7 +249,8 @@ namespace Thry.ThryEditor.TexturePacker
                 _owner = owner; name = "texture-studio-graph";
                 AddToClassList("thry-studio-graph");
                 var grid = new GridBackground(); Insert(0, grid); grid.StretchToParentSize();
-                // This is a fixed packing board: no panning, zooming, or movable nodes.
+                // Pan the board while keeping its nodes in their assigned slots.
+                this.AddManipulator(new ContentDragger());
                 RegisterCallback<MouseDownEvent>(e => _append = e.shiftKey, TrickleDown.TrickleDown);
                 RegisterCallback<MouseMoveEvent>(e => _append = e.shiftKey, TrickleDown.TrickleDown);
                 RegisterCallback<MouseUpEvent>(e => _append = e.shiftKey, TrickleDown.TrickleDown);
@@ -344,9 +353,13 @@ namespace Thry.ThryEditor.TexturePacker
             {
                 float width = contentRect.width, height = contentRect.height;
                 if (width < 1 || height < 1) return;
-                float leftWidth = Mathf.Clamp(width * .32f, 230, 300);
+                // Keep the controls usable below the board's preferred size; panning
+                // exposes the remainder on small screens.
+                width = Mathf.Max(width, 810);
+                height = Mathf.Max(height, 600);
                 float rightWidth = Mathf.Clamp(width * .38f, 290, 380);
                 float slot = (height - 28 - 12 * (_sources.Count - 1)) / Mathf.Max(1, _sources.Count);
+                float leftWidth = Mathf.Clamp(slot + 16, 180, 230);
                 for (int i = 0; i < _sources.Count; i++)
                 {
                     PlaceNode(_sources[i], new Rect(20, 14 + i * (slot + 12), leftWidth, slot));
@@ -471,7 +484,17 @@ namespace Thry.ThryEditor.TexturePacker
                     var body = topContainer; body.AddToClassList("thry-studio-source-body");
                     StylePortColumn(outputContainer, 64);
                     body.style.backgroundColor = Color.clear;
-                    var frame = new VisualElement(); frame.AddToClassList("thry-studio-source-frame"); body.Insert(0, frame);
+                    var previewSlot = new VisualElement();
+                    previewSlot.style.flexGrow = 1; previewSlot.style.flexBasis = 0; previewSlot.style.minWidth = 0;
+                    body.Insert(0, previewSlot);
+                    var frame = new VisualElement(); frame.AddToClassList("thry-studio-source-frame"); previewSlot.Add(frame);
+                    previewSlot.RegisterCallback<GeometryChangedEvent>(e => {
+                        float side = Mathf.Max(0, Mathf.Floor(Mathf.Min(previewSlot.contentRect.height, previewSlot.contentRect.width)));
+                        frame.style.width = side;
+                        frame.style.height = side;
+                        frame.style.left = (previewSlot.contentRect.width - side) * .5f;
+                        frame.style.top = (previewSlot.contentRect.height - side) * .5f;
+                    });
                     _image = new Image { name = "studio-source-preview-" + index, scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
                     _image.StretchToParentSize(); frame.Add(_image);
                     _empty = new Label(RetainedText.Get("studio_drop_texture", "Drop texture")); frame.Add(_empty);

@@ -36,7 +36,7 @@ namespace Thry.ThryEditor.TexturePacker
             if (graphStyle != null) rootVisualElement.styleSheets.Add(graphStyle);
             rootVisualElement.AddToClassList("thry-texture-workspace");
             rootVisualElement.AddToClassList("thry-studio-graph-window");
-            minSize = new Vector2(850, 720);
+            minSize = new Vector2(600, 400);
             titleContent = new GUIContent(RetainedText.Get("studio_title", "Texture studio"));
             BuildGraphWorkspace();
             UpdateRetainedPreview();

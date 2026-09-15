@@ -619,14 +619,8 @@ namespace Thry.ThryEditor
                     measuredProjectVersion = RetainedTextureRevision.Version;
                     normalMap = RetainedTexturePreview.IsNormalMap(texture);
                     releaseNormalPreview();
-                    var path = AssetDatabase.GetAssetPath(texture);
                     long bytes = RetainedTexturePreview.EstimateMemory(texture);
-                    size.tooltip = "Estimated texture memory";
-                    if (!string.IsNullOrEmpty(path) && System.IO.File.Exists(path))
-                    {
-                        bytes = new System.IO.FileInfo(path).Length;
-                        size.tooltip = "Source file size";
-                    }
+                    size.tooltip = "Estimated VRAM usage";
                     size.text = Helpers.TextureHelper.VRAM.ToByteString(bytes);
                 }
                 if (!assigned) releaseNormalPreview();

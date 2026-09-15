@@ -1,7 +1,7 @@
-/* A fixed channel-packing board. The graph owns its layout; nodes cannot move. */
+/* A pannable channel-packing board with fixed node positions. */
 .thry-studio-graph-window { padding: 0; background-color: #24262a; }
-.thry-studio-toolbar { flex-direction: row; align-items: center; flex-shrink: 0; height: 48px; padding: 8px 16px; background-color: #303238; border-bottom-width: 1px; border-bottom-color: #42454d; }
-.thry-studio-heading { flex-grow: 1; font-size: 16px; -unity-font-style: bold; color: #e4e7ed; }
+.thry-studio-toolbar { flex-direction: row; align-items: center; flex-shrink: 0; min-height: 48px; flex-wrap: wrap; padding: 8px 16px; background-color: #303238; border-bottom-width: 1px; border-bottom-color: #42454d; }
+.thry-studio-heading { flex-grow: 1; min-width: 120px; font-size: 16px; -unity-font-style: bold; color: #e4e7ed; }
 .thry-studio-toolbar #studio-open-texture { width: 210px; margin: 0 14px 0 0; }
 .thry-studio-toolbar #studio-open-texture > .unity-base-field__label { min-width: 34px; width: 34px; }
 .thry-studio-toolbar #save-texture { height: 28px; margin: 0; padding: 0 16px; background-color: #46667e; border-color: #65849b; border-radius: 4px; -unity-font-style: bold; }
@@ -24,8 +24,8 @@
 .thry-studio-node-field > .unity-base-field { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; }
 .thry-studio-node-field > Button { width: 22px; min-width: 22px; height: 22px; margin: 0 0 0 4px; padding: 0; border-width: 0; background-color: transparent; color: #b2bbc8; font-size: 16px; }
 .thry-studio-node-field > Button:hover { background-color: #4c5360; }
-.thry-studio-source-body { flex-direction: row; flex-grow: 1; min-height: 0; padding: 0 0 7px 8px; }
-.thry-studio-source-frame { flex-grow: 1; min-width: 0; background-color: #24272d; border-radius: 3px; overflow: hidden; }
+.thry-studio-source-body { flex-direction: row; flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; padding: 0 0 7px 8px; }
+.thry-studio-source-frame { position: absolute; min-width: 0; background-color: #24272d; border-radius: 3px; overflow: hidden; }
 .thry-studio-source-frame > Label { flex-grow: 1; -unity-text-align: middle-center; font-size: 11px; color: #8e98a9; }
 .thry-studio-graph .thry-studio-node #output, .thry-studio-graph .thry-studio-node #input { padding: 0; margin: 0; min-width: 48px; width: 48px; flex-grow: 0; flex-shrink: 0; justify-content: center; background-color: transparent; }
 .thry-studio-graph .thry-studio-node Port { height: 19px; min-height: 14px; flex-shrink: 1; padding: 0 7px; margin: 0; }
@@ -40,10 +40,10 @@
 .thry-studio-output-node #extension > .unity-base-popup-field { margin: 0 12px 12px; flex-shrink: 0; }
 .thry-studio-output-node #extension > .unity-base-popup-field > .unity-base-field__label { width: 54px; min-width: 54px; }
 .thry-studio-graph-status { height: 26px; flex-shrink: 0; margin: 0; padding: 0 18px; -unity-text-align: middle-left; font-size: 11px; color: #a6adb9; border-top-width: 1px; border-top-color: #3b4049; background-color: #282b30; }
-.thry-studio-settings-panel { flex-grow: 1; min-height: 0; padding: 8px; border-top-width: 1px; border-top-color: #4c505b; }
+.thry-studio-settings-panel { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; overflow: hidden; padding: 8px; border-top-width: 1px; border-top-color: #4c505b; }
 .thry-studio-settings-header { flex-direction: row; height: 26px; flex-shrink: 0; align-items: center; margin-bottom: 6px; }
 .thry-studio-settings-header > Label { flex-grow: 1; -unity-font-style: bold; margin-left: 4px; }
-.thry-studio-settings-panel > ScrollView { flex-grow: 1; min-height: 0; }
+.thry-studio-settings-panel > ScrollView { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; }
 .thry-studio-settings-panel .thry-studio-section { margin-bottom: 6px; }
 .thry-studio-settings-panel .thry-studio-route { padding-bottom: 6px; margin-bottom: 6px; border-bottom-width: 1px; border-bottom-color: #484c54; }
 .thry-studio-graph .thry-studio-source-missing > #node-border { border-color: #c29a5e; }
@@ -60,10 +60,10 @@
 .thry-light .thry-studio-graph .thry-studio-node Port:hover { background-color: #b0c4d7; }
 .thry-light .thry-studio-node-field > Button { color: #435469; }
 
-.thry-studio-graph .thry-studio-output-node #collapsible-area, .thry-studio-graph .thry-studio-output-node #extension { flex-grow: 1; min-height: 0; }
+.thry-studio-graph .thry-studio-output-node #collapsible-area, .thry-studio-graph .thry-studio-output-node #extension { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; overflow: hidden; }
 .thry-studio-graph .thry-studio-node #input, .thry-studio-graph .thry-studio-node #output { flex-basis: auto; }
 .thry-studio-graph .thry-studio-node #top { background-color: transparent; }
-.thry-studio-source-frame, .thry-studio-result-image { flex-basis: 0; }
+.thry-studio-result-image { flex-basis: 0; }
 .thry-studio-graph .edge { --edge-width: 3; }
 .thry-studio-graph .thry-studio-node Port #connector { min-width: 12px; flex-shrink: 0; margin: 0 3px; }
 .thry-studio-graph .thry-studio-node Port #type { min-width: 12px; margin: 0; padding: 0; flex-shrink: 0; }
@@ -74,3 +74,5 @@
 .thry-studio-settings-panel .unity-base-field .unity-base-field > .unity-base-field__label { min-width: 12px; width: 12px; max-width: 12px; }
 
 .thry-light .thry-studio-settings-panel { border-top-color: #a3afbe; }
+
+.thry-studio-graph .thry-studio-source-node #contents { flex-basis: 0; flex-shrink: 1; }
