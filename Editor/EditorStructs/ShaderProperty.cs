@@ -693,7 +693,8 @@ namespace Thry.ThryEditor
             RaisePropertyValueChanged();
             ExecuteOnValueActions(affectedMaterials);
             AutomaticAnimatedMarking();
-            GlobalLinker.OnPropertyChanged(this);
+            // RetainedMaterialModel propagates ancestor links once after these
+            // callbacks, with reloadUI:false so a drag keeps its live controls.
         }
 
         internal void PrepareRetainedMetadata()

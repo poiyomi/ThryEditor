@@ -92,15 +92,21 @@ namespace Thry.ThryEditor
         private MaterialProperty[] _properties;
         private MaterialProperty[] _homogeneousProperties;
         private bool _wasInAnimationMode;
+        private bool _readRequired;
         private readonly List<TargetGroup> _groups = new List<TargetGroup>();
         private readonly List<SourceGroup> _sources = new List<SourceGroup>();
         private readonly Dictionary<Shader,RetainedShaderSchema> _schemas = new Dictionary<Shader,RetainedShaderSchema>();
         internal int BuildCount { get; private set; }
         internal int HomogeneousReadCount { get; private set; }
         internal int SourceReadCount { get; private set; }
+        internal int ValueRevision { get; private set; }
+        internal int PropertyReadCount { get; private set; }
+        internal string PatchedPropertyName { get; private set; }
 
         internal RetainedCrossSelectionProperties(MaterialEditor editor, ShaderEditor shader)
         { _editor = editor; _shader = shader; }
+
+        internal void InvalidateValues() => _readRequired = true;
 
         internal MaterialProperty[] Read()
         {
@@ -154,7 +160,9 @@ namespace Thry.ThryEditor
                 // A secondary target can swap shaders without changing the inspector's first target.
                 _shader.Reload();
             }
-            bool valuesChanged = false;
+            bool forceRead = _readRequired;
+            bool valuesChanged = forceRead;
+            _readRequired = false;
             for (int i = 0; i < _targets.Length; i++)
             {
                 // Inherited edits can leave the selected child's dirty count
@@ -172,6 +180,8 @@ namespace Thry.ThryEditor
                 {
                     _homogeneousProperties = MaterialEditor.GetMaterialProperties(targets);
                     HomogeneousReadCount++;
+                    ValueRevision++;
+                    PatchedPropertyName = null;
                     RecordDirtyCounts();
                 }
                 _wasInAnimationMode = animation;
@@ -180,12 +190,16 @@ namespace Thry.ThryEditor
 
             if (valuesChanged)
             {
+                ValueRevision++;
+                PatchedPropertyName = null;
                 // Unity's bulk API assumes every target uses the first target's shader. Read
                 // homogeneous sources only, then resolve changed shared names across shaders.
                 foreach (var source in _sources)
                 {
                     source.ChangedNames.Clear();
                     source.Dirty = source.TargetIndices.Any(i => _dirtyTargets[i]);
+                    // Renderer property blocks can change without dirtying assets.
+                    if (!source.Dirty && forceRead) source.Dirty = true;
                     if (source.Dirty) ReadSource(source, baseline: false);
                 }
                 foreach (var group in _groups)
@@ -197,7 +211,7 @@ namespace Thry.ThryEditor
                         string name = _properties[index].name;
                         if (group.HomogeneousSource != null && group.HomogeneousSource.Values.TryGetValue(name, out var homogeneous))
                         { _properties[index] = homogeneous; continue; }
-                        if (!group.Sources.Any(source => source.ChangedNames.Contains(name))) continue;
+                        if (!forceRead && !group.Sources.Any(source => source.ChangedNames.Contains(name))) continue;
                         if (!group.Values.TryGetValue(name, out var value))
                         {
                             value = MaterialEditor.GetMaterialProperty(group.Targets, name);
@@ -209,6 +223,57 @@ namespace Thry.ThryEditor
                 RecordDirtyCounts();
             }
             return _properties;
+        }
+
+        // Called immediately around a known single-property setter, before drawers,
+        // actions or linked-material callbacks can mutate anything else. Never stamp
+        // a stale baseline: shader swaps, ancestors and animation use the normal read.
+        internal bool CanPatchProperty(MaterialProperty property)
+        {
+            if (property == null || property.applyPropertyCallback != null || AnimationMode.InAnimationMode()
+                || (_properties == null && _homogeneousProperties == null)) return false;
+            for (int i = 0; i < _targets.Length; i++)
+                if (_targets[i] == null || _targets[i].shader != _shaders[i] || !_dependencies[i].Matches(_targets[i])) return false;
+            return true;
+        }
+
+        internal void PatchProperty(string name)
+        {
+            if (_properties == null)
+            {
+                var value = MaterialEditor.GetMaterialProperty(_targets, name);
+                PropertyReadCount++;
+                for (int i = 0; i < _homogeneousProperties.Length; i++)
+                    if (_homogeneousProperties[i].name == name) _homogeneousProperties[i] = value;
+            }
+            else
+            {
+                foreach (var source in _sources)
+                {
+                    if (!source.Values.ContainsKey(name)) continue;
+                    var value = MaterialEditor.GetMaterialProperty(source.Targets, name);
+                    PropertyReadCount++;
+                    source.Values[name] = value;
+                    source.Snapshots[name] = PropertySnapshot.Capture(value);
+                }
+                foreach (var group in _groups)
+                {
+                    MaterialProperty value = null;
+                    foreach (int index in group.Indices)
+                    {
+                        if (_properties[index].name != name) continue;
+                        if (value == null)
+                        {
+                            if (group.HomogeneousSource != null) value = group.HomogeneousSource.Values[name];
+                            else { value = MaterialEditor.GetMaterialProperty(group.Targets, name); PropertyReadCount++; }
+                        }
+                        _properties[index] = value;
+                    }
+                }
+            }
+            ValueRevision++;
+            PatchedPropertyName = name;
+            RecordDirtyCounts();
         }
 
         private void ReadSource(SourceGroup source, bool baseline)

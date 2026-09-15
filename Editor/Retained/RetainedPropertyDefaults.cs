@@ -65,6 +65,28 @@ namespace Thry.ThryEditor
         }
         private static readonly ConditionalWeakTable<ShaderEditor, Cache> Caches = new ConditionalWeakTable<ShaderEditor, Cache>();
 
+        internal static void RecordValueEdit(ShaderEditor shader, string name, Material[] materials, int[] previousVersions)
+        {
+            if (!Caches.TryGetValue(shader, out var cache) || cache.Revision != shader.RetainedRevision) return;
+            // A known setter only invalidates this property's comparisons. Stamping
+            // current baselines avoids rechecking every untouched property for dots.
+            // Later callbacks/external edits still differ from these versions and
+            // take the complete invalidation path in BeginEvaluation.
+            for (int i = 0; i < materials.Length; i++)
+            {
+                int dirty = EditorUtility.GetDirtyCount(materials[i]);
+                if (cache.Owners.TryGetValue(materials[i], out var checks) && checks.Dirty == previousVersions[i])
+                { checks.Dirty = dirty; checks.Properties.Remove(name); }
+                foreach (var owner in cache.Owners.Values)
+                    for (int p = 0; p < owner.Parents.Length; p++)
+                        if (owner.Parents[p] == materials[i] && owner.ParentVersions[p] == previousVersions[i])
+                        { owner.ParentVersions[p] = dirty; owner.Properties.Remove(name); }
+            }
+            foreach (var entry in cache.Aggregates)
+                if (entry.Key.MaterialProperty?.name == name)
+                { entry.Value.Value = null; entry.Value.Transform = null; }
+        }
+
         private static Cache GetCache(ShaderEditor shader)
         {
             var cache = Caches.GetValue(shader, _ => new Cache());

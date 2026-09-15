@@ -39,6 +39,7 @@ namespace Thry.ThryEditor
             internal bool Tracked = true;
         }
         private readonly List<Binding> _updates = new List<Binding>();
+        private Binding[] _updateSnapshot;
         private readonly Dictionary<Tuple<ShaderProperty, ShaderProperty>, ShaderProperty> _referenceProjections = new Dictionary<Tuple<ShaderProperty, ShaderProperty>, ShaderProperty>();
         private ILookup<string, ShaderProperty> _referenceSources;
         private IEnumerable<ShaderProperty> ScopedReferences(ShaderProperty owner, string name)
@@ -62,21 +63,25 @@ namespace Thry.ThryEditor
         internal void Synchronize(Func<VisualElement, bool> include)
         {
             LastSynchronizeCount = 0;
+            // Updating a section can add/remove bindings. Keep a stable snapshot
+            // for this pass, allocating a new one only when registrations change.
+            var updates = _updateSnapshot ?? (_updateSnapshot = _updates.ToArray());
             using (RetainedPropertyDefaults.BeginEvaluation(Model.Shader))
-                foreach (var binding in _updates.ToArray())
+                foreach (var binding in updates)
                     if (include == null || include(binding.Element)) { binding.Update(); LastSynchronizeCount++; }
         }
         internal void Track(VisualElement element, Action update)
         {
             var binding = new Binding { Element = element, Update = update };
             _updates.Add(binding);
+            _updateSnapshot = null;
             element.RegisterCallback<DetachFromPanelEvent>(e => {
                 if (e.target != element) return;
-                _updates.Remove(binding); binding.Tracked = false;
+                _updates.Remove(binding); binding.Tracked = false; _updateSnapshot = null;
             });
             element.RegisterCallback<AttachToPanelEvent>(e => {
                 if (e.target != element) return;
-                if (!binding.Tracked) { _updates.Add(binding); binding.Tracked = true; }
+                if (!binding.Tracked) { _updates.Add(binding); binding.Tracked = true; _updateSnapshot = null; }
                 update();
             });
             update();
@@ -198,7 +203,7 @@ namespace Thry.ThryEditor
         {
             field.AddToClassList("thry-input"); field.name = "value-" + property.MaterialProperty.name;
             Track(field, () => { field.SetValueWithoutNotify(read(property.MaterialProperty)); field.showMixedValue = property.MaterialProperty.hasMixedValue; });
-            field.RegisterValueChangedCallback(e => Model.Edit(property, p => write(p, e.newValue)));
+            field.RegisterValueChangedCallback(e => Model.EditSingleProperty(property, p => write(p, e.newValue)));
             var numeric = field as IValueField<T>;
             if (numeric != null)
             {
@@ -249,7 +254,7 @@ namespace Thry.ThryEditor
                     // FieldMouseDragger assigns its single startValue only on Escape.
                     // That scalar cannot restore a mixed selection; use each owner's snapshot.
                     if (!_dragging) { _field.value=value; return; }
-                    _model.Edit(_property,p=>
+                    _model.EditSingleProperty(_property,p=>
                     {
                         var material=p.targets.OfType<Material>().FirstOrDefault();
                         if(material!=null && _originals.TryGetValue(material,out var original) && material.shader==original.Shader)
@@ -486,10 +491,12 @@ namespace Thry.ThryEditor
             string foldoutKey = "texture-details-" + property.MaterialProperty.name;
             if (!property.showFoldoutProperties) property.showFoldoutProperties = RetainedUiState.Get(property.MyShader.name, foldoutKey);
             bool built = false;
+            var expandedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-down");
+            var collapsedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-right");
             Action expand = () => {
                 root.EnableInClassList("thry-texture-expanded", property.showFoldoutProperties);
                 details.style.display = property.showFoldoutProperties ? DisplayStyle.Flex : DisplayStyle.None;
-                foldIcon.image = Resources.Load<Texture2D>("ThryToolbar/header-caret-" + (property.showFoldoutProperties ? "down" : "right"));
+                foldIcon.image = property.showFoldoutProperties ? expandedCaret : collapsedCaret;
                 if (!property.showFoldoutProperties || built) return; built = true;
                 var card = new RetainedTextureCard(Model, property, objectField, array != null);
                 var gradient = attributes.FirstOrDefault(a => a.Name == "Gradient");

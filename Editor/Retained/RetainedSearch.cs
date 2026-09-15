@@ -32,6 +32,7 @@ namespace Thry.ThryEditor
         RetainedMaterialModel _model;
         RetainedFields _fields;
         string _signature, _query;
+        List<Match> _matchedMetadata;
         int _revision = -1;
         ShaderEditor _metadataShader;
         int _metadataRevision = -1, _stateStamp;
@@ -182,7 +183,8 @@ namespace Thry.ThryEditor
             }
         }
         internal static string TextQuery(string query) => string.Join(" ", (query ?? "").Split(' ').Where(token => !IsFilter(token))).Trim();
-        static bool IsFilter(string token) => new[] { "is:changed", "is:animated", "is:missing", "is:assigned", "is:empty", "is:favorite" }.Contains(token, StringComparer.OrdinalIgnoreCase)
+        static readonly string[] StatusFilters = { "is:changed", "is:animated", "is:missing", "is:assigned", "is:empty", "is:favorite" };
+        static bool IsFilter(string token) => StatusFilters.Contains(token, StringComparer.OrdinalIgnoreCase)
             || token.StartsWith("in:", StringComparison.OrdinalIgnoreCase) || TypeFilter(token) != null;
         static string TypeFilter(string token)
         {
@@ -266,7 +268,7 @@ namespace Thry.ThryEditor
                 _buildSchedule.Pause(); _pendingBuild.Clear(); _rows.Clear(); _firstResult = null; _anchorPending = false;
                 style.display = DisplayStyle.None;
                 if (_signature != null || _model != null) _results.Clear();
-                _signature = null; _query = null; _model = null; _fields = null; _revision = -1; MatchCount = 0;
+                _signature = null; _matchedMetadata = null; _query = null; _model = null; _fields = null; _revision = -1; MatchCount = 0;
                 Observe(null);
                 if (model == null) { _metadata = null; _metadataShader = null; _metadataRevision = -1; }
                 return;
@@ -290,15 +292,17 @@ namespace Thry.ThryEditor
             _buildNeedsScan = true;
             EnsureMetadata(model.Shader);
             var matches = FindMatches(model.Shader, query);
-            string signature = query + "|" + string.Join("|", matches.Select(m => m.Property.ThryPropertyIndex + ":" + m.Owner?.ThryPropertyIndex + ":" + m.Property.MaterialProperty.name + ":" + m.Path));
-            if (!modelChanged && _signature == signature)
+            // Metadata objects are stable until a shader/locale rebuild. Compare
+            // their identities instead of formatting thousands of row identifiers
+            // into a temporary string whenever a material's value changes.
+            if (!modelChanged && _signature == query && _matchedMetadata != null && _matchedMetadata.SequenceEqual(matches))
             { _stateStamp = stamp; _stateInvalid = false; if (_pendingBuild.Count > 0) _buildSchedule.Resume(); return; }
             if (!modelChanged && !queryChanged && IsEditingResult()) return;
             _stateStamp = stamp; _stateInvalid = false; ResultBuildCount++;
             _buildNeedsScan = true;
             _buildSchedule.Pause(); _pendingBuild.Clear(); _rows.Clear(); _firstResult = null; _anchorPending = false;
             _results.Clear();
-            _model = model; _revision = model.Shader.RetainedRevision; _query = query; _signature = signature;
+            _model = model; _revision = model.Shader.RetainedRevision; _query = query; _signature = query; _matchedMetadata = matches;
             _fields = new RetainedFields(model, _view);
             MatchCount = matches.Count;
             string filters = DescribeFilters(query);
@@ -474,16 +478,22 @@ namespace Thry.ThryEditor
             foreach (var match in _metadata)
             {
                 var property = match.Property;
-                if (!property.RefreshRetainedProjection()) continue;
                 if (types.Count > 0 && !types.Contains(match.Type)) continue;
+                // Text/type rejection does not need native material values. Avoid
+                // projection refreshes and per-row predicate closures for misses.
+                bool rootMatch = match.RootCaption.Equals(text, StringComparison.OrdinalIgnoreCase);
+                bool textMatches = true;
+                foreach (var word in words)
+                    if (match.Haystack.IndexOf(word, StringComparison.OrdinalIgnoreCase) < 0
+                        && !(rootMatch && match.RootCaption.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0))
+                    { textMatches = false; break; }
+                if (!textMatches || !property.RefreshRetainedProjection()) continue;
                 if (scopes.Length > 0 && !Ancestors(match.Owner ?? property).Concat(new[] { match.Owner ?? property })
                     .Any(p => p.MaterialProperty != null && scopes.Contains(p.MaterialProperty.name, StringComparer.OrdinalIgnoreCase))) continue;
                 if (favorite && !RetainedSearchPreferences.IsFavorite(property)) continue;
                 if ((assigned || empty) && match.Type != "texture") continue;
                 if (assigned && !property.MaterialProperty.targets.OfType<Material>().Any(m => OwnsTexture(m, property) && m.GetTexture(property.MaterialProperty.name) != null)) continue;
                 if (empty && !property.MaterialProperty.targets.OfType<Material>().Any(m => OwnsTexture(m, property) && m.GetTexture(property.MaterialProperty.name) == null)) continue;
-                string haystack = match.RootCaption.Equals(text, StringComparison.OrdinalIgnoreCase) ? match.Haystack + " " + match.RootCaption : match.Haystack;
-                if (words.Any(word => haystack.IndexOf(word, StringComparison.OrdinalIgnoreCase) < 0)) continue;
                 if (!IsVisible(property, match.Owner)) continue;
                 if (changed && !HasChanged(property, shader)) continue;
                 if (animated && !property.IsAnimated) continue;

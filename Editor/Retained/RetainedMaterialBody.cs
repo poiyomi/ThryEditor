@@ -15,6 +15,7 @@ namespace Thry.ThryEditor
         private RetainedFields _fields;
         private int _revision = -1;
         private bool _editing;
+        private Texture2D _expandedCaret, _collapsedCaret;
         internal RetainedMaterialBody(RetainedMaterialModel model, MaterialInspectorView view)
         {
             Model = model; _view = view; name = "thry-material-controls"; AddToClassList("thry-material-controls");
@@ -32,6 +33,8 @@ namespace Thry.ThryEditor
         private void Build()
         {
             Clear(); _fields = new RetainedFields(Model,_view);
+            _expandedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-down");
+            _collapsedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-right");
             var shader = Model.Shader;
             Add(RetainedMultiMaterial.SelectionSummary(Model));
             Add(Presets.CreateEditorControls(Model, _fields));
@@ -182,7 +185,7 @@ namespace Thry.ThryEditor
                 header.EnableInClassList("thry-excluded", SectionEditing.IsExcluded?.Invoke(group) == true);
                 children.SetEnabled(group.RetainedChildrenEnabled && (group.Options.condition_enable == null || group.Options.condition_enable.Test()));
                 children.style.display = group.RetainedExpanded ? DisplayStyle.Flex : DisplayStyle.None;
-                foldIcon.image = Resources.Load<Texture2D>("ThryToolbar/header-caret-" + (group.RetainedExpanded ? "down" : "right"));
+                foldIcon.image = group.RetainedExpanded ? _expandedCaret : _collapsedCaret;
                 if (!group.RetainedExpanded || built) return;
                 built = true;
                 if (Model.Shader.IsSectionedPresetEditor)
