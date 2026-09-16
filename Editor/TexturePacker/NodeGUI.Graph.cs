@@ -97,7 +97,8 @@ namespace Thry.ThryEditor.TexturePacker
 
         void BuildGraphExports(VisualElement root)
         {
-            var channels = new VisualElement(); channels.AddToClassList("thry-components"); root.Add(channels);
+            var channels = new VisualElement(); channels.AddToClassList("thry-components");
+            channels.AddToClassList("thry-studio-export-channels"); root.Add(channels);
             for (int i = 0; i < 4; i++)
             {
                 int index = i;

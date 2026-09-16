@@ -76,3 +76,8 @@
 .thry-light .thry-studio-settings-panel { border-top-color: #a3afbe; }
 
 .thry-studio-graph .thry-studio-source-node #contents { flex-basis: 0; flex-shrink: 1; }
+
+/* Channel letters must not inherit the settings panel's full-width field labels. */
+.thry-studio-settings-panel .thry-studio-export-channels > .unity-toggle { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; margin-left: 0; margin-right: 0; }
+.thry-studio-settings-panel .thry-studio-export-channels > .unity-toggle > .unity-base-field__label { min-width: 12px; width: 12px; max-width: 12px; margin-right: 4px; flex-grow: 0; }
+.thry-studio-settings-panel .thry-studio-export-channels > .unity-toggle > .unity-base-field__input { flex-grow: 0; }
