@@ -153,7 +153,7 @@ namespace Thry.ThryEditor
                 var data = resources[i];
                 if (data != null) header.Add(HeaderAction(resourceIcons[i], data.hover, () => data.action?.Perform(Model.Shader.Materials)));
             }
-            if (Presets.DoesSectionHavePresets(group.MaterialProperty.name))
+            if (group is ShaderHeader && Presets.DoesSectionHavePresets(group.MaterialProperty.name))
             {
                 var presets = new Button(() =>
                 {
@@ -188,7 +188,9 @@ namespace Thry.ThryEditor
                 foldIcon.image = group.RetainedExpanded ? _expandedCaret : _collapsedCaret;
                 if (!group.RetainedExpanded || built) return;
                 built = true;
-                if (Model.Shader.IsSectionedPresetEditor)
+                // Sections and subsections organize their parent header's preset; only
+                // headers own named preset collections (matching the legacy inspector).
+                if (group is ShaderHeader && Model.Shader.IsSectionedPresetEditor)
                 {
                     var presetName = new TextField("Preset name") { isDelayed = true, value = Presets.GetSectionPresetName(Model.Shader.Materials[0], group.MaterialProperty.name) };
                     children.Add(presetName);
