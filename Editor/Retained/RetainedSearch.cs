@@ -330,7 +330,7 @@ namespace Thry.ThryEditor
                     wrapper.AddToClassList("thry-filter-control"); section.Add(wrapper);
                     _rows.Add(wrapper);
                     if (_firstResult == null) _firstResult = wrapper;
-                    wrapper.style.minHeight = 22;
+                    wrapper.AddToClassList("thry-filter-pending");
                     wrapper.focusable = true; wrapper.tabIndex = 0;
                     wrapper.RegisterCallback<FocusInEvent>(e => {
                         if (e.target != wrapper) return;
@@ -347,7 +347,7 @@ namespace Thry.ThryEditor
                         wrapper.Add(_fields.Field(match.Property));
                         InstallHighlights(wrapper, TextQuery(query));
                         wrapper.focusable = false;
-                        wrapper.style.minHeight = StyleKeyword.Null;
+                        wrapper.RemoveFromClassList("thry-filter-pending");
                         _fields.Track(wrapper, () => {
                             wrapper.style.display = IsVisible(match.Property, match.Owner) ? DisplayStyle.Flex : DisplayStyle.None;
                             wrapper.SetEnabled(AncestorsEnabled(match.Property, match.Owner));

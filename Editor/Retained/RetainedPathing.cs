@@ -15,7 +15,6 @@ namespace Thry.ThryEditor
         readonly RetainedFields fields;
         readonly ShaderGroup group;
         readonly string[] letters = { "R", "G", "B", "A" };
-        readonly Color[] accents = { new Color32(249,38,114,255), new Color32(166,226,46,255), new Color32(102,217,239,255), new Color32(174,129,255,255) };
         readonly List<VisualElement>[] columns = { new List<VisualElement>(), new List<VisualElement>(), new List<VisualElement>(), new List<VisualElement>() };
         readonly VisualElement[] strips = new VisualElement[4];
         readonly Button[] selectButtons = new Button[4];
@@ -73,8 +72,8 @@ namespace Thry.ThryEditor
             for (int i = 0; i < 4; i++) AddField(sampling, "_PathSourceDir" + letters[i]);
             BuildMatrix();
             var actions = Row(); actions.AddToClassList("pathing-actions");
-            var presets = new Button(ShowPresets) { text = "Starting look…", tooltip = "Apply a motion recipe to the selected path. Keeps its color, masks and AudioLink settings." };
-            actions.Add(presets); var copy = new Button(ShowCopy) { text = "Copy motion…", tooltip = "Copy the selected path's shape and timing to another path. Keeps destination color and masks." }; actions.Add(copy);
+            var presets = new Button { name = "pathing-presets", text = "Starting look…", tooltip = "Apply a motion recipe to the selected path. Keeps its color, masks and AudioLink settings." };
+            presets.clicked += () => ShowPresets(presets); actions.Add(presets); var copy = new Button { name = "pathing-copy", text = "Copy motion…", tooltip = "Copy the selected path's shape and timing to another path. Keeps destination color and masks." }; copy.clicked += () => ShowCopy(copy); actions.Add(copy);
             fields.Track(actions, () => { bool editable = MotionNames.All(n => model.CanEdit(Property(n))) && model.CanEdit(Property("_PathType" + letters[selected])); presets.SetEnabled(editable); copy.SetEnabled(editable); });
             visual.Add(actions);
             status = new Label("Select a path header to preview it or apply a starting look.") { name = "pathing-status" }; status.AddToClassList("pathing-help"); visual.Add(status);
@@ -172,8 +171,8 @@ namespace Thry.ThryEditor
             fields.Track(isolate, () => { isolate.text = solo < 0 ? "Solo" : "Show all"; }); title.Add(isolate); preview.Add(title);
             for (int i = 0; i < 4; i++)
             {
-                int channel = i; var row = Row(); var badge = new Button(() => Select(channel)) { text = letters[i], tooltip = "Select " + letters[i] + " path" }; badge.AddToClassList("pathing-lane-label"); badge.style.color = accents[i]; row.Add(badge);
-                var strip = new VisualElement { name = "pathing-lane-" + i }; strip.AddToClassList("pathing-lane");
+                int channel = i; var row = Row(); var badge = new Button(() => Select(channel)) { text = letters[i], tooltip = "Select " + letters[i] + " path" }; badge.AddToClassList("pathing-lane-label"); badge.AddToClassList("pathing-accent-" + i); row.Add(badge);
+                var strip = new VisualElement { name = "pathing-lane-" + i }; strip.AddToClassList("pathing-lane"); strip.AddToClassList("pathing-accent-" + i);
                 strip.generateVisualContent += c => PaintLane(c, strip, channel); strip.RegisterCallback<PointerDownEvent>(e => Select(channel)); strips[i] = strip; row.Add(strip); preview.Add(row);
             }
             scrub = new Slider(0, 1) { name = "pathing-preview-scrub", tooltip = "Scrub a ten-second preview window. No material values are changed." };
@@ -196,7 +195,7 @@ namespace Thry.ThryEditor
         {
             var grid = new VisualElement { name = "pathing-grid" }; grid.AddToClassList("pathing-grid"); visual.Add(grid);
             var header = GridRow(grid, "Paths"); header.AddToClassList("pathing-grid-heading");
-            for (int i = 0; i < 4; i++) { int ch = i; var cell = Cell(header, i); var button = new Button(() => Select(ch)) { text = letters[i] + " path", name = "pathing-select-" + i }; button.style.color = accents[i]; selectButtons[i] = button; cell.Add(button); }
+            for (int i = 0; i < 4; i++) { int ch = i; var cell = Cell(header, i); var button = new Button(() => Select(ch)) { text = letters[i] + " path", name = "pathing-select-" + i }; button.AddToClassList("pathing-accent-" + i); selectButtons[i] = button; cell.Add(button); }
             var shapes = GridRow(grid, "Shape", "Fill grows along the gradient; Pulse travels once; Loop wraps around; Dashes repeat.");
             var colors = GridRow(grid, "Color", "HDR path color. Its alpha controls surface opacity, not emission.");
             var themes = GridRow(grid, "Theme", "Choose a theme color or use the path color above.");
@@ -216,7 +215,7 @@ namespace Thry.ThryEditor
             for (int i = 0; i < 4; i++)
             {
                 int ch = i; var prop = Property("_PathTime");
-                var menu = new DropdownField(new List<string> { "Auto", "Manual" }, 0) { name = "pathing-playback-" + i }; Cell(motion, i).Add(menu);
+                var menu = new DropdownField(new List<string> { "Auto", "Manual" }, 0) { name = "pathing-playback-" + i }; RetainedWindow.Dropdown(menu); Cell(motion, i).Add(menu);
                 float remembered = 0;
                 fields.Track(menu, () => { float value = Component("_PathTime", ch); if (value != -999) remembered = value; menu.SetValueWithoutNotify(value == -999 ? "Auto" : "Manual"); menu.showMixedValue = Mixed("_PathTime", ch); menu.SetEnabled(model.CanEdit(prop)); });
                 menu.RegisterValueChangedCallback(e => model.VectorComponent(prop, ch, e.newValue == "Auto" ? -999 : remembered));
@@ -233,7 +232,7 @@ namespace Thry.ThryEditor
         {
             if (Property("_PathingMaskMap") == null) return;
             var fold = Fold("Mask routing", false); visual.Add(fold);
-            var row = GridRow(fold, "PATH"); for (int i = 0; i < 4; i++) { var l = new Label(letters[i]); l.style.color = accents[i]; Cell(row, i).Add(l); }
+            var row = GridRow(fold, "PATH"); for (int i = 0; i < 4; i++) { var l = new Label(letters[i]); l.AddToClassList("pathing-accent-" + i); Cell(row, i).Add(l); }
             var channels = GridRow(fold, "Channel"); var notes = GridRow(fold, "Coverage");
             for (int i = 0; i < 4; i++) { var p = Property("_PathingMaskChannel" + letters[i]); if (p != null) Cell(channels, i).Add(fields.Field(p, true)); routeLabels[i] = new Label(); routeLabels[i].AddToClassList("pathing-routing-note"); Cell(notes, i).Add(routeLabels[i]); }
             var pack = new Button(() => {
@@ -262,31 +261,31 @@ namespace Thry.ThryEditor
             }
         }
         static readonly string[] MotionNames = { "_PathSpeed", "_PathWidth", "_PathSoftness", "_PathGapLengths", "_PathTime", "_PathOffset", "_PathSegments" };
-        void ShowCopy()
+        void ShowCopy(VisualElement anchor)
         {
-            var menu = new GenericMenu(); int source = selected;
+            var menu = new List<RetainedMenu.Item>(); int source = selected;
             for (int i = 0; i < 4; i++)
             {
                 int target = i; if (target == source) continue;
                 bool editable = model.CanEdit(Property("_PathType" + letters[target])) && MotionNames.All(n => model.CanEdit(Property(n)));
-                if (!editable) { menu.AddDisabledItem(new GUIContent("To " + letters[i] + " path")); continue; }
-                menu.AddItem(new GUIContent("To " + letters[i] + " path"), false, () => {
+                if (!editable) { menu.Add(new RetainedMenu.Item { Text = "To " + letters[i] + " path" }); continue; }
+                menu.Add(new RetainedMenu.Item { Text = "To " + letters[i] + " path", Action = () => {
                     Undo.IncrementCurrentGroup(); int undo = Undo.GetCurrentGroup();
                     foreach (var n in MotionNames) { var p = Property(n); model.Edit(p, mp => { var v = mp.vectorValue; v[target] = v[source]; mp.vectorValue = v; }, true); }
                     model.Edit(Property("_PathType" + letters[target]), mp => { var owner = mp.targets.OfType<Material>().First(); mp.SetNumber(owner.GetFloat("_PathType" + letters[source])); }, true);
                     Undo.CollapseUndoOperations(undo); status.text = "Copied " + letters[source] + " motion to " + letters[target] + ". Color and masks kept.";
-                });
+                } });
             }
-            menu.ShowAsContext();
+            RetainedMenu.Open(anchor.worldBound, anchor, menu);
         }
-        void ShowPresets()
+        void ShowPresets(VisualElement anchor)
         {
-            var menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Traveling glow"), false, () => ApplyRecipe(2,.15f,.2f,.65f,0,-999));
-            menu.AddItem(new GUIContent("Flowing dashes"), false, () => ApplyRecipe(3,.2f,.08f,.3f,.06f,-999));
-            menu.AddItem(new GUIContent("Soft fill"), false, () => ApplyRecipe(0,.1f,.1f,.2f,0,-999));
-            menu.AddItem(new GUIContent("Manual progress"), false, () => ApplyRecipe(0,0,.1f,0,0,.5f));
-            menu.ShowAsContext();
+            RetainedMenu.Open(anchor.worldBound, anchor, new[] {
+                new RetainedMenu.Item { Text = "Traveling glow", Action = () => ApplyRecipe(2,.15f,.2f,.65f,0,-999) },
+                new RetainedMenu.Item { Text = "Flowing dashes", Action = () => ApplyRecipe(3,.2f,.08f,.3f,.06f,-999) },
+                new RetainedMenu.Item { Text = "Soft fill", Action = () => ApplyRecipe(0,.1f,.1f,.2f,0,-999) },
+                new RetainedMenu.Item { Text = "Manual progress", Action = () => ApplyRecipe(0,0,.1f,0,0,.5f) }
+            });
         }
         void ApplyRecipe(int type, float speed, float width, float softness, float gap, float time)
         {
@@ -326,7 +325,8 @@ namespace Thry.ThryEditor
             float w=strip.contentRect.width,h=strip.contentRect.height; if(w<1||h<1)return;
             var color=Property("_PathColor"+letters[channel]).MaterialProperty.colorValue;
             float max=Mathf.Max(1,Mathf.Max(color.r,Mathf.Max(color.g,color.b))); color=new Color(color.r/max,color.g/max,color.b/max,1);
-            if (Mathf.Abs(color.r-color.g)+Mathf.Abs(color.g-color.b)<.01f) color=accents[channel];
+            var accent = strip.resolvedStyle.color;
+            if (Mathf.Abs(color.r-color.g)+Mathf.Abs(color.g-color.b)<.01f) color=accent;
             var source = model.Owners(Property("_PathTime")).FirstOrDefault(); if(source==null)return;
             // Read the first material consistently (rather than mixing combined-property snapshots).
             float manual=source.GetVector("_PathTime")[channel],speed=source.GetVector("_PathSpeed")[channel],offset=source.GetVector("_PathOffset")[channel];
@@ -338,7 +338,7 @@ namespace Thry.ThryEditor
             const int samples = 128;
             var mesh = context.Allocate((samples+1)*4,(samples+1)*6);
             float isolation=solo>=0&&solo!=channel?.12f:1;
-            var background=new Color(.10f,.10f,.10f);
+            var background=strip.resolvedStyle.backgroundColor;
             Color left=Color.Lerp(background,color,.07f+.93f*ShapeAlpha(0,phase,width,softness,gap,type)*isolation);
             for(int j=0;j<samples;j++)
             {
@@ -346,7 +346,7 @@ namespace Thry.ThryEditor
                 PreviewQuad(mesh,j,j*w/samples,(j+1)*w/samples,3,h-3,left,right);left=right;
             }
             float marker=Mathf.Clamp(phase*w,0,Mathf.Max(0,w-1));
-            PreviewQuad(mesh,samples,marker,marker+1,0,h,accents[channel],accents[channel]);
+            PreviewQuad(mesh,samples,marker,marker+1,0,h,accent,accent);
         }
         static void PreviewQuad(MeshWriteData mesh,int quad,float left,float right,float top,float bottom,Color a,Color b)
         {

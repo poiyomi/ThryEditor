@@ -59,9 +59,7 @@ namespace Thry.ThryEditor
         internal static void Style(VisualElement root)
         {
             root.AddToClassList("thry-inspector");root.AddToClassList("thry-active");root.AddToClassList("thry-window");root.EnableInClassList("thry-light",!EditorGUIUtility.isProSkin);
-            var sheet=Resources.Load<StyleSheet>("ThryInspector");if(sheet!=null)root.styleSheets.Add(sheet);
-            var controls = Resources.Load<StyleSheet>("ThryControlPolish"); if (controls != null) root.styleSheets.Add(controls);
-            var auxiliary = Resources.Load<StyleSheet>("ThryAuxiliary"); if (auxiliary != null) root.styleSheets.Add(auxiliary);
+            var sheet=Resources.Load<StyleSheet>("ThryTheme");if(sheet!=null && !root.styleSheets.Contains(sheet))root.styleSheets.Add(sheet);
         }
         internal static void Dropdown(DropdownField field)
         {
@@ -106,7 +104,7 @@ namespace Thry.ThryEditor
             var root=rootVisualElement;root.Clear();RetainedWindow.Style(root);root.AddToClassList("thry-settings");
             var title=new Label(RetainedText.Get("settings_title", "Thry Settings"));title.AddToClassList("thry-title");root.Add(title);
             var scroll=new ScrollView();scroll.style.flexGrow=1;root.Add(scroll);
-            var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settings…"));search.style.marginTop=8;search.style.marginBottom=8;root.Insert(1,search);
+            var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settings…"));search.AddToClassList("thry-settings-search");root.Insert(1,search);
             string[][] groups={
                 new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes","staggeringRowColors"},
                 new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming"},

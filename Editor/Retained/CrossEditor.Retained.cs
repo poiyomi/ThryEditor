@@ -16,7 +16,7 @@ namespace Thry.ThryEditor
             var root = rootVisualElement;
             root.Clear(); RetainedWindow.Style(root);
             root.RemoveFromClassList("thry-window");
-            root.style.paddingLeft = 12; root.style.paddingRight = 12;
+            root.AddToClassList("thry-cross-editor");
             titleContent = new GUIContent("Cross Shader Editor");
             var scroll = new ScrollView(); scroll.style.flexGrow = 1; root.Add(scroll);
             var materials = new Foldout { text = "Materials · " + _materialList.Count, value = _showMaterials };

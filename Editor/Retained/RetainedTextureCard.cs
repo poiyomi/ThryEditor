@@ -63,8 +63,7 @@ namespace Thry.ThryEditor
             title.Add(_clear);
             _name = new Label(); _name.AddToClassList("thry-texture-name"); title.Add(_name);
             _sliceField = new IntegerField { name = "texture-preview-slice", tooltip = "Preview slice (1-based). This does not change the material." };
-            _sliceField.style.width = 48; _sliceField.style.minWidth = 32; _sliceField.style.flexShrink = 0;
-            _sliceField.style.height = 18; _sliceField.style.marginTop = 0; _sliceField.style.marginBottom = 0;
+            _sliceField.AddToClassList("thry-texture-slice");
             _sliceField.style.display = DisplayStyle.None; title.Add(_sliceField);
             _sliceField.RegisterValueChangedCallback(e =>
             {
@@ -74,8 +73,7 @@ namespace Thry.ThryEditor
             _faceField = ActionButton(() => RetainedMenu.Open(_faceField.worldBound, _faceField,
                 Faces.Select((face, index) => new RetainedMenu.Item { Text = face, Checked = index == _slice, Action = () => { _slice = index; UpdatePreview(); } })));
             _faceField.name = "texture-preview-face"; _faceField.tooltip = Text("textureCubeFaceHint", "Cubemap face. This does not change the material.");
-            _faceField.style.width = 38; _faceField.style.minWidth = 38; _faceField.style.height = 18;
-            _faceField.style.marginTop = 0; _faceField.style.marginBottom = 0;
+            _faceField.AddToClassList("thry-texture-face");
             _faceField.style.display = DisplayStyle.None; title.Add(_faceField);
             _description = new Label(); _description.AddToClassList("thry-muted"); _description.AddToClassList("thry-texture-description"); info.Add(_description);
             FullTextTooltip(_name); FullTextTooltip(_description);

@@ -55,7 +55,7 @@ namespace Thry.ThryEditor
                         lengthInput.style.flexDirection = FlexDirection.Row; lengthInput.style.alignItems = Align.Center;
                         lengthSlider.style.flexGrow = 1; lengthSlider.style.flexShrink = 1; lengthSlider.style.minWidth = 0;
                         var lengthNumber = new FloatField { name = "component-3" };
-                        lengthNumber.style.width = 54; lengthNumber.style.flexShrink = 0; lengthNumber.style.marginLeft = 6;
+                        lengthNumber.AddToClassList("thry-vector-length-number");
                         lengthInput.Add(lengthSlider); lengthInput.Add(lengthNumber);
                         Track(lengthSlider, () =>
                         {
@@ -304,13 +304,30 @@ namespace Thry.ThryEditor
         private int _focusedHandle, _pointerId = -1;
         private Vector4 _original;
         private Vector3 _dragBounds;
+        static readonly CustomStyleProperty<float> RampStroke = new CustomStyleProperty<float>("--ramp-stroke-width");
+        static readonly CustomStyleProperty<float> RampHandleRadius = new CustomStyleProperty<float>("--ramp-handle-radius");
+        static readonly CustomStyleProperty<Color> RampLineColor = new CustomStyleProperty<Color>("--ramp-line-color");
+        static readonly CustomStyleProperty<Color> RampHandleColor = new CustomStyleProperty<Color>("--ramp-handle-color");
+        float _strokeWidth = 2, _handleRadius = 4;
+        Color _lineColor = new Color(.48f, .68f, .84f), _handleColor = new Color(.8f, .8f, .8f);
+        float PlotInset => Mathf.Max(6, _handleRadius + _strokeWidth);
+
         internal RetainedRamp(Func<Vector4> read,Action<Vector4> write,string[] modes)
             : this(read,(handle,value,mask)=>write(value),modes,null,null,null) {}
         internal RetainedRamp(Func<Vector4> read,Action<int,Vector4,int> write,string[] modes,Action<int> begin,Action cancel,Action end)
         {
             _read=read;_write=write;_begin=begin;_cancel=cancel;_end=end;_unclampedZ=modes.Any(m=>m.Equals("unclampedZ",StringComparison.OrdinalIgnoreCase));_unclampedW=modes.Any(m=>m.Equals("unclampedW",StringComparison.OrdinalIgnoreCase));
             _normalized = modes.Any(m => m.Equals("normalized", StringComparison.OrdinalIgnoreCase));
-            AddToClassList("thry-ramp"); style.height=54; focusable=true; generateVisualContent+=Draw;
+            AddToClassList("thry-ramp"); focusable=true; generateVisualContent+=Draw;
+            RegisterCallback<CustomStyleResolvedEvent>(e => {
+                if (e.target != this) return;
+                float number; Color color;
+                _strokeWidth = customStyle.TryGetValue(RampStroke, out number) ? Mathf.Max(0, number) : 2;
+                _handleRadius = customStyle.TryGetValue(RampHandleRadius, out number) ? Mathf.Max(1, number) : 4;
+                _lineColor = customStyle.TryGetValue(RampLineColor, out color) ? color : new Color(.48f, .68f, .84f);
+                _handleColor = customStyle.TryGetValue(RampHandleColor, out color) ? color : new Color(.8f, .8f, .8f);
+                MarkDirtyRepaint();
+            });
             tooltip="Drag an endpoint. Escape cancels the drag. Home/End selects an endpoint; arrow keys adjust it. Shift moves faster, Alt moves slower.";
             RegisterCallback<PointerDownEvent>(e =>
             {
@@ -327,9 +344,9 @@ namespace Thry.ThryEditor
                 var v = _read();
                 // Freeze the plot's scale for this gesture and stop at its edges.
                 // Recomputing it from each new value causes runaway magnification.
-                float time = Mathf.Clamp01((e.localPosition.x - 6) / Mathf.Max(1, contentRect.width - 12)) * _dragBounds.x;
+                float time = Mathf.Clamp01((e.localPosition.x - PlotInset) / Mathf.Max(1, contentRect.width - 2 * PlotInset)) * _dragBounds.x;
                 float value = Mathf.Lerp(_dragBounds.z, _dragBounds.y,
-                    Mathf.Clamp01((e.localPosition.y - 6) / Mathf.Max(1, contentRect.height - 12)));
+                    Mathf.Clamp01((e.localPosition.y - PlotInset) / Mathf.Max(1, contentRect.height - 2 * PlotInset)));
                 if (_handle == 0)
                 {
                     v.z = Mathf.Clamp(time, 0, Mathf.Max(0, Mathf.Min(v.w, _unclampedZ ? _dragBounds.x : 1)));
@@ -386,14 +403,14 @@ namespace Thry.ThryEditor
         private Vector2 Point(float t, float value, Vector4 v)
         {
             var bounds = _handle >= 0 ? _dragBounds : Bounds(v);
-            return new Vector2(6 + Mathf.Clamp01(t / bounds.x) * (contentRect.width - 12),
-                6 + Mathf.InverseLerp(bounds.z, bounds.y, value) * (contentRect.height - 12));
+            return new Vector2(PlotInset + Mathf.Clamp01(t / bounds.x) * Mathf.Max(0, contentRect.width - 2 * PlotInset),
+                PlotInset + Mathf.InverseLerp(bounds.z, bounds.y, value) * Mathf.Max(0, contentRect.height - 2 * PlotInset));
         }
         private void Draw(MeshGenerationContext context)
         {
-            var v=_read(); var p=context.painter2D;p.lineWidth=2;p.strokeColor=new Color(.48f,.68f,.84f);p.BeginPath();p.MoveTo(Point(0,v.x,v));p.LineTo(Point(v.z,v.x,v));p.LineTo(Point(v.w,v.y,v));p.LineTo(Point(Mathf.Max(1,v.w),v.y,v));p.Stroke();
+            var v=_read(); var p=context.painter2D;p.lineWidth=_strokeWidth;p.strokeColor=_lineColor;p.BeginPath();p.MoveTo(Point(0,v.x,v));p.LineTo(Point(v.z,v.x,v));p.LineTo(Point(v.w,v.y,v));p.LineTo(Point(Mathf.Max(1,v.w),v.y,v));p.Stroke();
             var points=new[]{Point(v.z,v.x,v),Point(v.w,v.y,v)};
-            for(int i=0;i<points.Length;i++){p.fillColor=focusController?.focusedElement==this&&i==_focusedHandle?new Color(.48f,.68f,.84f):new Color(.8f,.8f,.8f);p.BeginPath();p.Arc(points[i],4,0,360);p.Fill();}
+            for(int i=0;i<points.Length;i++){p.fillColor=focusController?.focusedElement==this&&i==_focusedHandle?_lineColor:_handleColor;p.BeginPath();p.Arc(points[i],_handleRadius,0,360);p.Fill();}
         }
     }
 }

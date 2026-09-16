@@ -53,12 +53,8 @@ namespace Thry.ThryEditor
             _rowBandRefresh = schedule.Execute(UpdateRowBands); _rowBandRefresh.Pause();
             RegisterCallback<GeometryChangedEvent>(e => RequestRowBands());
             AddToClassList("thry-inspector");
-            var sheet = Resources.Load<StyleSheet>("ThryInspector");
+            var sheet = Resources.Load<StyleSheet>("ThryTheme");
             if (sheet != null) styleSheets.Add(sheet);
-            var searchSheet = Resources.Load<StyleSheet>("ThrySearch");
-            if (searchSheet != null) styleSheets.Add(searchSheet);
-            var polishSheet = Resources.Load<StyleSheet>("ThryControlPolish");
-            if (polishSheet != null) styleSheets.Add(polishSheet);
             RetainedAvailability.Install(this);
 
             _chrome = new VisualElement { name = "thry-chrome" };
@@ -85,7 +81,7 @@ namespace Thry.ThryEditor
             searchIcon.generateVisualContent += context => {
                 var painter = context.painter2D;
                 painter.lineWidth = 1.8f;
-                painter.strokeColor = EditorGUIUtility.isProSkin ? new Color(.74f,.74f,.74f) : new Color(.35f,.35f,.35f);
+                painter.strokeColor = searchIcon.resolvedStyle.color;
                 painter.BeginPath(); painter.Arc(new Vector2(7,7),4.5f,0,360); painter.Stroke();
                 painter.BeginPath(); painter.MoveTo(new Vector2(10.3f,10.3f)); painter.LineTo(new Vector2(15,15)); painter.Stroke();
             };
