@@ -558,6 +558,7 @@ namespace Thry.ThryEditor
                 e.PreventDefault(); e.StopImmediatePropagation();
                 Model.Shader.ActivateRetained();
                 var menu = property.RetainedContextMenu();
+                RetainedPropertyClipboard.AddMenu(menu, Model, property);
                 menu.AddSeparator("");
                 menu.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "favorite", "Favorite")), _view.IsFavorite(property), () => _view.ToggleFavorite(property));
                 _view.ShowLegacyMenu(menu, element);
