@@ -5,9 +5,9 @@
 .thry-positioning-panel > .thry-section-content { padding: 5px; }
 .thry-positioning-tools { margin: 0 0 5px; padding-bottom: 4px; border-bottom-width: 1px; border-bottom-color: #494949; }
 .thry-positioning-actions { flex-direction: row; }
-.thry-positioning-actions > .thry-positioning-button { flex-grow: 1; flex-basis: 0; min-width: 0; height: 25px; margin: 0; padding: 0 5px; flex-direction: row; align-items: center; justify-content: center; background-color: #444444; border-width: 1px; border-color: #5a5a5a; border-radius: 4px; color: #c4c4c4; }
+.thry-positioning-actions > .thry-positioning-button { flex-grow: 1; flex-basis: 0; min-width: 0; height: 25px; margin: 0; padding: 0 5px; flex-direction: row; align-items: center; justify-content: center; background-color: #444444; border-width: 1px; border-color: #5a5a5a; border-radius: 4px; color: var(--thry-caption-color); }
 .thry-positioning-actions > .thry-positioning-secondary { margin-left: 3px; }
-.thry-positioning-button > Label { margin: 0; font-size: 12px; color: #c4c4c4; }
+.thry-positioning-button > Label { margin: 0; font-size: 12px; color: var(--thry-caption-color); }
 .thry-positioning-icon { width: 16px; height: 16px; min-width: 16px; margin-right: 6px; color: #a6e22e; }
 .thry-positioning-actions > .thry-positioning-button:hover { background-color: #515151; border-color: #747474; }
 .thry-positioning-actions > .thry-positioning-button:focus { border-color: #7aadd6; }

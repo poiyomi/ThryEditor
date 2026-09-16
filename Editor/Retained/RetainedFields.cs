@@ -68,7 +68,16 @@ namespace Thry.ThryEditor
             var updates = _updateSnapshot ?? (_updateSnapshot = _updates.ToArray());
             using (RetainedPropertyDefaults.BeginEvaluation(Model.Shader))
                 foreach (var binding in updates)
-                    if (include == null || include(binding.Element)) { binding.Update(); LastSynchronizeCount++; }
+                    if (AncestorsDisplayed(binding.Element) && (include == null || include(binding.Element))) { binding.Update(); LastSynchronizeCount++; }
+        }
+        // Check ancestors, not the element itself: a hidden conditional field must
+        // still be able to show itself again. Inline display reflects foldout changes
+        // immediately, before UI Toolkit's next layout pass.
+        internal static bool AncestorsDisplayed(VisualElement element)
+        {
+            for (var parent = element.parent; parent != null; parent = parent.parent)
+                if (parent.style.display == DisplayStyle.None) return false;
+            return true;
         }
         internal void Track(VisualElement element, Action update)
         {
@@ -556,13 +565,17 @@ namespace Thry.ThryEditor
                 // Handle the gesture before native text/color/object fields focus or
                 // consume it. Their default focus action otherwise closes the new menu.
                 e.PreventDefault(); e.StopImmediatePropagation();
-                Model.Shader.ActivateRetained();
-                var menu = property.RetainedContextMenu();
-                RetainedPropertyClipboard.AddMenu(menu, Model, property);
-                menu.AddSeparator("");
-                menu.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "favorite", "Favorite")), _view.IsFavorite(property), () => _view.ToggleFavorite(property));
-                _view.ShowLegacyMenu(menu, element);
+                ShowPropertyMenu(element, property);
             }, TrickleDown.TrickleDown);
+        }
+        private void ShowPropertyMenu(VisualElement element, ShaderProperty property)
+        {
+            Model.Shader.ActivateRetained();
+            var menu = property.RetainedContextMenu();
+            RetainedPropertyClipboard.AddMenu(menu, Model, property);
+            menu.AddSeparator("");
+            menu.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "favorite", "Favorite")), _view.IsFavorite(property), () => _view.ToggleFavorite(property));
+            _view.ShowLegacyMenu(menu, element);
         }
         private void TextureAssetDisplay(ObjectField field, ShaderTextureProperty property)
         {

@@ -1,0 +1,87 @@
+.thry-pathing { margin: 5px 1px 9px; }
+.pathing-row { flex-direction: row; align-items: center; }
+.pathing-topbar { justify-content: flex-end; padding: 0 0 3px; }
+.pathing-eyebrow { font-size: 10px; color: var(--thry-muted-color); -unity-font-style: bold; flex-grow: 1; }
+.pathing-topbar > Toggle { font-size: 10px; margin: 0; }
+.pathing-preview { background-color: #282828; border-width: 1px; border-color: #494949; border-radius: 4px; padding: 6px 7px; margin-bottom: 5px; }
+.pathing-preview-toolbar { margin-bottom: 8px; }
+.pathing-preview Button { margin: 0 0 0 4px; height: 23px; font-size: 11px; background-color: #454545; border-color: #525252; color: #e4e4e4; }
+.pathing-preview .pathing-lane-label { width: 25px; min-width: 25px; margin: 0 7px 0 0; padding: 0; background-color: transparent; border-width: 0; -unity-font-style: bold; }
+.pathing-lane { height: 22px; flex-grow: 1; margin-bottom: 2px; }
+.pathing-preview-note { color: var(--thry-muted-color); font-size: 10px; white-space: normal; margin: 4px 0 0; }
+.pathing-preview > Slider { margin: 5px 0 0 30px; }
+.pathing-fold { border-width: 0; margin: 0 0 3px; padding: 0; background-color: transparent; }
+.pathing-fold > Toggle { height: var(--thry-section-height); margin: 0; padding: 0 4px; border-radius: 4px; background-color: #494949; font-size: var(--thry-font-size); -unity-font-style: bold; }
+.pathing-fold > .unity-foldout__content { margin-left: 0; padding: 4px 0 4px 8px; }
+.pathing-help { color: var(--thry-muted-color); font-size: 11px; white-space: normal; margin: 3px 4px 8px; }
+.pathing-grid { border-width: 0; border-radius: 0; overflow: hidden; background-color: transparent; margin-bottom: 7px; }
+.pathing-grid-row { min-height: 27px; align-items: stretch; border-bottom-width: 0; }
+.pathing-grid-label { width: 18%; min-width: 60px; flex-shrink: 0; font-size: var(--thry-font-size); color: var(--thry-caption-color); margin: 0; padding: 4px 3px 4px 7px; -unity-text-align: middle-left; }
+.pathing-cell { width: 20.5%; flex-grow: 1; flex-basis: 0; min-width: 0; padding: 2px 3px; justify-content: center; border-left-width: 0; }
+.pathing-cell.pathing-selected { background-color: transparent; }
+.pathing-cell.pathing-off { opacity: .53; }
+.pathing-cell > Button { height: 26px; min-width: 0; padding: 0 2px; margin: 0; border-width: 0; background-color: transparent; -unity-font-style: bold; font-size: 11px; }
+.pathing-cell > Label { -unity-text-align: middle-center; }
+.pathing-cell .thry-property { min-width: 0; flex-grow: 1; }
+.pathing-cell .thry-property-row { min-width: 0; padding: 0; margin: 0; }
+.pathing-cell .thry-property-label { display: none; }
+.pathing-cell .thry-property-value { min-width: 0; margin: 0; padding: 0; flex-grow: 1; }
+.pathing-cell .thry-inline { min-width: 0; margin: 0; padding: 0; }
+.pathing-cell .unity-base-field { margin: 0; min-width: 0; flex-grow: 1; }
+.pathing-cell .unity-base-field__input { min-width: 0; }
+.pathing-cell .unity-base-field__label { display: none; }
+/* The native label is both the visible grip and the drag target. */
+.pathing-cell .pathing-component .pathing-value-grip { display: flex; width: 7px; min-width: 7px; max-width: 7px; height: 14px; min-height: 14px; flex-shrink: 0; align-self: center; margin: 0 3px 0 0; padding: 0; border-radius: 3px; background-color: #808080; }
+.pathing-cell .pathing-component .pathing-value-grip:hover { background-color: #e6db74; }
+.thry-light .pathing-cell .pathing-component .pathing-value-grip { background-color: #888888; }
+.thry-light .pathing-cell .pathing-component .pathing-value-grip:hover { background-color: #82721e; }
+.pathing-cell .thry-components { flex-grow: 1; min-width: 0; }
+.pathing-cell .thry-component { flex-grow: 1; min-width: 0; flex-basis: 0; }
+.pathing-cell .unity-base-popup-field__text { font-size: 11px; padding-left: 2px; }
+.pathing-cell .unity-base-popup-field__arrow { width: 9px; }
+.pathing-cell .unity-text-input { font-size: 11px; }
+.pathing-cell .unity-color-field__eyedropper { display: none; }
+.pathing-cell .unity-color-field__input { margin: 0; }
+.pathing-component { flex-grow: 1; }
+.pathing-cell .pathing-auto-label { color: var(--thry-muted-color); font-size: 10px; -unity-text-align: middle-center; margin: 0; }
+.pathing-routing-note { font-size: 10px; color: var(--thry-muted-color); margin: 0; }
+.pathing-actions { justify-content: flex-end; margin: 3px 0 4px; }
+.pathing-actions Button { font-size: 11px; height: 25px; padding: 0 9px; margin: 0 0 0 5px; border-radius: 4px; }
+.thry-light .pathing-eyebrow { color: #505050; }
+.thry-light .pathing-preview .pathing-eyebrow { color: #c4c4c4; }
+.thry-light .pathing-fold { background-color: #d0d0d0; border-color: #ababab; }
+.thry-light .pathing-help { color: #505050; }
+.thry-light .pathing-grid { background-color: #d6d6d6; border-color: #aaaaaa; }
+.thry-light .pathing-grid-row { border-bottom-color: #bcbcbc; }
+.thry-light .pathing-grid-label { color: #3b3b3b; }
+.thry-light .pathing-cell { border-left-color: #bcbcbc; }
+.thry-light .pathing-cell.pathing-selected { background-color: #c4c4c4; }
+.thry-light .pathing-cell .pathing-auto-label { color: #606060; }
+.thry-light .pathing-routing-note { color: #505050; }
+
+/* Match the inspector toolbar's Monokai accents on neutral Poiyomi surfaces. */
+.pathing-preview Button:hover, .pathing-actions Button:hover { background-color: #505050; border-color: #707070; }
+.pathing-actions Button { background-color: #454545; border-color: #525252; color: #e4e4e4; }
+.pathing-preview Button:focus, .pathing-actions Button:focus { border-color: #e6db74; }
+.pathing-grid-heading .pathing-cell.pathing-channel-0.pathing-selected { background-color: #453038; }
+.pathing-grid-heading .pathing-cell.pathing-channel-1.pathing-selected { background-color: #39422e; }
+.pathing-grid-heading .pathing-cell.pathing-channel-2.pathing-selected { background-color: #304146; }
+.pathing-grid-heading .pathing-cell.pathing-channel-3.pathing-selected { background-color: #3c3548; }
+.pathing-channel-0 .pathing-value-grip:hover { background-color: #f92672; }
+.pathing-channel-1 .pathing-value-grip:hover { background-color: #a6e22e; }
+.pathing-channel-2 .pathing-value-grip:hover { background-color: #66d9ef; }
+.pathing-channel-3 .pathing-value-grip:hover { background-color: #ae81ff; }
+.thry-light .pathing-cell.pathing-selected { background-color: #c4c4c4; }
+.thry-light .pathing-actions Button { background-color: #dedede; border-color: #aaaaaa; color: #333333; }
+.thry-light .pathing-actions Button:hover { background-color: #eeeeee; }
+
+.thry-light .pathing-preview-note { color: #bcbcbc; }
+
+.pathing-grid-heading { background-color: #494949; border-radius: 4px; }
+.pathing-property-caption { justify-content: center; overflow: hidden; }
+.pathing-property-caption > .thry-property-row { min-height: 20px; margin: 0; }
+.pathing-property-caption .thry-property-label { width: auto; flex-grow: 0; flex-shrink: 1; min-width: 0; padding-right: 8px; font-size: var(--thry-font-size); }
+.thry-light .pathing-fold { background-color: transparent; }
+.thry-light .pathing-fold > Toggle, .thry-light .pathing-grid-heading { background-color: #b4b4b4; }
+.thry-light .pathing-grid { background-color: transparent; }
+.thry-light .pathing-cell.pathing-selected { background-color: transparent; }
