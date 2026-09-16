@@ -638,8 +638,10 @@ namespace Thry.ThryEditor
                     ? normalMap ? normalPreview.Target ?? normalPreview.Render(texture, 0, 0) ?? texture : texture
                     : AssetPreview.GetAssetPreview(texture) ?? AssetPreview.GetMiniThumbnail(texture);
                 preview.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
-                assetName.text = mixed ? RetainedText.Get(Model.Shader,"multiple_textures","Multiple textures") : assigned
-                    ? RetainedText.TextureCaption(texture) : RetainedText.Get(Model.Shader,"choose_texture","Choose texture…");
+                // Leave the empty label to Unity so native refreshes cannot alternate
+                // between its None label and a custom picker prompt.
+                if (mixed) assetName.text = RetainedText.Get(Model.Shader,"multiple_textures","Multiple textures");
+                else if (assigned) assetName.text = RetainedText.TextureCaption(texture);
                 assetName.tooltip = assigned ? AssetDatabase.GetAssetPath(texture) : "Click to choose a texture, or drag one here";
                 field.EnableInClassList("thry-asset-unassigned", !assigned);
             });
