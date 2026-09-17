@@ -5,6 +5,35 @@ using UnityEngine.UIElements;
 
 namespace Thry.ThryEditor
 {
+    internal sealed partial class RetainedFields
+    {
+        internal void DecoratePreset(VisualElement root, ShaderPart part, bool header = false)
+        {
+            if (!Model.Shader.IsPresetEditor || part == null) return;
+            Label indicator = null;
+            Track(root, () =>
+            {
+                if (indicator == null)
+                {
+                    var row = header || root.ClassListContains("thry-property-row") ? root
+                        : root.Children().FirstOrDefault(e => e.ClassListContains("thry-property-row"));
+                    if (row == null) return;
+                    indicator = new Label("P")
+                    {
+                        name = "preset-indicator-" + (part.MaterialProperty?.name ?? part.CustomStringTagID ?? part.PropertyIdentifier),
+                        tooltip = "Is part of preset"
+                    };
+                    indicator.AddToClassList("thry-preset-indicator");
+                    row.Insert(0, indicator);
+                }
+                // Read the persisted flag so reloads and external tag edits agree
+                // with the preset contents, without relying on cached IsPreset.
+                indicator.style.display = Presets.IsPreset(Model.Shader.Materials[0], part)
+                    ? DisplayStyle.Flex : DisplayStyle.None;
+            });
+        }
+    }
+
     public partial class Presets
     {
         internal static VisualElement CreateEditorControls(RetainedMaterialModel model, RetainedFields fields)
