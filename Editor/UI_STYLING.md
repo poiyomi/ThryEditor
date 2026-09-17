@@ -7,9 +7,10 @@ Edit `Resources/ThryTheme.uss`. The active Studio visual direction keeps the est
 - The original neutral dark/light palettes and focus colors, with the new Studio shapes and layout.
 - The original Monokai icons in a compact toolbar well, and a joined search/filter strip that stacks at narrow widths.
 - Neutral shader-lock, Presets, and rendering-mode actions with matching surfaces and hover states.
-- Bake Color Adjust, texture warning fixes, Raycast, and Scene Tools use the shared `thry-action-button` role, including disabled and focused states.
+- All retained buttons automatically share normal, hover, pressed, disabled, and focused styling, including Bake Color Adjust, positioning, Pathing, toolbars, and companion windows. Disabled actions keep muted text and respond visually to hover while remaining unclickable. Bake Color Adjust has a Monokai yellow palette icon; Raycast and Scene Tools retain their original green icons, with light-skin equivalents for each.
 - Connected section surfaces and matching header/child frames for nested groups.
 - Outlined editable fields, quiet property rows, neutral checkboxes, and slim slider handles without outline rings.
+- Basic material fields, vector components, slider number boxes, and inline actions use the same `--thry-control-height` (22px). Pathing cells cannot stretch these fields taller; previews and multi-row drawers keep their own height.
 - Texture fields show a thumbnail only when assigned and use the same text contrast for empty and assigned values.
 - Shared surface and interaction colors for Pathing, retained menus, and companion windows.
 
@@ -46,13 +47,17 @@ Old `ThryInspector.uss`, `ThrySearch.uss`, and the other component resources are
 
 For future experiments, change the shared tokens first. Test narrow and wide inspectors, Unity's light/dark skins, companion windows, and focus/disabled/selected states. Some sizes are coupled (for example, a search field contains an inner field); change related dimensions together. Make permanent visual changes here so all retained surfaces share them.
 
+Button surface states are defined once near the start of `ThryTheme.uss`. Use `--thry-button-background`, `--thry-button-hover-background`, `--thry-button-pressed-background`, and `--thry-button-disabled-background` to theme them. New `Button` elements inherit these rules without an opt-in class. Transparent icon/navigation buttons and selected buttons override only these tokens; texture disclosure labels stay transparent and borderless in every state. Component rules keep layout, typography, and icon colors. Do not add component-specific button background or hover rules.
+
 ## Boundaries
 
 The normal inspector is UI Toolkit. A stylesheet cannot change the interiors of legacy IMGUI fallback controls, native dialogs, or third-party embedded tools. Material-authored colors, animated-property markers, explicit shader drawer settings, and layout measurements stay data-driven. Pathing preview paint still represents material data; its neutral background and channel markers read the shared theme. Independent TPS, shader-generator/debugger, and translator UIs have separate styling and require explicit integration before this can be described as a theme for every Poiyomi tool.
 
 ## Pathing
 
-Pathing uses the shared panel, subsection, field, selection, focus, and RGBA channel roles. Its preview, headings, action buttons, drag grips, selected-column indicator, labels, and painted lane markers no longer define a separate palette. The path identity colors also style the existing texture-packer channel badges. Material-authored path colors remain preview data. Starting-look and copy-motion actions use the same retained popup menu as the inspector.
+Pathing uses the shared panel, subsection, field, selection, focus, and RGBA channel roles. Its preview, headings, action buttons, drag grips, selected-column indicator, labels, and painted lane markers no longer define a separate palette. The Monokai channel colors (pink, green, cyan, and off-white, with darker light-skin equivalents) also style the existing texture-packer channel badges. Material-authored path colors remain preview data. Starting-look and copy-motion actions use the same retained popup menu as the inspector.
+
+Motion preview is unframed, with a Hide/Show control beside Pause and Solo. Hiding the lanes and scrubber suspends the preview timer; showing them preserves the previous play/pause state. Preview limitations are available in its tooltip.
 
 The four-column grid retains compact labels and layout constraints to fit narrow inspectors. Shared radii, borders, text sizes, action-button heights, and spacing still propagate into it.
 

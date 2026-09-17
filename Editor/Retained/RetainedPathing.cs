@@ -25,12 +25,13 @@ namespace Thry.ThryEditor
         int selected, solo = -1;
         float previewTime = 2;
         double previous;
-        bool playing = true, classicBuilt;
+        bool playing = true, classicBuilt, previewHidden;
         IVisualElementScheduledItem previewSchedule;
         readonly List<VisualElement> visibilityAncestors = new List<VisualElement>();
         readonly List<ScrollView> visibilityScrolls = new List<ScrollView>();
         Button play;
         Slider scrub;
+        VisualElement previewContent;
 
         internal static bool CanBuild(ShaderGroup section, RetainedMaterialModel model)
         {
@@ -134,8 +135,8 @@ namespace Thry.ThryEditor
         void UpdatePreviewActivity()
         {
             if (previewSchedule == null) return;
-            var preview = strips[0].parent.parent;
-            bool active = panel != null && playing && group.RetainedExpanded
+            var preview = previewContent;
+            bool active = panel != null && playing && !previewHidden && group.RetainedExpanded
                 && visual.style.display != DisplayStyle.None && visible
                 && RetainedFields.AncestorsDisplayed(this) && preview.worldBound.height > 0;
             if (active)
@@ -164,23 +165,30 @@ namespace Thry.ThryEditor
 
         void BuildPreview()
         {
-            var preview = new VisualElement { name = "pathing-preview" }; preview.AddToClassList("pathing-preview"); visual.Add(preview);
+            var preview = new VisualElement { name = "pathing-preview", tooltip = "Shape and timing for the first selected material. Masks and AudioLink are excluded." }; preview.AddToClassList("pathing-preview"); visual.Add(preview);
             var title = Row(); title.AddToClassList("pathing-preview-toolbar"); var label = new Label("MOTION PREVIEW"); label.AddToClassList("pathing-eyebrow"); title.Add(label);
             play = new Button(() => { playing = !playing; play.text = playing ? "Pause" : "Play"; UpdatePreviewActivity(); }) { text = "Pause", name = "pathing-preview-play", tooltip = "Play or pause this inspector preview. Does not change the material." }; title.Add(play);
             var isolate = new Button(() => { solo = solo < 0 ? selected : -1; Synchronize(); }) { text = "Solo", name = "pathing-preview-solo", tooltip = "Isolate the selected lane in this preview only." };
-            fields.Track(isolate, () => { isolate.text = solo < 0 ? "Solo" : "Show all"; }); title.Add(isolate); preview.Add(title);
+            fields.Track(isolate, () => { isolate.text = solo < 0 ? "Solo" : "Show all"; }); title.Add(isolate);
+            var hide = new Button { text = "Hide", name = "pathing-preview-hide", tooltip = "Hide the motion preview." };
+            hide.clicked += () => {
+                previewHidden = !previewHidden;
+                previewContent.style.display = previewHidden ? DisplayStyle.None : DisplayStyle.Flex;
+                hide.text = previewHidden ? "Show" : "Hide";
+                hide.tooltip = previewHidden ? "Show the motion preview." : "Hide the motion preview.";
+                preview.EnableInClassList("pathing-preview-hidden", previewHidden);
+                UpdatePreviewActivity();
+            };
+            title.Add(hide); preview.Add(title);
+            previewContent = new VisualElement { name = "pathing-preview-content" }; previewContent.AddToClassList("pathing-preview-content"); preview.Add(previewContent);
             for (int i = 0; i < 4; i++)
             {
                 int channel = i; var row = Row(); var badge = new Button(() => Select(channel)) { text = letters[i], tooltip = "Select " + letters[i] + " path" }; badge.AddToClassList("pathing-lane-label"); badge.AddToClassList("pathing-accent-" + i); row.Add(badge);
                 var strip = new VisualElement { name = "pathing-lane-" + i }; strip.AddToClassList("pathing-lane"); strip.AddToClassList("pathing-accent-" + i);
-                strip.generateVisualContent += c => PaintLane(c, strip, channel); strip.RegisterCallback<PointerDownEvent>(e => Select(channel)); strips[i] = strip; row.Add(strip); preview.Add(row);
+                strip.generateVisualContent += c => PaintLane(c, strip, channel); strip.RegisterCallback<PointerDownEvent>(e => Select(channel)); strips[i] = strip; row.Add(strip); previewContent.Add(row);
             }
             scrub = new Slider(0, 1) { name = "pathing-preview-scrub", tooltip = "Scrub a ten-second preview window. No material values are changed." };
-            scrub.RegisterValueChangedCallback(e => { playing = false; play.text = "Play"; UpdatePreviewActivity(); previewTime = e.newValue * 10; foreach (var s in strips) s.MarkDirtyRepaint(); }); preview.Add(scrub);
-            var ends = Row(); ends.style.justifyContent = Justify.SpaceBetween;
-            var start = new Label("Start 0"); start.AddToClassList("pathing-preview-note"); ends.Add(start);
-            var end = new Label("End 1"); end.AddToClassList("pathing-preview-note"); ends.Add(end); preview.Add(ends);
-            var legend = new Label("Shape & timing · first selected material · masks & audio excluded"); legend.AddToClassList("pathing-preview-note"); preview.Add(legend);
+            scrub.RegisterValueChangedCallback(e => { playing = false; play.text = "Play"; UpdatePreviewActivity(); previewTime = e.newValue * 10; foreach (var s in strips) s.MarkDirtyRepaint(); }); previewContent.Add(scrub);
         }
         void Select(int channel) { selected = channel; if (solo >= 0) solo = channel; Synchronize(); }
         VisualElement Cell(VisualElement row, int channel)

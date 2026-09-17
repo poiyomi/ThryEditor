@@ -755,7 +755,10 @@ namespace Thry
         public override void OnClosed(Material material)
         {
             base.OnClosed(material);
-            UnregisterCallbacks();
+            // Closing/replacing the GUI must also destroy its auxiliary editors.
+            // Unregistering alone removes it from orphan cleanup while leaving
+            // those native objects (and their Undo handlers) alive.
+            Release();
             _isFirstOnGUICall = true;
             // A swap that never got drawn is not applied to whatever material this editor is reused for
             _doApplyRenderingPresetAfterSwap = false;
@@ -766,7 +769,8 @@ namespace Thry
         /// otherwise keeps the whole part tree reachable, and the MaterialEditors created per target set
         /// for cross editing, which Unity never destroys on its own. Reached from ReleaseOrphanedEditors
         /// once Unity has destroyed this editor's MaterialEditor (OnClosed is never called for that, see
-        /// s_editorsWithCallbacks), and from CrossEditor when it drops an instance it built itself.
+        /// s_editorsWithCallbacks), from OnClosed when Unity replaces the GUI, and from CrossEditor
+        /// when it drops an instance it built itself.
         /// </summary>
         public void Release()
         {

@@ -66,10 +66,10 @@
     --thry-dropdown-background: var(--thry-surface-color);
     --thry-dropdown-hover-background: var(--thry-hover-color);
     --thry-selection-background: #435563;
-    --thry-channel-r-color: #e1a4a4;
-    --thry-channel-g-color: #a6c8a0;
-    --thry-channel-b-color: #9ebfe0;
-    --thry-channel-a-color: #dadada;
+    --thry-channel-r-color: #f92672;
+    --thry-channel-g-color: #a6e22e;
+    --thry-channel-b-color: #66d9ef;
+    --thry-channel-a-color: #f8f8f2;
 }
 .thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
     --thry-background-color: #c8c8c8;
@@ -84,10 +84,10 @@
     --thry-dropdown-background: #d1d1d1;
     --thry-dropdown-hover-background: #dddddd;
     --thry-selection-background: #bfd1df;
-    --thry-channel-r-color: #973c3c;
-    --thry-channel-g-color: #406c38;
-    --thry-channel-b-color: #365f8a;
-    --thry-channel-a-color: #292929;
+    --thry-channel-r-color: #b9144c;
+    --thry-channel-g-color: #638f14;
+    --thry-channel-b-color: #257f96;
+    --thry-channel-a-color: #272822;
 }
 
 /* ===== ThryInspector ===== */
@@ -104,6 +104,74 @@
     --thry-section-background: #4d4d4d;
 }
 .thry-light { --thry-focus-color: #326f9c; --thry-caption-color: #292929; --thry-muted-color: #606060; --thry-value-color: #292929; }
+
+/* Every retained Button uses this state machine, including newly added actions.
+   Components own layout and icon colors; surface variants only override tokens.
+   Disabled buttons still acknowledge hover, but Unity keeps their actions disabled. */
+.thry-inspector, .thry-dropdown-menu {
+    --thry-button-background: var(--thry-action-background);
+    --thry-button-hover-background: var(--thry-action-hover-background);
+    --thry-button-pressed-background: #414141;
+    --thry-button-disabled-background: var(--thry-surface-color);
+    --thry-button-selected-hover-background: #4d6273;
+}
+.thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
+    --thry-button-pressed-background: #c4c4c4;
+    --thry-button-selected-hover-background: #cfe0ec;
+}
+.unity-button { border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); }
+.thry-inspector Button, .thry-dropdown-menu Button {
+    background-color: var(--thry-button-background);
+    border-color: var(--thry-button-background);
+    color: var(--thry-value-color);
+}
+.thry-inspector Button:disabled, .thry-dropdown-menu Button:disabled {
+    background-color: var(--thry-button-disabled-background);
+    border-color: var(--thry-button-disabled-background);
+    color: var(--thry-muted-color);
+}
+.thry-inspector Button:disabled > Label, .thry-dropdown-menu Button:disabled > Label { color: var(--thry-muted-color); }
+.thry-inspector Button:hover, .thry-dropdown-menu Button:hover {
+    background-color: var(--thry-button-hover-background);
+    border-color: var(--thry-button-hover-background);
+}
+.thry-inspector Button:enabled:active, .thry-dropdown-menu Button:enabled:active {
+    background-color: var(--thry-button-pressed-background);
+    border-color: var(--thry-focus-color);
+}
+.thry-inspector Button:focus, .thry-dropdown-menu Button:focus { border-color: var(--thry-focus-color); }
+
+/* Icon, navigation, and inline buttons share interaction states on a clear surface. */
+.thry-inspector .thry-icon-button,
+.thry-inspector .thry-text-button,
+.thry-inspector .thry-header-action,
+.thry-inspector .thry-fold-arrow,
+.thry-inspector .thry-footer Button,
+.thry-inspector .thry-saved-filters,
+.thry-inspector .thry-asset-clear,
+.thry-inspector .thry-texture-clear,
+.thry-inspector .thry-preset-small-action,
+.thry-inspector .thry-studio-node-field > Button,
+.thry-inspector .pathing-lane-label,
+.thry-inspector .pathing-cell > Button,
+.thry-inspector .thry-search Button {
+    --thry-button-background: transparent;
+    --thry-button-disabled-background: transparent;
+}
+/* Texture disclosure labels are part of the field row, with no button box. */
+.thry-inspector .thry-texture-label {
+    --thry-button-background: transparent;
+    --thry-button-hover-background: transparent;
+    --thry-button-pressed-background: transparent;
+    --thry-button-disabled-background: transparent;
+    border-width: 0;
+}
+.thry-inspector Button.thry-selected,
+.thry-inspector Button.thry-positioning-active {
+    --thry-button-background: var(--thry-selection-background);
+    --thry-button-hover-background: var(--thry-button-selected-hover-background);
+}
+
 .thry-inspector.thry-active {
     background-color: var(--thry-background-color);
     color: #e4e4e4;
@@ -120,12 +188,8 @@
 .thry-tools { flex-direction: row; align-items: center; flex-shrink: 0; margin-left: var(--thry-space-8); }
 .thry-icon-button {
     width: 26px; height: var(--thry-toolbar-height); padding: var(--thry-space-3); margin: 0 0 0 var(--thry-space-3);
-    border-width: var(--thry-border-width); border-color: #484848; border-radius: var(--thry-radius-button); background-color: #484848;
-}
-.thry-icon-button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
-.thry-icon-button:active { background-color: var(--thry-input-background); border-color: var(--thry-focus-color); }
-.thry-icon-button:focus { border-color: var(--thry-focus-color); }
-.thry-icon-button.thry-selected { background-color: #484848; border-color: #686868; }
+    border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); }
+
 .thry-icon-button Image { width: 18px; height: 18px; }
 .thry-navigation-group { padding-bottom: 0; }
 .thry-navigation { flex-direction: row; align-items: center; }
@@ -150,7 +214,7 @@
     background-color: #484848; border-color: #545454; border-width: var(--thry-border-width); border-radius: var(--thry-radius-panel); padding-left: 9px;
 }
 .thry-type-picker .unity-base-popup-field__text { color: #d4d4d4; font-size: var(--thry-type-body-small); }
-.thry-text-button { border-width: 0; background-color: transparent; color: var(--thry-caption-color); font-size: var(--thry-font-size); margin: 0; padding: var(--thry-space-2) 0; border-color: transparent; }
+.thry-text-button { border-width: 0; color: var(--thry-caption-color); font-size: var(--thry-font-size); margin: 0; padding: var(--thry-space-2) 0; }
 .thry-text-button:hover { color: var(--thry-accent-color); }
 .thry-text-button:focus { color: var(--thry-accent-color); }
 .thry-material-controls { margin-left: 0; margin-right: 0; }
@@ -174,11 +238,10 @@
 .thry-light .thry-changed-filter .unity-toggle__text { color: #454545; }
 .thry-light.thry-active { background-color: var(--thry-background-color); color: #252525; }
 .thry-light .thry-title { color: #252525; }
-.thry-light .thry-version, .thry-light .thry-icon-button { background-color: var(--thry-surface-color); }
-.thry-light .thry-icon-button { border-color: var(--thry-surface-color); }
-.thry-light .thry-icon-button { border-color: var(--thry-surface-color); }
+.thry-light .thry-version { background-color: var(--thry-surface-color); }
+
 .thry-light .thry-version, .thry-light .thry-state, .thry-light .thry-text-button { color: #5b5b5b; }
-.thry-light .thry-icon-button:hover { background-color: #ffffff; border-color: #ffffff; }
+
 .thry-light .thry-search { background-color: #ffffff; border-color: var(--thry-border-color); }
 .thry-light .thry-search .unity-base-text-field__input { color: #252525; }
 .thry-light .thry-search.thry-search-focused { border-color: var(--thry-accent-color); }
@@ -186,7 +249,7 @@
 .thry-light .thry-type-picker .unity-base-popup-field__text, .thry-light .thry-language .unity-base-popup-field__text { color: #454545; }
 .thry-light .thry-search-placeholder { color: #696969; }
 .thry-light .thry-state.thry-optimized { color: #4c7020; }
-.thry-light .thry-icon-button.thry-selected { background-color: #e5e5e5; border-color: #aaaaaa; }
+
 .thry-light .thry-empty { background-color: var(--thry-surface-color); color: #5b5b5b; }
 .thry-light .thry-empty-title { color: #252525; }
 
@@ -208,6 +271,21 @@
 .thry-property-label { width: 38%; min-width: 80px; max-width: 240px; flex-shrink: 0; margin: 0; padding: 0 var(--thry-space-8) 0 0; -unity-text-align: middle-left; color: var(--thry-caption-color); font-size: var(--thry-font-size); overflow: hidden; text-overflow: ellipsis; }
 .thry-property-value { flex-grow: 1; flex-shrink: 1; min-width: 0; }
 .thry-property-value > .unity-base-field { margin: 0; min-width: 0; min-height: var(--thry-control-height); }
+/* One outer height for ordinary material drawers. Cap flex growth so table
+   cells cannot stretch dropdowns/colors beyond the neighbouring number fields.
+   Multi-row and preview containers keep their content-driven height. */
+.thry-material-controls .thry-property-value > .unity-base-field,
+.thry-material-controls .thry-components > .thry-component,
+.thry-material-controls .thry-special-slider-row > .unity-base-field,
+.thry-material-controls .unity-base-slider .unity-base-text-field,
+.thry-material-controls .pathing-cell > .unity-base-field,
+.thry-material-controls .thry-property > .thry-action-button,
+.thry-material-controls .thry-property-value > Button,
+.thry-material-controls .thry-property-value > .thry-components > Button {
+    height: var(--thry-control-height);
+    min-height: var(--thry-control-height);
+    max-height: var(--thry-control-height);
+}
 .thry-input, .thry-component { font-size: var(--thry-font-size); }
 .thry-material-controls .unity-base-text-field__input, .thry-material-controls .unity-base-popup-field__input, .thry-material-controls .unity-object-field__input { background-color: var(--thry-field-background); border-color: var(--thry-control-border-color); border-width: var(--thry-border-width); border-radius: var(--thry-radius-control); min-height: var(--thry-control-height); padding: 0 var(--thry-space-6); -unity-text-align: middle-left; }
 .thry-material-controls .unity-base-text-field__input:focus, .thry-material-controls .unity-base-popup-field__input:focus { border-color: var(--thry-focus-color); }
@@ -227,7 +305,8 @@
 .thry-header-animation-dot, .thry-section-changed-dot { width: 5px; height: 5px; min-width: 5px; min-height: 5px; flex-shrink: 0; margin-left: var(--thry-space-5); border-radius: var(--thry-radius-compact); }
 .thry-section-content { padding: var(--thry-space-4) 0 var(--thry-space-4) var(--thry-space-8); }
 .thry-root-section > .thry-section-content { padding-top: var(--thry-space-7); }
-.thry-header-action, .thry-fold-arrow { border-width: 0; border-radius: var(--thry-radius-compact); background-color: transparent; width: 24px; height: 100%; min-height: 0; min-width: 24px; flex-shrink: 0; align-items: center; justify-content: center; margin: 0; padding: 0; color: #b8b8b8; border-color: transparent; }
+.thry-header-action,
+.thry-fold-arrow { border-width: 0; border-radius: var(--thry-radius-compact); width: 24px; height: 100%; min-height: 0; min-width: 24px; flex-shrink: 0; align-items: center; justify-content: center; margin: 0; padding: 0; color: #b8b8b8; }
 .thry-header-icon { width: 14px; height: 14px; flex-shrink: 0; --unity-image-tint-color: #b8b8b8; }
 .thry-fold-arrow .thry-header-icon { width: 14px; height: 14px; }
 .thry-header-action:hover .thry-header-icon, .thry-fold-arrow:hover .thry-header-icon { --unity-image-tint-color: #e4e4e4; }
@@ -235,9 +314,11 @@
 .thry-light .thry-header-icon { --unity-image-tint-color: #5d5d5d; }
 .thry-light .thry-header-action:hover .thry-header-icon, .thry-light .thry-fold-arrow:hover .thry-header-icon { --unity-image-tint-color: #252525; }
 .thry-light .thry-linked .thry-header-icon { --unity-image-tint-color: #326f9c; }
-.thry-header-action:hover { background-color: #595959; border-color: #595959; }
-.thry-section-header > .thry-fold-arrow:hover, .thry-section-header > .thry-fold-arrow:active, .thry-section-header > .thry-fold-arrow:focus { background-color: transparent; border-width: 0; }
-.thry-section-header > .thry-fold-arrow:hover { border-color: transparent; }
+
+.thry-section-header > .thry-fold-arrow:hover,
+.thry-section-header > .thry-fold-arrow:active,
+.thry-section-header > .thry-fold-arrow:focus { border-width: 0; }
+
 .thry-fold-arrow:focus .thry-header-icon { --unity-image-tint-color: #e4e4e4; }
 .thry-light .thry-fold-arrow:focus .thry-header-icon { --unity-image-tint-color: #252525; }
 .thry-header-reference .unity-toggle { margin: 0; }
@@ -247,21 +328,18 @@
 .thry-section-switch .unity-toggle__checkmark { width: 30px; height: 16px; border-radius: var(--thry-radius-switch); background-image: none; }
 .thry-excluded { background-color: #3d3d3d; color: #858585; }
 .thry-excluded .thry-section-title { color: #858585; }
-.thry-texture-label { flex-direction: row; align-items: center; justify-content: flex-start; background-color: transparent; border-width: 0; padding-left: 0; }
+.thry-texture-label { flex-direction: row; align-items: center; justify-content: flex-start; padding-left: 0; }
 .thry-texture-label .thry-texture-caret { width: 14px; height: 14px; margin-right: var(--thry-space-2); }
 .thry-texture-caption { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; padding: 0; -unity-text-align: middle-left; overflow: hidden; text-overflow: ellipsis; font-size: var(--thry-font-size); }
 .thry-texture-details { background-color: #333333; padding: var(--thry-space-8); margin: var(--thry-space-3) 0 var(--thry-space-5); border-radius: var(--thry-radius-panel); }
 .thry-texture-preview { height: 80px; margin-bottom: var(--thry-space-6); }
-.thry-lock-button { font-size: var(--thry-font-size); height: var(--thry-section-height); margin: 0 0 var(--thry-space-3); background-color: #505050; border-width: var(--thry-border-width); border-color: #505050; border-radius: var(--thry-radius-button); }
+.thry-lock-button { font-size: var(--thry-font-size); height: var(--thry-section-height); margin: 0 0 var(--thry-space-3); border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); }
 .thry-section-toolbar { flex-direction: row; padding: var(--thry-space-2); margin-bottom: var(--thry-space-6); }
 .thry-section-toolbar Button { flex-grow: 1; flex-basis: 0; margin: 0 var(--thry-space-1); height: var(--thry-toolbar-height); border-width: 0; border-radius: var(--thry-radius-button); }
-.thry-section-action-0 { background-color: #39734f; }
-.thry-section-action-1 { background-color: #525252; }
-.thry-section-action-2 { background-color: #385e85; }
-.thry-section-action-3 { background-color: #7d454a; }
+
 .thry-footer { flex-direction: row; align-items: center; margin-top: var(--thry-space-16); }
 .thry-footer-credit { flex-grow: 1; font-size: var(--thry-type-caption); color: var(--thry-muted-color); }
-.thry-footer Button { width: 26px; height: var(--thry-toolbar-height); background-color: transparent; border-width: 0; margin: 0 var(--thry-space-2); padding: var(--thry-space-1); border-color: transparent; }
+.thry-footer Button { width: 26px; height: var(--thry-toolbar-height); border-width: 0; margin: 0 var(--thry-space-2); padding: var(--thry-space-1); }
 .thry-footer Image { width: 24px; height: var(--thry-button-height); }
 .thry-animation-letter { width: 18px; min-width: 18px; height: 16px; flex-shrink: 0; margin: 0 var(--thry-space-2) 0 0; padding: 0; font-size: var(--thry-type-micro); -unity-font-style: bold; -unity-text-align: middle-center; }
 .thry-recording > .thry-property-row > .thry-property-value { border-left-width: var(--thry-border-width-strong); border-left-color: #f92672; }
@@ -273,25 +351,23 @@
 .thry-material-actions > .thry-presets-row { margin-bottom: 0; }
 .thry-presets-row { flex-direction: row; align-items: center; margin-bottom: var(--thry-space-8); }
 .thry-presets-row > * { flex-grow: 1; flex-basis: 0; min-width: 0; }
-.thry-presets-row > Button { font-size: var(--thry-font-size); height: var(--thry-section-height); background-color: #505050; border-width: var(--thry-border-width); border-color: #505050; border-radius: var(--thry-radius-button); margin: 0 var(--thry-space-6) 0 0; }
-.thry-lock-button:hover, .thry-presets-row > Button:hover { background-color: #5a5a5a; border-color: #5a5a5a; }
-.thry-lock-button:active, .thry-presets-row > Button:active { background-color: #414141; border-color: var(--thry-focus-color); }
-.thry-lock-button:focus, .thry-presets-row > Button:focus { border-color: var(--thry-focus-color); }
+.thry-presets-row > Button { font-size: var(--thry-font-size); height: var(--thry-section-height); border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); margin: 0 var(--thry-space-6) 0 0; }
+
 .thry-rendering-mode .thry-property-row { height: var(--thry-section-height); min-height: var(--thry-section-height); margin: 0; }
 .thry-rendering-mode .unity-base-popup-field { height: var(--thry-section-height); min-height: var(--thry-section-height); margin: 0; }
 .thry-rendering-mode .unity-base-popup-field__input { height: var(--thry-section-height); min-height: var(--thry-section-height); background-color: #505050; border-color: #606060; padding-left: var(--thry-space-10); }
 .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: #5a5a5a; border-color: #707070; }
 .thry-rendering-mode .unity-base-popup-field__text { -unity-text-align: middle-left; font-size: var(--thry-font-size); }
-.thry-light .thry-lock-button, .thry-light .thry-presets-row > Button, .thry-light .thry-rendering-mode .unity-base-popup-field__input { background-color: var(--thry-surface-color); border-color: var(--thry-border-color); }
-.thry-light .thry-lock-button, .thry-light .thry-presets-row > Button { border-color: var(--thry-surface-color); }
-.thry-light .thry-lock-button:hover, .thry-light .thry-presets-row > Button:hover, .thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: #eeeeee; border-color: #a0a0a0; }
-.thry-light .thry-lock-button:hover, .thry-light .thry-presets-row > Button:hover { border-color: #eeeeee; }
+.thry-light .thry-rendering-mode .unity-base-popup-field__input { background-color: var(--thry-surface-color); border-color: var(--thry-border-color); }
+
+.thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: #eeeeee; border-color: #a0a0a0; }
+
 .thry-with-reference { flex-direction: row-reverse; align-items: center; }
 .thry-with-reference > * { flex-grow: 1; flex-basis: 0; min-width: 0; }
 .thry-with-reference > .thry-property { margin-left: var(--thry-space-4); }
 .thry-ramp { background-color: var(--thry-input-background); border-radius: var(--thry-radius-panel-small); margin-bottom: var(--thry-space-4); }
-.thry-components > Button { min-width: 0; border-width: var(--thry-border-width); border-color: #414141; border-radius: var(--thry-radius-button); background-color: #414141; }
-.thry-components > Button.thry-selected { border-color: var(--thry-focus-color); background-color: var(--thry-selection-background); }
+.thry-components > Button { min-width: 0; border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); }
+
 .thry-property-label { min-width: 40px; max-width: none; }
 .thry-window { padding: var(--thry-space-12); min-width: 0; }
 .thry-window .unity-foldout { margin: var(--thry-space-8) 0; }
@@ -306,8 +382,8 @@
 .thry-window .unity-base-popup-field__input { height: auto; min-height: 0; margin: var(--thry-border-width); }
 .thry-material-controls .unity-base-popup-field__text,
 .thry-window .unity-base-popup-field__text { margin-top: 0; margin-bottom: 0; }
-.thry-window Button { border-width: var(--thry-border-width); border-color: var(--thry-surface-color); border-radius: var(--thry-radius-button); min-height: var(--thry-toolbar-height); background-color: var(--thry-surface-color); }
-.thry-window Button:hover { background-color: #505050; border-color: #505050; }
+.thry-window Button { border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); min-height: var(--thry-toolbar-height); }
+
 .thry-material-controls .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
 .thry-switch-knob { position: absolute; top: 2px; width: 10px; height: 10px; border-radius: var(--thry-radius-panel); background-color: #bcbcbc; }
 .thry-note { font-size: var(--thry-type-caption); color: var(--thry-muted-color); flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; }
@@ -338,7 +414,7 @@
 .thry-studio-columns .unity-base-field { min-height: var(--thry-button-height); margin-bottom: var(--thry-space-4); }
 .thry-studio-columns .unity-base-field__input { min-width: 0; }
 .thry-studio-columns .thry-components .unity-base-field__label { min-width: 0; width: auto; }
-.thry-primary-action { min-height: 32px; background-color: #386b51; color: #f0f0f0; -unity-font-style: bold; border-color: #386b51; }
+.thry-primary-action { min-height: 32px; -unity-font-style: bold; }
 .thry-light .thry-studio-preview, .thry-light .thry-studio-route { background-color: #c5c5c5; }
 .thry-light .thry-studio-section > .unity-foldout__toggle { background-color: #b9b9b9; border-color: #b9b9b9; }
 .thry-menu-card { background-color: var(--thry-background-color); border-color: #575757; border-width: var(--thry-border-width); border-radius: var(--thry-radius-panel); padding: var(--thry-space-4); }
@@ -360,7 +436,7 @@
 .thry-studio-source > .thry-components > .unity-popup-field { width: 100px; flex-grow: 0; }
 .thry-studio-source > .thry-studio-section > .unity-foldout__toggle { background-color: transparent; min-height: var(--thry-control-height); -unity-font-style: normal; color: #a8a8a8; border-color: transparent; }
 .thry-studio-source .thry-studio-section { margin: 0; }
-.thry-texture-workspace .thry-primary-action { background-color: #386b51; border-color: #386b51; }
+
 .thry-footer { flex-wrap: wrap; }
 .thry-footer-credit { min-width: 110px; margin-bottom: var(--thry-space-4); }
 .thry-footer Button { flex-shrink: 0; }
@@ -371,7 +447,7 @@
 .thry-lock-manager .unity-base-field__label { min-width: 64px; width: 64px; }
 .thry-lock-manager > .unity-toggle > .unity-base-field__label { min-width: 120px; width: 120px; }
 .thry-window .thry-search .unity-base-text-field__input { background-color: transparent; border-width: 0; padding: 0; }
-.thry-window .thry-search Button { min-height: 14px; height: 14px; width: 14px; padding: 0; border-width: 0; border-radius: 0; background-color: transparent; border-color: transparent; }
+.thry-window .thry-search Button { min-height: 14px; height: 14px; width: 14px; padding: 0; border-width: 0; border-radius: 0; }
 .thry-window .thry-search { flex-grow: 0; flex-shrink: 0; }
 .thry-window > .thry-components > .thry-search { flex-grow: 1; flex-shrink: 1; }
 
@@ -411,11 +487,9 @@
 .thry-asset-size { flex-shrink: 0; margin: 0 var(--thry-space-6); padding: 0; font-size: var(--thry-type-caption); color: #969696; -unity-text-align: middle-right; }
 .thry-texture-asset .unity-object-field-display__label { flex-grow: 1; color: var(--thry-value-color); }
 .thry-asset-tile > .unity-image { width: 23px; height: 20px; flex-shrink: 0; margin: 0; padding: 0; }
-.thry-texture-asset .thry-asset-clear { width: 18px; min-width: 18px; height: 18px; min-height: 18px; flex-shrink: 0; margin: 0 var(--thry-space-2) 0 0; padding: 0; border-width: 0; border-radius: var(--thry-radius-compact); background-color: transparent; align-items: center; justify-content: center; }
-.thry-texture-asset .thry-asset-clear:hover, .thry-texture-asset .thry-asset-clear:focus { background-color: #484848; }
+.thry-texture-asset .thry-asset-clear { width: 18px; min-width: 18px; height: 18px; min-height: 18px; flex-shrink: 0; margin: 0 var(--thry-space-2) 0 0; padding: 0; border-width: 0; border-radius: var(--thry-radius-compact); align-items: center; justify-content: center; }
 .thry-texture-asset:hover .thry-asset-tile { background-color: #414141; }
 .thry-light .thry-asset-tile { background-color: var(--thry-caption-color); border-right-color: #aaaaaa; }
-.thry-light .thry-texture-asset .thry-asset-clear:hover, .thry-light .thry-texture-asset .thry-asset-clear:focus { background-color: var(--thry-border-color); }
 .thry-material-controls .unity-object-field__selector {
     position: relative; left: auto; right: auto; top: auto; bottom: auto;
     width: 22px; min-width: 22px; height: 20px; min-height: 20px;
@@ -433,23 +507,20 @@
 .thry-texture-placeholder { flex-grow: 1; margin: 0; padding: 0; -unity-text-align: middle-center; color: #a0a0a0; font-size: var(--thry-type-caption); white-space: normal; }
 .thry-texture-summary .thry-texture-preview { border-width: var(--thry-border-width); border-color: #494949; }
 .thry-texture-summary .thry-texture-preview:hover, .thry-texture-summary .thry-texture-preview:focus { border-color: var(--thry-focus-color); }
-.thry-texture-summary .thry-texture-channels Button:hover { background-color: #505050; border-color: #505050; }
+
 .thry-texture-channels { flex-direction: row; align-items: center; margin-top: var(--thry-space-4); }
-.thry-texture-summary .thry-texture-channels Button { flex-grow: 0; flex-shrink: 0; flex-basis: auto; align-self: center; width: 24px; min-width: 24px; height: var(--thry-control-height); min-height: var(--thry-control-height); margin: 0 var(--thry-space-3) 0 0; padding: 0; border-radius: var(--thry-radius-compact); border-width: var(--thry-border-width); border-color: var(--thry-background-color); background-color: var(--thry-background-color); font-size: var(--thry-type-caption); -unity-text-align: middle-center; }
+.thry-texture-summary .thry-texture-channels Button { flex-grow: 0; flex-shrink: 0; flex-basis: auto; align-self: center; width: 24px; min-width: 24px; height: var(--thry-control-height); min-height: var(--thry-control-height); margin: 0 var(--thry-space-3) 0 0; padding: 0; border-radius: var(--thry-radius-compact); border-width: var(--thry-border-width); font-size: var(--thry-type-caption); -unity-text-align: middle-center; }
 .thry-texture-summary .thry-texture-channels #texture-channel-RGB { width: 36px; min-width: 36px; }
-.thry-texture-channels Button.thry-selected { background-color: var(--thry-selection-background); border-color: var(--thry-focus-color); }
+
 .thry-texture-summary .thry-texture-drag { background-color: #435563; border-color: var(--thry-focus-color); }
 .thry-light .thry-texture-placeholder { color: #606060; }
-.thry-light .thry-texture-channels Button { background-color: #dddddd; border-color: #dddddd; color: #303030; }
-.thry-light .thry-texture-channels Button.thry-selected { background-color: var(--thry-selection-background); border-color: var(--thry-accent-color); }
+
 .thry-texture-title { flex-direction: row; align-items: center; min-width: 0; }
 .thry-texture-title .thry-texture-name { flex-shrink: 1; min-width: 0; }
-.thry-texture-summary .thry-texture-clear { width: 18px; min-width: 18px; height: 18px; min-height: 18px; flex-shrink: 0; align-self: center; align-items: center; justify-content: center; padding: 0; margin: 0 var(--thry-space-2) 0 0; border-width: 0; border-radius: var(--thry-radius-compact); background-color: transparent; }
+.thry-texture-summary .thry-texture-clear { width: 18px; min-width: 18px; height: 18px; min-height: 18px; flex-shrink: 0; align-self: center; align-items: center; justify-content: center; padding: 0; margin: 0 var(--thry-space-2) 0 0; border-width: 0; border-radius: var(--thry-radius-compact); }
 .thry-texture-clear-icon { width: 14px; height: 14px; --unity-image-tint-color: #999999; }
-.thry-texture-summary .thry-texture-clear:hover, .thry-texture-summary .thry-texture-clear:focus { background-color: #484848; }
 .thry-texture-clear:hover .thry-texture-clear-icon, .thry-texture-clear:focus .thry-texture-clear-icon { --unity-image-tint-color: #dddddd; }
 .thry-light .thry-texture-clear-icon { --unity-image-tint-color: #606060; }
-.thry-light .thry-texture-clear:hover, .thry-light .thry-texture-clear:focus { background-color: var(--thry-border-color); }
 
 /* Texture assignment and its inline strength/reference share one value row. */
 .thry-texture-value { flex-direction: row; align-items: center; min-width: 0; }
@@ -463,9 +534,6 @@
 .thry-texture-value-compact .unity-object-field-display__label { margin-left: var(--thry-space-3); }
 .thry-texture-value-compact .thry-texture-reference .unity-base-slider .unity-base-text-field { width: 44px; margin-left: var(--thry-space-4); }
 
-
-
-
 /* Default-state markers match their captions without changing the text weight. */
 .thry-section-title, .thry-property-label, .thry-texture-caption { -unity-font-style: normal; }
 .thry-caption-has-changed-indicator { padding-right: var(--thry-space-10); }
@@ -473,9 +541,6 @@
 
 /* Native popup/object captions have their own foreground styles; background-only
    light overrides cannot rely on inherited text color from the field container. */
-.thry-light .thry-lock-button,
-.thry-light .thry-presets-row > Button,
-.thry-light.thry-window Button,
 .thry-light .unity-base-popup-field__text,
 .thry-light .unity-object-field-display__label { color: #292929; }
 .thry-light .unity-base-popup-field__arrow,
@@ -488,38 +553,29 @@
 /* Light theme contrast and interaction states. */
 .thry-menu-item .thry-menu-label { flex-grow: 1; flex-shrink: 1; }
 .thry-menu-item .thry-menu-arrow { width: 12px; flex-grow: 0; flex-shrink: 0; margin-left: var(--thry-space-6); -unity-text-align: middle-right; opacity: .7; }
-.thry-light .thry-icon-button:active { background-color: #c4c4c4; border-color: var(--thry-accent-color); }
-.thry-light .thry-icon-button:focus { border-color: var(--thry-accent-color); }
+
 .thry-light .thry-text-button:hover, .thry-light .thry-text-button:focus { color: #326f9c; }
 .thry-light .thry-changed-filter:hover { background-color: #eeeeee; }
 .thry-light .thry-changed-filter:focus { border-color: var(--thry-accent-color); }
 .thry-light .thry-material-controls .unity-base-text-field__input:focus, .thry-light .thry-material-controls .unity-base-popup-field__input:focus { border-color: var(--thry-accent-color); }
 .thry-light .thry-component > .unity-base-field__label { color: #5b5b5b; }
 .thry-light .thry-header-action, .thry-light .thry-fold-arrow { color: #5d5d5d; }
-.thry-light .thry-header-action:hover { background-color: #d6d6d6; border-color: #d6d6d6; }
+
 .thry-light .thry-excluded, .thry-light .thry-excluded .thry-section-title { color: #5b5b5b; }
-.thry-light .thry-section-action-0 { background-color: #bdd8c6; }
-.thry-light .thry-section-action-1 { background-color: #cccccc; }
-.thry-light .thry-section-action-2 { background-color: #bfd1df; }
-.thry-light .thry-section-action-3 { background-color: #e0c3c5; }
+
 .thry-light .thry-footer-credit, .thry-light .thry-note, .thry-light .thry-muted, .thry-light .thry-asset-size { color: #5b5b5b; }
 .thry-light .thry-recording > .thry-property-row > .thry-property-value { border-left-color: #c2185b; }
 .thry-light #thry-separator { background-color: #b0b0b0; }
-.thry-light .thry-lock-button:active, .thry-light .thry-presets-row > Button:active { background-color: #c4c4c4; border-color: var(--thry-accent-color); }
-.thry-light .thry-lock-button:focus, .thry-light .thry-presets-row > Button:focus { border-color: var(--thry-accent-color); }
+
 .thry-light .thry-ramp { background-color: #b8b8b8; }
-.thry-light .thry-components > Button { background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); }
-.thry-light .thry-components > Button.thry-selected { background-color: var(--thry-selection-background); border-color: var(--thry-accent-color); }
-.thry-light.thry-window Button { background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); }
-.thry-light.thry-window Button:hover { background-color: #eeeeee; border-color: #eeeeee; }
+
 .thry-light .thry-switch-knob { background-color: #5d5d5d; }
-.thry-light.thry-window .thry-primary-action { background-color: #33684d; color: #ffffff; border-color: #33684d; }
-.thry-light.thry-window .thry-primary-action:hover { background-color: #3d795b; color: #ffffff; border-color: #3d795b; }
+
 .thry-light .thry-menu-separator { background-color: var(--thry-border-color); }
 .thry-light .thry-texture-summary { border-bottom-color: #b0b0b0; }
 .thry-light .thry-texture-summary .thry-texture-preview { background-color: #b8b8b8; border-color: #aaaaaa; }
 .thry-light .thry-texture-summary .thry-texture-preview:hover, .thry-light .thry-texture-summary .thry-texture-preview:focus { border-color: var(--thry-accent-color); }
-.thry-light .thry-texture-summary .thry-texture-channels Button:hover { background-color: #eeeeee; border-color: #eeeeee; }
+
 .thry-light .thry-texture-summary .thry-texture-drag { background-color: #bfd1df; border-color: var(--thry-accent-color); }
 .thry-light .thry-texture-clear:hover .thry-texture-clear-icon, .thry-light .thry-texture-clear:focus .thry-texture-clear-icon { --unity-image-tint-color: #252525; }
 .thry-light .thry-texture-asset:hover .thry-asset-tile { background-color: var(--thry-border-color); }
@@ -527,14 +583,6 @@
 .thry-light .thry-studio-source > .thry-studio-section > .unity-foldout__toggle { color: #555555; }
 
 /* Keep component interaction states after the general window button rules. */
-.thry-components > Button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
-.thry-components > Button:active { background-color: var(--thry-background-color); border-color: var(--thry-accent-color); }
-.thry-components > Button:focus { border-color: var(--thry-accent-color); }
-.thry-components > Button.thry-selected:hover { background-color: #4d6273; border-color: var(--thry-accent-color); }
-.thry-light .thry-components > Button:hover { background-color: #eeeeee; border-color: #eeeeee; }
-.thry-light .thry-components > Button:active { background-color: #c4c4c4; border-color: var(--thry-accent-color); }
-.thry-light .thry-components > Button:focus { border-color: var(--thry-accent-color); }
-.thry-light .thry-components > Button.thry-selected:hover { background-color: #cfe0ec; border-color: var(--thry-accent-color); }
 
 /* Explicit text colors prevent native controls from inheriting dim editor defaults. */
 .thry-texture-caption { color: var(--thry-caption-color); }
@@ -547,9 +595,8 @@
 .thry-filtering .thry-utility { display: none; }
 .thry-filter-toolbar { flex-direction: row; align-items: center; margin: 0 0 var(--thry-space-3) 0; }
 .thry-search-summary { flex-grow: 1; flex-shrink: 1; min-width: 0; white-space: normal; color: #aaa; font-size: var(--thry-type-body-small); margin: 0; }
-.thry-filter-toolbar > Button { background-image: none; background-color: #505050; color: #ddd; border-width: var(--thry-border-width); border-color: #505050; border-radius: var(--thry-radius-button); min-height: var(--thry-button-height); padding: var(--thry-space-2) var(--thry-space-8); margin: 0 0 0 var(--thry-space-8); font-size: var(--thry-type-body-small); }
-.thry-filter-toolbar > Button:hover { background-color: #5a5a5a; border-color: #5a5a5a; }
-.thry-filter-toolbar > Button:focus { border-color: var(--thry-accent-color); }
+.thry-filter-toolbar > Button { background-image: none; border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); min-height: var(--thry-button-height); padding: var(--thry-space-2) var(--thry-space-8); margin: 0 0 0 var(--thry-space-8); font-size: var(--thry-type-body-small); }
+
 .thry-filter-toolbar > Button { flex-shrink: 0; }
 .thry-search-matches { margin: 0; padding: 0; }
 .thry-filter-group { margin: 0 0 var(--thry-space-3) 0; }
@@ -558,13 +605,13 @@
 .thry-search-hint { white-space: normal; color: #aaa; font-size: var(--thry-type-body-small); padding: var(--thry-space-8) 0; }
 .thry-light .thry-search-summary, .thry-light .thry-search-hint { color: #555; }
 .thry-light .thry-filter-breadcrumb { color: #444; border-bottom-color: #aaa; }
-.thry-light .thry-filter-toolbar > Button { background-color: var(--thry-surface-color); color: #333; border-color: var(--thry-surface-color); }
+
 .thry-status-filter { width: 120px; min-width: 80px; flex-shrink: 1; margin: 0; }
 .thry-status-filter > .unity-base-field__input { min-height: var(--thry-button-height); margin: 0; padding-left: var(--thry-space-8); background-color: #444; border-width: var(--thry-border-width); border-color: #555; border-radius: var(--thry-radius-compact); }
-.thry-saved-filters { width: 23px; min-width: 23px; height: var(--thry-button-height); padding: 0; margin: 0 0 0 var(--thry-space-3); font-size: var(--thry-type-heading); background-color: #444; border-width: 0; border-color: #444; }
+.thry-saved-filters { width: 23px; min-width: 23px; height: var(--thry-button-height); padding: 0; margin: 0 0 0 var(--thry-space-3); font-size: var(--thry-type-heading); border-width: 0; }
 .thry-compact .thry-status-filter { width: 108px; }
-.thry-light .thry-status-filter > .unity-base-field__input, .thry-light .thry-saved-filters { background-color: #ddd; border-color: #aaa; }
-.thry-light .thry-saved-filters { border-color: #ddd; }
+.thry-light .thry-status-filter > .unity-base-field__input { background-color: #ddd; border-color: #aaa; }
+
 .thry-status-filter { height: var(--thry-toolbar-height); margin-left: var(--thry-space-3); }
 .thry-status-filter > .unity-base-field__input { height: var(--thry-toolbar-height); min-height: var(--thry-toolbar-height); }
 .thry-status-filter .unity-base-popup-field__text { font-size: var(--thry-type-body-small); color: #d4d4d4; }
@@ -574,8 +621,6 @@
 .thry-light .thry-saved-filters { color: #454545; }
 
 /* Light theme contrast and interaction states. */
-.thry-light .thry-filter-toolbar > Button:hover { background-color: #eeeeee; border-color: #eeeeee; }
-.thry-light .thry-filter-toolbar > Button:focus { border-color: var(--thry-accent-color); }
 
 /* ===== ThryControlPolish ===== */
 /* Compact property feedback; hierarchy arrows remain quiet icon controls. */
@@ -587,22 +632,19 @@
 .thry-positioning-panel > .thry-section-content { padding: var(--thry-space-5); }
 .thry-positioning-tools { margin: 0 0 var(--thry-space-5); padding-bottom: var(--thry-space-4); border-bottom-width: var(--thry-border-width); border-bottom-color: #494949; }
 .thry-positioning-actions { flex-direction: row; }
-.thry-positioning-actions > .thry-positioning-button { flex-grow: 1; flex-basis: 0; min-width: 0; height: 25px; margin: 0; padding: 0 var(--thry-space-5); flex-direction: row; align-items: center; justify-content: center; background-color: #444444; border-width: var(--thry-border-width); border-color: #444444; border-radius: var(--thry-radius-button); color: var(--thry-caption-color); }
+.thry-positioning-actions > .thry-positioning-button { flex-grow: 1; flex-basis: 0; min-width: 0; height: 25px; margin: 0; padding: 0 var(--thry-space-5); flex-direction: row; align-items: center; justify-content: center; border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); }
 .thry-positioning-actions > .thry-positioning-secondary { margin-left: var(--thry-space-3); }
 .thry-positioning-button > Label { margin: 0; font-size: var(--thry-type-body-small); color: var(--thry-caption-color); }
 .thry-positioning-icon { width: 16px; height: 16px; min-width: 16px; margin-right: var(--thry-space-6); color: #a6e22e; }
-.thry-positioning-actions > .thry-positioning-button:hover { background-color: #515151; border-color: #515151; }
-.thry-positioning-actions > .thry-positioning-button:focus { border-color: var(--thry-accent-color); }
-.thry-positioning-actions > .thry-positioning-active { background-color: #435563; border-color: var(--thry-accent-color); }
+
 .thry-positioning-status { margin: var(--thry-space-4) var(--thry-space-1) 0; white-space: normal; font-size: var(--thry-type-small); color: #aaaaaa; }
 .thry-light .thry-subsection-panel > .thry-section-header, .thry-light .thry-positioning-panel > .thry-section-header { background-color: var(--thry-subsection-background); border-color: var(--thry-subsection-background); }
 .thry-light .thry-positioning-tools { border-bottom-color: #acacac; }
-.thry-light .thry-positioning-actions > .thry-positioning-button { background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); color: #333333; }
+
 .thry-light .thry-positioning-button > Label { color: #333333; }
 .thry-light .thry-positioning-icon { color: #638f14; }
 .thry-light .thry-positioning-status { color: #555555; }
-.thry-light .thry-positioning-actions > .thry-positioning-button:hover { background-color: #eeeeee; border-color: #eeeeee; }
-.thry-light .thry-positioning-actions > .thry-positioning-active { background-color: #bfd1df; border-color: var(--thry-accent-color); }
+
 .thry-tools > .thry-collapse-tool { align-items: center; justify-content: center; color: #a6e22e; }
 .thry-tools > .thry-language-tool { align-items: center; justify-content: center; color: #fd971f; }
 .thry-light .thry-tools > .thry-collapse-tool { color: #638f14; }
@@ -672,11 +714,9 @@
 .thry-light.thry-window .thry-search Button,
 .thry-light.thry-window .thry-search Button:hover,
 .thry-light.thry-window .thry-search Button:active {
-    background-color: transparent;
-    border-color: transparent;
     -unity-background-image-tint-color: #555555;
 }
-.thry-light.thry-window .thry-search Button, .thry-light.thry-window .thry-search Button:hover { border-color: transparent; }
+
 .thry-settings .unity-foldout { margin: var(--thry-space-2) 0; }
 .thry-settings .unity-foldout__content { padding-top: var(--thry-space-2); padding-bottom: var(--thry-space-2); }
 .thry-texture-workspace .thry-studio-section { margin: var(--thry-space-2) 0; }
@@ -690,19 +730,18 @@
 .thry-cross-materials .thry-components { flex-grow: 0; flex-shrink: 0; align-items: center; min-height: var(--thry-button-height); margin: var(--thry-space-1) 0; }
 .thry-cross-materials .unity-object-field { min-width: 0; flex-basis: 0; flex-shrink: 1; }
 .thry-cross-materials .unity-object-field__input { min-height: var(--thry-control-height); padding: 0 var(--thry-space-6); border-width: var(--thry-border-width); border-color: #494949; background-color: #2c2c2c; border-radius: var(--thry-radius-panel-small); }
-.thry-cross-materials Button { height: var(--thry-button-height); margin: 0 var(--thry-space-2); padding: 0 var(--thry-space-8); border-radius: var(--thry-radius-button); background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); border-width: var(--thry-border-width); }
-.thry-cross-materials Button:hover { background-color: #505050; border-color: #505050; }
+.thry-cross-materials Button { height: var(--thry-button-height); margin: 0 var(--thry-space-2); padding: 0 var(--thry-space-8); border-radius: var(--thry-radius-button); border-width: var(--thry-border-width); }
+
 .thry-cross-materials .unity-toggle__input { align-items: center; }
 .thry-cross-materials .unity-toggle__checkmark { width: 16px; height: 16px; margin: 0; border-radius: var(--thry-radius-compact); background-color: #2c2c2c; border-color: #535353; border-width: var(--thry-border-width); }
 .thry-cross-materials .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
 .thry-light .thry-cross-materials { background-color: #c4c4c4; }
 .thry-light .thry-cross-materials .unity-object-field__input, .thry-light .thry-cross-materials .unity-toggle__checkmark { background-color: #e4e4e4; border-color: #aaaaaa; }
-.thry-light .thry-cross-materials Button { background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); }
+
 .thry-light .thry-cross-materials .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
 
 /* Dialog controls share the same fields, focus cues and compact action rows. */
 .thry-window .unity-object-field__input { min-height: var(--thry-control-height); padding: 0 var(--thry-space-6); border-width: var(--thry-border-width); border-color: #494949; border-radius: var(--thry-radius-control); background-color: #2c2c2c; }
-.thry-window Button:focus,
 .thry-window .unity-base-field:focus > .unity-base-field__input { border-color: var(--thry-focus-color); }
 .thry-window .unity-toggle:focus .unity-toggle__checkmark { border-color: var(--thry-control-border-color); }
 .thry-dialog .unity-toggle__input { align-items: center; }
@@ -713,18 +752,15 @@
 .thry-dialog .thry-title { margin-bottom: var(--thry-space-4); }
 .thry-dialog-actions { flex-grow: 0; flex-shrink: 0; margin-top: var(--thry-space-4); }
 .thry-dialog-actions > Button { flex-grow: 1; flex-basis: 0; min-width: 0; margin: 0 var(--thry-space-1); height: var(--thry-toolbar-height); min-height: var(--thry-toolbar-height); }
-.thry-dialog .thry-primary-action { background-color: #405d72; border-color: #405d72; -unity-font-style: bold; }
-.thry-dialog .thry-primary-action:hover { background-color: #4b6b82; border-color: #4b6b82; }
+.thry-dialog .thry-primary-action { -unity-font-style: bold; }
+
 .thry-gradient-editor .thry-gradient-preview { height: 64px; min-height: 64px; margin-bottom: var(--thry-space-4); }
 .thry-gradient-editor > .unity-base-field > .unity-base-field__label { min-width: 100px; width: 38%; max-width: 170px; }
 .thry-gradient-editor .unity-base-compound-field > .unity-base-field__input { min-width: 0; }
 .thry-light.thry-window .unity-object-field__input, .thry-light.thry-dialog .unity-toggle__checkmark { background-color: #e4e4e4; border-color: #aaaaaa; }
 .thry-light.thry-dialog .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
-.thry-light.thry-window Button:focus,
 .thry-light.thry-window .unity-base-field:focus > .unity-base-field__input,
 .thry-light.thry-window .unity-toggle:focus .unity-toggle__checkmark { border-color: var(--thry-control-border-color); }
-.thry-light.thry-dialog .thry-primary-action { background-color: #bacfdd; border-color: #bacfdd; color: #263e50; }
-.thry-light.thry-dialog .thry-primary-action:hover { background-color: #c8deed; border-color: #c8deed; }
 
 .thry-window .unity-foldout { margin-top: var(--thry-row-gap); margin-bottom: var(--thry-row-gap); }
 .thry-window .unity-foldout__toggle, .thry-cross-materials > .unity-foldout__toggle { min-height: var(--thry-section-height); -unity-font-style: normal; font-size: var(--thry-font-size); }
@@ -738,7 +774,6 @@
 .thry-menu-back { height: var(--thry-toolbar-height); margin: 0; border-width: 0; background-color: transparent; -unity-text-align: middle-left; }
 
 /* Light theme contrast and interaction states. */
-.thry-light .thry-cross-materials Button:hover { background-color: #eeeeee; border-color: #eeeeee; }
 
 /* Preset browsing keeps the library, staged choices and final action distinct. */
 .thry-preset-browser { padding: var(--thry-space-10); min-width: 0; }
@@ -747,8 +782,8 @@
 .thry-preset-muted, .thry-preset-path { color: #a0a0a0; font-size: var(--thry-type-small); white-space: normal; }
 .thry-preset-browser-search { flex-direction: row; align-items: center; margin-bottom: var(--thry-space-8); flex-shrink: 0; min-height: var(--thry-window-control-height); }
 .thry-preset-browser-search .thry-search { flex-grow: 1; flex-shrink: 1; min-width: 0; height: var(--thry-window-control-height); margin: 0; }
-.thry-preset-browser .thry-search Button { background-color: transparent; border-width: 0; border-color: transparent; }
-.thry-light.thry-preset-browser .thry-search Button { background-color: transparent; -unity-background-image-tint-color: #555555; border-color: transparent; }
+.thry-preset-browser .thry-search Button { border-width: 0; }
+.thry-light.thry-preset-browser .thry-search Button { -unity-background-image-tint-color: #555555; }
 .thry-preset-browser-search #preset-category { width: 150px; min-width: 110px; flex-shrink: 1; margin: 0 0 0 var(--thry-space-6); height: var(--thry-window-control-height); }
 .thry-preset-browser-body { min-width: 0; min-height: 0; flex-grow: 1; }
 .thry-preset-browser-library, .thry-preset-browser-details { background-color: #303030; border-width: var(--thry-border-width); border-color: #484848; border-radius: var(--thry-radius-panel); padding: var(--thry-space-6); min-width: 0; min-height: 0; }
@@ -776,17 +811,14 @@
 .thry-preset-selected-row { flex-direction: row; align-items: center; min-height: var(--thry-toolbar-height); margin: 0 0 var(--thry-space-3); padding: var(--thry-space-2) var(--thry-space-3); background-color: #3a3a3a; border-radius: var(--thry-radius-compact); }
 .thry-preset-selected-row > .thry-preset-caption { flex-grow: 1; flex-shrink: 1; min-width: 0; }
 .thry-preset-order { width: 20px; min-width: 20px; flex-shrink: 0; margin-right: var(--thry-space-3); color: #a6bdcc; font-size: var(--thry-type-small); -unity-text-align: middle-center; }
-.thry-preset-browser .thry-preset-small-action { height: var(--thry-control-height); min-height: var(--thry-control-height); min-width: 22px; margin: 0 0 0 var(--thry-space-3); padding: 0 var(--thry-space-4); font-size: var(--thry-type-small); background-color: transparent; border-color: transparent; }
-.thry-preset-browser .thry-preset-small-action:hover { background-color: #505050; border-color: #505050; }
-.thry-preset-browser .thry-preset-small-action:focus { border-color: var(--thry-focus-color); }
+.thry-preset-browser .thry-preset-small-action { height: var(--thry-control-height); min-height: var(--thry-control-height); min-width: 22px; margin: 0 0 0 var(--thry-space-3); padding: 0 var(--thry-space-4); font-size: var(--thry-type-small); }
+
 .thry-preset-changes { margin-top: var(--thry-space-6); padding-top: var(--thry-space-6); border-top-width: var(--thry-border-width); border-top-color: #484848; min-height: 0; }
 .thry-preset-change-row { padding: var(--thry-space-3) 0; margin-bottom: var(--thry-space-3); white-space: normal; font-size: var(--thry-type-small); color: #bcbcbc; }
 .thry-preset-summary { color: #aaa; font-size: var(--thry-type-small); margin: 0 var(--thry-space-8) 0 0; flex-grow: 1; flex-shrink: 1; min-width: 0; white-space: normal; }
 .thry-preset-browser-footer { flex-direction: row; align-items: center; margin-top: var(--thry-space-8); min-height: 30px; flex-shrink: 0; }
 .thry-preset-browser-footer > Button { height: var(--thry-window-control-height); min-height: var(--thry-window-control-height); padding: 0 var(--thry-space-12); margin: 0 0 0 var(--thry-space-6); flex-shrink: 0; }
-.thry-preset-browser #preset-apply { background-color: #405d72; border-color: #405d72; color: #eee; -unity-font-style: normal; }
-.thry-preset-browser #preset-apply:hover { background-color: #4b6b82; }
-.thry-preset-browser #preset-apply:disabled { background-color: #3b4146; border-color: #494e52; color: #92979a; }
+.thry-preset-browser #preset-apply { -unity-font-style: normal; }
 .thry-light.thry-preset-browser .thry-preset-browser-library, .thry-light.thry-preset-browser .thry-preset-browser-details { background-color: #d0d0d0; border-color: #ababab; }
 .thry-light.thry-preset-browser .thry-preset-caption { color: #292929; }
 .thry-light.thry-preset-browser .thry-preset-category > .unity-foldout__toggle { color: #444; }
@@ -807,14 +839,11 @@
 .thry-light.thry-preset-browser .thry-preset-selected-row { background-color: var(--thry-surface-color); }
 .thry-light.thry-preset-browser .thry-preset-order { color: #405e70; }
 .thry-light.thry-preset-browser .thry-preset-changes { border-top-color: #ababab; }
-.thry-light.thry-preset-browser .thry-preset-small-action { background-color: transparent; border-color: transparent; color: #444; }
-.thry-light.thry-preset-browser .thry-preset-small-action:hover { background-color: #b9b9b9; border-color: #b9b9b9; }
-.thry-light.thry-preset-browser #preset-apply { background-color: #bacfdd; border-color: #bacfdd; color: #263e50; }
-.thry-light.thry-preset-browser #preset-apply:hover { background-color: #c8deed; }
-.thry-light.thry-preset-browser #preset-apply:disabled { background-color: #c4c4c4; border-color: #aaa; color: #686868; }
+.thry-light.thry-preset-browser .thry-preset-small-action { color: #444; }
+
 
 /* ===== ThrySpecialControls ===== */
-.thry-special-slider-row { flex-direction: row; align-items: center; min-height: var(--thry-button-height); margin: var(--thry-space-1) 0; }
+.thry-special-slider-row { flex-direction: row; align-items: center; min-height: var(--thry-control-height); margin: var(--thry-space-1) 0; }
 .thry-special-slider-row > .thry-special-component-label { width: 30%; max-width: 110px; min-width: 28px; flex-shrink: 1; margin-right: var(--thry-space-6); overflow: hidden; text-overflow: ellipsis; color: var(--thry-caption-color); }
 .thry-special-slider-row > .unity-slider { flex-grow: 1; flex-basis: 0; min-width: 0; margin: 0; }
 .thry-special-axis-slider { min-height: var(--thry-control-height); margin: 0 0 var(--thry-space-2); }
@@ -846,12 +875,11 @@
 .thry-packer-channel-options > .unity-foldout__toggle { display: none; }
 .thry-packer-channel-options > .unity-foldout__content { margin-left: 0; padding: 0; }
 .thry-packer-actions { flex-grow: 0; margin-top: var(--thry-space-4); }
-.thry-packer-actions > Button, .thry-packer-studio-action { background-image: none; background-color: #414141; color: #ddd; border-width: var(--thry-border-width); border-color: #414141; border-radius: var(--thry-radius-button); height: var(--thry-button-height); min-height: var(--thry-button-height); padding: var(--thry-space-2) var(--thry-space-6); margin: 0 var(--thry-space-2); font-size: var(--thry-type-body-small); -unity-text-align: middle-center; }
+.thry-packer-actions > Button,
+.thry-packer-studio-action { background-image: none; border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); height: var(--thry-button-height); min-height: var(--thry-button-height); padding: var(--thry-space-2) var(--thry-space-6); margin: 0 var(--thry-space-2); font-size: var(--thry-type-body-small); -unity-text-align: middle-center; }
 .thry-packer-actions > Button { flex-grow: 1; flex-basis: 0; min-width: 0; }
 .thry-packer-heading > .thry-packer-studio-action { height: 20px; min-height: 20px; margin: 0; padding: 0 var(--thry-space-6); font-size: var(--thry-type-small); }
-.thry-packer-actions > Button:hover, .thry-packer-studio-action:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
-.thry-packer-actions > Button:focus, .thry-packer-studio-action:focus { border-color: var(--thry-accent-color); }
-.thry-light .thry-packer-actions > Button, .thry-light .thry-packer-studio-action { background-color: var(--thry-surface-color); color: #333; border-color: var(--thry-surface-color); }
+
 .thry-light .thry-packer { border-bottom-color: #bbb; }
 .thry-light .thry-packer-channel-badge { background-color: var(--thry-surface-color); color: #444; }
 .thry-light .thry-packer-channel-r { color: var(--thry-channel-r-color); }
@@ -866,8 +894,6 @@
 
 /* Light theme contrast and interaction states. */
 .thry-light .thry-multi-value-controls > .thry-tile-mixed { border-color: #777777; }
-.thry-light .thry-packer-actions > Button:hover, .thry-light .thry-packer-studio-action:hover { background-color: #eeeeee; border-color: #eeeeee; }
-.thry-light .thry-packer-actions > Button:focus, .thry-light .thry-packer-studio-action:focus { border-color: var(--thry-accent-color); }
 
 /* Uniform vector scaling is an explicit linked/independent toggle, not a symbol cycle. */
 .thry-components > .thry-vector-link { width: 24px; min-width: 24px; max-width: 24px; height: var(--thry-control-height); min-height: var(--thry-control-height); flex-grow: 0; flex-shrink: 0; margin: 0 0 0 var(--thry-space-4); padding: 0; flex-direction: row; align-items: center; justify-content: center; background-color: transparent; border-width: var(--thry-border-width); border-color: transparent; border-radius: var(--thry-radius-compact); }
@@ -994,13 +1020,13 @@
 .pathing-topbar { justify-content: flex-end; padding: 0 0 var(--thry-space-3); }
 .pathing-eyebrow { font-size: var(--thry-type-caption); color: var(--thry-muted-color); -unity-font-style: bold; flex-grow: 1; }
 .pathing-topbar > Toggle { font-size: var(--thry-type-caption); margin: 0; }
-.pathing-preview { background-color: var(--thry-panel-background); border-width: var(--thry-border-width); border-color: var(--thry-control-border-color); border-radius: var(--thry-radius-panel); padding: var(--thry-space-6) var(--thry-space-7); margin-bottom: var(--thry-space-5); }
+.pathing-preview { background-color: transparent; border-width: 0; border-radius: 0; padding: var(--thry-space-6) var(--thry-space-7); margin-bottom: var(--thry-space-5); }
 .pathing-preview-toolbar { margin-bottom: var(--thry-space-8); }
-.pathing-preview Button { margin: 0 0 0 var(--thry-space-4); height: var(--thry-button-height); font-size: var(--thry-type-small); background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); color: var(--thry-value-color); }
-.pathing-preview .pathing-lane-label { width: 25px; min-width: 25px; margin: 0 var(--thry-space-7) 0 0; padding: 0; background-color: transparent; border-width: 0; -unity-font-style: bold; }
+.pathing-preview-hidden .pathing-preview-toolbar { margin-bottom: 0; }
+.pathing-preview Button { margin: 0 0 0 var(--thry-space-4); height: var(--thry-button-height); font-size: var(--thry-type-small); }
+.pathing-preview .pathing-lane-label { width: 25px; min-width: 25px; margin: 0 var(--thry-space-7) 0 0; padding: 0; border-width: 0; -unity-font-style: bold; }
 .pathing-lane { background-color: var(--thry-field-background); border-radius: var(--thry-radius-compact); overflow: hidden; height: var(--thry-control-height); flex-grow: 1; margin-bottom: var(--thry-space-2); }
-.pathing-preview-note { color: var(--thry-muted-color); font-size: var(--thry-type-caption); white-space: normal; margin: var(--thry-space-4) 0 0; }
-.pathing-preview > Slider { margin: var(--thry-space-5) 0 0 30px; }
+.pathing-preview-content > Slider { margin: var(--thry-space-5) 0 0 30px; }
 .pathing-fold { border-width: 0; margin: 0 0 var(--thry-space-3); padding: 0; background-color: transparent; }
 .pathing-fold > Toggle { height: var(--thry-section-height); margin: 0; padding: 0 var(--thry-space-4); border-radius: var(--thry-radius-subheader); background-color: var(--thry-subsection-background); font-size: var(--thry-font-size); -unity-font-style: bold; border-color: var(--thry-subsection-background); }
 .pathing-fold > .unity-foldout__content { margin-left: 0; padding: var(--thry-space-4) 0 var(--thry-space-4) var(--thry-space-8); }
@@ -1011,7 +1037,7 @@
 .pathing-cell { width: 20.5%; flex-grow: 1; flex-basis: 0; min-width: 0; padding: var(--thry-space-2) var(--thry-space-3); justify-content: center; border-left-width: 0; }
 .pathing-cell.pathing-selected { background-color: transparent; }
 .pathing-cell.pathing-off > * { opacity: .53; }
-.pathing-cell > Button { height: var(--thry-toolbar-height); min-width: 0; padding: 0 var(--thry-space-2); margin: 0; border-width: 0; background-color: transparent; -unity-font-style: bold; font-size: var(--thry-type-small); border-color: transparent; }
+.pathing-cell > Button { height: var(--thry-toolbar-height); min-width: 0; padding: 0 var(--thry-space-2); margin: 0; border-width: 0; -unity-font-style: bold; font-size: var(--thry-type-small); }
 .pathing-cell > Label { -unity-text-align: middle-center; }
 .pathing-cell .thry-property { min-width: 0; flex-grow: 1; }
 .pathing-cell .thry-property-row { min-width: 0; padding: 0; margin: 0; }
@@ -1036,9 +1062,6 @@
 .pathing-actions { justify-content: flex-end; margin: var(--thry-space-3) 0 var(--thry-space-4); }
 .pathing-actions Button { font-size: var(--thry-type-small); height: var(--thry-button-height); padding: 0 var(--thry-space-8); margin: 0 0 0 var(--thry-space-5); border-radius: var(--thry-radius-button); }
 
-.pathing-actions Button { background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); color: var(--thry-value-color); }
-
-
 .pathing-grid-heading { background-color: var(--thry-subsection-background); border-radius: var(--thry-radius-subheader); border-color: var(--thry-subsection-background); }
 .pathing-property-caption { justify-content: center; overflow: hidden; }
 .pathing-property-caption > .thry-property-row { min-height: 20px; margin: 0; }
@@ -1046,14 +1069,12 @@
 
 /* Neutral surfaces and interaction states follow the same inspector roles. */
 .pathing-preview Button, .pathing-actions Button { border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); }
-.pathing-preview Button:hover, .pathing-actions Button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
-.pathing-preview Button:focus, .pathing-actions Button:focus { border-color: var(--thry-focus-color); }
-.pathing-preview Button:active, .pathing-actions Button:active { background-color: var(--thry-field-background); border-color: var(--thry-focus-color); }
-.pathing-preview .pathing-lane-label { background-color: transparent; border-width: 0; }
+
+.pathing-preview .pathing-lane-label { border-width: 0; }
 .pathing-grid-heading .pathing-cell { border-bottom-width: var(--thry-border-width-strong); border-bottom-color: transparent; }
 .pathing-grid-heading .pathing-cell.pathing-selected { background-color: var(--thry-selection-background); border-bottom-color: var(--thry-focus-color); }
 .pathing-grid-heading .pathing-cell > Button { border-radius: var(--thry-radius-button); }
-.pathing-grid-heading .pathing-cell > Button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
+
 .pathing-grid-heading .pathing-cell > Button:focus { border-bottom-width: var(--thry-border-width); border-bottom-color: var(--thry-focus-color); }
 .pathing-cell .pathing-component .pathing-value-grip:hover { background-color: var(--thry-pathing-grip-hover-color); }
 .thry-pathing .pathing-accent-0 { color: var(--thry-channel-r-color); }
@@ -1281,8 +1302,7 @@
 .thry-studio-heading { flex-grow: 1; min-width: 120px; font-size: var(--thry-type-heading); -unity-font-style: bold; color: #e4e7ed; }
 .thry-studio-toolbar #studio-open-texture { width: 210px; margin: 0 14px 0 0; }
 .thry-studio-toolbar #studio-open-texture > .unity-base-field__label { min-width: 34px; width: 34px; }
-.thry-studio-toolbar #save-texture { height: var(--thry-window-control-height); margin: 0; padding: 0 var(--thry-space-16); background-color: #46667e; border-color: #46667e; border-radius: var(--thry-radius-control); -unity-font-style: bold; }
-.thry-studio-toolbar #save-texture:hover { background-color: #567b96; }
+.thry-studio-toolbar #save-texture { height: var(--thry-window-control-height); margin: 0; padding: 0 var(--thry-space-16); border-radius: var(--thry-radius-control); -unity-font-style: bold; }
 .thry-studio-graph-help { flex-shrink: 0; height: 32px; margin: 0; padding: 0 var(--thry-space-18); -unity-text-align: middle-left; font-size: var(--thry-type-small); color: #a6adb9; background-color: #282b30; }
 .thry-studio-graph-workspace { flex-grow: 1; min-height: 0; overflow: hidden; }
 .thry-studio-graph { background-color: #24262a; }
@@ -1299,8 +1319,8 @@
 .thry-studio-graph .thry-studio-node #divider { display: none; }
 .thry-studio-node-field { flex-direction: row; flex-shrink: 0; align-items: center; margin: var(--thry-space-5) var(--thry-space-8) var(--thry-space-3); height: var(--thry-control-height); }
 .thry-studio-node-field > .unity-base-field { flex-grow: 1; flex-shrink: 1; min-width: 0; margin: 0; }
-.thry-studio-node-field > Button { width: 22px; min-width: 22px; height: var(--thry-control-height); margin: 0 0 0 var(--thry-space-4); padding: 0; border-width: 0; background-color: transparent; color: #b2bbc8; font-size: var(--thry-type-heading); border-color: transparent; }
-.thry-studio-node-field > Button:hover { background-color: #4c5360; border-color: #4c5360; }
+.thry-studio-node-field > Button { width: 22px; min-width: 22px; height: var(--thry-control-height); margin: 0 0 0 var(--thry-space-4); padding: 0; border-width: 0; font-size: var(--thry-type-heading); }
+
 .thry-studio-source-body { flex-direction: row; flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; padding: 0 0 var(--thry-space-7) var(--thry-space-8); }
 .thry-studio-source-frame { position: absolute; min-width: 0; background-color: #24272d; border-radius: var(--thry-radius-compact); overflow: hidden; }
 .thry-studio-source-frame > Label { flex-grow: 1; -unity-text-align: middle-center; font-size: var(--thry-type-small); color: #8e98a9; }
@@ -1335,7 +1355,6 @@
 .thry-light .thry-studio-source-frame, .thry-light .thry-studio-result-image { background-color: #a5afbd; }
 .thry-light .thry-studio-source-frame > Label, .thry-light .thry-studio-graph .thry-studio-node Port #type { color: #37495e; }
 .thry-light .thry-studio-graph .thry-studio-node Port:hover { background-color: #b0c4d7; }
-.thry-light .thry-studio-node-field > Button { color: #435469; }
 
 .thry-studio-graph .thry-studio-output-node #collapsible-area, .thry-studio-graph .thry-studio-output-node #extension { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; overflow: hidden; }
 .thry-studio-graph .thry-studio-node #input, .thry-studio-graph .thry-studio-node #output { flex-basis: auto; }
@@ -1435,9 +1454,9 @@
 .thry-inspector .thry-title { color: var(--thry-value-color); border-left-width: 3px; border-left-color: var(--thry-accent-color); padding-left: var(--thry-space-8); }
 .thry-inspector .thry-version { color: var(--thry-muted-color); background-color: transparent; border-radius: var(--thry-radius-round); border-width: 1px; border-color: var(--thry-border-color); padding-top: 1px; padding-bottom: 1px; }
 .thry-inspector .thry-tools { background-color: var(--thry-chrome-background); border-radius: var(--thry-radius-card); }
-.thry-inspector .thry-tools > .thry-icon-button { background-color: transparent; border-color: transparent; color: var(--thry-muted-color); border-radius: var(--thry-radius-button); align-items: center; justify-content: center; }
-.thry-inspector .thry-tools > .thry-icon-button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); color: var(--thry-value-color); }
-.thry-inspector .thry-tools > .thry-icon-button:focus { color: var(--thry-accent-color); border-color: var(--thry-focus-color); }
+.thry-inspector .thry-tools > .thry-icon-button { color: var(--thry-muted-color); border-radius: var(--thry-radius-button); align-items: center; justify-content: center; }
+.thry-inspector .thry-tools > .thry-icon-button:hover { color: var(--thry-value-color); }
+.thry-inspector .thry-tools > .thry-icon-button:focus { color: var(--thry-accent-color); }
 .thry-inspector .thry-tools > .thry-collapse-tool,
 .thry-inspector .thry-tools > .thry-collapse-tool:hover { color: #a6e22e; }
 .thry-inspector .thry-tools > .thry-language-tool,
@@ -1456,20 +1475,18 @@
 .thry-inspector.thry-light .thry-status-filter > .unity-base-field__input { background-color: var(--thry-chrome-background); border-color: var(--thry-chrome-background); border-radius: 0; }
 .thry-inspector .thry-type-picker .unity-base-popup-field__text,
 .thry-inspector .thry-status-filter .unity-base-popup-field__text { color: var(--thry-caption-color); }
-.thry-inspector .thry-saved-filters { background-color: transparent; color: var(--thry-muted-color); border-radius: var(--thry-radius-button); }
-.thry-inspector .thry-saved-filters:hover { background-color: var(--thry-hover-color); color: var(--thry-accent-color); }
+.thry-inspector .thry-saved-filters { color: var(--thry-muted-color); border-radius: var(--thry-radius-button); }
+.thry-inspector .thry-saved-filters:hover { color: var(--thry-accent-color); }
 .thry-inspector.thry-compact .thry-search { border-radius: var(--thry-radius-panel); }
 .thry-inspector.thry-compact .thry-search-filters { border-radius: var(--thry-radius-panel); overflow: hidden; }
 
 /* Primary action and secondary actions remain in their familiar positions. */
 .thry-inspector .thry-lock-button,
-.thry-inspector.thry-light .thry-lock-button { background-color: var(--thry-primary-background); border-color: var(--thry-primary-background); color: var(--thry-primary-foreground); -unity-font-style: bold; }
-.thry-inspector .thry-lock-button:hover,
-.thry-inspector.thry-light .thry-lock-button:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
-.thry-inspector .thry-presets-row > Button,
+.thry-inspector.thry-light .thry-lock-button { -unity-font-style: bold; }
+
 .thry-inspector .thry-rendering-mode .unity-base-popup-field__input,
 .thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input { background-color: var(--thry-action-background); border-color: var(--thry-action-background); color: var(--thry-value-color); }
-.thry-inspector .thry-presets-row > Button:hover,
+
 .thry-inspector .thry-rendering-mode .unity-base-popup-field__input:hover,
 .thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
 
@@ -1492,7 +1509,7 @@
 .thry-inspector .thry-header-icon { --unity-image-tint-color: var(--thry-muted-color); }
 .thry-inspector .thry-linked .thry-header-icon,
 .thry-inspector .thry-header-action:focus .thry-header-icon { --unity-image-tint-color: var(--thry-accent-color); }
-.thry-inspector .thry-header-action:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
+
 .thry-inspector .thry-header-action:hover .thry-header-icon,
 .thry-inspector .thry-fold-arrow:hover .thry-header-icon { --unity-image-tint-color: var(--thry-value-color); }
 
@@ -1533,10 +1550,8 @@
 .thry-inspector .unity-base-popup-field__arrow { -unity-background-image-tint-color: var(--thry-value-color); }
 
 /* The same surface language extends to Pathing, menus, and companion windows. */
-.thry-inspector.thry-window Button { background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); color: var(--thry-value-color); }
-.thry-inspector.thry-window Button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
+
 .thry-inspector.thry-window .unity-foldout__toggle { background-color: var(--thry-subsection-background); border-color: var(--thry-subsection-background); color: var(--thry-caption-color); }
-.thry-inspector .pathing-preview { border-color: var(--thry-border-color); }
 .thry-inspector .pathing-grid-heading { background-color: var(--thry-subsection-background); }
 .thry-inspector .pathing-cell.pathing-selected { background-color: var(--thry-row-hover); }
 .thry-inspector .pathing-grid-heading .pathing-cell.pathing-selected { background-color: var(--thry-selection-background); }
@@ -1566,31 +1581,18 @@
 .thry-inspector .thry-rendering-mode .unity-base-popup-field__input:hover,
 .thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
 
-/* Decorator actions share a button role instead of inheriting Unity's native
-   fill or the positioning toolbar's former palette. Existing sizes stay intact. */
-.thry-inspector .thry-action-button,
-.thry-inspector .thry-positioning-actions > .thry-action-button { background-color: var(--thry-action-background); border-color: var(--thry-action-background); border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); color: var(--thry-value-color); }
-.thry-inspector .thry-action-button:hover,
-.thry-inspector .thry-positioning-actions > .thry-action-button:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
+/* Action layouts and colored icons; Button interaction styling is shared above. */
 .thry-inspector .thry-positioning-button > Label { color: var(--thry-value-color); }
-.thry-inspector .thry-positioning-icon { color: var(--thry-muted-color); }
+.thry-bake-color-button { flex-direction: row; align-items: center; justify-content: center; }
+.thry-bake-color-button > Label { margin: 0; }
+.thry-bake-color-icon { width: 14px; height: 14px; min-width: 14px; flex-shrink: 0; margin-right: var(--thry-space-6); color: #e6db74; }
+.thry-light .thry-bake-color-icon { color: #9a861b; }
 .thry-inspector .thry-positioning-status { color: var(--thry-muted-color); }
 .thry-inspector .thry-positioning-tools { border-bottom-color: var(--thry-border-color); }
-.thry-inspector .thry-positioning-actions > .thry-positioning-active { background-color: var(--thry-selection-background); border-color: var(--thry-selection-background); }
-.thry-inspector .thry-positioning-active .thry-positioning-icon { color: var(--thry-accent-color); }
-.thry-inspector .thry-action-button.unity-disabled,
-.thry-inspector .unity-disabled .thry-action-button { background-color: var(--thry-disabled-background); border-color: var(--thry-disabled-background); color: var(--thry-muted-color); }
-.thry-inspector .thry-action-button.unity-disabled > Label,
-.thry-inspector .unity-disabled .thry-action-button > Label { color: var(--thry-muted-color); }
-.thry-inspector .thry-action-button:focus,
-.thry-inspector .thry-positioning-actions > .thry-action-button:focus { border-color: var(--thry-focus-color); }
 
 /* Focus is the last layer so hover and skin-specific fills never hide it. */
 .thry-inspector .thry-search.thry-search-focused,
 .thry-inspector.thry-light .thry-search.thry-search-focused,
-.thry-inspector .thry-lock-button:focus,
-.thry-inspector .thry-presets-row > Button:focus,
-.thry-inspector.thry-window Button:focus,
 .thry-inspector .unity-base-text-field__input:focus,
 .thry-inspector.thry-light .unity-base-text-field__input:focus,
 .thry-inspector .unity-base-field:focus > .unity-base-field__input,

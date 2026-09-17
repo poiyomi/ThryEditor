@@ -119,6 +119,31 @@ namespace Thry.ThryEditor
                         };
                     }) { text="Bake Color Adjust", name="bake-color-adjust" };
                     button.AddToClassList("thry-action-button");
+#if UNITY_2022_1_OR_NEWER
+                    button.AddToClassList("thry-bake-color-button");
+                    button.text = "";
+                    var icon = new VisualElement { pickingMode = PickingMode.Ignore };
+                    icon.AddToClassList("thry-bake-color-icon");
+                    icon.generateVisualContent += context => {
+                        var painter = context.painter2D;
+                        painter.strokeColor = icon.resolvedStyle.color;
+                        painter.fillColor = icon.resolvedStyle.color;
+                        painter.lineWidth = 1.25f;
+                        painter.BeginPath(); painter.MoveTo(new Vector2(13, 7));
+                        painter.BezierCurveTo(new Vector2(13, 3), new Vector2(10, 1), new Vector2(7, 1));
+                        painter.BezierCurveTo(new Vector2(3.7f, 1), new Vector2(1, 3.6f), new Vector2(1, 7));
+                        painter.BezierCurveTo(new Vector2(1, 10.4f), new Vector2(3.7f, 13), new Vector2(7, 13));
+                        painter.BezierCurveTo(new Vector2(8.6f, 13), new Vector2(9.4f, 12), new Vector2(8.5f, 10.6f));
+                        painter.BezierCurveTo(new Vector2(7.8f, 9.6f), new Vector2(8.5f, 8.4f), new Vector2(10.2f, 8.7f));
+                        painter.BezierCurveTo(new Vector2(12, 9), new Vector2(13, 8.4f), new Vector2(13, 7));
+                        painter.ClosePath(); painter.Stroke();
+                        painter.BeginPath(); painter.Arc(new Vector2(3.8f, 6), .8f, 0, 360); painter.Fill();
+                        painter.BeginPath(); painter.Arc(new Vector2(5.6f, 3.6f), .8f, 0, 360); painter.Fill();
+                        painter.BeginPath(); painter.Arc(new Vector2(8.5f, 3.4f), .8f, 0, 360); painter.Fill();
+                        painter.BeginPath(); painter.Arc(new Vector2(10.6f, 5.3f), .8f, 0, 360); painter.Fill();
+                    };
+                    button.Add(icon); button.Add(new Label("Bake Color Adjust") { pickingMode = PickingMode.Ignore });
+#endif
                     Track(button,()=>button.SetEnabled(!pending && RetainedMaterialModel.HasValidTargets(Model.Editor) && Model.CanEdit(property)
                         && PresentationTargets(property).Any(m=>(bool)check.Invoke(null,new object[]{m}))));root.Add(button);
                 }
