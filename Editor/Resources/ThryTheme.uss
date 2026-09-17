@@ -1012,9 +1012,7 @@
 .thry-pathing { --thry-pathing-column-divider: #5b5b5b; --thry-pathing-column-alternate: rgba(255, 255, 255, .035); --thry-pathing-grip-color: #747474; --thry-pathing-grip-hover-color: #909090; margin: var(--thry-space-5) var(--thry-space-1) 9px; }
 .thry-light .thry-pathing { --thry-pathing-column-divider: #999999; --thry-pathing-column-alternate: rgba(0, 0, 0, .035); --thry-pathing-grip-color: #888888; --thry-pathing-grip-hover-color: #666666; }
 .pathing-row { flex-direction: row; align-items: center; }
-.pathing-topbar { justify-content: flex-end; padding: 0 0 var(--thry-space-3); }
 .pathing-eyebrow { font-size: var(--thry-type-caption); color: var(--thry-muted-color); -unity-font-style: bold; flex-grow: 1; }
-.pathing-topbar > Toggle { font-size: var(--thry-type-caption); margin: 0; }
 .pathing-preview { background-color: transparent; border-width: 0; border-radius: 0; padding: var(--thry-space-6) var(--thry-space-7); margin-bottom: var(--thry-space-5); }
 .pathing-preview-toolbar { margin-bottom: var(--thry-space-8); }
 .pathing-preview-hidden .pathing-preview-toolbar { margin-bottom: 0; }
@@ -1022,10 +1020,8 @@
 .pathing-preview .pathing-lane-label { width: 25px; min-width: 25px; margin: 0 var(--thry-space-7) 0 0; padding: 0; -unity-font-style: bold; }
 .pathing-lane { background-color: var(--thry-field-background); border-radius: var(--thry-radius-compact); overflow: hidden; height: var(--thry-control-height); flex-grow: 1; margin-bottom: var(--thry-space-2); }
 .pathing-preview-content > Slider { margin: var(--thry-space-5) 0 0 30px; }
-.pathing-fold { border-width: 0; margin: 0 0 var(--thry-space-3); padding: 0; background-color: transparent; }
-.pathing-fold > Toggle { height: var(--thry-section-height); margin: 0; padding: 0 var(--thry-space-4); border-radius: var(--thry-radius-subheader); background-color: var(--thry-subsection-background); font-size: var(--thry-font-size); -unity-font-style: bold; border-color: var(--thry-subsection-background); }
-.pathing-fold > .unity-foldout__content { margin-left: 0; padding: var(--thry-space-4) 0 var(--thry-space-4) var(--thry-space-8); }
 .pathing-help { color: var(--thry-muted-color); font-size: var(--thry-type-small); white-space: normal; margin: var(--thry-space-3) var(--thry-space-4) var(--thry-space-8); }
+.thry-pathing #pathing-sources { margin-bottom: var(--thry-space-8); }
 .pathing-grid { border-width: 0; border-radius: 0; overflow: hidden; background-color: transparent; margin-bottom: var(--thry-space-7); }
 .pathing-grid-row { min-height: var(--thry-window-control-height); align-items: stretch; border-bottom-width: 0; }
 .pathing-grid-label { width: 18%; min-width: 60px; flex-shrink: 0; font-size: var(--thry-font-size); color: var(--thry-caption-color); margin: 0; padding: var(--thry-space-4) var(--thry-space-3) var(--thry-space-4) var(--thry-space-7); -unity-text-align: middle-left; }
@@ -1054,8 +1050,9 @@
 .pathing-component { flex-grow: 1; }
 .pathing-cell .pathing-auto-label { color: var(--thry-muted-color); font-size: var(--thry-type-caption); -unity-text-align: middle-center; margin: 0; }
 .pathing-routing-note { font-size: var(--thry-type-caption); color: var(--thry-muted-color); margin: 0; }
-.pathing-actions { justify-content: flex-end; margin: var(--thry-space-3) 0 var(--thry-space-4); }
-.pathing-actions Button { font-size: var(--thry-type-small); height: var(--thry-button-height); padding: 0 var(--thry-space-8); margin: 0 0 0 var(--thry-space-5); border-radius: var(--thry-radius-button); }
+.pathing-actions { justify-content: space-between; margin: var(--thry-space-3) 0 var(--thry-space-4); }
+.pathing-actions Button { flex-grow: 1; flex-basis: 0; min-width: 0; font-size: var(--thry-type-small); height: var(--thry-button-height); padding: 0 var(--thry-space-8); margin: 0; border-radius: var(--thry-radius-button); }
+.pathing-actions > #pathing-copy { margin-left: var(--thry-space-5); }
 
 .pathing-grid-heading { background-color: var(--thry-subsection-background); border-radius: var(--thry-radius-subheader); border-color: var(--thry-subsection-background); }
 .pathing-property-caption { justify-content: center; overflow: hidden; }

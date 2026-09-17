@@ -279,7 +279,7 @@ namespace Thry.ThryEditor
         internal static bool HasChangedValue(ShaderProperty property) => RetainedPropertyDefaults.HasChangedValue(property);
 
         internal static bool HasChangedTextureTransform(ShaderProperty property) => RetainedPropertyDefaults.HasChangedTextureTransform(property);
-        private static Image HeaderIcon(string name)
+        internal static Image HeaderIcon(string name)
         {
             var icon = new Image
             {
@@ -345,5 +345,41 @@ namespace Thry.ThryEditor
             Add(footer);
         }
     }
+    // Presentation-only groups use the same chrome as material subcategories,
+    // without inventing shader properties to store their expansion state.
+    internal sealed class RetainedSubcategory : VisualElement
+    {
+        readonly VisualElement content;
+        public override VisualElement contentContainer => content ?? this;
+
+        internal RetainedSubcategory(string title, string scope, string key, bool initiallyOpen)
+        {
+            AddToClassList("thry-section"); AddToClassList("thry-subsection-panel");
+            var header = new VisualElement(); header.AddToClassList("thry-section-header"); hierarchy.Add(header);
+            var arrow = new Button { tooltip = "Expand or collapse section" };
+            arrow.AddToClassList("thry-fold-arrow");
+            var icon = RetainedMaterialBody.HeaderIcon("caret-right"); arrow.Add(icon); header.Add(arrow);
+            var titleArea = new VisualElement(); titleArea.AddToClassList("thry-section-title-area"); header.Add(titleArea);
+            var label = new Label(title); label.AddToClassList("thry-section-title"); titleArea.Add(label);
+            content = new VisualElement(); content.AddToClassList("thry-section-content"); hierarchy.Add(content);
+            bool expanded = RetainedUiState.Get(scope, key, initiallyOpen);
+            var opened = Resources.Load<Texture2D>("ThryToolbar/header-caret-down");
+            var closed = Resources.Load<Texture2D>("ThryToolbar/header-caret-right");
+            Action refresh = () => {
+                content.style.display = expanded ? DisplayStyle.Flex : DisplayStyle.None;
+                icon.image = expanded ? opened : closed;
+            };
+            Action toggle = () => { expanded = !expanded; RetainedUiState.Set(scope, key, expanded); refresh(); };
+            arrow.clicked += toggle;
+            header.RegisterCallback<PointerDownEvent>(e => {
+                if (e.button != 0) return;
+                for (var target = e.target as VisualElement; target != null && target != header; target = target.parent)
+                    if (target is Button) return;
+                toggle(); e.StopPropagation();
+            });
+            refresh();
+        }
+    }
+
 }
 #endif

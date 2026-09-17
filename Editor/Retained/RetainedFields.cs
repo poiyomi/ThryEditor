@@ -411,6 +411,9 @@ namespace Thry.ThryEditor
                 names = Enum.GetNames(enumType); values = Enum.GetValues(enumType).Cast<object>().Select(Convert.ToSingle).ToArray();
             }
             else { names = attribute.Args.Where((s,i)=>i%2==0).ToArray(); values = attribute.Args.Where((s,i)=>i%2==1).Select(DrawerAttribute.Number).ToArray(); }
+            if (property.MaterialProperty.name == "_PathSourceDirR" || property.MaterialProperty.name == "_PathSourceDirG"
+                || property.MaterialProperty.name == "_PathSourceDirB" || property.MaterialProperty.name == "_PathSourceDirA")
+                names = names.Select(n => n == "UV X Axis" ? "X axis" : n == "UV Y Axis" ? "Y axis" : n).ToArray();
             names = names.Select(n => Model.Shader.Locale.Get(n,n)).ToArray();
             var field = new DropdownField(names.ToList(), 0); field.AddToClassList("thry-input"); field.name = "value-" + property.MaterialProperty.name;
             _view.UseInspectorMenu(field);
