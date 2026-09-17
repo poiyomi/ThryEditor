@@ -462,6 +462,7 @@ namespace Thry.ThryEditor
             }); value.Add(objectField);
             Track(objectField, () => objectField.SetEnabled(Model.CanEdit(property)));
             TextureAssetDisplay(objectField, property);
+            NormalMapImportWarning(root, property);
             var array = attributes.FirstOrDefault(a => a.Name == "TextureArray");
             if (array != null)
             {
