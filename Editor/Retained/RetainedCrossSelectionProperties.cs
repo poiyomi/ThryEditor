@@ -36,6 +36,8 @@ namespace Thry.ThryEditor
             private readonly List<Material> _chain = new List<Material>();
             private readonly List<int> _versions = new List<int>();
 
+            internal int OwnerVersion => _versions.Count == 0 ? -1 : _versions[0];
+
             internal bool Matches(Material owner)
             {
                 int index = 0;
@@ -83,6 +85,43 @@ namespace Thry.ThryEditor
             }
         }
 
+        // Single-owner inspectors can compare native values without reconstructing
+        // thousands of MaterialProperty objects. A changed value still comes from
+        // Unity's editor API, preserving its flags, callbacks and setter semantics.
+        private struct SingleTargetValue
+        {
+            internal int Id;
+            internal ShaderPropertyType Type;
+            private float _number;
+            private int _integer, _texture;
+            private Vector4 _vector;
+
+            internal bool Read(Material material)
+            {
+                var previous = this;
+                switch (Type)
+                {
+                    case ShaderPropertyType.Float:
+                    case ShaderPropertyType.Range: _number = material.GetFloat(Id); break;
+#if UNITY_2021_2_OR_NEWER
+                    case ShaderPropertyType.Int: _integer = material.GetInteger(Id); break;
+#endif
+                    case ShaderPropertyType.Color: _vector = material.GetColor(Id); break;
+                    case ShaderPropertyType.Vector: _vector = material.GetVector(Id); break;
+                    case ShaderPropertyType.Texture:
+                        var texture = material.GetTexture(Id);
+                        _texture = texture == null ? 0 : texture.GetObjectId();
+                        var scale = material.GetTextureScale(Id);
+                        var offset = material.GetTextureOffset(Id);
+                        _vector = new Vector4(scale.x, scale.y, offset.x, offset.y);
+                        break;
+                    default: return true;
+                }
+                return !_number.Equals(previous._number) || _integer != previous._integer
+                    || _texture != previous._texture || !_vector.Equals(previous._vector);
+            }
+        }
+
         private readonly MaterialEditor _editor;
         private readonly ShaderEditor _shader;
         private Material[] _targets = Array.Empty<Material>();
@@ -91,6 +130,7 @@ namespace Thry.ThryEditor
         private bool[] _dirtyTargets = Array.Empty<bool>();
         private MaterialProperty[] _properties;
         private MaterialProperty[] _homogeneousProperties;
+        private SingleTargetValue[] _singleTargetValues;
         private bool _wasInAnimationMode;
         private bool _readRequired;
         private readonly List<TargetGroup> _groups = new List<TargetGroup>();
@@ -122,7 +162,7 @@ namespace Thry.ThryEditor
                 _shaders = targets.Select(m => m.shader).ToArray();
                 _dependencies = targets.Select(target => new MaterialDependencies()).ToArray();
                 _dirtyTargets = new bool[targets.Length];
-                _properties = null; _homogeneousProperties = null; _groups.Clear(); _sources.Clear();
+                _properties = null; _homogeneousProperties = null; _singleTargetValues = null; _groups.Clear(); _sources.Clear();
                 _schemas.Clear();
                 foreach(var shader in _shaders.Distinct()) _schemas[shader]=RetainedShaderSchema.Read(shader);
                 // Unsupported materials stay visible in the selection list, but never enter a
@@ -178,10 +218,19 @@ namespace Thry.ThryEditor
                 bool animation = AnimationMode.InAnimationMode();
                 if (_homogeneousProperties == null || valuesChanged || animation || _wasInAnimationMode != animation)
                 {
-                    _homogeneousProperties = MaterialEditor.GetMaterialProperties(targets);
-                    HomogeneousReadCount++;
-                    ValueRevision++;
-                    PatchedPropertyName = null;
+                    bool canCompare = _singleTargetValues != null && !forceRead && !animation && !_wasInAnimationMode;
+#if UNITY_2022_1_OR_NEWER
+                    canCompare &= !targets[0].isVariant;
+#endif
+                    if (canCompare) RefreshSingleTargetValues();
+                    else
+                    {
+                        _homogeneousProperties = MaterialEditor.GetMaterialProperties(targets);
+                        HomogeneousReadCount++;
+                        ValueRevision++;
+                        PatchedPropertyName = null;
+                        CaptureSingleTargetValues();
+                    }
                     RecordDirtyCounts();
                 }
                 _wasInAnimationMode = animation;
@@ -244,7 +293,11 @@ namespace Thry.ThryEditor
                 var value = MaterialEditor.GetMaterialProperty(_targets, name);
                 PropertyReadCount++;
                 for (int i = 0; i < _homogeneousProperties.Length; i++)
-                    if (_homogeneousProperties[i].name == name) _homogeneousProperties[i] = value;
+                    if (_homogeneousProperties[i].name == name)
+                    {
+                        _homogeneousProperties[i] = value;
+                        if (_singleTargetValues != null) _singleTargetValues[i].Read(_targets[0]);
+                    }
             }
             else
             {
@@ -274,6 +327,44 @@ namespace Thry.ThryEditor
             ValueRevision++;
             PatchedPropertyName = name;
             RecordDirtyCounts();
+        }
+
+        private void CaptureSingleTargetValues()
+        {
+            _singleTargetValues = null;
+            if (_targets.Length != 1) return;
+#if UNITY_2022_1_OR_NEWER
+            if (_targets[0].isVariant) return;
+#endif
+            _singleTargetValues = new SingleTargetValue[_homogeneousProperties.Length];
+            for (int i = 0; i < _singleTargetValues.Length; i++)
+            {
+                _singleTargetValues[i].Id = Shader.PropertyToID(_homogeneousProperties[i].name);
+                _singleTargetValues[i].Type = _homogeneousProperties[i].GetPropertyType();
+                _singleTargetValues[i].Read(_targets[0]);
+            }
+        }
+
+        private void RefreshSingleTargetValues()
+        {
+            int changed = 0;
+            string name = null;
+            for (int i = 0; i < _singleTargetValues.Length; i++)
+            {
+                if (!_singleTargetValues[i].Read(_targets[0])) continue;
+                name = _homogeneousProperties[i].name;
+                _homogeneousProperties[i] = MaterialEditor.GetMaterialProperty(_targets, name);
+                PropertyReadCount++;
+                changed++;
+            }
+            if (changed == 0) return;
+            ValueRevision++;
+            PatchedPropertyName = changed == 1 ? name : null;
+            // Every native value was checked against the previous owner version.
+            // When only one differs, untouched default comparisons remain valid,
+            // just as they do after an inspector's known single-property setter.
+            if (changed == 1)
+                RetainedPropertyDefaults.RecordValueEdit(_shader, name, _targets, new[] { _dependencies[0].OwnerVersion });
         }
 
         private void ReadSource(SourceGroup source, bool baseline)

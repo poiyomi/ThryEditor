@@ -40,8 +40,7 @@ namespace Thry.ThryEditor
                         {
                             int index = material.shader.FindPropertyIndex(name);
                             keywords = index < 0 || material.shader.GetPropertyType(index) != ShaderPropertyType.Texture ? Array.Empty<string>() :
-                                material.shader.GetPropertyAttributes(index).Select(a => new DrawerAttribute(a)).Where(a => a.Name == "TextureKeyword")
-                                .Select(a => a.Args.Length == 0 || string.IsNullOrEmpty(a.Args[0]) ? "PROP_" + name.TrimStart('_').ToUpperInvariant() : a.Args[0]).Distinct().ToArray();
+                                RetainedShaderDeclarations.Get(material.shader, index).TextureKeywords;
                             properties[name] = keywords;
                         }
                         List<Binding> bindings;

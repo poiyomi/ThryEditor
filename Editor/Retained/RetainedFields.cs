@@ -148,8 +148,16 @@ namespace Thry.ThryEditor
             VisualElement input;
             var row = Row(inline ? "" : RetainedText.PropertyCaption(property), out input);
             var label = row.Q<Label>(className: "thry-property-label");
-            Track(label, () => { label.text = inline ? "" : RetainedText.PropertyCaption(property).Split('|')[0];
-            label.tooltip = RetainedMaterialBody.Hover(RetainedMaterialBody.SectionCaption(property), property.TooltipText, property.Note); });
+            string lastCaption = null, lastTooltip = null, lastNote = null;
+            Track(label, () => {
+                string caption = RetainedMaterialBody.SectionCaption(property);
+                string tooltip = property.TooltipText, note = property.Note;
+                if (caption == lastCaption && tooltip == lastTooltip && note == lastNote) return;
+                int separator = caption.IndexOf('|');
+                label.text = inline ? "" : separator < 0 ? caption : caption.Substring(0, separator);
+                label.tooltip = RetainedMaterialBody.Hover(caption, tooltip, note);
+                lastCaption = caption; lastTooltip = tooltip; lastNote = note;
+            });
             if (!inline) ChangedPropertyIndicator(row, label, property);
             if (inline) row.AddToClassList("thry-inline");
             root.Add(row);
@@ -451,7 +459,9 @@ namespace Thry.ThryEditor
             foldout.tooltip = RetainedMaterialBody.Hover(foldCaption.text, property.TooltipText, property.Note, "Expand or collapse texture settings"); });
             ChangedPropertyIndicator(row, foldCaption, property);
             var dimension = property.MaterialProperty.textureDimension;
-            var objectField = new ObjectField { name = "value-" + property.MaterialProperty.name, objectType = typeof(Texture), allowSceneObjects = false };
+            // Use the asset type for native picker filtering; assignment is still dimension-checked below.
+            bool cube = dimension == UnityEngine.Rendering.TextureDimension.Cube;
+            var objectField = new ObjectField { name = "value-" + property.MaterialProperty.name, objectType = cube ? typeof(Cubemap) : typeof(Texture), allowSceneObjects = false };
             objectField.AddToClassList("thry-input");
             Action<MaterialProperty, Texture2DArray, float> updateArrayReferences = null;
             Track(objectField, () => { objectField.SetValueWithoutNotify(property.MaterialProperty.textureValue); objectField.showMixedValue = property.MaterialProperty.hasMixedValue; });
@@ -462,7 +472,32 @@ namespace Thry.ThryEditor
                 Model.Edit(property, p => { p.textureValue = texture; Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(p, texture); updateArrayReferences?.Invoke(p, texture as Texture2DArray, 0); });
             }); value.Add(objectField);
             Track(objectField, () => objectField.SetEnabled(Model.CanEdit(property)));
+            if (cube)
+            {
+                // RenderTexture is not a Cubemap subclass, but cube render targets remain valid drops.
+                // Handle them before ObjectField's CLR-type drag validation.
+                objectField.RegisterCallback<DragUpdatedEvent>(e =>
+                {
+                    var render = DragAndDrop.objectReferences.OfType<RenderTexture>().FirstOrDefault();
+                    if (render == null) return;
+                    DragAndDrop.visualMode = objectField.enabledInHierarchy && Model.CanEdit(property)
+                        && EditorUtility.IsPersistent(render) && render.dimension == dimension
+                        ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Rejected;
+                    e.PreventDefault(); e.StopImmediatePropagation();
+                }, TrickleDown.TrickleDown);
+                objectField.RegisterCallback<DragPerformEvent>(e =>
+                {
+                    var render = DragAndDrop.objectReferences.OfType<RenderTexture>().FirstOrDefault();
+                    if (render == null) return;
+                    if (objectField.enabledInHierarchy && Model.CanEdit(property)
+                        && EditorUtility.IsPersistent(render) && render.dimension == dimension)
+                    { DragAndDrop.AcceptDrag(); objectField.value = render; }
+                    e.PreventDefault(); e.StopImmediatePropagation();
+                }, TrickleDown.TrickleDown);
+            }
             TextureAssetDisplay(objectField, property);
+            if (attributes.Any(a => a.Name == "Curve")) value.Add(CurveCreatorButton(property, root));
+            NormalMapImportWarning(root, property);
             var array = attributes.FirstOrDefault(a => a.Name == "TextureArray");
             if (array != null)
             {

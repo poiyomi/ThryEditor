@@ -138,6 +138,10 @@ namespace Thry.ThryEditor
                 EnableInClassList("thry-narrow", evt.newRect.width < 310);
             });
             RegisterCallback<DetachFromPanelEvent>(evt => { if (_shader != null) { _shader.HasRetainedToolbar = false; _shader.ShowDropdown = null; } });
+            // The Inspector host and its material foldout are established on attach.
+            // Build visible controls now rather than leaving the first paint empty
+            // until the periodic refresh. Collapsed embedded materials still return early.
+            RegisterCallback<AttachToPanelEvent>(evt => { if (evt.target == this) UpdateState(); });
             schedule.Execute(UpdateState).Every(150);
         }
 
@@ -544,7 +548,7 @@ namespace Thry.ThryEditor
                 _crossProperties = _propertyProvider == null ? new RetainedCrossSelectionProperties(_editor, current) : null;
                 model.PropertyProvider = _propertyProvider ?? _crossProperties.Read;
                 model.Renderers = FindRenderers();
-                model.Refresh(); current.HasRetainedToolbar = true; current.ShowDropdown = ShowDropdown;
+                current.HasRetainedToolbar = true; current.ShowDropdown = ShowDropdown;
                 _body.Clear(); _retained = new RetainedMaterialBody(model,this); _body.Add(_retained);
             }
             if (current != null)

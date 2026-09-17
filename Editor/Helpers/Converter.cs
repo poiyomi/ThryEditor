@@ -263,13 +263,15 @@ namespace Thry.ThryEditor.Helpers
 
         //--End--Gradient
 
-        public static Texture2D CurveToTexture(AnimationCurve curve, TextureData texture_settings)
+        public static Texture2D CurveToTexture(AnimationCurve curve, TextureData texture_settings, bool vertical = false)
         {
             Texture2D texture = new Texture2D(texture_settings.width, texture_settings.height);
-            for (int i = 0; i < texture_settings.width; i++)
+            int samples = vertical ? texture_settings.height : texture_settings.width;
+            int repeats = vertical ? texture_settings.width : texture_settings.height;
+            for (int i = 0; i < samples; i++)
             {
                 Color color = new Color();
-                float value = curve.Evaluate((float)i / texture_settings.width);
+                float value = curve.Evaluate((float)i / Mathf.Max(1, samples - 1));
                 value = Mathf.Clamp01(value);
                 if (texture_settings.channel == 'r')
                     color.r = value;
@@ -281,8 +283,8 @@ namespace Thry.ThryEditor.Helpers
                     color.a = value;
                 if (texture_settings.channel != 'a')
                     color.a = 1;
-                for (int y = 0; y < texture_settings.height; y++)
-                    texture.SetPixel(i, y, color);
+                for (int j = 0; j < repeats; j++)
+                    texture.SetPixel(vertical ? j : i, vertical ? i : j, color);
             }
             texture.Apply();
             texture_settings.ApplyModes(texture);

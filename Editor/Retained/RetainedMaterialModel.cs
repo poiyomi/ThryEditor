@@ -54,7 +54,10 @@ namespace Thry
                 // IMGUI initializes a part's options the first time it draws. Retained inspectors
                 // never call Draw, so tooltips, offsets and stored foldout states would stay unread.
                 foreach (var part in ShaderParts) part.EnsureOptionsInitialized();
-                foreach (var property in ShaderParts.OfType<ShaderProperty>()) property.PrepareRetainedMetadata();
+                // The model resolves animation after refreshing owner metadata below.
+                // Reading every tag here would duplicate that complete pass, and would
+                // run before declaration attributes have ruled out animation.
+                foreach (var property in ShaderParts.OfType<ShaderProperty>()) property.PrepareRetainedDeclaration();
                 _retainedPartsByName = ShaderParts.Where(p => p.ThryPropertyIndex >= 0)
                     .GroupBy(p => Properties[p.ThryPropertyIndex].name).ToDictionary(g => g.Key, g => g.ToArray());
                 RetainedRevision++;
@@ -187,7 +190,7 @@ namespace Thry.ThryEditor
                 || _animatedMaterialVersions[m] != EditorUtility.GetDirtyCount(m)).ToArray();
             bool animationChanged;
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.AnimationMetadata))
-                animationChanged = (!DeferSummaryRefresh || rebuilt || forceAnimatedState) && _animationMetadata.Update(targets);
+                animationChanged = (!DeferSummaryRefresh || rebuilt || forceAnimatedState) && _animationMetadata.Update(targets, Editor);
             bool changed = rebuilt || forceAnimatedState || animationChanged || _animatedMaterialVersions.Count != targets.Length || changedTargets.Length > 0;
             if (!changed) { StampSnapshotsIfUnchanged(readTargets, readVersions); return; }
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.TextureKeywords))

@@ -699,16 +699,16 @@ namespace Thry.ThryEditor
 
         internal void PrepareRetainedMetadata()
         {
-            if (MaterialProperty == null || MyShader == null || ShaderPropertyIndex < 0) return;
-            var options = Options;
+            PrepareRetainedDeclaration();
             EnsureAnimatedStateResolved();
-            var attributes = MyShader.GetPropertyAttributes(ShaderPropertyIndex);
-            if (Array.Exists(attributes, a => a.StartsWith("DoNotAnimate", StringComparison.Ordinal)
-                || a.StartsWith("ThryStencil", StringComparison.Ordinal) || a.StartsWith("ThryShaderOptimizer", StringComparison.Ordinal)
-                || a.StartsWith("TextureKeyword", StringComparison.Ordinal))) IsAnimatable = false;
-            foreach(var attribute in attributes.Select(a=>new DrawerAttribute(a)))
-                if((attribute.Name=="ThryToggle" || attribute.Name=="ThryToggleUI") && attribute.Args.Length>0 && attribute.Args[0]!="true" && attribute.Args[0]!="false")
-                { SetKeyword(attribute.Args[0]); IsAnimatable=false; }
+        }
+
+        internal void PrepareRetainedDeclaration()
+        {
+            if (MaterialProperty == null || MyShader == null || ShaderPropertyIndex < 0) return;
+            var declaration = RetainedDeclaration ?? RetainedShaderDeclarations.Get(MyShader, ShaderPropertyIndex);
+            IsAnimatable &= declaration.IsAnimatable;
+            if (declaration.Keyword != null) SetKeyword(declaration.Keyword);
         }
 
 #endif

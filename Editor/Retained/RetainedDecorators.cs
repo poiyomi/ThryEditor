@@ -13,6 +13,53 @@ namespace Thry.ThryEditor
 {
     internal sealed partial class RetainedFields
     {
+        private void NormalMapImportWarning(VisualElement root, ShaderTextureProperty property)
+        {
+            if ((property.MyShader.GetPropertyFlags(property.ShaderPropertyIndex) & ShaderPropertyFlags.Normal) == 0) return;
+            var warning = new VisualElement { name = "normal-map-warning-" + property.MaterialProperty.name };
+            warning.Add(new HelpBox("This slot expects a normal map. Fix Now imports the assigned textures as Normal Map assets, affecting every material that uses them.", HelpBoxMessageType.Warning));
+            Func<TextureImporter[]> mismatches = () => PresentationTargets(property)
+                .Where(m => m.HasProperty(property.MaterialProperty.name))
+                .Select(m => m.GetTexture(property.MaterialProperty.name)).OfType<Texture2D>()
+                .Select(t => AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(t)) as TextureImporter)
+                .Where(i => i != null && i.textureType != TextureImporterType.NormalMap).Distinct().ToArray();
+            bool pending = false;
+            var fix = new Button(() =>
+            {
+                if (pending || !RetainedMaterialModel.HasValidTargets(Model.Editor) || !Model.CanEdit(property)) return;
+                var paths = mismatches().Select(i => i.assetPath).ToArray();
+                if (paths.Length == 0) return;
+                pending = true;
+                // Reimport outside event dispatch and recheck the current assignments.
+                EditorApplication.delayCall += () =>
+                {
+                    try
+                    {
+                        if (root.panel == null || !RetainedMaterialModel.HasValidTargets(Model.Editor) || !Model.CanEdit(property)) return;
+                        foreach (var importer in mismatches().Where(i => paths.Contains(i.assetPath)))
+                        {
+                            Undo.RecordObject(importer, "Fix normal map import");
+                            // textureType's importer setter applies type defaults (including
+                            // mipmaps). Change the saved settings instead to retain user choices.
+                            var settings = new TextureImporterSettings();
+                            importer.ReadTextureSettings(settings);
+                            settings.textureType = TextureImporterType.NormalMap;
+                            importer.SetTextureSettings(settings);
+                            importer.SaveAndReimport();
+                        }
+                    }
+                    finally { pending = false; Model.Notify(); }
+                };
+            }) { text = "Fix Now", name = "fix-normal-map" };
+            fix.AddToClassList("thry-action-button");
+            warning.Add(fix); root.Add(warning);
+            Track(warning, () =>
+            {
+                warning.style.display = mismatches().Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+                fix.SetEnabled(!pending && Model.CanEdit(property));
+            });
+        }
+
         private void Decorators(VisualElement root,ShaderProperty property,DrawerAttribute[] attributes)
         {
             foreach(var attribute in attributes)

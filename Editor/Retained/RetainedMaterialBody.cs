@@ -27,7 +27,13 @@ namespace Thry.ThryEditor
             Model.Shader.ActivateRetained();
             bool editing = Model.Shader.RootCategories.Any(g => SectionEditing.IsEditing(g));
             if (_revision != Model.Shader.RetainedRevision || editing != _editing)
-            { _revision = Model.Shader.RetainedRevision; _editing = editing; Build(); }
+            {
+                _revision = Model.Shader.RetainedRevision; _editing = editing;
+                // Track initializes bindings immediately, and attachment initializes
+                // them again. Build belongs to the same synchronized snapshot as the
+                // final pass, so section dots can share those default comparisons.
+                using (RetainedPropertyDefaults.BeginEvaluation(Model.Shader)) Build();
+            }
             _fields.Synchronize();
         }
         private void Build()
@@ -179,7 +185,7 @@ namespace Thry.ThryEditor
             Action update = () => {
                 title.text = SectionCaption(group);
                 if (!Model.DeferSummaryRefresh)
-                    changedDot.style.display = changedProperties.Any(entry => HasChangedValue(entry.Key) || HasChangedTextureTransform(entry.Key)) ? DisplayStyle.Flex : DisplayStyle.None;
+                    changedDot.style.display = RetainedPropertyDefaults.HasChangedSection(Model.Shader, changedProperties) ? DisplayStyle.Flex : DisplayStyle.None;
                 changedDot.style.backgroundColor = title.resolvedStyle.color;
                 bool category = depth != 0 || Model.Shader.FocusedCategory == null || group.MaterialProperty.name == Model.Shader.FocusedCategory;
                 root.style.display = category && group.RetainedVisible ? DisplayStyle.Flex : DisplayStyle.None;
@@ -236,43 +242,40 @@ namespace Thry.ThryEditor
 
         internal static string SectionCaption(ShaderPart part)
         {
-            string text = part.Content.text ?? "";
-            // Only remove the synthetic default-state suffix; authored punctuation stays intact.
-            if (Config.Instance.showStarNextToNonDefaultProperties && !part.IsPropertyValueDefault && text.EndsWith("*", StringComparison.Ordinal))
-                text = text.Substring(0, text.Length - 1);
-            return text;
+            // Retained views use separate changed-value dots. Reading the legacy
+            // marked Content would walk defaults just to add and strip an asterisk.
+            // The original label also preserves authored punctuation and live locale edits.
+            return part.UnmarkedLabel;
         }
 
         private List<KeyValuePair<ShaderProperty, string>> SectionProperties(ShaderGroup section)
         {
             var result = new List<KeyValuePair<ShaderProperty, string>>();
             var visited = new HashSet<ShaderPart>();
-            Action<ShaderPart, string> collect = null;
-            collect = (part, prefix) =>
+            Action<ShaderPart> collect = null;
+            collect = part =>
             {
                 if (part == null || !visited.Add(part)) return;
-                string caption = SectionCaption(part).Split('|')[0];
-                string path = string.IsNullOrEmpty(prefix) ? caption : prefix + " / " + caption;
                 var property = part as ShaderProperty;
-                if (property != null && property.MaterialProperty != null) result.Add(new KeyValuePair<ShaderProperty, string>(property, path));
+                // The section dot only needs a boolean. Building localized paths for
+                // every descendant allocated strings that no control displayed.
+                if (property != null && property.MaterialProperty != null) result.Add(new KeyValuePair<ShaderProperty, string>(property, null));
                 var group = part as ShaderGroup;
-                if (group != null) foreach (var child in group.Children) collect(child, path);
-                var references = new List<string>();
-                if (part.Options.reference_property != null) references.Add(part.Options.reference_property);
-                if (part.Options.reference_properties != null) references.AddRange(part.Options.reference_properties);
-                if (part.AdditionalDefaultCheckProperties != null) references.AddRange(part.AdditionalDefaultCheckProperties);
-                foreach (var name in references)
-                {
-                    ShaderProperty reference;
-                    if (name != null && Model.Shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference, path);
-                }
+                if (group != null) foreach (var child in group.Children) collect(child);
+                ShaderProperty reference;
+                if (part.Options.reference_property != null && Model.Shader.PropertyDictionary.TryGetValue(part.Options.reference_property, out reference)) collect(reference);
+                if (part.Options.reference_properties != null)
+                    foreach (var name in part.Options.reference_properties)
+                        if (name != null && Model.Shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
+                if (part.AdditionalDefaultCheckProperties != null)
+                    foreach (var name in part.AdditionalDefaultCheckProperties)
+                        if (name != null && Model.Shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
             };
-            // Relative paths make a parent indicator explain which nested section changed.
-            foreach (var child in section.Children) collect(child, "");
+            foreach (var child in section.Children) collect(child);
             foreach (var name in new[] { section.Options.reference_property }.Concat(section.Options.reference_properties ?? Array.Empty<string>()))
             {
                 ShaderProperty reference;
-                if (name != null && Model.Shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference, "");
+                if (name != null && Model.Shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
             }
             return result;
         }

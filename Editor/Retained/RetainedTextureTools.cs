@@ -45,6 +45,82 @@ namespace Thry.ThryEditor
                 }, canApply, direction);
         }
 
+        void OpenCurveCreator(ShaderTextureProperty property, VisualElement owner)
+        {
+            var targets = Model.Owners(property).ToArray();
+            if (targets.Length == 0 || owner.panel == null || !Model.CanEdit(property)) return;
+            string id = property.MaterialProperty.name;
+            Func<string> signature = () => string.Join("|", targets.Select(m => m == null ? "missing" :
+                m.GetObjectId() + ":" + m.shader.GetObjectId() + ":" + (m.GetTexture(id) == null ? 0 : m.GetTexture(id).GetObjectId())
+                + ":" + m.GetTag(id + "_curve", false, "")));
+            string initial = signature();
+            Func<bool> canApply = () => owner.panel != null && Model.Editor != null && Model.Editor.target != null
+                && Model.CanEdit(property) && Model.Owners(property).SequenceEqual(targets) && signature() == initial;
+            AnimationCurve curve = null;
+            bool vertical = false;
+            string saved = targets[0].GetTag(id + "_curve", false, "");
+            try
+            {
+                if (!string.IsNullOrEmpty(saved))
+                {
+                    var data = JsonUtility.FromJson<CurveData>(saved);
+                    curve = data?.curve; vertical = data != null && data.vertical;
+                }
+            }
+            catch (ArgumentException) { }
+            string notice = targets.Length > 1 ? "Applying assigns the same curve to all " + targets.Length + " selected materials." : "";
+            if (curve == null && targets[0].GetTexture(id) != null)
+                notice += " This texture has no saved curve points. Start a new curve; the existing texture changes only when you apply.";
+            var settings = JsonUtility.FromJson<TextureData>(JsonUtility.ToJson(property.Options.texture ?? new TextureData()));
+            settings.width = settings.height = 256;
+            settings.wrapMode = TextureWrapMode.Clamp; settings.filterMode = FilterMode.Bilinear; settings.ansioLevel = 0;
+            CurveTextureEditor window = null;
+            window = CurveTextureEditor.Open(curve, settings, RetainedText.PropertyCaption(property), targets[0].GetTexture(id) != null, notice.Trim(), result =>
+            {
+                if (!canApply()) throw new InvalidOperationException("The source material changed. Reopen the curve editor.");
+                var texture = Converter.CurveToTexture(result, settings, window.Vertical);
+                try
+                {
+                    var asset = TextureHelper.SaveTextureAsPNG(texture, PATH.TEXTURES_DIR + "/curves/" + Guid.NewGuid().ToString("N") + ".png", settings);
+                    var importer = (TextureImporter)AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(asset));
+                    importer.textureType = TextureImporterType.Default;
+                    importer.sRGBTexture = false; importer.mipmapEnabled = false;
+                    importer.textureCompression = TextureImporterCompression.Uncompressed;
+                    importer.alphaSource = TextureImporterAlphaSource.FromInput; importer.alphaIsTransparency = false;
+                    importer.npotScale = TextureImporterNPOTScale.None; importer.maxTextureSize = 256;
+                    importer.isReadable = false;
+                    importer.SaveAndReimport();
+                    asset = AssetDatabase.LoadAssetAtPath<Texture>(importer.assetPath);
+                    string json = JsonUtility.ToJson(new CurveData { curve = result, vertical = window.Vertical });
+                    Undo.IncrementCurrentGroup(); int group = Undo.GetCurrentGroup();
+                    Model.Edit(property, p =>
+                    {
+                        var material = p.targets.OfType<Material>().FirstOrDefault();
+                        if (material == null || !targets.Contains(material)) return;
+                        Undo.RegisterCompleteObjectUndo(material, "Apply texture curve");
+                        p.textureValue = asset; material.SetOverrideTag(id + "_curve", json);
+                    }, true);
+                    Undo.CollapseUndoOperations(group);
+                }
+                finally { UnityEngine.Object.DestroyImmediate(texture); }
+            }, canApply);
+            window.Vertical = vertical;
+        }
+
+        Button CurveCreatorButton(ShaderTextureProperty property, VisualElement owner)
+        {
+            var button = new Button(() => OpenCurveCreator(property, owner)) { name = "open-curve-editor" };
+            button.tooltip = "Create or edit a curve, then assign its texture. The texture output is clamped to 0–1.";
+            button.style.flexShrink = 0;
+            Track(button, () =>
+            {
+                button.text = Model.Owners(property).Any(m => !string.IsNullOrEmpty(m.GetTag(property.MaterialProperty.name + "_curve", false, "")))
+                    ? "Edit Curve…" : "Create Curve…";
+                button.SetEnabled(Model.CanEdit(property));
+            });
+            return button;
+        }
+
         partial void TextureTools(VisualElement parent, RetainedTextureCard card, ShaderTextureProperty property, DrawerAttribute[] attributes)
         {
             foreach(var attribute in attributes)
@@ -66,55 +142,9 @@ namespace Thry.ThryEditor
                     Track(inputs, () => { bool recording = AnimationMode.InAnimationMode(); inputs.SetEnabled(Model.CanEdit(property) && !recording);
                         animationHint.style.display = recording ? DisplayStyle.Flex : DisplayStyle.None; });
                 }
-                if(attribute.Name=="Curve")
-                {
-                    string key=AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(Model.Shader.Materials[0]))+"_"+property.MaterialProperty.name;
-                    VisualElement curveInput;
-                    parent.Add(Row("Curve", out curveInput));
-                    var field=new CurveField { name = "curve-editor" }; curveInput.Add(field);
-                    var apply = new Button { text = "Apply curve", name = "apply-curve" }; apply.SetEnabled(false); parent.Add(apply);
-                    bool draft = false; string signature = null;
-                    Track(field, () =>
-                    {
-                        var values = property.MaterialProperty.targets.OfType<Material>().Where(m => Model.Shader.Materials.Contains(m) && m.HasProperty(property.MaterialProperty.name))
-                            .Select(m => m.GetTag(property.MaterialProperty.name + "_curve", false, "")).ToArray();
-                        string current = string.Join("|", values);
-                        if (signature != current)
-                        {
-                            signature = current; draft = false;
-                            AnimationCurve curve = null;
-                            try { if (values.Length > 0 && !string.IsNullOrEmpty(values[0])) curve = JsonUtility.FromJson<CurveData>(values[0])?.curve; }
-                            catch (ArgumentException) { }
-                            field.SetValueWithoutNotify(curve ?? AnimationCurve.Linear(0, 0, 1, 1));
-                        }
-                        field.showMixedValue = !draft && values.Distinct().Skip(1).Any();
-                        apply.SetEnabled(draft && Model.CanEdit(property));
-                    });
-                    field.RegisterValueChangedCallback(e => { draft = true; field.showMixedValue = false; apply.SetEnabled(Model.CanEdit(property)); });
-                    apply.clicked += () => {
-                        if (!draft || parent.panel == null || !Model.CanEdit(property)) return;
-                        var settings = JsonUtility.FromJson<TextureData>(JsonUtility.ToJson(property.Options.texture ?? new TextureData()));
-                        var texture=Converter.CurveToTexture(field.value,settings);
-                        try
-                        {
-                            var asset=TextureHelper.SaveTextureAsPNG(texture,PATH.TEXTURES_DIR+"/curves/"+key+"_"+Guid.NewGuid().ToString("N")+".png",settings);
-                            string json = JsonUtility.ToJson(new CurveData { curve = field.value });
-                            var targets = property.MaterialProperty.targets.OfType<Material>().Where(m => Model.Shader.Materials.Contains(m) && m.HasProperty(property.MaterialProperty.name)).ToArray();
-                            Model.Edit(property, p =>
-                            {
-                                var material = p.targets.OfType<Material>().FirstOrDefault();
-                                if (material == null || !targets.Contains(material)) return;
-                                Undo.RegisterCompleteObjectUndo(material, "Apply texture curve");
-                                p.textureValue = asset; material.SetOverrideTag(property.MaterialProperty.name + "_curve", json);
-                            }, true);
-                            draft = false; apply.SetEnabled(false);
-                        }
-                        finally { if (texture != null) UnityEngine.Object.DestroyImmediate(texture); }
-                    };
-                }
             }
         }
-        [Serializable] private class CurveData { public AnimationCurve curve; }
+        [Serializable] private class CurveData { public AnimationCurve curve; public bool vertical; }
     }
 }
 
