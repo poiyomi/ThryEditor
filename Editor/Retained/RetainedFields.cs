@@ -487,6 +487,7 @@ namespace Thry.ThryEditor
                 }, TrickleDown.TrickleDown);
             }
             TextureAssetDisplay(objectField, property);
+            if (attributes.Any(a => a.Name == "Curve")) value.Add(CurveCreatorButton(property, root));
             NormalMapImportWarning(root, property);
             var array = attributes.FirstOrDefault(a => a.Name == "TextureArray");
             if (array != null)
