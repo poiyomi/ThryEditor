@@ -246,6 +246,8 @@ namespace Thry.ThryEditor
 
         static bool TryFastTextureMiniThumbnail(Rect position, MaterialProperty prop, GUIContent label)
         {
+            // Unity's material control filters cubemaps and validates cube RenderTextures by dimension.
+            if (prop.textureDimension == UnityEngine.Rendering.TextureDimension.Cube) return false;
             if (!_miniThumbFieldResolved)
             {
                 _miniThumbFieldResolved = true;
