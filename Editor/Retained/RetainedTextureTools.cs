@@ -211,7 +211,7 @@ namespace Thry.ThryEditor.Drawers
                 fields.TextureAssetDisplay(texture, () => input.Source.Texture, () => RetainedChannelMixed(channelIndex, c => c.Source.Texture),
                     () => fields.Model.CanEdit(property), () => texture.value = null);
                 texture.RegisterCallback<GeometryChangedEvent>(e => texture.EnableInClassList("thry-packer-source-compact", e.newRect.width < 210));
-                VisualElement invertInput, remapInput;
+                VisualElement invertInput;
                 var channelValues = Enum.GetValues(typeof(TexturePacker.TextureChannelIn)).Cast<TexturePacker.TextureChannelIn>().ToArray();
                 var channel=new DropdownField((rgbSource ? new[] { "RGB" } : channelValues.Select(item => RetainedText.EnumCaption(typeof(TexturePacker.TextureChannelIn), item.ToString())).ToArray()).ToList(),0)
                     { name = "packer-source-channel-" + i, tooltip = "Source channel to read into the " + outputChannel + " output" };
@@ -239,8 +239,37 @@ namespace Thry.ThryEditor.Drawers
                 });
                 detail.Add(RetainedFields.Row(Text("packer_invert", "Invert"),out invertInput));
                 var invert=new Toggle();invertInput.Add(invert);fields.Track(invert,()=>{invert.SetValueWithoutNotify(input.Invert);invert.showMixedValue=RetainedChannelMixed(channelIndex,c=>c.Invert);});invert.RegisterValueChangedCallback(e=>change(channelIndex,c=>c.Invert=e.newValue));
-                detail.Add(RetainedFields.Row(Text("packer_remap", "Remap"),out remapInput));
-                var remap=new Vector4Field { tooltip=Text("packer_remap_hint", "X / Y: input minimum and maximum. Z / W: output minimum and maximum.") };remapInput.Add(remap);fields.Track(remap,()=>{remap.SetValueWithoutNotify(input.Remapping);remap.showMixedValue=RetainedChannelMixed(channelIndex,c=>c.Remapping);});remap.RegisterValueChangedCallback(e=>change(channelIndex,c=>c.Remapping=e.newValue));
+                string[] remapKeys = { "input_min", "input_max", "output_min", "output_max" };
+                string[] remapHints = {
+                    "Source value mapped to Output Min. Default: 0.",
+                    "Source value mapped to Output Max. Default: 1.",
+                    "Output value produced at Input Min. Default: 0.",
+                    "Output value produced at Input Max. Default: 1."
+                };
+                VisualElement remapInput = null;
+                for (int component = 0; component < 4; component++)
+                {
+                    int remapComponent = component;
+                    if (component % 2 == 0)
+                    {
+                        detail.Add(RetainedFields.Row(component == 0
+                            ? Text("packer_remap_input", "Remap Input")
+                            : Text("packer_remap_output", "Remap Output"), out remapInput));
+                        remapInput.AddToClassList("thry-components");
+                    }
+                    var remap = new FloatField(component % 2 == 0 ? Text("packer_remap_min", "Min") : Text("packer_remap_max", "Max")) {
+                        name = "packer-remap-" + remapKeys[component] + "-" + channelIndex,
+                        tooltip = Text("packer_remap_" + remapKeys[component] + "_hint", remapHints[component])
+                    };
+                    remap.AddToClassList("thry-component");
+                    if (component % 2 != 0) remap.AddToClassList("thry-component-spaced");
+                    remapInput.Add(remap);
+                    fields.Track(remap, () => {
+                        remap.SetValueWithoutNotify(input.Remapping[remapComponent]);
+                        remap.showMixedValue = RetainedChannelMixed(channelIndex, c => c.Remapping[remapComponent]);
+                    });
+                    remap.RegisterValueChangedCallback(e => change(channelIndex, c => c.Remapping[remapComponent] = e.newValue));
+                }
             }
             var actions=new VisualElement();actions.AddToClassList("thry-components");actions.AddToClassList("thry-packer-actions");root.Add(actions);
             string[] names={"Merge","Revert","Clear"};Action[] callbacks={MergeRetainedPacker,RevertRetainedPacker,ClearRetainedPacker};
