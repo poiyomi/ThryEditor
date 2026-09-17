@@ -548,7 +548,7 @@ namespace Thry.ThryEditor
                 _crossProperties = _propertyProvider == null ? new RetainedCrossSelectionProperties(_editor, current) : null;
                 model.PropertyProvider = _propertyProvider ?? _crossProperties.Read;
                 model.Renderers = FindRenderers();
-                model.Refresh(); current.HasRetainedToolbar = true; current.ShowDropdown = ShowDropdown;
+                current.HasRetainedToolbar = true; current.ShowDropdown = ShowDropdown;
                 _body.Clear(); _retained = new RetainedMaterialBody(model,this); _body.Add(_retained);
             }
             if (current != null)

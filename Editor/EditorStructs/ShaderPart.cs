@@ -129,6 +129,7 @@ namespace Thry.ThryEditor
         public ShaderEditor MyShaderUI { protected set; get; }
         
         protected GUIContent _content, _contentNonDefault;
+        internal string UnmarkedLabel => _content?.text ?? "";
         public GUIContent Content 
         {
             protected set
@@ -179,6 +180,9 @@ namespace Thry.ThryEditor
         public int ShaderPropertyIndex { protected set; get; } = -1;
         private string[] ShaderPropertyAttributes = null;
         protected string[] InitializedPropertyAttributes => ShaderPropertyAttributes;
+#if UNITY_2021_3_OR_NEWER
+        internal RetainedShaderDeclarations.Declaration RetainedDeclaration { get; private set; }
+#endif
         
         /// <summary>
         /// Additional property names that should be checked when determining if this property is at default value.
@@ -598,7 +602,12 @@ namespace Thry.ThryEditor
             this.XOffset.ResetTemporaryOffset();
             this.XOffset = new XOffsetManager(Options.offset + XOffset);
             if(MaterialProperty == null) return;
+#if UNITY_2021_3_OR_NEWER
+            RetainedDeclaration = RetainedShaderDeclarations.Get(MyShader, ShaderPropertyIndex);
+            this.ShaderPropertyAttributes = RetainedDeclaration.CopyAttributes();
+#else
             this.ShaderPropertyAttributes = MyShader.GetPropertyAttributes(this.ShaderPropertyIndex);
+#endif
             this.IsAnimatable &= !HasAttribute("DoNotAnimate");
             this.IsExemptFromLockedDisabling |= ShaderOptimizer.IsPropertyExcemptFromLocking(this);
         }

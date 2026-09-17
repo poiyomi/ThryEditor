@@ -147,8 +147,16 @@ namespace Thry.ThryEditor
             VisualElement input;
             var row = Row(inline ? "" : RetainedText.PropertyCaption(property), out input);
             var label = row.Q<Label>(className: "thry-property-label");
-            Track(label, () => { label.text = inline ? "" : RetainedText.PropertyCaption(property).Split('|')[0];
-            label.tooltip = RetainedMaterialBody.Hover(RetainedMaterialBody.SectionCaption(property), property.TooltipText, property.Note); });
+            string lastCaption = null, lastTooltip = null, lastNote = null;
+            Track(label, () => {
+                string caption = RetainedMaterialBody.SectionCaption(property);
+                string tooltip = property.TooltipText, note = property.Note;
+                if (caption == lastCaption && tooltip == lastTooltip && note == lastNote) return;
+                int separator = caption.IndexOf('|');
+                label.text = inline ? "" : separator < 0 ? caption : caption.Substring(0, separator);
+                label.tooltip = RetainedMaterialBody.Hover(caption, tooltip, note);
+                lastCaption = caption; lastTooltip = tooltip; lastNote = note;
+            });
             if (!inline) ChangedPropertyIndicator(row, label, property);
             if (inline) row.AddToClassList("thry-inline");
             root.Add(row);

@@ -78,9 +78,9 @@ namespace Thry.ThryEditor
         }
 
         private List<ShaderPart> _children = new List<ShaderPart>();
-        private ReadOnlyCollection<ShaderPart> _readonlychildren => new ReadOnlyCollection<ShaderPart>(_children);
+        private ReadOnlyCollection<ShaderPart> _readonlychildren;
         [PublicAPI]
-        public ReadOnlyCollection<ShaderPart> Children => _readonlychildren;
+        public ReadOnlyCollection<ShaderPart> Children => _readonlychildren ?? (_readonlychildren = _children.AsReadOnly());
 
         private bool? _hasDrawableContent;
 
