@@ -187,7 +187,7 @@ namespace Thry.ThryEditor
                 || _animatedMaterialVersions[m] != EditorUtility.GetDirtyCount(m)).ToArray();
             bool animationChanged;
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.AnimationMetadata))
-                animationChanged = (!DeferSummaryRefresh || rebuilt || forceAnimatedState) && _animationMetadata.Update(targets);
+                animationChanged = (!DeferSummaryRefresh || rebuilt || forceAnimatedState) && _animationMetadata.Update(targets, Editor);
             bool changed = rebuilt || forceAnimatedState || animationChanged || _animatedMaterialVersions.Count != targets.Length || changedTargets.Length > 0;
             if (!changed) { StampSnapshotsIfUnchanged(readTargets, readVersions); return; }
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.TextureKeywords))

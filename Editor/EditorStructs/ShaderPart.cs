@@ -178,6 +178,7 @@ namespace Thry.ThryEditor
         public int ShaderPropertyId { protected set; get; } = -1;
         public int ShaderPropertyIndex { protected set; get; } = -1;
         private string[] ShaderPropertyAttributes = null;
+        protected string[] InitializedPropertyAttributes => ShaderPropertyAttributes;
         
         /// <summary>
         /// Additional property names that should be checked when determining if this property is at default value.

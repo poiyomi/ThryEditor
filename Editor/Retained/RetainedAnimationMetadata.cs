@@ -28,7 +28,7 @@ namespace Thry.ThryEditor
             }
         }
         readonly Dictionary<Material, Entry> _entries = new Dictionary<Material, Entry>();
-        internal bool Update(Material[] materials)
+        internal bool Update(Material[] materials, MaterialEditor editor = null)
         {
             bool changed = false;
             var seen = new HashSet<Material>();
@@ -48,7 +48,13 @@ namespace Thry.ThryEditor
                     {
                         bool created = entry == null;
                         if (created) { entry = new Entry(); _entries.Add(material, entry); }
-                        string tags = ReadTags(material, entry);
+                        // The single-material header already needs this same serialized
+                        // snapshot. Sharing it avoids serializing every Pro property twice.
+                        var shared = editor != null && editor.targets.Length == 1 && editor.target == material
+                            ? editor.serializedObject : null;
+                        // Do not discard an extension's pending serialized edits.
+                        if (shared != null && shared.hasModifiedProperties) shared = null;
+                        string tags = ReadTags(material, entry, shared);
                         changed |= created || entry.Tags != tags || entry.Shader != shader
                             || entry.ShaderDirty != shaderDirty || entry.Name != name || entry.Parent != parent;
                         entry.Dirty = dirty; entry.Shader = shader; entry.ShaderDirty = shaderDirty;
@@ -72,12 +78,21 @@ namespace Thry.ThryEditor
             _entries.Clear();
         }
 
-        static string ReadTags(Material material, Entry entry)
+        static string ReadTags(Material material, Entry entry, SerializedObject shared)
         {
+            if (shared != null)
+            {
+                shared.UpdateIfRequiredOrScript();
+                using (var tags = shared.FindProperty("stringTagMap")) return ReadTags(material, tags);
+            }
             if (entry.Serialized == null) entry.Serialized = new SerializedObject(material);
             entry.Serialized.UpdateIfRequiredOrScript();
             if (entry.TagMap == null) entry.TagMap = entry.Serialized.FindProperty("stringTagMap");
-            var tags = entry.TagMap;
+            return ReadTags(material, entry.TagMap);
+        }
+
+        static string ReadTags(Material material, SerializedProperty tags)
+        {
             // An unknown serialization schema must never silently suppress updates.
             if (tags == null) return Guid.NewGuid().ToString();
             var entries = new List<string>(tags.arraySize);

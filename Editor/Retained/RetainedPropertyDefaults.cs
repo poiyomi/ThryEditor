@@ -29,6 +29,8 @@ namespace Thry.ThryEditor
             internal readonly Dictionary<Material, OwnerChecks> Owners = new Dictionary<Material, OwnerChecks>();
             internal readonly Dictionary<ShaderProperty, Material[]> PropertyOwners = new Dictionary<ShaderProperty, Material[]>();
             internal readonly Dictionary<ShaderProperty, Comparison> Aggregates = new Dictionary<ShaderProperty, Comparison>();
+            internal readonly Dictionary<IReadOnlyList<KeyValuePair<ShaderProperty, string>>, bool> Sections
+                = new Dictionary<IReadOnlyList<KeyValuePair<ShaderProperty, string>>, bool>();
             internal Material[] Selection = Array.Empty<Material>();
             internal ILookup<string, ShaderProperty> References;
             internal int Depth, ReadCount, AggregateReadCount, SnapshotReadCount, SnapshotRevision = -1;
@@ -37,6 +39,8 @@ namespace Thry.ThryEditor
             internal Material[] SnapshotSelection = Array.Empty<Material>();
             internal readonly Dictionary<Material, SnapshotOwner> SnapshotOwners = new Dictionary<Material, SnapshotOwner>();
             internal readonly Dictionary<Shader, int> SnapshotShaders = new Dictionary<Shader, int>();
+
+            internal void ClearComparisons() { Aggregates.Clear(); Sections.Clear(); }
         }
         private sealed class SnapshotOwner
         {
@@ -85,6 +89,7 @@ namespace Thry.ThryEditor
             foreach (var entry in cache.Aggregates)
                 if (entry.Key.MaterialProperty?.name == name)
                 { entry.Value.Value = null; entry.Value.Transform = null; }
+            cache.Sections.Clear();
         }
 
         private static Cache GetCache(ShaderEditor shader)
@@ -92,7 +97,7 @@ namespace Thry.ThryEditor
             var cache = Caches.GetValue(shader, _ => new Cache());
             if (cache.Revision == shader.RetainedRevision) return cache;
             cache.Shaders.Clear(); cache.ShaderVersions.Clear(); cache.Owners.Clear(); cache.PropertyOwners.Clear();
-            cache.Aggregates.Clear();
+            cache.ClearComparisons();
             cache.SnapshotRevision = -1; cache.SnapshotsFresh = false;
             cache.References = null; cache.Revision = shader.RetainedRevision;
             return cache;
@@ -107,18 +112,18 @@ namespace Thry.ThryEditor
             {
                 cache.Compare = !AnimationMode.InAnimationMode();
                 cache.SnapshotsFresh = cache.Compare && SnapshotsMatch(cache, shader);
-                if (!cache.Compare) { cache.Owners.Clear(); cache.PropertyOwners.Clear(); cache.Aggregates.Clear(); }
+                if (!cache.Compare) { cache.Owners.Clear(); cache.PropertyOwners.Clear(); cache.ClearComparisons(); }
                 var selection = shader.Materials.Where(material => material != null).Distinct().ToArray();
                 if (!cache.Selection.SequenceEqual(selection))
                 {
-                    cache.Selection = selection; cache.Owners.Clear(); cache.PropertyOwners.Clear(); cache.Aggregates.Clear();
+                    cache.Selection = selection; cache.Owners.Clear(); cache.PropertyOwners.Clear(); cache.ClearComparisons();
                 }
                 var seenShaders = new HashSet<Shader>();
                 var parentVersions = new Dictionary<Material, int>();
                 foreach (var material in selection)
                 {
                     var ownerShader = material.shader;
-                    if (ownerShader == null) { cache.Owners.Remove(material); cache.PropertyOwners.Clear(); cache.Aggregates.Clear(); continue; }
+                    if (ownerShader == null) { cache.Owners.Remove(material); cache.PropertyOwners.Clear(); cache.ClearComparisons(); continue; }
                     if (seenShaders.Add(ownerShader)) ValidateShader(cache, ownerShader);
                     int dirty = EditorUtility.GetDirtyCount(material);
                     if (!cache.Owners.TryGetValue(material, out var checks))
@@ -126,7 +131,7 @@ namespace Thry.ThryEditor
                     if (checks.Shader != ownerShader) cache.PropertyOwners.Clear();
                     bool ancestorsChanged = UpdateParents(material, checks, parentVersions);
                     if (checks.Dirty != dirty || checks.Shader != ownerShader || ancestorsChanged || checks.Dependencies.Any(texture => texture == null))
-                    { checks.Properties.Clear(); checks.Dependencies.Clear(); cache.Aggregates.Clear(); }
+                    { checks.Properties.Clear(); checks.Dependencies.Clear(); cache.ClearComparisons(); }
                     checks.Shader = ownerShader; checks.Dirty = dirty;
                 }
             }
@@ -193,7 +198,7 @@ namespace Thry.ThryEditor
             int version = EditorUtility.GetDirtyCount(shader);
             if (cache.ShaderVersions.TryGetValue(shader, out int previous) && previous != version)
             {
-                cache.Shaders.Remove(shader); cache.PropertyOwners.Clear(); cache.Aggregates.Clear();
+                cache.Shaders.Remove(shader); cache.PropertyOwners.Clear(); cache.ClearComparisons();
                 foreach (var owner in cache.Owners.Values.Where(owner => owner.Shader == shader))
                 { owner.Properties.Clear(); owner.Dependencies.Clear(); }
             }
@@ -297,6 +302,22 @@ namespace Thry.ThryEditor
             finally { UnityEngine.Object.DestroyImmediate(defaults); }
             cache.Shaders.Add(shader, values);
             return values;
+        }
+
+        // The collapsed section dot needs one aggregate, not a walk over thousands
+        // of cached property results every 150 ms. Reuse it within the same validated
+        // owner/shader state; external edits, ancestors, textures and known setters
+        // invalidate it with the property comparisons. Animation and direct calls stay live.
+        internal static bool HasChangedSection(ShaderEditor shader, IReadOnlyList<KeyValuePair<ShaderProperty, string>> properties)
+        {
+            Cache cache = null;
+            if (Caches.TryGetValue(shader, out var candidate) && candidate.Depth > 0 && candidate.Compare) cache = candidate;
+            if (cache != null && cache.Sections.TryGetValue(properties, out bool cached)) return cached;
+            bool changed = false;
+            for (int i = 0; i < properties.Count; i++)
+                if (HasChangedValue(properties[i].Key) || HasChangedTextureTransform(properties[i].Key)) { changed = true; break; }
+            if (cache != null) cache.Sections[properties] = changed;
+            return changed;
         }
 
         internal static bool HasChangedValue(ShaderProperty property) => HasChangedValue(property, null);

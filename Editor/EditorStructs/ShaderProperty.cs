@@ -702,13 +702,21 @@ namespace Thry.ThryEditor
             if (MaterialProperty == null || MyShader == null || ShaderPropertyIndex < 0) return;
             var options = Options;
             EnsureAnimatedStateResolved();
-            var attributes = MyShader.GetPropertyAttributes(ShaderPropertyIndex);
-            if (Array.Exists(attributes, a => a.StartsWith("DoNotAnimate", StringComparison.Ordinal)
-                || a.StartsWith("ThryStencil", StringComparison.Ordinal) || a.StartsWith("ThryShaderOptimizer", StringComparison.Ordinal)
-                || a.StartsWith("TextureKeyword", StringComparison.Ordinal))) IsAnimatable = false;
-            foreach(var attribute in attributes.Select(a=>new DrawerAttribute(a)))
-                if((attribute.Name=="ThryToggle" || attribute.Name=="ThryToggleUI") && attribute.Args.Length>0 && attribute.Args[0]!="true" && attribute.Args[0]!="false")
-                { SetKeyword(attribute.Args[0]); IsAnimatable=false; }
+            // Option initialization already read this declaration for the same part.
+            // Most attributes do not affect animation or keywords, so only parse
+            // arguments for the two toggle drawers that need them here.
+            var attributes = InitializedPropertyAttributes ?? MyShader.GetPropertyAttributes(ShaderPropertyIndex);
+            foreach (var source in attributes)
+            {
+                if (source.StartsWith("DoNotAnimate", StringComparison.Ordinal)
+                    || source.StartsWith("ThryStencil", StringComparison.Ordinal) || source.StartsWith("ThryShaderOptimizer", StringComparison.Ordinal)
+                    || source.StartsWith("TextureKeyword", StringComparison.Ordinal)) IsAnimatable = false;
+                if (!source.StartsWith("ThryToggle(", StringComparison.Ordinal)
+                    && !source.StartsWith("ThryToggleUI(", StringComparison.Ordinal)) continue;
+                var attribute = new DrawerAttribute(source);
+                if (attribute.Args.Length > 0 && attribute.Args[0] != "true" && attribute.Args[0] != "false")
+                { SetKeyword(attribute.Args[0]); IsAnimatable = false; }
+            }
         }
 
 #endif

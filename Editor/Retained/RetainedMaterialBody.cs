@@ -178,7 +178,7 @@ namespace Thry.ThryEditor
             Action update = () => {
                 title.text = SectionCaption(group);
                 if (!Model.DeferSummaryRefresh)
-                    changedDot.style.display = changedProperties.Any(entry => HasChangedValue(entry.Key) || HasChangedTextureTransform(entry.Key)) ? DisplayStyle.Flex : DisplayStyle.None;
+                    changedDot.style.display = RetainedPropertyDefaults.HasChangedSection(Model.Shader, changedProperties) ? DisplayStyle.Flex : DisplayStyle.None;
                 changedDot.style.backgroundColor = title.resolvedStyle.color;
                 bool category = depth != 0 || Model.Shader.FocusedCategory == null || group.MaterialProperty.name == Model.Shader.FocusedCategory;
                 root.style.display = category && group.RetainedVisible ? DisplayStyle.Flex : DisplayStyle.None;

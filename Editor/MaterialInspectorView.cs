@@ -138,6 +138,10 @@ namespace Thry.ThryEditor
                 EnableInClassList("thry-narrow", evt.newRect.width < 310);
             });
             RegisterCallback<DetachFromPanelEvent>(evt => { if (_shader != null) { _shader.HasRetainedToolbar = false; _shader.ShowDropdown = null; } });
+            // The Inspector host and its material foldout are established on attach.
+            // Build visible controls now rather than leaving the first paint empty
+            // until the periodic refresh. Collapsed embedded materials still return early.
+            RegisterCallback<AttachToPanelEvent>(evt => { if (evt.target == this) UpdateState(); });
             schedule.Execute(UpdateState).Every(150);
         }
 
