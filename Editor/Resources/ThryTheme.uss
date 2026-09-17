@@ -174,7 +174,6 @@
 
 .thry-inspector.thry-active {
     background-color: var(--thry-background-color);
-    color: #e4e4e4;
     padding-bottom: var(--thry-space-8);
 }
 .thry-chrome { padding: var(--thry-space-8) var(--thry-space-3) var(--thry-space-8) var(--thry-space-3); }
@@ -268,7 +267,7 @@
 /* Native material controls share one responsive label/value grid. */
 .thry-material-controls { margin: 0 var(--thry-space-3); }
 .thry-property-row { flex-direction: row; align-items: center; min-height: var(--thry-control-height); margin: var(--thry-space-1) 0; }
-.thry-property-label { width: 38%; min-width: 80px; max-width: 240px; flex-shrink: 0; margin: 0; padding: 0 var(--thry-space-8) 0 0; -unity-text-align: middle-left; color: var(--thry-caption-color); font-size: var(--thry-font-size); overflow: hidden; text-overflow: ellipsis; }
+.thry-property-label { width: 38%; flex-shrink: 0; margin: 0; padding: 0 var(--thry-space-8) 0 0; -unity-text-align: middle-left; color: var(--thry-caption-color); font-size: var(--thry-font-size); overflow: hidden; text-overflow: ellipsis; }
 .thry-property-value { flex-grow: 1; flex-shrink: 1; min-width: 0; }
 .thry-property-value > .unity-base-field { margin: 0; min-width: 0; min-height: var(--thry-control-height); }
 /* One outer height for ordinary material drawers. Cap flex growth so table
@@ -293,7 +292,6 @@
 .thry-material-controls .unity-base-slider__drag-container { margin: 0 var(--thry-space-4); min-height: var(--thry-control-height); }
 .thry-components { flex-direction: row; flex-grow: 1; min-width: 0; }
 .thry-components > .thry-component { flex-grow: 1; flex-basis: 0; flex-shrink: 1; min-width: 0; margin: 0; }
-.thry-components > .thry-component-spaced { margin-left: var(--thry-space-8); }
 .thry-component > .unity-base-field__label { min-width: 10px; width: auto; margin: 0 var(--thry-space-4) 0 0; padding: 0; -unity-text-align: middle-center; color: var(--thry-muted-color); }
 .thry-inline .thry-property-label { display: none; }
 .thry-inline { flex-grow: 1; }
@@ -453,8 +451,6 @@
 
 /* Auxiliary windows use the inspector's controls without its material label grid. */
 .thry-settings > .thry-search { width: auto; max-width: none; align-self: stretch; }
-.thry-settings .unity-foldout { margin: var(--thry-space-4) 0; }
-.thry-settings .unity-foldout__content { padding-top: var(--thry-space-3); padding-bottom: var(--thry-space-3); }
 .thry-settings .thry-property-label { width: 52%; white-space: normal; overflow: visible; text-overflow: clip; }
 .thry-settings .thry-property-row { min-height: var(--thry-button-height); }
 .thry-settings .thry-property-value > .unity-toggle,
@@ -500,7 +496,6 @@
 
 /* Channel inspection stays inside the same compact texture card. */
 .thry-texture-card { margin: -6px -6px 0; }
-.thry-texture-card .thry-texture-summary { padding-bottom: var(--thry-space-2); }
 .thry-texture-card .thry-texture-preview { margin-right: var(--thry-space-2); }
 .thry-texture-card-empty .thry-texture-preview { width: 40px; height: 40px; }
 .thry-texture-info { flex-grow: 1; flex-shrink: 1; min-width: 0; }
@@ -607,8 +602,8 @@
 .thry-light .thry-filter-breadcrumb { color: #444; border-bottom-color: #aaa; }
 
 .thry-status-filter { width: 120px; min-width: 80px; flex-shrink: 1; margin: 0; }
-.thry-status-filter > .unity-base-field__input { min-height: var(--thry-button-height); margin: 0; padding-left: var(--thry-space-8); background-color: #444; border-width: var(--thry-border-width); border-color: #555; border-radius: var(--thry-radius-compact); }
-.thry-saved-filters { width: 23px; min-width: 23px; height: var(--thry-button-height); padding: 0; margin: 0 0 0 var(--thry-space-3); font-size: var(--thry-type-heading); border-width: 0; }
+.thry-status-filter > .unity-base-field__input { margin: 0; padding-left: var(--thry-space-8); background-color: #444; border-width: var(--thry-border-width); border-color: #555; border-radius: var(--thry-radius-compact); }
+.thry-saved-filters { width: 23px; min-width: 23px; padding: 0; margin: 0 0 0 var(--thry-space-3); font-size: var(--thry-type-heading); border-width: 0; }
 .thry-compact .thry-status-filter { width: 108px; }
 .thry-light .thry-status-filter > .unity-base-field__input { background-color: #ddd; border-color: #aaa; }
 
@@ -649,9 +644,9 @@
 .thry-tools > .thry-language-tool { align-items: center; justify-content: center; color: #fd971f; }
 .thry-light .thry-tools > .thry-collapse-tool { color: #638f14; }
 .thry-light .thry-tools > .thry-language-tool { color: #b86509; }
-.thry-inspector .thry-property-row.thry-row-alt { background-color: rgba(255, 255, 255, 0.025); border-radius: var(--thry-radius-compact); }
+.thry-inspector .thry-property-row.thry-row-alt { border-radius: var(--thry-radius-compact); }
 .thry-light .thry-property-row.thry-row-alt { background-color: rgba(0, 0, 0, 0.025); }
-.thry-inspector .thry-property-row:hover { background-color: rgba(255, 255, 255, 0.045); border-radius: var(--thry-radius-compact); }
+.thry-inspector .thry-property-row:hover { border-radius: var(--thry-radius-compact); }
 .thry-light .thry-property-row:hover { background-color: rgba(0, 0, 0, 0.045); }
 .thry-material-controls .unity-base-text-field__input:focus,
 .thry-material-controls .unity-base-popup-field__input:focus,
@@ -1024,7 +1019,7 @@
 .pathing-preview-toolbar { margin-bottom: var(--thry-space-8); }
 .pathing-preview-hidden .pathing-preview-toolbar { margin-bottom: 0; }
 .pathing-preview Button { margin: 0 0 0 var(--thry-space-4); height: var(--thry-button-height); font-size: var(--thry-type-small); }
-.pathing-preview .pathing-lane-label { width: 25px; min-width: 25px; margin: 0 var(--thry-space-7) 0 0; padding: 0; border-width: 0; -unity-font-style: bold; }
+.pathing-preview .pathing-lane-label { width: 25px; min-width: 25px; margin: 0 var(--thry-space-7) 0 0; padding: 0; -unity-font-style: bold; }
 .pathing-lane { background-color: var(--thry-field-background); border-radius: var(--thry-radius-compact); overflow: hidden; height: var(--thry-control-height); flex-grow: 1; margin-bottom: var(--thry-space-2); }
 .pathing-preview-content > Slider { margin: var(--thry-space-5) 0 0 30px; }
 .pathing-fold { border-width: 0; margin: 0 0 var(--thry-space-3); padding: 0; background-color: transparent; }
@@ -1326,7 +1321,7 @@
 .thry-studio-source-frame > Label { flex-grow: 1; -unity-text-align: middle-center; font-size: var(--thry-type-small); color: #8e98a9; }
 .thry-studio-graph .thry-studio-node #output, .thry-studio-graph .thry-studio-node #input { padding: 0; margin: 0; min-width: 48px; width: 48px; flex-grow: 0; flex-shrink: 0; justify-content: center; background-color: transparent; }
 .thry-studio-graph .thry-studio-node Port { height: 19px; min-height: 14px; flex-shrink: 1; padding: 0 var(--thry-space-7); margin: 0; }
-.thry-studio-graph .thry-studio-node Port #type { font-size: var(--thry-type-small); -unity-font-style: bold; color: #c9d2df; padding: 0 var(--thry-space-3); }
+.thry-studio-graph .thry-studio-node Port #type { font-size: var(--thry-type-small); -unity-font-style: bold; color: #c9d2df; }
 .thry-studio-graph .thry-studio-node Port #connector { width: 12px; height: 12px; border-width: var(--thry-border-width-strong); border-radius: var(--thry-radius-card); }
 .thry-studio-graph .thry-studio-node Port:hover { background-color: #424b59; border-radius: var(--thry-radius-compact); }
 .thry-studio-graph .thry-studio-output-node > #node-border { border-color: #698192; }
@@ -1427,8 +1422,6 @@
     --thry-thumb-color: #999999;
     --thry-action-background: #505050;
     --thry-action-hover-background: #5a5a5a;
-    --thry-primary-background: var(--thry-action-background);
-    --thry-primary-foreground: var(--thry-value-color);
     --thry-disabled-background: #323232;
     --thry-disabled-border: #434343;
 }
@@ -1485,10 +1478,7 @@
 .thry-inspector.thry-light .thry-lock-button { -unity-font-style: bold; }
 
 .thry-inspector .thry-rendering-mode .unity-base-popup-field__input,
-.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input { background-color: var(--thry-action-background); border-color: var(--thry-action-background); color: var(--thry-value-color); }
-
-.thry-inspector .thry-rendering-mode .unity-base-popup-field__input:hover,
-.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
+.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input { color: var(--thry-value-color); }
 
 /* Open sections form a continuous surface.
    Nested groups retain a frame in exactly the same color as their header. */

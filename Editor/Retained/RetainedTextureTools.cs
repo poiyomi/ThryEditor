@@ -129,7 +129,7 @@ namespace Thry.ThryEditor.Drawers
             _prop=property.MaterialProperty;
             _current=new ThryRGBAPackerData(); fields.Model.Shader.ActivateRetained(); Init(); LoadLabels();
             InitializeRetainedPacker(fields.Model, property);
-            var root=new VisualElement { name = "texture-channel-inputs" }; root.AddToClassList("thry-packer"); RetainedFields.StyleSpecialControls(root);
+            var root=new VisualElement { name = "texture-channel-inputs" }; root.AddToClassList("thry-packer");
             var heading = new VisualElement(); heading.AddToClassList("thry-packer-heading"); root.Add(heading);
             var headingLabel = new Label(Text("packer_channel_inputs", "Channel inputs")); headingLabel.AddToClassList("thry-packer-heading-label"); heading.Add(headingLabel);
             _retainedPackerMessage = new Label { name = "packer-error" }; _retainedPackerMessage.style.whiteSpace = WhiteSpace.Normal;

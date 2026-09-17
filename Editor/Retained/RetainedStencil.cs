@@ -62,7 +62,6 @@ namespace Thry.ThryEditor
         {
             var block = new VisualElement { name = (summary ? "stencil-summary-" : "stencil-grid-") + config.StencilCheckResultPropertyName };
             block.AddToClassList("thry-stencil-view");
-            var sheet = Resources.Load<StyleSheet>("ThryStencil"); if (sheet != null) block.styleSheets.Add(sheet);
             block.RegisterCallback<GeometryChangedEvent>(e => block.EnableInClassList("thry-stencil-narrow", block.contentRect.width < 430));
             if (summary)
             {

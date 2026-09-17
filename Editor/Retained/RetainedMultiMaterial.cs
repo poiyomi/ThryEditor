@@ -16,7 +16,6 @@ namespace Thry.ThryEditor
             var root = new VisualElement { name = "thry-material-selection" };
             var materials = SelectedMaterials(model);
             if (materials.Length < 2) { root.style.display = DisplayStyle.None; return root; }
-            var sheet = Resources.Load<StyleSheet>("ThryMultiMaterial"); if (sheet != null) root.styleSheets.Add(sheet);
             root.AddToClassList("thry-multi-selection");
             int editable = model.Shader.Materials.Length;
             var foldout = new Foldout { text = "Editing " + (editable == materials.Length ? editable.ToString() : editable + " of " + materials.Length) + " materials", value = false, name = "thry-selected-materials" }; root.Add(foldout);
@@ -73,7 +72,6 @@ namespace Thry.ThryEditor
         internal void DecorateMultiMaterialProperty(VisualElement root, ShaderProperty property)
         {
             if (RetainedMultiMaterial.SelectedMaterials(Model).Length < 2) return;
-            var sheet = Resources.Load<StyleSheet>("ThryMultiMaterial"); if (sheet != null) root.styleSheets.Add(sheet);
             VisualElement badge = null; VisualElement caption = null;
             StyleLength originalPadding = default(StyleLength);
             bool badgeVisible = false;

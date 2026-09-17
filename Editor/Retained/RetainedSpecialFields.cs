@@ -10,11 +10,6 @@ namespace Thry.ThryEditor
 {
     internal sealed partial class RetainedFields
     {
-        internal static void StyleSpecialControls(VisualElement root)
-        {
-            var sheet = Resources.Load<StyleSheet>("ThrySpecialControls");
-            if (sheet != null && !root.styleSheets.Contains(sheet)) root.styleSheets.Add(sheet);
-        }
         private static int ReadBitValue(Material material, ShaderProperty property)
         {
 #if UNITY_2022_1_OR_NEWER
@@ -81,7 +76,6 @@ namespace Thry.ThryEditor
                     case "VectorToSliders":
                         var args = attribute.Args; bool hasMode = args.Length % 3 == 1;
                         bool pairs = hasMode && DrawerAttribute.Number(args[0]) == 1; int offset = hasMode ? 1 : 0;
-                        StyleSpecialControls(parent);
                         parent.parent.style.alignItems = Align.FlexStart;
                         parent.parent.Q<Label>(className: "thry-property-label").style.marginTop = 3;
                         for(int n=offset;n+2<args.Length;n+=3)
@@ -101,7 +95,7 @@ namespace Thry.ThryEditor
                         handled=true; return;
                     case "ButtonVector": case "Vector4Toggles":
                         var buttons = new VisualElement(); buttons.AddToClassList("thry-components"); parent.Add(buttons);
-                        StyleSpecialControls(buttons); buttons.AddToClassList("thry-multi-value-controls");
+                        buttons.AddToClassList("thry-multi-value-controls");
                         bool buttonVector = attribute.Name == "ButtonVector";
                         int buttonCount = buttonVector ? Mathf.Clamp(attribute.Args.Length, 1, 4) : 4;
                         Func<float, bool> isOn = value => buttonVector ? value > .5f : value == 1;
@@ -135,12 +129,12 @@ namespace Thry.ThryEditor
                         handled=true; return;
                     case "ThryMultiFloatHeader": case "ThryMultiFloatHeaderDrawer":
                         var headers = new VisualElement(); headers.AddToClassList("thry-components"); parent.Add(headers);
-                        StyleSpecialControls(headers); headers.AddToClassList("thry-multi-value-header");
+                        headers.AddToClassList("thry-multi-value-header");
                         foreach(var label in attribute.Args) { var heading=new Label(label) {tooltip=label}; headers.Add(heading); }
                         handled=true; return;
                     case "ThryMultiFloatButtons": case "ThryMultiFloats":
                         var multi = new VisualElement(); multi.AddToClassList("thry-components"); parent.Add(multi);
-                        StyleSpecialControls(multi); multi.AddToClassList("thry-multi-value-controls");
+                        multi.AddToClassList("thry-multi-value-controls");
                         bool tiles=attribute.Name=="ThryMultiFloatButtons";
                         string[] ids = new[]{property.MaterialProperty.name}.Concat(attribute.Args.Skip(tiles?4:1)).ToArray();
                         property.AdditionalDefaultCheckProperties=ids;
@@ -186,7 +180,6 @@ namespace Thry.ThryEditor
                         }
                         handled=true; return;
                     case "ByteSlider": case "ByteBitField":
-                        StyleSpecialControls(parent);
                         parent.parent.style.alignItems = Align.FlexStart;
                         parent.parent.Q<Label>(className:"thry-property-label").style.marginTop = 3;
                         if(attribute.Name=="ByteSlider") { var range=property.MaterialProperty.rangeLimits;var slider=new SliderInt((int)range.x,(int)range.y) {showInputField=true}; Bind(slider,property,p=>(int)p.GetNumber(),(p,v)=>p.SetNumber(v)); parent.Add(slider); }
@@ -230,7 +223,7 @@ namespace Thry.ThryEditor
                         var type=ResolveEnumType(attribute.Args[0]);
                         var names=Enum.GetNames(type); int allBits=names.Length>=32?-1:(1<<names.Length)-1;
                         var choices=new[]{"Nothing","Everything"}.Concat(names).ToArray(); var maskButton=new Button(); parent.Add(maskButton);
-                        StyleSpecialControls(maskButton); maskButton.AddToClassList("thry-mask-picker");
+                        maskButton.AddToClassList("thry-mask-picker");
                         Track(maskButton,()=>{int value=(int)property.MaterialProperty.GetNumber();string selected=string.Join(", ",names.Where((s,i)=>(value&(1<<i))!=0));maskButton.text=property.MaterialProperty.hasMixedValue?"Mixed values":value==allBits?"Everything":string.IsNullOrEmpty(selected)?"Nothing":selected;maskButton.tooltip=maskButton.text;});
                         maskButton.clicked+=()=>_view.ShowMenu(maskButton.worldBound,choices.Select(n=>new GUIContent(n)).ToArray(),Enumerable.Range(0,choices.Length).Where(i=>i==0?property.MaterialProperty.GetNumber()==0:i==1?(int)property.MaterialProperty.GetNumber()==allBits:((int)property.MaterialProperty.GetNumber()&(1<<(i-2)))!=0).ToArray(),i=>
                         {

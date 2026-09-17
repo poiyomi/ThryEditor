@@ -20,7 +20,6 @@ namespace Thry.ThryEditor
         readonly Button[] selectButtons = new Button[4];
         readonly Label[] routeLabels = new Label[4];
         readonly VisualElement visual, classic;
-        readonly Action<VisualElement, ShaderPart> addOriginal;
         readonly Label status;
         int selected, solo = -1;
         float previewTime = 2;
@@ -51,9 +50,8 @@ namespace Thry.ThryEditor
 
         internal RetainedPathing(RetainedMaterialModel model, RetainedFields fields, ShaderGroup group, Action<VisualElement, ShaderPart> addOriginal)
         {
-            this.model = model; this.fields = fields; this.group = group; this.addOriginal = addOriginal;
+            this.model = model; this.fields = fields; this.group = group;
             name = "pathing-studio"; AddToClassList("thry-pathing");
-            var sheet = Resources.Load<StyleSheet>("ThryPathing"); if (sheet != null) styleSheets.Add(sheet);
             var bar = Row(); bar.AddToClassList("pathing-topbar");
             var original = new Toggle("Original controls") { name = "pathing-original" }; bar.Add(original); Add(bar);
             visual = new VisualElement(); Add(visual);
@@ -404,8 +402,4 @@ namespace Thry.ThryEditor
         }
     }
 }
-#else
-#if UNITY_2021_3_OR_NEWER
-namespace Thry.ThryEditor { internal static class RetainedPathing { internal static bool CanBuild(ShaderGroup group, RetainedMaterialModel model) => false; } }
-#endif
 #endif

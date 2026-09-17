@@ -65,6 +65,8 @@ namespace Thry.ThryEditor
     [Serializable]
     public class GlobalLink
     {
+        // Keep policy undo tied to this link even if its name is later reused.
+        public string id = Guid.NewGuid().ToString("N");
         public string name;
         public string sectionPropertyName; // e.g. "m_start_Shading"
         // Missing fields in older JSON retain the constructor default.
@@ -119,7 +121,18 @@ namespace Thry.ThryEditor
             if (s_undoState != null && s_undoState.json != s_appliedUndoJson)
             {
                 var restored = Parser.Deserialize<GlobalLinksData>(s_undoState.json);
-                s_data = new List<GlobalLink>(restored.links);
+                var previous = Parser.Deserialize<GlobalLinksData>(s_appliedUndoJson);
+                // Other database edits are not policy undo operations. Preserve current links,
+                // subscriptions and shading values instead of restoring an obsolete database.
+                foreach (var policy in restored.links)
+                {
+                    var before = previous.links.FirstOrDefault(l => l.id == policy.id);
+                    var current = s_data.FirstOrDefault(l => l.id == policy.id);
+                    if (before == null || current == null || before.includeTextures == policy.includeTextures) continue;
+                    current.includeTextures = policy.includeTextures;
+                    current.properties = current.properties.Where(p => p.type != "Texture")
+                        .Concat(policy.properties.Where(p => policy.includeTextures && p.type == "Texture")).ToArray();
+                }
                 Save();
                 RequestRepaint();
             }
@@ -236,8 +249,8 @@ namespace Thry.ThryEditor
         {
             Load();
             if (link == null) return;
-            // Resolve again after undo, which may replace the cached link objects.
-            link = s_data.FirstOrDefault(l => l.name == link.name && l.sectionPropertyName == link.sectionPropertyName);
+            // Resolve again if the database cache has been reloaded.
+            link = s_data.FirstOrDefault(l => l.id == link.id);
             if (link == null || link.includeTextures == includeTextures) return;
             Undo.IncrementCurrentGroup();
             int undoGroup = Undo.GetCurrentGroup();

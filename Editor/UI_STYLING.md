@@ -43,7 +43,7 @@ The palette below these settings retains the original neutral dark/light colors.
 
 The material inspector, search, popup menus, settings and other retained companion windows, texture studio, stencil, pathing, special controls, and multi-material controls all load the shared stylesheet. Fixed settings-search spacing, cross-editor padding, texture slice/face controls, vector-length number fields, search placeholders, and ramp height now use USS instead of overriding it in C#. The custom search icon reads its stroke color from the stylesheet. The ramp reads its own custom drawing properties from USS.
 
-Old `ThryInspector.uss`, `ThrySearch.uss`, and the other component resources are compatibility imports. Keep new styling in `ThryTheme.uss` so existing resource names and asset GUIDs remain valid.
+Load `ThryTheme.uss` once on each standalone inspector or window root. Child controls inherit the theme; do not attach additional copies or component wrapper sheets.
 
 For future experiments, change the shared tokens first. Test narrow and wide inspectors, Unity's light/dark skins, companion windows, and focus/disabled/selected states. Some sizes are coupled (for example, a search field contains an inner field); change related dimensions together. Make permanent visual changes here so all retained surfaces share them.
 

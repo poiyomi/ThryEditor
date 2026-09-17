@@ -324,7 +324,6 @@ namespace Thry.ThryEditor
             Toggle linkToggle = null;
             if (link)
             {
-                StyleSpecialControls(vector);
                 string key = "vector-link:" + property.MaterialProperty.name + ":" + start + ":" + labels.Length + ":" + texture;
                 linked = RetainedUiState.Get(property.MyShader.name, key);
                 linkToggle = new Toggle { name = "vector-link-" + property.MaterialProperty.name, value = linked, focusable = true, tabIndex = 0 };
