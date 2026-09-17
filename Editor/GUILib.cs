@@ -665,7 +665,10 @@ namespace Thry.ThryEditor
             // Showing the picker ends the GUI pass with an ExitGUI, so the caller's reset of showMixedValue
             // after its texture field never runs. Left on, every control drawn afterwards renders as mixed.
             EditorGUI.showMixedValue = false;
-            EditorGUIUtility.ShowObjectPicker<Texture>(prop.textureValue, false, "", 0);
+            if (prop.textureDimension == UnityEngine.Rendering.TextureDimension.Cube)
+                EditorGUIUtility.ShowObjectPicker<Cubemap>(prop.textureValue, false, "", 0);
+            else
+                EditorGUIUtility.ShowObjectPicker<Texture>(prop.textureValue, false, "", 0);
             s_texturePickerWindow = EditorGUIUtility.GetObjectPickerControlID();
             s_texturePickerWindowProperty = prop;
         }
