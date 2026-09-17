@@ -372,6 +372,8 @@ namespace Thry.ThryEditor
             // stray chunk behind. Dropping it here keeps a malformed json from handing callers on an array of holes.
             void addPart(int partStart, int partEnd)
             {
+                // Pretty-printed empty arrays contain whitespace, not an element.
+                if (string.IsNullOrWhiteSpace(input.Substring(partStart, partEnd - partStart))) return;
                 object part = ParseJsonPart(input, partStart, partEnd, array_obj_type, debugName + "[" + (list.Count) + "]");
                 if (part == null)
                 {
