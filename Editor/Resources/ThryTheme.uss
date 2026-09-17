@@ -3,16 +3,17 @@
    See ../UI_STYLING.md for scope and examples. */
 
 /* Shared shape, size, spacing and typography controls.
-   These defaults preserve the current UI. Override semantic tokens here rather
+   The Studio treatment keeps the established control heights and type sizes.
+   Override semantic tokens here rather
    than restyling individual controls. Zero radii on joined edges are intentional. */
 .thry-inspector, .thry-dropdown-menu {
-    --thry-radius-control: 4px;
+    --thry-radius-control: 3px;
     --thry-radius-button: var(--thry-radius-control);
-    --thry-radius-header: 5px;
+    --thry-radius-header: 6px;
     --thry-radius-subheader: var(--thry-radius-control);
-    --thry-radius-panel: 5px;
+    --thry-radius-panel: 6px;
     --thry-radius-panel-small: var(--thry-radius-control);
-    --thry-radius-card: 6px;
+    --thry-radius-card: 8px;
     --thry-radius-compact: 3px;
     --thry-radius-round: 7px;
     --thry-radius-switch: 8px;
@@ -62,6 +63,8 @@
     --thry-subsection-background: #444444;
     --thry-control-border-color: #494949;
     --thry-field-background: var(--thry-input-background);
+    --thry-dropdown-background: var(--thry-surface-color);
+    --thry-dropdown-hover-background: var(--thry-hover-color);
     --thry-selection-background: #435563;
     --thry-channel-r-color: #e1a4a4;
     --thry-channel-g-color: #a6c8a0;
@@ -78,6 +81,8 @@
     --thry-subsection-background: #b9b9b9;
     --thry-control-border-color: #aaaaaa;
     --thry-field-background: #e4e4e4;
+    --thry-dropdown-background: #d1d1d1;
+    --thry-dropdown-hover-background: #dddddd;
     --thry-selection-background: #bfd1df;
     --thry-channel-r-color: #973c3c;
     --thry-channel-g-color: #406c38;
@@ -95,7 +100,7 @@
     --thry-caption-color: #dadada;
     --thry-muted-color: #bcbcbc;
     --thry-value-color: #e4e4e4;
-    --thry-input-background: #2c2c2c;
+    --thry-input-background: #292929;
     --thry-section-background: #4d4d4d;
 }
 .thry-light { --thry-focus-color: #326f9c; --thry-caption-color: #292929; --thry-muted-color: #606060; --thry-value-color: #292929; }
@@ -292,6 +297,15 @@
 .thry-window .unity-foldout { margin: var(--thry-space-8) 0; }
 .thry-window .unity-foldout__toggle { min-height: var(--thry-window-control-height); background-color: #414141; border-radius: var(--thry-radius-control); -unity-font-style: bold; border-color: #414141; }
 .thry-window .unity-base-text-field__input, .thry-window .unity-base-popup-field__input { background-color: var(--thry-field-background); border-color: var(--thry-control-border-color); border-width: var(--thry-border-width); border-radius: var(--thry-radius-control); min-height: var(--thry-control-height); padding: 0 var(--thry-space-6); }
+/* Native popup text can otherwise push choice controls above the shared input height. */
+.thry-material-controls .unity-base-popup-field,
+.thry-window .unity-base-popup-field { height: var(--thry-control-height); min-height: var(--thry-control-height); }
+/* Inset the borderless fill like the inside of an outlined text input, while
+   keeping the field's full shared height and click target. */
+.thry-material-controls .unity-base-popup-field__input,
+.thry-window .unity-base-popup-field__input { height: auto; min-height: 0; margin: var(--thry-border-width); }
+.thry-material-controls .unity-base-popup-field__text,
+.thry-window .unity-base-popup-field__text { margin-top: 0; margin-bottom: 0; }
 .thry-window Button { border-width: var(--thry-border-width); border-color: var(--thry-surface-color); border-radius: var(--thry-radius-button); min-height: var(--thry-toolbar-height); background-color: var(--thry-surface-color); }
 .thry-window Button:hover { background-color: #505050; border-color: #505050; }
 .thry-material-controls .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
@@ -395,14 +409,12 @@
 }
 .thry-asset-tile { width: 24px; min-width: 24px; height: 20px; flex-shrink: 0; background-color: #363636; border-right-width: var(--thry-border-width); border-right-color: #494949; overflow: hidden; }
 .thry-asset-size { flex-shrink: 0; margin: 0 var(--thry-space-6); padding: 0; font-size: var(--thry-type-caption); color: #969696; -unity-text-align: middle-right; }
-.thry-texture-asset .unity-object-field-display__label { flex-grow: 1; }
+.thry-texture-asset .unity-object-field-display__label { flex-grow: 1; color: var(--thry-value-color); }
 .thry-asset-tile > .unity-image { width: 23px; height: 20px; flex-shrink: 0; margin: 0; padding: 0; }
 .thry-texture-asset .thry-asset-clear { width: 18px; min-width: 18px; height: 18px; min-height: 18px; flex-shrink: 0; margin: 0 var(--thry-space-2) 0 0; padding: 0; border-width: 0; border-radius: var(--thry-radius-compact); background-color: transparent; align-items: center; justify-content: center; }
 .thry-texture-asset .thry-asset-clear:hover, .thry-texture-asset .thry-asset-clear:focus { background-color: #484848; }
-.thry-texture-asset.thry-asset-unassigned .unity-object-field-display__label { color: #969696; }
 .thry-texture-asset:hover .thry-asset-tile { background-color: #414141; }
 .thry-light .thry-asset-tile { background-color: var(--thry-caption-color); border-right-color: #aaaaaa; }
-.thry-light .thry-texture-asset.thry-asset-unassigned .unity-object-field-display__label { color: #666666; }
 .thry-light .thry-texture-asset .thry-asset-clear:hover, .thry-light .thry-texture-asset .thry-asset-clear:focus { background-color: var(--thry-border-color); }
 .thry-material-controls .unity-object-field__selector {
     position: relative; left: auto; right: auto; top: auto; bottom: auto;
@@ -410,7 +422,7 @@
     flex-shrink: 0; align-self: center; margin: 0; padding: 0;
     border-width: 0; border-top-right-radius: var(--thry-radius-compact); border-bottom-right-radius: var(--thry-radius-compact);
 }
-.thry-texture-asset .unity-object-field__selector { border-radius: 0; }
+.thry-texture-asset .unity-object-field__selector { border-radius: 0; background-color: transparent; -unity-background-image-tint-color: var(--thry-value-color); }
 
 /* Channel inspection stays inside the same compact texture card. */
 .thry-texture-card { margin: -6px -6px 0; }
@@ -570,6 +582,7 @@
 /* Keep the child frame continuous with the subheader, without a contrasting rim. */
 .thry-subsection-panel, .thry-positioning-panel { border-width: var(--thry-border-width); border-color: var(--thry-subsection-background); border-radius: var(--thry-radius-panel); background-color: var(--thry-panel-background); overflow: hidden; }
 .thry-subsection-panel > .thry-section-header, .thry-positioning-panel > .thry-section-header { border-radius: 0; background-color: var(--thry-subsection-background); border-color: var(--thry-subsection-background); }
+.thry-subsection-panel > .thry-section-content { padding-right: var(--thry-space-8); }
 .thry-positioning-panel { margin: var(--thry-space-3) 0 var(--thry-space-7); }
 .thry-positioning-panel > .thry-section-content { padding: var(--thry-space-5); }
 .thry-positioning-tools { margin: 0 0 var(--thry-space-5); padding-bottom: var(--thry-space-4); border-bottom-width: var(--thry-border-width); border-bottom-color: #494949; }
@@ -641,13 +654,15 @@
 .thry-material-controls .unity-disabled { opacity: 1; }
 .thry-material-controls .unity-disabled .thry-property-label,
 .thry-material-controls .unity-disabled .thry-texture-caption,
-.thry-material-controls .unity-disabled .unity-base-field__label { color: #969696; }
+.thry-material-controls .unity-disabled .unity-base-field__label,
+.thry-material-controls .unity-disabled .unity-object-field-display__label { color: #969696; }
 .thry-material-controls .unity-disabled .unity-base-text-field__input,
 .thry-material-controls .unity-disabled .unity-base-popup-field__input,
 .thry-material-controls .unity-disabled .unity-object-field__input { color: #969696; background-color: #323232; border-color: #434343; }
 .thry-light .thry-material-controls .unity-disabled .thry-property-label,
 .thry-light .thry-material-controls .unity-disabled .thry-texture-caption,
-.thry-light .thry-material-controls .unity-disabled .unity-base-field__label { color: #696969; }
+.thry-light .thry-material-controls .unity-disabled .unity-base-field__label,
+.thry-light .thry-material-controls .unity-disabled .unity-object-field-display__label { color: #696969; }
 .thry-light .thry-material-controls .unity-disabled .unity-base-text-field__input,
 .thry-light .thry-material-controls .unity-disabled .unity-base-popup-field__input,
 .thry-light .thry-material-controls .unity-disabled .unity-object-field__input { color: #696969; background-color: #b9b9b9; border-color: #a6a6a6; }
@@ -689,7 +704,7 @@
 .thry-window .unity-object-field__input { min-height: var(--thry-control-height); padding: 0 var(--thry-space-6); border-width: var(--thry-border-width); border-color: #494949; border-radius: var(--thry-radius-control); background-color: #2c2c2c; }
 .thry-window Button:focus,
 .thry-window .unity-base-field:focus > .unity-base-field__input { border-color: var(--thry-focus-color); }
-.thry-window .unity-toggle:focus .unity-toggle__checkmark { border-color: var(--thry-focus-color); }
+.thry-window .unity-toggle:focus .unity-toggle__checkmark { border-color: var(--thry-control-border-color); }
 .thry-dialog .unity-toggle__input { align-items: center; }
 .thry-dialog .unity-toggle__checkmark { width: 16px; height: 16px; margin: 0; border-radius: var(--thry-radius-compact); background-color: #2c2c2c; border-color: #535353; border-width: var(--thry-border-width); }
 .thry-dialog .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
@@ -707,7 +722,7 @@
 .thry-light.thry-dialog .unity-foldout__toggle .unity-toggle__checkmark { background-color: transparent; border-width: 0; }
 .thry-light.thry-window Button:focus,
 .thry-light.thry-window .unity-base-field:focus > .unity-base-field__input,
-.thry-light.thry-window .unity-toggle:focus .unity-toggle__checkmark { border-color: #326f9c; }
+.thry-light.thry-window .unity-toggle:focus .unity-toggle__checkmark { border-color: var(--thry-control-border-color); }
 .thry-light.thry-dialog .thry-primary-action { background-color: #bacfdd; border-color: #bacfdd; color: #263e50; }
 .thry-light.thry-dialog .thry-primary-action:hover { background-color: #c8deed; border-color: #c8deed; }
 
@@ -973,7 +988,8 @@
 }
 
 /* ===== ThryPathing ===== */
-.thry-pathing { margin: var(--thry-space-5) var(--thry-space-1) 9px; }
+.thry-pathing { --thry-pathing-column-divider: #5b5b5b; --thry-pathing-column-alternate: rgba(255, 255, 255, .035); --thry-pathing-grip-color: #747474; --thry-pathing-grip-hover-color: #909090; margin: var(--thry-space-5) var(--thry-space-1) 9px; }
+.thry-light .thry-pathing { --thry-pathing-column-divider: #999999; --thry-pathing-column-alternate: rgba(0, 0, 0, .035); --thry-pathing-grip-color: #888888; --thry-pathing-grip-hover-color: #666666; }
 .pathing-row { flex-direction: row; align-items: center; }
 .pathing-topbar { justify-content: flex-end; padding: 0 0 var(--thry-space-3); }
 .pathing-eyebrow { font-size: var(--thry-type-caption); color: var(--thry-muted-color); -unity-font-style: bold; flex-grow: 1; }
@@ -994,7 +1010,7 @@
 .pathing-grid-label { width: 18%; min-width: 60px; flex-shrink: 0; font-size: var(--thry-font-size); color: var(--thry-caption-color); margin: 0; padding: var(--thry-space-4) var(--thry-space-3) var(--thry-space-4) var(--thry-space-7); -unity-text-align: middle-left; }
 .pathing-cell { width: 20.5%; flex-grow: 1; flex-basis: 0; min-width: 0; padding: var(--thry-space-2) var(--thry-space-3); justify-content: center; border-left-width: 0; }
 .pathing-cell.pathing-selected { background-color: transparent; }
-.pathing-cell.pathing-off { opacity: .53; }
+.pathing-cell.pathing-off > * { opacity: .53; }
 .pathing-cell > Button { height: var(--thry-toolbar-height); min-width: 0; padding: 0 var(--thry-space-2); margin: 0; border-width: 0; background-color: transparent; -unity-font-style: bold; font-size: var(--thry-type-small); border-color: transparent; }
 .pathing-cell > Label { -unity-text-align: middle-center; }
 .pathing-cell .thry-property { min-width: 0; flex-grow: 1; }
@@ -1006,7 +1022,7 @@
 .pathing-cell .unity-base-field__input { min-width: 0; }
 .pathing-cell .unity-base-field__label { display: none; }
 /* The native label is both the visible grip and the drag target. */
-.pathing-cell .pathing-component .pathing-value-grip { display: flex; width: 7px; min-width: 7px; max-width: 7px; height: 14px; min-height: 14px; flex-shrink: 0; align-self: center; margin: 0 var(--thry-space-3) 0 0; padding: 0; border-radius: var(--thry-radius-compact); background-color: var(--thry-muted-color); }
+.pathing-cell .pathing-component .pathing-value-grip { display: flex; width: 7px; min-width: 7px; max-width: 7px; height: var(--thry-control-height); min-height: var(--thry-control-height); flex-shrink: 0; align-self: center; margin: 0 var(--thry-space-3) 0 0; padding: 0; border-radius: var(--thry-radius-control); background-color: var(--thry-pathing-grip-color); }
 .pathing-cell .thry-components { flex-grow: 1; min-width: 0; }
 .pathing-cell .thry-component { flex-grow: 1; min-width: 0; flex-basis: 0; }
 .pathing-cell .unity-base-popup-field__text { font-size: var(--thry-type-small); padding-left: var(--thry-space-2); }
@@ -1039,7 +1055,7 @@
 .pathing-grid-heading .pathing-cell > Button { border-radius: var(--thry-radius-button); }
 .pathing-grid-heading .pathing-cell > Button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
 .pathing-grid-heading .pathing-cell > Button:focus { border-bottom-width: var(--thry-border-width); border-bottom-color: var(--thry-focus-color); }
-.pathing-cell .pathing-component .pathing-value-grip:hover { background-color: var(--thry-focus-color); }
+.pathing-cell .pathing-component .pathing-value-grip:hover { background-color: var(--thry-pathing-grip-hover-color); }
 .thry-pathing .pathing-accent-0 { color: var(--thry-channel-r-color); }
 .thry-pathing .pathing-accent-1 { color: var(--thry-channel-g-color); }
 .thry-pathing .pathing-accent-2 { color: var(--thry-channel-b-color); }
@@ -1380,3 +1396,207 @@
 .thry-inspector .unity-base-popup-field:focus > .unity-base-popup-field__input,
 .thry-inspector.thry-light .unity-base-popup-field > .unity-base-popup-field__input:focus,
 .thry-inspector.thry-light .unity-base-popup-field:focus > .unity-base-popup-field__input { border-color: var(--thry-focus-color); }
+
+/* ===== Studio visual direction =====
+   Surface hierarchy, shapes, and interaction states. Control heights, type sizes,
+   label columns, and hit targets continue to use the established metrics. */
+.thry-inspector, .thry-dropdown-menu {
+    --thry-chrome-background: #484848;
+    --thry-row-alternate: rgba(255, 255, 255, .025);
+    --thry-row-hover: rgba(255, 255, 255, .045);
+    --thry-track-color: #5e5e5e;
+    --thry-thumb-color: #999999;
+    --thry-action-background: #505050;
+    --thry-action-hover-background: #5a5a5a;
+    --thry-primary-background: var(--thry-action-background);
+    --thry-primary-foreground: var(--thry-value-color);
+    --thry-disabled-background: #323232;
+    --thry-disabled-border: #434343;
+}
+.thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
+    --thry-chrome-background: var(--thry-surface-color);
+    --thry-action-background: var(--thry-surface-color);
+    --thry-action-hover-background: #eeeeee;
+    --thry-row-alternate: rgba(0, 0, 0, .025);
+    --thry-section-background: #b4b4b4;
+    --thry-input-background: #e4e4e4;
+    --thry-caption-color: #292929;
+    --thry-muted-color: #606060;
+    --thry-value-color: #292929;
+    --thry-row-hover: rgba(0, 0, 0, .045);
+    --thry-track-color: #999999;
+    --thry-thumb-color: #999999;
+    --thry-disabled-background: #b9b9b9;
+    --thry-disabled-border: #a6a6a6;
+}
+
+/* A single quiet tool well and a joined search/filter strip. */
+.thry-inspector.thry-active { color: var(--thry-value-color); }
+.thry-inspector .thry-title { color: var(--thry-value-color); border-left-width: 3px; border-left-color: var(--thry-accent-color); padding-left: var(--thry-space-8); }
+.thry-inspector .thry-version { color: var(--thry-muted-color); background-color: transparent; border-radius: var(--thry-radius-round); border-width: 1px; border-color: var(--thry-border-color); padding-top: 1px; padding-bottom: 1px; }
+.thry-inspector .thry-tools { background-color: var(--thry-chrome-background); border-radius: var(--thry-radius-card); }
+.thry-inspector .thry-tools > .thry-icon-button { background-color: transparent; border-color: transparent; color: var(--thry-muted-color); border-radius: var(--thry-radius-button); align-items: center; justify-content: center; }
+.thry-inspector .thry-tools > .thry-icon-button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); color: var(--thry-value-color); }
+.thry-inspector .thry-tools > .thry-icon-button:focus { color: var(--thry-accent-color); border-color: var(--thry-focus-color); }
+.thry-inspector .thry-tools > .thry-collapse-tool,
+.thry-inspector .thry-tools > .thry-collapse-tool:hover { color: #a6e22e; }
+.thry-inspector .thry-tools > .thry-language-tool,
+.thry-inspector .thry-tools > .thry-language-tool:hover { color: #fd971f; }
+.thry-inspector.thry-light .thry-tools > .thry-collapse-tool,
+.thry-inspector.thry-light .thry-tools > .thry-collapse-tool:hover { color: #638f14; }
+.thry-inspector.thry-light .thry-tools > .thry-language-tool,
+.thry-inspector.thry-light .thry-tools > .thry-language-tool:hover { color: #b86509; }
+.thry-inspector .thry-search { background-color: var(--thry-field-background); border-color: var(--thry-control-border-color); border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.thry-inspector .thry-search-filters { margin-left: 0; background-color: var(--thry-chrome-background); border-top-right-radius: var(--thry-radius-panel); border-bottom-right-radius: var(--thry-radius-panel); }
+.thry-inspector .thry-search .unity-search-field-base__search-button { color: var(--thry-muted-color); }
+.thry-inspector .thry-search-placeholder { color: var(--thry-muted-color); }
+.thry-inspector .thry-type-picker .unity-base-field__input,
+.thry-inspector .thry-status-filter > .unity-base-field__input,
+.thry-inspector.thry-light .thry-type-picker .unity-base-field__input,
+.thry-inspector.thry-light .thry-status-filter > .unity-base-field__input { background-color: var(--thry-chrome-background); border-color: var(--thry-chrome-background); border-radius: 0; }
+.thry-inspector .thry-type-picker .unity-base-popup-field__text,
+.thry-inspector .thry-status-filter .unity-base-popup-field__text { color: var(--thry-caption-color); }
+.thry-inspector .thry-saved-filters { background-color: transparent; color: var(--thry-muted-color); border-radius: var(--thry-radius-button); }
+.thry-inspector .thry-saved-filters:hover { background-color: var(--thry-hover-color); color: var(--thry-accent-color); }
+.thry-inspector.thry-compact .thry-search { border-radius: var(--thry-radius-panel); }
+.thry-inspector.thry-compact .thry-search-filters { border-radius: var(--thry-radius-panel); overflow: hidden; }
+
+/* Primary action and secondary actions remain in their familiar positions. */
+.thry-inspector .thry-lock-button,
+.thry-inspector.thry-light .thry-lock-button { background-color: var(--thry-primary-background); border-color: var(--thry-primary-background); color: var(--thry-primary-foreground); -unity-font-style: bold; }
+.thry-inspector .thry-lock-button:hover,
+.thry-inspector.thry-light .thry-lock-button:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
+.thry-inspector .thry-presets-row > Button,
+.thry-inspector .thry-rendering-mode .unity-base-popup-field__input,
+.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input { background-color: var(--thry-action-background); border-color: var(--thry-action-background); color: var(--thry-value-color); }
+.thry-inspector .thry-presets-row > Button:hover,
+.thry-inspector .thry-rendering-mode .unity-base-popup-field__input:hover,
+.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
+
+/* Open sections form a continuous surface.
+   Nested groups retain a frame in exactly the same color as their header. */
+.thry-inspector .thry-root-section { border-radius: var(--thry-radius-header); background-color: var(--thry-panel-background); }
+.thry-inspector .thry-root-section > .thry-section-header { background-color: var(--thry-section-background); border-color: var(--thry-section-background); }
+.thry-inspector .thry-root-section.thry-section-open > .thry-section-header { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.thry-inspector .thry-root-section > .thry-section-header .thry-section-title { -unity-font-style: bold; color: var(--thry-value-color); }
+.thry-inspector .thry-root-section > .thry-section-content { border-left-width: 1px; border-left-color: var(--thry-section-background); padding-left: var(--thry-space-7); }
+.thry-inspector .thry-subsection-panel,
+.thry-inspector .thry-positioning-panel { background-color: var(--thry-panel-background); border-color: var(--thry-subsection-background); }
+.thry-inspector .thry-subsection-panel > .thry-section-header,
+.thry-inspector .thry-positioning-panel > .thry-section-header { background-color: var(--thry-subsection-background); border-color: var(--thry-subsection-background); }
+.thry-inspector .thry-section-title { color: var(--thry-caption-color); }
+.thry-inspector .thry-section-header .thry-header-action { opacity: .48; }
+.thry-inspector .thry-section-header:hover .thry-header-action,
+.thry-inspector .thry-section-header .thry-header-action:focus,
+.thry-inspector .thry-section-header .thry-linked { opacity: 1; }
+.thry-inspector .thry-header-icon { --unity-image-tint-color: var(--thry-muted-color); }
+.thry-inspector .thry-linked .thry-header-icon,
+.thry-inspector .thry-header-action:focus .thry-header-icon { --unity-image-tint-color: var(--thry-accent-color); }
+.thry-inspector .thry-header-action:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
+.thry-inspector .thry-header-action:hover .thry-header-icon,
+.thry-inspector .thry-fold-arrow:hover .thry-header-icon { --unity-image-tint-color: var(--thry-value-color); }
+
+/* Editable wells and distinct button-like choice controls share the same metrics. */
+.thry-inspector .thry-property-row.thry-row-alt { background-color: var(--thry-row-alternate); }
+.thry-inspector .thry-property-row:hover { background-color: var(--thry-row-hover); }
+.thry-inspector .thry-material-controls .unity-base-text-field__input,
+.thry-inspector .thry-material-controls .unity-object-field__input,
+.thry-inspector.thry-window .unity-base-text-field__input,
+.thry-inspector.thry-window .unity-object-field__input { background-color: var(--thry-field-background); border-color: var(--thry-control-border-color); color: var(--thry-value-color); border-radius: var(--thry-radius-control); }
+.thry-inspector .thry-material-controls .unity-base-popup-field__input,
+.thry-inspector.thry-window .unity-base-popup-field__input { background-color: var(--thry-dropdown-background); border-color: var(--thry-dropdown-background); }
+.thry-inspector .thry-material-controls .unity-base-popup-field__text,
+.thry-inspector.thry-window .unity-base-popup-field__text { color: var(--thry-value-color); }
+.thry-inspector .thry-material-controls .unity-base-popup-field__input:hover,
+.thry-inspector.thry-window .unity-base-popup-field__input:hover { background-color: var(--thry-dropdown-hover-background); border-color: var(--thry-dropdown-hover-background); }
+.thry-inspector .thry-material-controls .unity-disabled .unity-base-text-field__input,
+.thry-inspector .thry-material-controls .unity-disabled .unity-object-field__input { background-color: var(--thry-disabled-background); border-color: var(--thry-disabled-border); }
+.thry-inspector .thry-material-controls .unity-disabled .unity-base-popup-field__input,
+.thry-inspector.thry-light .thry-material-controls .unity-disabled .unity-base-popup-field__input { background-color: var(--thry-disabled-background); border-color: var(--thry-disabled-background); }
+.thry-inspector .thry-component > .unity-base-field__label { color: var(--thry-muted-color); }
+.thry-inspector .thry-texture-expanded > .thry-texture-details { border-left-color: var(--thry-border-color); }
+.thry-inspector .thry-texture-summary .thry-texture-preview { background-color: var(--thry-field-background); border-color: var(--thry-control-border-color); }
+.thry-inspector .thry-texture-description,
+.thry-inspector .thry-asset-size,
+.thry-inspector .thry-muted { color: var(--thry-muted-color); }
+
+/* Slim instrument-like slider handles; the native drag and keyboard behavior stays intact. */
+.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__tracker { position: absolute; top: 50%; left: 0; right: 0; height: 2px; margin: -1px 0 0; border-width: 0; border-radius: 1px; background-color: var(--thry-track-color); }
+.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger { position: absolute; top: 50%; left: 0; width: 6px; height: 12px; margin: -6px 0 0; border-width: 0; border-radius: 2px; background-color: var(--thry-thumb-color); }
+.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger-border { display: none; }
+.thry-inspector .unity-slider:hover .unity-base-slider__dragger,
+.thry-inspector .unity-slider:focus .unity-base-slider__dragger { background-color: var(--thry-value-color); }
+.thry-inspector .thry-material-controls .unity-toggle__checkmark { background-color: var(--thry-field-background); border-color: var(--thry-control-border-color); }
+.thry-inspector .thry-material-controls .unity-toggle:checked > .unity-toggle__input > .unity-toggle__checkmark { background-color: var(--thry-field-background); border-color: var(--thry-control-border-color); -unity-background-image-tint-color: var(--thry-value-color); }
+.thry-inspector .thry-material-controls .unity-foldout__toggle > .unity-toggle__input > .unity-toggle__checkmark,
+.thry-inspector .thry-material-controls .unity-foldout__toggle:checked > .unity-toggle__input > .unity-toggle__checkmark { background-color: transparent; border-width: 0; -unity-background-image-tint-color: var(--thry-muted-color); }
+.thry-inspector .unity-base-popup-field__arrow { -unity-background-image-tint-color: var(--thry-value-color); }
+
+/* The same surface language extends to Pathing, menus, and companion windows. */
+.thry-inspector.thry-window Button { background-color: var(--thry-surface-color); border-color: var(--thry-surface-color); color: var(--thry-value-color); }
+.thry-inspector.thry-window Button:hover { background-color: var(--thry-hover-color); border-color: var(--thry-hover-color); }
+.thry-inspector.thry-window .unity-foldout__toggle { background-color: var(--thry-subsection-background); border-color: var(--thry-subsection-background); color: var(--thry-caption-color); }
+.thry-inspector .pathing-preview { border-color: var(--thry-border-color); }
+.thry-inspector .pathing-grid-heading { background-color: var(--thry-subsection-background); }
+.thry-inspector .pathing-cell.pathing-selected { background-color: var(--thry-row-hover); }
+.thry-inspector .pathing-grid-heading .pathing-cell.pathing-selected { background-color: var(--thry-selection-background); }
+/* Pathing is a comparison table: keep its column structure stronger than the
+   surrounding borderless headers and buttons, even when a path is off. */
+.thry-inspector .thry-pathing .pathing-grid { border-width: var(--thry-border-width); border-color: var(--thry-pathing-column-divider); border-radius: var(--thry-radius-control); }
+.thry-inspector .thry-pathing .pathing-cell { border-left-width: var(--thry-border-width); border-left-color: var(--thry-pathing-column-divider); }
+.thry-inspector .thry-pathing .pathing-channel-1,
+.thry-inspector .thry-pathing .pathing-channel-3 { background-color: var(--thry-pathing-column-alternate); }
+.thry-inspector .thry-pathing .pathing-cell.pathing-selected { background-color: var(--thry-row-hover); }
+.thry-inspector .thry-pathing .pathing-grid-heading { border-radius: 0; }
+.thry-inspector .thry-pathing .pathing-grid-heading .pathing-cell.pathing-selected { background-color: var(--thry-selection-background); }
+.thry-inspector .thry-studio-preview,
+.thry-inspector .thry-studio-route,
+.thry-inspector .thry-studio-source,
+.thry-inspector .thry-stencil-view { background-color: var(--thry-panel-background); }
+.thry-dropdown-menu .thry-menu-card { background-color: var(--thry-panel-background); border-color: var(--thry-border-color); border-radius: var(--thry-radius-card); }
+.thry-dropdown-menu .thry-menu-item Label { color: var(--thry-value-color); }
+.thry-dropdown-menu .thry-menu-selected { background-color: var(--thry-selection-background); }
+.thry-dropdown-menu .thry-menu-separator { background-color: var(--thry-border-color); }
+.thry-inspector .thry-footer-credit { color: var(--thry-muted-color); }
+
+/* Rendering mode is a toolbar action and uses the same surface as Presets.
+   This follows the generic field rules so a popup's input fill cannot win. */
+.thry-inspector .thry-rendering-mode .unity-base-popup-field__input,
+.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input { background-color: var(--thry-action-background); border-color: var(--thry-action-background); margin: 0; }
+.thry-inspector .thry-rendering-mode .unity-base-popup-field__input:hover,
+.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
+
+/* Decorator actions share a button role instead of inheriting Unity's native
+   fill or the positioning toolbar's former palette. Existing sizes stay intact. */
+.thry-inspector .thry-action-button,
+.thry-inspector .thry-positioning-actions > .thry-action-button { background-color: var(--thry-action-background); border-color: var(--thry-action-background); border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); color: var(--thry-value-color); }
+.thry-inspector .thry-action-button:hover,
+.thry-inspector .thry-positioning-actions > .thry-action-button:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
+.thry-inspector .thry-positioning-button > Label { color: var(--thry-value-color); }
+.thry-inspector .thry-positioning-icon { color: var(--thry-muted-color); }
+.thry-inspector .thry-positioning-status { color: var(--thry-muted-color); }
+.thry-inspector .thry-positioning-tools { border-bottom-color: var(--thry-border-color); }
+.thry-inspector .thry-positioning-actions > .thry-positioning-active { background-color: var(--thry-selection-background); border-color: var(--thry-selection-background); }
+.thry-inspector .thry-positioning-active .thry-positioning-icon { color: var(--thry-accent-color); }
+.thry-inspector .thry-action-button.unity-disabled,
+.thry-inspector .unity-disabled .thry-action-button { background-color: var(--thry-disabled-background); border-color: var(--thry-disabled-background); color: var(--thry-muted-color); }
+.thry-inspector .thry-action-button.unity-disabled > Label,
+.thry-inspector .unity-disabled .thry-action-button > Label { color: var(--thry-muted-color); }
+.thry-inspector .thry-action-button:focus,
+.thry-inspector .thry-positioning-actions > .thry-action-button:focus { border-color: var(--thry-focus-color); }
+
+/* Focus is the last layer so hover and skin-specific fills never hide it. */
+.thry-inspector .thry-search.thry-search-focused,
+.thry-inspector.thry-light .thry-search.thry-search-focused,
+.thry-inspector .thry-lock-button:focus,
+.thry-inspector .thry-presets-row > Button:focus,
+.thry-inspector.thry-window Button:focus,
+.thry-inspector .unity-base-text-field__input:focus,
+.thry-inspector.thry-light .unity-base-text-field__input:focus,
+.thry-inspector .unity-base-field:focus > .unity-base-field__input,
+.thry-inspector .unity-base-popup-field > .unity-base-popup-field__input:focus,
+.thry-inspector .unity-base-popup-field:focus > .unity-base-popup-field__input,
+.thry-inspector.thry-light .unity-base-popup-field > .unity-base-popup-field__input:focus,
+.thry-inspector.thry-light .unity-base-popup-field:focus > .unity-base-popup-field__input { border-color: var(--thry-focus-color); }
+
+.thry-inspector .thry-search .unity-base-text-field__input { background-color: transparent; border-width: 0; color: var(--thry-value-color); }

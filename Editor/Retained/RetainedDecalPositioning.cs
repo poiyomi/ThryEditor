@@ -105,7 +105,7 @@ namespace Thry.ThryEditor
 
         private static Button PositioningButton(string text, bool raycast, Action action)
         {
-            var button = new Button(action); button.AddToClassList("thry-positioning-button");
+            var button = new Button(action); button.AddToClassList("thry-positioning-button"); button.AddToClassList("thry-action-button");
             var icon = new VisualElement { pickingMode = PickingMode.Ignore }; icon.AddToClassList("thry-positioning-icon"); button.Add(icon);
 #if UNITY_2022_1_OR_NEWER
             icon.generateVisualContent += context =>

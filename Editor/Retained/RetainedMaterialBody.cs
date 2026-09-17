@@ -183,6 +183,7 @@ namespace Thry.ThryEditor
                 bool category = depth != 0 || Model.Shader.FocusedCategory == null || group.MaterialProperty.name == Model.Shader.FocusedCategory;
                 root.style.display = category && group.RetainedVisible ? DisplayStyle.Flex : DisplayStyle.None;
                 header.EnableInClassList("thry-excluded", SectionEditing.IsExcluded?.Invoke(group) == true);
+                root.EnableInClassList("thry-section-open", group.RetainedExpanded);
                 children.SetEnabled(group.RetainedChildrenEnabled && (group.Options.condition_enable == null || group.Options.condition_enable.Test()));
                 children.style.display = group.RetainedExpanded ? DisplayStyle.Flex : DisplayStyle.None;
                 foldIcon.image = group.RetainedExpanded ? _expandedCaret : _collapsedCaret;

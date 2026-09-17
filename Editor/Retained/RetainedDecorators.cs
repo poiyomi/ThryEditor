@@ -88,6 +88,7 @@ namespace Thry.ThryEditor
                         }
                         Model.Notify();
                     }) { text = "Fix Now", name = "fix-colorspace" };
+                    fix.AddToClassList("thry-action-button");
                     warning.Add(fix); root.Add(warning);
                     Track(warning, () => warning.style.display = Config.Instance.showColorspaceWarnings && mismatches().Length > 0 ? DisplayStyle.Flex : DisplayStyle.None);
                 }
@@ -117,6 +118,7 @@ namespace Thry.ThryEditor
                             finally { pending = false; Model.Notify(); }
                         };
                     }) { text="Bake Color Adjust", name="bake-color-adjust" };
+                    button.AddToClassList("thry-action-button");
                     Track(button,()=>button.SetEnabled(!pending && RetainedMaterialModel.HasValidTargets(Model.Editor) && Model.CanEdit(property)
                         && PresentationTargets(property).Any(m=>(bool)check.Invoke(null,new object[]{m}))));root.Add(button);
                 }
