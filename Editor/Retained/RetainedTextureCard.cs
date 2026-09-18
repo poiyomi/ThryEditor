@@ -18,7 +18,7 @@ namespace Thry.ThryEditor
         readonly bool _convertArray;
         readonly Image _thumbnail;
         readonly VisualElement _mixedIcon;
-        readonly Label _placeholder, _name, _description;
+        readonly Label _placeholder, _name, _description, _aspectHint;
         readonly Button _clear;
         Button _gradient;
         readonly VisualElement _channels, _summary, _frame;
@@ -43,6 +43,11 @@ namespace Thry.ThryEditor
             name = "texture-card-" + property.MaterialProperty.name;
             AddToClassList("thry-texture-card");
             var summary = _summary = new VisualElement(); summary.AddToClassList("thry-texture-summary"); Add(summary);
+            _aspectHint = new Label(Text("texturePreviewStretched", "Preview stretched · aspect ratio not preserved")) { name = "texture-preview-aspect-hint" };
+            _aspectHint.AddToClassList("thry-muted");
+            _aspectHint.style.whiteSpace = WhiteSpace.Normal;
+            _aspectHint.style.display = DisplayStyle.None;
+            Add(_aspectHint);
             var frame = new VisualElement { name = "texture-drop-target", focusable = true, tabIndex = 0, tooltip = Text("textureDropHint", "Drop a texture to assign it. Click to locate the assigned asset in the Project window.") };
             frame.AddToClassList("thry-texture-preview"); summary.Add(frame);
             _frame = frame;
@@ -130,19 +135,20 @@ namespace Thry.ThryEditor
 
         void UpdateResponsiveLayout()
         {
+            bool assigned = _texture != null && !_mixed;
+            // Thin textures need a readable preview in every slot, not only gradient slots.
+            // Keep the source untouched and disclose the preview's altered proportions.
+            bool stretched = assigned && (_texture.width > _texture.height * 4f || _texture.height > _texture.width * 4f);
+            _thumbnail.scaleMode = stretched ? ScaleMode.StretchToFill : ScaleMode.ScaleToFit;
+            _aspectHint.style.display = stretched ? DisplayStyle.Flex : DisplayStyle.None;
             float available = _summary.contentRect.width;
             if (float.IsNaN(available) || available <= 0) return;
-            bool assigned = _texture != null && !_mixed;
             EnableInClassList("thry-texture-card-assigned", assigned);
             EnableInClassList("thry-texture-card-compact", available < 300);
             // A wide landscape thumbnail can use spare horizontal space without
             // making every expanded texture taller. Preserve room for all channels.
             float height = assigned ? (available >= 440 ? 66 : 64) : 40;
             float aspect = assigned && _texture.height > 0 ? Mathf.Clamp((float)_texture.width / _texture.height, 1, 1.8f) : 1;
-            // One-dimensional ramps should show their colors across the preview,
-            // rather than appearing as a nearly invisible line inside the card.
-            _thumbnail.scaleMode = _gradient != null && assigned && (_texture.width > _texture.height * 4 || _texture.height > _texture.width * 4)
-                ? ScaleMode.StretchToFill : ScaleMode.ScaleToFit;
             float width = Mathf.Min(height * aspect, Mathf.Max(40, available - (_gradient != null ? 215 : 150)));
             _frame.style.height = height;
             _frame.style.width = width;
