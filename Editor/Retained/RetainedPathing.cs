@@ -495,6 +495,7 @@ namespace Thry.ThryEditor
                 e.PreventDefault(); e.StopImmediatePropagation(); ShowPropertyMenu(root, property);
             }, TrickleDown.TrickleDown);
             DecorateAnimation(root, property, false); Context(root, property);
+            DecoratePreset(root, property);
             ChangedPropertyIndicator(row, row.Q<Label>(className: "thry-property-label"), property);
             return root;
         }

@@ -149,6 +149,7 @@ namespace Thry.ThryEditor
             Track(root, () => property.RefreshRetainedProjection(Model.Renderers));
             DecorateMultiMaterialProperty(root, property);
             DecorateAnimation(root, property, inline);
+            DecoratePreset(root, property);
             Decorators(root,property,attributes);
             Track(root, () => {
                 root.style.display = property.RetainedVisible ? DisplayStyle.Flex : DisplayStyle.None;

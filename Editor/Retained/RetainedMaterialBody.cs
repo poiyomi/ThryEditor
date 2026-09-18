@@ -137,6 +137,7 @@ namespace Thry.ThryEditor
             }
             var titleArea = new VisualElement { tooltip = group.TooltipText }; titleArea.AddToClassList("thry-section-title-area"); header.Add(titleArea);
             var title = new Label(SectionCaption(group)); title.AddToClassList("thry-section-title"); titleArea.Add(title);
+            _fields.DecoratePreset(titleArea, group, true);
             var changedDot = new VisualElement { name = "changed-section-indicator" };
             changedDot.AddToClassList("thry-section-changed-dot"); titleArea.Add(changedDot);
             changedDot.RegisterCallback<TooltipEvent>(e =>
@@ -317,6 +318,7 @@ namespace Thry.ThryEditor
             if (Model.Shader.RetainedFallback != null)
             {
                 var fallbackRow = RetainedFields.Row("VRChat Fallback Shader",out input);
+                _fields.DecoratePreset(fallbackRow, Model.Shader.RetainedFallback);
                 var fallback = new DropdownField(VRCFallbackProperty.RetainedNames.ToList(),0); _view.UseInspectorMenu(fallback); input.Add(fallback);
                 fallback.name = "thry-vrc-fallback";
                 _fields.TrackVisible(fallback, () => {
@@ -333,6 +335,7 @@ namespace Thry.ThryEditor
                 fallback.RegisterValueChangedCallback(e=>{if(fallback.index>=0)Model.Mutate("VRChat Fallback",m=>m.SetOverrideTag("VRCFallback",VRCFallbackProperty.RetainedValues[fallback.index]));}); Add(fallbackRow);
             }
             var row = RetainedFields.Row(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),out input);
+            _fields.DecoratePreset(row, Model.Shader.RetainedQueue);
             _fields.Track(row, () => row.style.display = Config.Instance.showRenderQueue ? DisplayStyle.Flex : DisplayStyle.None);
             input.AddToClassList("thry-components");
             string[] queueNames = { RetainedText.Get(Model.Shader, "queue_shader", "From Shader"), RetainedText.Get(Model.Shader, "queue_background", "Background"), RetainedText.Get(Model.Shader, "queue_geometry", "Geometry"), RetainedText.Get(Model.Shader, "queue_alpha_test", "AlphaTest"), RetainedText.Get(Model.Shader, "queue_transparent", "Transparent"), RetainedText.Get(Model.Shader, "queue_overlay", "Overlay") };
