@@ -1,20 +1,23 @@
 # Shared Poiyomi inspector styling
 
-Edit `Resources/ThryTheme.uss`. The active Studio visual direction keeps the established control heights, text sizes, and label columns while changing surfaces, shapes, and hierarchy. There is no temporary theme selector.
+Edit `Resources/ThryTheme.uss`. The active Studio visual direction uses compact text and section spacing while keeping the established input heights and label columns. There is no temporary theme selector.
 
 ## Studio direction
 
 - The original neutral dark/light palettes and focus colors, with the new Studio shapes and layout.
-- The original Monokai icons in a compact toolbar well, and a joined search/filter strip that stacks at narrow widths.
-- Shader-lock, Presets, rendering mode, and all other filled action buttons share the darker action surface and hover colors (`--thry-action-background` and `--thry-action-hover-background`), including decal positioning and Bake Color Adjust.
+- The original Monokai toolbar icons have transparent backgrounds, including hover and pressed states; focus and selected outlines remain visible. The joined search/filter strip stacks at narrow widths.
+- Shader-lock, Presets, rendering mode, and all other filled action buttons share the darker action surface and hover colors (`--thry-action-background` and `--thry-action-hover-background`), including decal positioning and Bake Color Adjust. The title and search strip, search strip and action block, and action block and first section are separated by 4px gaps. Gaps within the action block remain 2px, including between Presets and rendering mode. Search and toolbar controls match the ordinary 22px control height, with 20px inner search fields and unchanged 18px toolbar artwork.
 - All retained buttons automatically share normal, hover, pressed, disabled, and focused styling, including Bake Color Adjust, positioning, Pathing, toolbars, and companion windows. Disabled actions keep muted text and respond visually to hover while remaining unclickable. Bake Color Adjust has a Monokai yellow palette icon; Raycast and Scene Tools retain their original green icons, with light-skin equivalents for each.
-- Connected section surfaces and matching header/child frames for nested groups.
+- Connected main section surfaces and standalone header bars for nested groups.
+- Hover brightens the section header surface using separate main/nested hover colors. Only the directly hovered icon brightens; other header icons stay steady. Keyboard focus and linked-state indicators remain visible.
+- Main inspector sections use bold labels and a separate `--thry-root-section-background` shade: lighter than nested headers in the dark skin, darker in the light skin. Their expanded contents have a 9px left inset without a guide line. Nested contents also use a 9px left inset without guide lines, with 4px gaps above and below. Nested headers retain `--thry-subsection-background`; their contents have no surrounding frame or right padding, preserving left indentation for hierarchy; unrelated windows and Texture Studio keep their existing section palette.
 - Outlined editable fields, quiet property rows, neutral checkboxes, and slim slider handles without outline rings.
-- Basic material fields, vector components, slider number boxes, and inline actions use the same `--thry-control-height` (22px). Pathing cells cannot stretch these fields taller; previews and multi-row drawers keep their own height.
+- Basic material fields, vector components, slider number boxes, and inline actions use the same `--thry-control-height` (22px). Visible input surfaces and color fields also use this height. Property checkboxes use an 18px square centered within the 22px row, with a stylesheet-drawn box and an uncompressed 128px checkmark texture generated from `Resources/ThryToolbar/Source/property-checkmark.svg.txt`. The white artwork uses the theme value color as its tint. Ordinary rows have 1px top and bottom margins; inline reference rows have no vertical margins, so they do not enlarge their parent row. Pathing cells cannot stretch these fields taller; previews and multi-row drawers keep their own height.
 - Texture fields show a thumbnail only when assigned and use the same text contrast for empty and assigned values.
+- Footer icons use their own 32px image and 36px button tokens. They stay centered at full size and wrap on narrow inspectors instead of shrinking with compact controls.
 - Shared surface and interaction colors for Pathing, retained menus, and companion windows.
 
-The last section of the stylesheet defines this treatment. Palette and shape tokens remain shared; section heights, field heights, hit targets, and font sizes retain their existing values. `RetainedMaterialBody` exposes expansion through `thry-section-open`. Toolbar icons retain their original Monokai artwork and colors.
+The last section of the stylesheet defines this treatment. Palette, shape, and density tokens remain shared. Default inspector text is 12px, top-level headers are 22px, nested headers are 20px, and section gaps are 2px. Text size is independent of the 24px collapsed top-level spacing interval; ordinary input hit targets remain 22px. Small captions, preview dimensions, and explicit drawer font sizes retain their own settings. `RetainedMaterialBody` exposes expansion through `thry-section-open`. Toolbar icons retain their original Monokai artwork and colors.
 
 ## Shared controls
 
@@ -73,7 +76,7 @@ Pathing deliberately overrides the flat decorative treatment with continuous col
 
 ## Header and button borders
 
-Decorative borders on headers and buttons match their own fill colors, including hover and disabled fills. Border widths stay in place so control sizes and focus outlines keep the default geometry. Subsection and positioning panels retain their child frames; those frames use `--thry-subsection-background` to continue the header's color around the children. Focus, selection, and status indicators remain visible.
+Decorative borders on headers and buttons match their own fill colors, including hover and disabled fills. Border widths stay in place so control sizes and focus outlines keep the default geometry. Subsection and positioning panels are transparent, with no surrounding frame or right padding around their contents. Left padding preserves the indentation without guide lines. Their standalone header bars use `--thry-subsection-background`. Focus, selection, and status indicators remain visible.
 
 ## Input and dropdown borders
 
