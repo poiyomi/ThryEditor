@@ -16,6 +16,7 @@ namespace Thry.ThryEditor
         private readonly MaterialEditor _editor;
         private readonly VisualElement _body;
         private IMGUIContainer _fallback;
+        private readonly Label _loading = new Label("Loading shader inspector…") { name = "thry-inspector-loading" };
         private RetainedMaterialBody _retained;
         private RetainedCrossSelectionProperties _crossProperties;
         private readonly Renderer[] _rendererContext;
@@ -126,7 +127,13 @@ namespace Thry.ThryEditor
             _propertySearch = new RetainedSearch(this, ClearSearch);
             Add(_propertySearch);
             _body = new VisualElement { name = "thry-unfiltered-body" }; Add(_body);
-            _fallback = new IMGUIContainer(drawInspector);
+            _fallback = new IMGUIContainer(() =>
+            {
+                // A shader can change between retained refreshes. Never let a
+                // still-attached native fallback initialize Thry's legacy UI.
+                if (RetainedMaterialModel.HasValidTargets(_editor)) return;
+                drawInspector();
+            });
             RegisterCallback<AttachToPanelEvent>(evt => Undo.undoRedoPerformed += OnUndo);
             RegisterCallback<DetachFromPanelEvent>(evt => Undo.undoRedoPerformed -= OnUndo);
             RegisterCallback<AttachToPanelEvent>(evt => { _cachedRenderers = null; Selection.selectionChanged += InvalidateRenderers; EditorApplication.hierarchyChanged += InvalidateRenderers; });
@@ -536,7 +543,7 @@ namespace Thry.ThryEditor
             if (collapsed) return;
             bool compatible = RetainedMaterialModel.HasValidTargets(_editor);
             var current = compatible ? _shaderOverride ?? _editor.customShaderGUI as ShaderEditor : null;
-            if (compatible && current == null && _editor.customShaderGUI == null)
+            if (compatible && current == null)
             {
                 typeof(MaterialEditor).GetMethod("CreateCustomShaderEditorIfNeeded", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                     ?.Invoke(_editor,new object[] { ((Material)_editor.target).shader });
@@ -555,6 +562,17 @@ namespace Thry.ThryEditor
             {
                 _retained.Model.Renderers = FindRenderers(); _retained.Model.Refresh();
                 if (_retained.childCount == 0 || !ClassListContains("thry-filtering")) _retained.Synchronize();
+            }
+            else if (compatible)
+            {
+                // A Thry shader waiting for its ShaderGUI must never initialize the
+                // legacy inspector just to bridge the first retained refresh.
+                if (_loading.parent == null)
+                {
+                    if (_shader != null) { _shader.HasRetainedToolbar = false; _shader.ShowDropdown = null; }
+                    _shader = null; _crossProperties = null; _retained = null;
+                    _body.Clear(); _body.Add(_loading);
+                }
             }
             else if (_fallback.parent == null)
             {
