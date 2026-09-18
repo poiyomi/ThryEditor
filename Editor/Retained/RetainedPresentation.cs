@@ -29,9 +29,7 @@ namespace Thry.ThryEditor
                         break;
                     case "Space":
                     case "ThrySpace":
-                        var space = new VisualElement { name = "thry-space", pickingMode = PickingMode.Ignore };
-                        space.style.height = args.Length > 0 ? Mathf.Max(0, DrawerAttribute.Number(args[0])) : 10;
-                        space.style.flexShrink = 0; root.Add(space);
+                        // Keep property rows contiguous when shaders request blank spacing.
                         break;
                     case "ThrySeperator":
                         root.Add(PresentationSeparator(args));
