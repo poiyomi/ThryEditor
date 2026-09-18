@@ -289,9 +289,6 @@ namespace Thry.ThryEditor.TexturePacker
                 var grid = new GridBackground(); Insert(0, grid); grid.StretchToParentSize();
                 // Pan the board while keeping its nodes in their assigned slots.
                 this.AddManipulator(new ContentDragger());
-                RegisterCallback<MouseDownEvent>(e => _append = e.shiftKey, TrickleDown.TrickleDown);
-                RegisterCallback<MouseMoveEvent>(e => _append = e.shiftKey, TrickleDown.TrickleDown);
-                RegisterCallback<MouseUpEvent>(e => _append = e.shiftKey, TrickleDown.TrickleDown);
                 RegisterCallback<KeyDownEvent>(e => {
                     if (e.keyCode != KeyCode.Delete && e.keyCode != KeyCode.Backspace) return;
                     for (var target = e.target as VisualElement; target != null && target != this; target = target.parent)
@@ -362,6 +359,17 @@ namespace Thry.ThryEditor.TexturePacker
                     });
                 });
                 port.edgeConnector.activators.Add(new ManipulatorActivationFilter { button = MouseButton.LeftMouse, modifiers = EventModifiers.Shift });
+                // Captured mouse events go straight to the port in Unity 2022.3,
+                // bypassing the graph's ancestor callbacks. Read Shift here before
+                // the connector handles the drop so mid-drag changes take effect.
+                port.RegisterCallback<MouseDownEvent>(e => UpdateAppend(e.shiftKey), TrickleDown.TrickleDown);
+                port.RegisterCallback<MouseMoveEvent>(e => UpdateAppend(e.shiftKey), TrickleDown.TrickleDown);
+                port.RegisterCallback<MouseUpEvent>(e => UpdateAppend(e.shiftKey), TrickleDown.TrickleDown);
+                void UpdateAppend(bool append)
+                {
+                    var graph = port.GetFirstAncestorOfType<TextureStudioGraph>();
+                    if (graph != null) graph._append = append;
+                }
                 port.RegisterCallback<MouseDownEvent>(e => {
                     if (e.button != 0 || !e.altKey) return;
                     port.GetFirstAncestorOfType<TextureStudioGraph>()?.DisconnectPin(port);
