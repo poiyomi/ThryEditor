@@ -17,6 +17,7 @@ namespace Thry.ThryEditor
         readonly ObjectField _assignment;
         readonly bool _convertArray;
         readonly Image _thumbnail;
+        readonly VisualElement _mixedIcon;
         readonly Label _placeholder, _name, _description;
         readonly Button _clear;
         Button _gradient;
@@ -47,6 +48,7 @@ namespace Thry.ThryEditor
             _frame = frame;
             _thumbnail = new Image { name = "texture-thumbnail", scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             _thumbnail.style.flexGrow = 1; frame.Add(_thumbnail);
+            _mixedIcon = CreateMixedIcon(); frame.Add(_mixedIcon);
             _placeholder = new Label { pickingMode = PickingMode.Ignore }; _placeholder.AddToClassList("thry-texture-placeholder"); frame.Add(_placeholder);
             frame.RegisterCallback<PointerUpEvent>(e => { if (e.button == 0) { SelectAsset(); e.StopPropagation(); } });
             frame.RegisterCallback<NavigationSubmitEvent>(e => { SelectAsset(); e.StopPropagation(); });
@@ -102,6 +104,17 @@ namespace Thry.ThryEditor
                 e.tooltip = label.text; e.rect = label.worldBound;
                 e.StopImmediatePropagation();
             });
+        }
+
+        internal static VisualElement CreateMixedIcon()
+        {
+            var icon = new VisualElement { name = "texture-mixed-icon", pickingMode = PickingMode.Ignore };
+            icon.AddToClassList("thry-texture-mixed-icon");
+            icon.style.display = DisplayStyle.None;
+            var dash = new VisualElement { pickingMode = PickingMode.Ignore };
+            dash.AddToClassList("thry-texture-mixed-dash");
+            icon.Add(dash);
+            return icon;
         }
 
         string Text(string key, string fallback) => RetainedText.Get(_model.Shader, key, fallback);
@@ -172,8 +185,9 @@ namespace Thry.ThryEditor
                 _assetGuid = guid; _assetDimension = assigned ? texture.dimension : TextureDimension.None;
                 _sourceDirty = -1; _projectRevision = -1;
                 _thumbnail.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
-                _placeholder.style.display = assigned ? DisplayStyle.None : DisplayStyle.Flex;
-                _placeholder.text = mixed ? Text("mixed", "Mixed") : Text("textureDrop", "Drop\ntexture");
+                _mixedIcon.style.display = mixed ? DisplayStyle.Flex : DisplayStyle.None;
+                _placeholder.style.display = assigned || mixed ? DisplayStyle.None : DisplayStyle.Flex;
+                _placeholder.text = Text("textureDrop", "Drop\ntexture");
                 _thumbnail.image = assigned ? PreviewSource() : null;
                 _name.text = mixed ? Text("multipleTextures", "Multiple textures") : assigned ? RetainedText.TextureCaption(texture) : Text("noTextureAssigned", "No texture assigned");
                 if (assigned) RefreshDescription();

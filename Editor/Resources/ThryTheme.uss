@@ -480,6 +480,11 @@
     flex-shrink: 1; min-width: 0; margin: 0 0 0 var(--thry-space-5); padding: 0; overflow: hidden; text-overflow: ellipsis;
 }
 .thry-asset-tile { width: 24px; min-width: 24px; height: 20px; flex-shrink: 0; background-color: #363636; border-right-width: var(--thry-border-width); border-right-color: #494949; overflow: hidden; }
+.thry-texture-mixed-icon { flex-grow: 1; margin: 0; padding: 0; align-items: center; justify-content: center; background-color: #454b52; }
+.thry-light .thry-texture-mixed-icon { background-color: #bbc4ce; }
+.thry-texture-preview > .thry-texture-mixed-icon { border-radius: var(--thry-radius-control); }
+.thry-texture-mixed-dash { width: 10px; height: 2px; flex-shrink: 0; border-radius: 1px; background-color: var(--thry-value-color); opacity: 0.75; }
+.thry-texture-preview .thry-texture-mixed-dash { width: 16px; }
 .thry-asset-size { flex-shrink: 0; margin: 0 var(--thry-space-6); padding: 0; font-size: var(--thry-type-caption); color: #969696; -unity-text-align: middle-right; }
 .thry-texture-asset .unity-object-field-display__label { flex-grow: 1; color: var(--thry-value-color); }
 .thry-asset-tile > .unity-image { width: 23px; height: 20px; flex-shrink: 0; margin: 0; padding: 0; }

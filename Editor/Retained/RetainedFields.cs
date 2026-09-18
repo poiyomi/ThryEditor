@@ -691,6 +691,7 @@ namespace Thry.ThryEditor
             tile.AddToClassList("thry-asset-tile"); display.Insert(0, tile);
             var preview = new Image { name = "texture-asset-thumbnail", scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             tile.Add(preview);
+            var mixedIcon = RetainedTextureCard.CreateMixedIcon(); tile.Add(mixedIcon);
             var normalPreview = new RetainedTexturePreview();
             bool normalMap = false;
             Action releaseNormalPreview = () => { preview.image = null; normalPreview.Dispose(); };
@@ -702,7 +703,8 @@ namespace Thry.ThryEditor
                 var texture = getTexture();
                 bool mixed = isMixed();
                 bool assigned = texture != null && !mixed;
-                tile.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
+                tile.style.display = assigned || mixed ? DisplayStyle.Flex : DisplayStyle.None;
+                mixedIcon.style.display = mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 clear.style.display = texture != null || mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 clear.SetEnabled(canEdit());
                 if (assigned) size.style.display = StyleKeyword.Null;
