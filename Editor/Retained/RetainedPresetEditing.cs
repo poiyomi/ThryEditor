@@ -28,8 +28,10 @@ namespace Thry.ThryEditor
                 }
                 // Read the persisted flag so reloads and external tag edits agree
                 // with the preset contents, without relying on cached IsPreset.
-                indicator.style.display = Presets.IsPreset(Model.Shader.Materials[0], part)
-                    ? DisplayStyle.Flex : DisplayStyle.None;
+                // Keep the marker gutter on unmarked rows too, so toggling inclusion
+                // does not move labels, controls, or section titles.
+                indicator.style.visibility = Presets.IsPreset(Model.Shader.Materials[0], part)
+                    ? Visibility.Visible : Visibility.Hidden;
             });
         }
     }
