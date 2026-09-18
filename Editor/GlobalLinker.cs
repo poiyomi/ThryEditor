@@ -220,7 +220,7 @@ namespace Thry.ThryEditor
             return CreateLink(name, sectionPropertyName, section, selected);
         }
 
-        public static GlobalLink CreateLink(string name, string sectionPropertyName, ShaderGroup section, IEnumerable<Material> materials, bool includeTextures = true)
+        public static GlobalLink CreateLink(string name, string sectionPropertyName, ShaderGroup section, IEnumerable<Material> materials, bool includeTextures = false)
         {
             Load();
 
@@ -710,7 +710,7 @@ namespace Thry.ThryEditor
             private Material[] _materials;
             private string _sectionPropertyName;
             private string _newLinkName = "";
-            private bool _newIncludeTextures = true;
+            private bool _newIncludeTextures = false;
             private const string TexturePolicyTooltip = "Applies to every material in this link. Disable to preserve each material’s textures, tiling, offset and texture animation tags. Enabling copies textures from the inspected material.";
             private Vector2 _scrollPos;
             private List<GlobalLink> _availableLinks;
