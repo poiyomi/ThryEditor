@@ -233,10 +233,6 @@ namespace Thry.ThryEditor.TexturePacker
             var filename = new TextField(RetainedText.Get("name", "Name")) { value = output.FileName, isDelayed = true };
             filename.RegisterValueChangedCallback(e => output.FileName = e.newValue);
             root.Add(filename);
-            var folder = new TextField(RetainedText.Get("studio_folder", "Folder")) { value = output.SaveFolder, isDelayed = true,
-                tooltip = RetainedText.Get("studio_save_folder_tip", "A folder inside your project's Assets folder. It will be created when you save.") };
-            folder.RegisterValueChangedCallback(e => output.SaveFolder = e.newValue);
-            root.Add(folder);
 
             var advice = new VisualElement(); root.Add(advice);
             Action updateAdvice = () =>

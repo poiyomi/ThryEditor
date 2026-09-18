@@ -316,7 +316,7 @@ namespace Thry.ThryEditor.TexturePacker
             if (GradientTexture != null && GradientTexture.width == size.x && GradientTexture.height == size.y) return;
             if (Gradient == null) Gradient = new Gradient();
             ReleaseGeneratedTexture(GradientTexture);
-            GradientTexture = Converter.GradientToTexture(Gradient, size.x, size.y, GradientDirection == GradientDirection.Vertical);
+            GradientTexture = Converter.GradientToTexture(Gradient, size.x, size.y, GradientDirection == GradientDirection.Vertical, linear: true);
         }
 
         public void UpdateColorTexture()
@@ -324,7 +324,8 @@ namespace Thry.ThryEditor.TexturePacker
             if (InputType != InputType.Color) return;
             if (ColorTexture != null && ColorTexture.GetPixel(0,0) == Color) return;
             ReleaseGeneratedTexture(ColorTexture);
-            ColorTexture = Converter.ColorToTexture(Color, 16, 16);
+            // Match decoded image sources: packing operates on raw channel values.
+            ColorTexture = Converter.ColorToTexture(Color, 16, 16, linear: true);
         }
 
         public bool HasBeenModifiedExternally()

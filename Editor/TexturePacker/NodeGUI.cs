@@ -966,7 +966,7 @@ namespace Thry.ThryEditor.TexturePacker
                     source.GradientDirection = (GradientDirection)EditorGUI.EnumPopup(filterRect, source.GradientDirection);
                     if (EditorGUI.EndChangeCheck() && source.Gradient != null)
                     {
-                        source.GradientTexture = Converter.GradientToTexture(source.Gradient, _config.FileOutput.Resolution.x, _config.FileOutput.Resolution.y, source.GradientDirection == GradientDirection.Vertical);
+                        source.GradientTexture = Converter.GradientToTexture(source.Gradient, _config.FileOutput.Resolution.x, _config.FileOutput.Resolution.y, source.GradientDirection == GradientDirection.Vertical, linear: true);
                     }
                     break;
                 case InputType.Color:
@@ -974,7 +974,7 @@ namespace Thry.ThryEditor.TexturePacker
                     source.Color = EditorGUI.ColorField(textureRect, source.Color);
                     if (EditorGUI.EndChangeCheck())
                     {
-                        source.ColorTexture = Converter.ColorToTexture(source.Color, 16, 16);
+                        source.ColorTexture = Converter.ColorToTexture(source.Color, 16, 16, linear: true);
                     }
                     break;
             }

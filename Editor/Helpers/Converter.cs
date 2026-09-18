@@ -217,11 +217,11 @@ namespace Thry.ThryEditor.Helpers
             return new Color(col1.r - col2.r, col1.g - col2.g, col1.b - col2.b);
         }
 
-        public static Texture2D ColorToTexture(Color color, int width, int height)
+        public static Texture2D ColorToTexture(Color color, int width, int height, bool linear = false)
         {
             width = Mathf.Max(0, Mathf.Min(8192, width));
             height = Mathf.Max(0, Mathf.Min(8192, height));
-            Texture2D texture = new Texture2D(width, height);
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, true, linear);
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
@@ -233,11 +233,11 @@ namespace Thry.ThryEditor.Helpers
             return texture;
         }
 
-        public static Texture2D GradientToTexture(Gradient gradient, int width, int height, bool vertical = false)
+        public static Texture2D GradientToTexture(Gradient gradient, int width, int height, bool vertical = false, bool linear = false)
         {
             width = Mathf.Max(0, Mathf.Min(8192, width));
             height = Mathf.Max(0, Mathf.Min(8192, height));
-            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA64, false);
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA64, false, linear);
             Color col;
             if (vertical)
             {

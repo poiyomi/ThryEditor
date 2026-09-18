@@ -78,9 +78,9 @@
     --thry-border-color: #b5b5b5;
     --thry-accent-color: #3b78a8;
     --thry-panel-background: #c9c9c9;
-    --thry-subsection-background: #b9b9b9;
-    --thry-control-border-color: #aaaaaa;
-    --thry-field-background: #e4e4e4;
+    --thry-subsection-background: #c3c3c3;
+    --thry-control-border-color: #b5b5b5;
+    --thry-field-background: #dddddd;
     --thry-dropdown-background: #d1d1d1;
     --thry-dropdown-hover-background: #dddddd;
     --thry-selection-background: #bfd1df;
@@ -1290,21 +1290,24 @@
 
 /* ===== ThryTextureStudio ===== */
 /* A pannable channel-packing board with fixed node positions. */
-.thry-studio-graph-window { padding: 0; background-color: #24262a; }
-.thry-studio-toolbar { flex-direction: row; align-items: center; flex-shrink: 0; min-height: 48px; flex-wrap: wrap; padding: var(--thry-space-8) var(--thry-space-16); background-color: #303238; border-bottom-width: var(--thry-border-width); border-bottom-color: #42454d; }
-.thry-studio-heading { flex-grow: 1; min-width: 120px; font-size: var(--thry-type-heading); -unity-font-style: bold; color: #e4e7ed; }
+.thry-studio-graph-window { --thry-studio-canvas: #1e1e1e; padding: 0; background-color: var(--thry-studio-canvas); }
+.thry-studio-graph-window.thry-light { --thry-studio-canvas: #999999; }
+.thry-studio-graph-window .unity-base-field__label { color: var(--thry-caption-color); }
+.thry-studio-graph-window .unity-base-field:disabled > .unity-base-field__label { color: var(--thry-muted-color); }
+.thry-studio-toolbar { flex-direction: row; align-items: center; flex-shrink: 0; min-height: 48px; flex-wrap: wrap; padding: var(--thry-space-8) var(--thry-space-16); background-color: var(--thry-chrome-background); border-bottom-width: var(--thry-border-width); border-bottom-color: var(--thry-border-color); }
+.thry-studio-heading { flex-grow: 1; min-width: 120px; font-size: var(--thry-type-heading); -unity-font-style: bold; color: var(--thry-value-color); }
 .thry-studio-toolbar #studio-open-texture { width: 210px; margin: 0 14px 0 0; }
 .thry-studio-toolbar #studio-open-texture > .unity-base-field__label { min-width: 34px; width: 34px; }
 .thry-studio-toolbar #save-texture { height: var(--thry-window-control-height); margin: 0; padding: 0 var(--thry-space-16); border-radius: var(--thry-radius-control); -unity-font-style: bold; }
-.thry-studio-graph-help { flex-shrink: 0; height: 32px; margin: 0; padding: 0 var(--thry-space-18); -unity-text-align: middle-left; font-size: var(--thry-type-small); color: #a6adb9; background-color: #282b30; }
+.thry-studio-graph-help { flex-shrink: 0; min-height: 32px; white-space: normal; margin: 0; padding: 0 var(--thry-space-18); -unity-text-align: middle-left; font-size: var(--thry-type-small); color: var(--thry-muted-color); background-color: var(--thry-panel-background); }
 .thry-studio-graph-workspace { flex-grow: 1; min-height: 0; overflow: hidden; }
-.thry-studio-graph { background-color: #24262a; }
-.thry-studio-graph GridBackground { --grid-background-color: #24262a; --line-color: rgba(90, 98, 112, 0.10); --thick-line-color: rgba(90, 98, 112, 0.18); --spacing: 20; --thick-lines: 5; }
+.thry-studio-graph { background-color: var(--thry-studio-canvas); }
+.thry-studio-graph GridBackground { --grid-background-color: var(--thry-studio-canvas); --line-color: var(--thry-row-alternate); --thick-line-color: var(--thry-row-hover); --spacing: 20; --thick-lines: 5; }
 .thry-studio-graph .thry-studio-node { min-width: 0; min-height: 0; padding: 0; border-width: 0; background-color: transparent; }
 .thry-studio-graph .thry-studio-node > #selection-border { border-width: 0; margin: 0; padding: 0; }
-.thry-studio-graph .thry-studio-node > #node-border { flex-grow: 1; min-height: 0; border-width: var(--thry-border-width); border-color: #4c505b; border-radius: var(--thry-radius-card); background-color: #30343b; overflow: hidden; }
-.thry-studio-graph .thry-studio-node #title { height: 25px; min-height: 25px; padding: 0 var(--thry-space-10); background-color: #3b414b; border-bottom-width: var(--thry-border-width); border-bottom-color: #3b414b; border-color: #3b414b; }
-.thry-studio-graph .thry-studio-node #title-label { font-size: var(--thry-type-small); -unity-font-style: bold; margin: 0; padding: 0; color: #dce2ed; }
+.thry-studio-graph .thry-studio-node > #node-border { flex-grow: 1; min-height: 0; border-width: var(--thry-border-width); border-color: var(--thry-border-color); border-radius: var(--thry-radius-card); background-color: var(--thry-panel-background); overflow: hidden; }
+.thry-studio-graph .thry-studio-node #title { height: 25px; min-height: 25px; padding: 0 var(--thry-space-10); background-color: var(--thry-section-background); border-bottom-width: var(--thry-border-width); border-bottom-color: var(--thry-section-background); border-color: var(--thry-section-background); }
+.thry-studio-graph .thry-studio-node #title-label { font-size: var(--thry-type-small); -unity-font-style: bold; margin: 0; padding: 0; color: var(--thry-caption-color); }
 .thry-studio-graph .thry-studio-node #title-button-container { display: none; }
 .thry-studio-graph .thry-studio-node #contents { flex-grow: 1; min-height: 0; background-color: transparent; }
 .thry-studio-graph .thry-studio-node #extension { flex-grow: 1; min-height: 0; padding: 0; background-color: transparent; }
@@ -1315,39 +1318,42 @@
 .thry-studio-node-field > Button { width: 22px; min-width: 22px; height: var(--thry-control-height); margin: 0 0 0 var(--thry-space-4); padding: 0; border-width: 0; font-size: var(--thry-type-heading); }
 
 .thry-studio-source-body { flex-direction: row; flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; padding: 0 0 var(--thry-space-7) var(--thry-space-8); }
-.thry-studio-source-frame { position: absolute; min-width: 0; background-color: #24272d; border-radius: var(--thry-radius-compact); overflow: hidden; }
-.thry-studio-source-frame > Label { flex-grow: 1; -unity-text-align: middle-center; font-size: var(--thry-type-small); color: #8e98a9; }
+.thry-studio-source-frame { position: absolute; min-width: 0; background-color: var(--thry-input-background); border-radius: var(--thry-radius-compact); overflow: hidden; }
+.thry-studio-source-frame > Label { flex-grow: 1; -unity-text-align: middle-center; font-size: var(--thry-type-small); color: var(--thry-muted-color); }
 .thry-studio-graph .thry-studio-node #output, .thry-studio-graph .thry-studio-node #input { padding: 0; margin: 0; min-width: 48px; width: 48px; flex-grow: 0; flex-shrink: 0; justify-content: center; background-color: transparent; }
 .thry-studio-graph .thry-studio-node Port { height: 19px; min-height: 14px; flex-shrink: 1; padding: 0 var(--thry-space-7); margin: 0; }
-.thry-studio-graph .thry-studio-node Port #type { font-size: var(--thry-type-small); -unity-font-style: bold; color: #c9d2df; }
+.thry-studio-graph .thry-studio-node Port #type { font-size: var(--thry-type-small); -unity-font-style: bold; color: var(--thry-value-color); }
 .thry-studio-graph .thry-studio-node Port #connector { width: 12px; height: 12px; border-width: var(--thry-border-width-strong); border-radius: var(--thry-radius-card); }
-.thry-studio-graph .thry-studio-node Port:hover { background-color: #424b59; border-radius: var(--thry-radius-compact); }
-.thry-studio-graph .thry-studio-output-node > #node-border { border-color: #698192; }
-.thry-studio-graph .thry-studio-output-node #title { background-color: #3c5364; }
+.thry-studio-graph .thry-studio-node Port #connector,
+.thry-studio-graph .thry-studio-node Port #cap { background-color: var(--thry-panel-background); }
+/* GraphView writes a dark inline cap fill. Light pins use clean colored rings. */
+.thry-light .thry-studio-graph .thry-studio-node Port #cap { opacity: 0; }
+.thry-studio-graph-window .unity-object-field__selector {
+    background-color: transparent;
+    -unity-background-image-tint-color: var(--thry-value-color);
+}
+.thry-studio-graph-window .unity-object-field__selector:hover { background-color: var(--thry-hover-color); }
+.thry-studio-graph Port.thry-studio-channel-r { --port-color: var(--thry-channel-r-color); }
+.thry-studio-graph Port.thry-studio-channel-g { --port-color: var(--thry-channel-g-color); }
+.thry-studio-graph Port.thry-studio-channel-b { --port-color: var(--thry-channel-b-color); }
+.thry-studio-graph Port.thry-studio-channel-a { --port-color: var(--thry-channel-a-color); }
+.thry-studio-graph Port.thry-studio-channel-max { --port-color: var(--thry-muted-color); }
+.thry-studio-graph .thry-studio-node Port:hover { background-color: var(--thry-hover-color); border-radius: var(--thry-radius-compact); }
+.thry-studio-graph .thry-studio-output-node > #node-border { border-color: var(--thry-border-color); }
+.thry-studio-graph .thry-studio-output-node #title { background-color: var(--thry-section-background); }
 .thry-studio-output-body { flex-direction: row; flex-grow: 1; min-height: 0; margin: var(--thry-space-10) var(--thry-space-12) var(--thry-space-10) 0; }
 .thry-studio-graph .thry-studio-output-node Port { height: 40px; min-height: 40px; }
-.thry-studio-result-image { flex-grow: 1; flex-shrink: 1; min-width: 0; background-color: #202329; border-radius: var(--thry-radius-compact); }
+.thry-studio-result-image { flex-grow: 1; flex-shrink: 1; min-width: 0; background-color: var(--thry-input-background); border-radius: var(--thry-radius-compact); }
 .thry-studio-output-node #extension > .unity-base-popup-field { margin: 0 var(--thry-space-12) var(--thry-space-12); flex-shrink: 0; }
 .thry-studio-output-node #extension > .unity-base-popup-field > .unity-base-field__label { width: 54px; min-width: 54px; }
-.thry-studio-graph-status { height: var(--thry-toolbar-height); flex-shrink: 0; margin: 0; padding: 0 var(--thry-space-18); -unity-text-align: middle-left; font-size: var(--thry-type-small); color: #a6adb9; border-top-width: var(--thry-border-width); border-top-color: #3b4049; background-color: #282b30; }
-.thry-studio-settings-panel { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; overflow: hidden; padding: var(--thry-space-8); border-top-width: var(--thry-border-width); border-top-color: #4c505b; }
+.thry-studio-graph-status { height: var(--thry-toolbar-height); flex-shrink: 0; margin: 0; padding: 0 var(--thry-space-18); -unity-text-align: middle-left; font-size: var(--thry-type-small); color: var(--thry-muted-color); border-top-width: var(--thry-border-width); border-top-color: var(--thry-border-color); background-color: var(--thry-panel-background); }
+.thry-studio-settings-panel { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; overflow: hidden; padding: var(--thry-space-8); border-top-width: var(--thry-border-width); border-top-color: var(--thry-border-color); }
 .thry-studio-settings-header { flex-direction: row; height: var(--thry-toolbar-height); flex-shrink: 0; align-items: center; margin-bottom: var(--thry-space-6); }
 .thry-studio-settings-header > Label { flex-grow: 1; -unity-font-style: bold; margin-left: var(--thry-space-4); }
 .thry-studio-settings-panel > ScrollView { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; }
 .thry-studio-settings-panel .thry-studio-section { margin-bottom: var(--thry-space-6); }
-.thry-studio-settings-panel .thry-studio-route { padding-bottom: var(--thry-space-6); margin-bottom: var(--thry-space-6); border-bottom-width: var(--thry-border-width); border-bottom-color: #484c54; }
+.thry-studio-settings-panel .thry-studio-route { padding-bottom: var(--thry-space-6); margin-bottom: var(--thry-space-6); border-bottom-width: var(--thry-border-width); border-bottom-color: var(--thry-border-color); }
 .thry-studio-graph .thry-studio-source-missing > #node-border { border-color: #c29a5e; }
-.thry-light.thry-studio-graph-window { background-color: #b8bdc5; }
-.thry-light .thry-studio-toolbar { background-color: #d0d3d9; border-color: #9da6b3; }
-.thry-light .thry-studio-heading, .thry-light .thry-studio-graph .thry-studio-node #title-label { color: #293441; }
-.thry-light .thry-studio-graph-help, .thry-light .thry-studio-graph-status { background-color: #c1c6ce; color: #465363; border-color: #a6afbc; }
-.thry-light .thry-studio-graph, .thry-light .thry-studio-graph GridBackground { background-color: #b8bdc5; --grid-background-color: #b8bdc5; --line-color: rgba(66, 80, 100, 0.08); --thick-line-color: rgba(66, 80, 100, 0.15); }
-.thry-light .thry-studio-graph .thry-studio-node > #node-border { background-color: #d5d9df; border-color: #85909f; }
-.thry-light .thry-studio-graph .thry-studio-node #title { background-color: #bfc8d4; border-color: #bfc8d4; }
-.thry-light .thry-studio-graph .thry-studio-output-node #title { background-color: #b0c7d9; }
-.thry-light .thry-studio-source-frame, .thry-light .thry-studio-result-image { background-color: #a5afbd; }
-.thry-light .thry-studio-source-frame > Label, .thry-light .thry-studio-graph .thry-studio-node Port #type { color: #37495e; }
-.thry-light .thry-studio-graph .thry-studio-node Port:hover { background-color: #b0c4d7; }
 
 .thry-studio-graph .thry-studio-output-node #collapsible-area, .thry-studio-graph .thry-studio-output-node #extension { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-height: 0; overflow: hidden; }
 .thry-studio-graph .thry-studio-node #input, .thry-studio-graph .thry-studio-node #output { flex-basis: auto; }
@@ -1357,12 +1363,10 @@
 .thry-studio-graph .thry-studio-node Port #connector { min-width: 12px; flex-shrink: 0; margin: 0 var(--thry-space-3); }
 .thry-studio-graph .thry-studio-node Port #type { min-width: 12px; margin: 0; padding: 0; flex-shrink: 0; }
 
-.thry-light.thry-studio-graph-window .unity-base-field__label { color: #37495e; }
 .thry-studio-settings-panel .unity-base-field > .unity-base-field__label { min-width: 90px; width: 90px; max-width: 90px; white-space: normal; }
 .thry-studio-settings-panel .unity-base-compound-field__field > .unity-base-field__label { min-width: 12px; width: 12px; max-width: 12px; }
 .thry-studio-settings-panel .unity-base-field .unity-base-field > .unity-base-field__label { min-width: 12px; width: 12px; max-width: 12px; }
 
-.thry-light .thry-studio-settings-panel { border-top-color: #a3afbe; }
 
 .thry-studio-graph .thry-studio-source-node #contents { flex-basis: 0; flex-shrink: 1; }
 
@@ -1387,7 +1391,6 @@
 }
 .thry-filter-pending { min-height: var(--thry-control-height); }
 .thry-search .unity-search-field-base__search-button { color: rgb(188.7, 188.7, 188.7); }
-.thry-light .thry-search .unity-search-field-base__search-button { color: rgb(89.25, 89.25, 89.25); }
 
 /* Dropdowns share the flat button treatment. Text, number, object, and search
    fields retain their outlines. Matching fills preserve existing geometry. */
@@ -1426,18 +1429,18 @@
 .thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
     --thry-chrome-background: var(--thry-surface-color);
     --thry-action-background: var(--thry-surface-color);
-    --thry-action-hover-background: #eeeeee;
+    --thry-action-hover-background: #e5e5e5;
     --thry-row-alternate: rgba(0, 0, 0, .025);
-    --thry-section-background: #b4b4b4;
-    --thry-input-background: #e4e4e4;
+    --thry-section-background: #bebebe;
+    --thry-input-background: #dddddd;
     --thry-caption-color: #292929;
     --thry-muted-color: #606060;
     --thry-value-color: #292929;
     --thry-row-hover: rgba(0, 0, 0, .045);
     --thry-track-color: #999999;
     --thry-thumb-color: #999999;
-    --thry-disabled-background: #b9b9b9;
-    --thry-disabled-border: #a6a6a6;
+    --thry-disabled-background: #c4c4c4;
+    --thry-disabled-border: #b5b5b5;
 }
 
 /* A single quiet tool well and a joined search/filter strip. */
@@ -1483,7 +1486,7 @@
 .thry-inspector .thry-root-section { border-radius: var(--thry-radius-header); background-color: var(--thry-panel-background); }
 .thry-inspector .thry-root-section > .thry-section-header { background-color: var(--thry-section-background); border-color: var(--thry-section-background); }
 .thry-inspector .thry-root-section.thry-section-open > .thry-section-header { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.thry-inspector .thry-root-section > .thry-section-header .thry-section-title { -unity-font-style: bold; color: var(--thry-value-color); }
+.thry-inspector .thry-root-section > .thry-section-header .thry-section-title { -unity-font-style: normal; color: var(--thry-value-color); }
 .thry-inspector .thry-root-section > .thry-section-content { border-left-width: 1px; border-left-color: var(--thry-section-background); padding-left: var(--thry-space-7); }
 .thry-inspector .thry-subsection-panel,
 .thry-inspector .thry-positioning-panel { background-color: var(--thry-panel-background); border-color: var(--thry-subsection-background); }
@@ -1540,6 +1543,76 @@
 /* The same surface language extends to Pathing, menus, and companion windows. */
 
 .thry-inspector.thry-window .unity-foldout__toggle { background-color: var(--thry-subsection-background); border-color: var(--thry-subsection-background); color: var(--thry-caption-color); }
+/* Studio settings are compact disclosures inside a node, not inspector category bars. */
+.thry-inspector.thry-studio-graph-window .thry-studio-section > .unity-foldout__toggle {
+    min-height: var(--thry-button-height);
+    margin: 0;
+    padding: 0 var(--thry-space-2);
+    background-color: transparent;
+    border-color: transparent;
+    border-radius: var(--thry-radius-control);
+    color: var(--thry-caption-color);
+    font-size: var(--thry-type-body-small);
+    -unity-font-style: normal;
+}
+.thry-inspector.thry-studio-graph-window .thry-studio-section > .unity-foldout__toggle:hover {
+    background-color: var(--thry-hover-color);
+    border-color: var(--thry-hover-color);
+}
+.thry-inspector.thry-studio-graph-window .thry-studio-section > .unity-foldout__toggle .unity-toggle__text {
+    color: var(--thry-caption-color);
+}
+.thry-inspector.thry-studio-graph-window .thry-studio-section > .unity-foldout__toggle:focus {
+    background-color: var(--thry-hover-color);
+    border-color: var(--thry-muted-color);
+}
+.thry-inspector.thry-studio-graph-window .thry-studio-section > .unity-foldout__toggle .unity-toggle__checkmark,
+.thry-inspector.thry-studio-graph-window .thry-studio-section > .unity-foldout__toggle .unity-foldout__checkmark {
+    background-color: transparent;
+    border-width: 0;
+    -unity-background-image-tint-color: var(--thry-muted-color);
+}
+.thry-inspector.thry-studio-graph-window .thry-studio-section > .unity-foldout__content {
+    margin-left: var(--thry-space-8);
+    padding-top: var(--thry-space-2);
+    padding-bottom: var(--thry-space-6);
+}
+/* Give the output settings their own quiet hierarchy within the graph node. */
+.thry-studio-settings-panel { padding: var(--thry-space-8) var(--thry-space-12); }
+.thry-studio-settings-header { margin-bottom: var(--thry-space-2); }
+.thry-studio-settings-header > Label { margin-left: 0; font-size: 13px; color: var(--thry-value-color); }
+.thry-studio-settings-panel #studio-settings-scroll > .thry-studio-section {
+    margin: 0;
+    padding: var(--thry-space-4) 0;
+    border-bottom-width: var(--thry-border-width);
+    border-bottom-color: var(--thry-border-color);
+}
+.thry-inspector.thry-studio-graph-window .thry-studio-settings-panel #studio-settings-scroll > .thry-studio-section > .unity-foldout__toggle {
+    min-height: 28px;
+    -unity-font-style: bold;
+    color: var(--thry-value-color);
+}
+.thry-studio-settings-panel .unity-base-field {
+    min-height: 24px;
+    margin-top: var(--thry-space-2);
+    margin-bottom: var(--thry-space-2);
+}
+.thry-studio-settings-panel .unity-base-field .unity-base-field {
+    min-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+.thry-studio-settings-panel .unity-base-field > .unity-base-field__label { -unity-text-align: middle-left; }
+.thry-studio-settings-panel .thry-studio-hint {
+    white-space: normal;
+    font-size: var(--thry-type-small);
+    color: var(--thry-muted-color);
+    background-color: var(--thry-input-background);
+    border-radius: var(--thry-radius-control);
+    padding: var(--thry-space-8);
+    margin: var(--thry-space-8) 0 var(--thry-space-4);
+}
+.thry-studio-settings-panel #studio-file-options { margin-top: var(--thry-space-4); margin-bottom: 0; }
 .thry-inspector .pathing-grid-heading { background-color: var(--thry-subsection-background); }
 .thry-inspector .pathing-cell.pathing-selected { background-color: var(--thry-row-hover); }
 .thry-inspector .pathing-grid-heading .pathing-cell.pathing-selected { background-color: var(--thry-selection-background); }

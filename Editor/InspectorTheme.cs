@@ -19,7 +19,7 @@ namespace Thry.ThryEditor
         public static Color Border => Skin(0x4b4b4b, 0xb5b5b5);
         public static Color Text => Skin(0xe4e4e4, 0x252525);
         public static Color Muted => Skin(0xa3a3a3, 0x5b5b5b);
-        public static Color Input => Skin(0x2c2c2c, 0xf0f0f0);
+        public static Color Input => Skin(0x2c2c2c, 0xdddddd);
         public static Color Accent => Skin(0x7aadd6, 0x3b78a8);
         public static Color Excluded => Skin(0x3d3d3d, 0xcfcfcf);
         public static Color Skin(int dark, int light) => Hex(EditorGUIUtility.isProSkin ? dark : light);

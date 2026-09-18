@@ -53,8 +53,13 @@ namespace Thry.ThryEditor.TexturePacker
                 name = "studio-reset-view", text = RetainedText.Get("studio_reset_view", "Reset view")
             };
             toolbar.Add(resetView);
-            var save = new Button(() => TryStudioAction(SaveGraphTexture)) { name = "save-texture", text = RetainedText.Get("studio_save", "Save texture") };
+            var saveAs = new Button(() => TryStudioAction(SaveGraphTextureAs)) {
+                name = "save-texture-as", text = RetainedText.Get("studio_save_as", "Save as…"),
+                tooltip = RetainedText.Get("studio_save_as_tip", "Choose a folder in Assets and save the texture there.")
+            };
+            var save = new Button(() => TryStudioAction(() => SaveGraphTexture())) { name = "save-texture", text = RetainedText.Get("save", "Save") };
             save.AddToClassList("thry-primary-action"); toolbar.Add(save);
+            toolbar.Add(saveAs);
 
             var help = new Label(RetainedText.Get("studio_graph_pin_help", "Drag pins to connect.  Alt-click a pin to remove its wires.  Shift-drag to combine sources.  Delete removes a selected wire."));
             help.text += "  " + RetainedText.Get("studio_pan_help", "Middle-drag to pan the canvas.");
@@ -83,16 +88,48 @@ namespace Thry.ThryEditor.TexturePacker
             _retainedStatus.AddToClassList("thry-studio-graph-status"); root.Add(_retainedStatus);
         }
 
-        void SaveGraphTexture()
+        void SaveGraphTextureAs()
+        {
+            string initialFolder = string.IsNullOrWhiteSpace(_config.FileOutput.SaveFolder)
+                ? Application.dataPath : System.IO.Path.GetFullPath(_config.FileOutput.SaveFolder);
+            if (!System.IO.Directory.Exists(initialFolder)) initialFolder = Application.dataPath;
+            string folder = EditorUtility.OpenFolderPanel(RetainedText.Get("studio_save_as", "Save as…"),
+                initialFolder, "");
+            SaveGraphTextureInFolder(folder);
+        }
+
+        bool SaveGraphTextureInFolder(string folder)
+        {
+            if (string.IsNullOrEmpty(folder)) return false;
+            string relative = FileUtil.GetProjectRelativePath(folder).Replace('\\', '/');
+            if (relative != "Assets" && !relative.StartsWith("Assets/", StringComparison.Ordinal))
+            {
+                EditorUtility.DisplayDialog("Choose an asset folder", "Save the packed texture inside this project's Assets folder.", "OK");
+                return false;
+            }
+            string previous = _config.FileOutput.SaveFolder;
+            bool saved = false;
+            try
+            {
+                _config.FileOutput.SaveFolder = relative;
+                saved = SaveGraphTexture();
+            }
+            finally { if (!saved) _config.FileOutput.SaveFolder = previous; }
+            return saved;
+        }
+
+        bool SaveGraphTexture()
         {
             _pendingPack?.Pause();
             _config.RequireResolvedSources();
             Pack();
             var importer = Packer.Save(_outputTexture, _config);
-            if (importer == null) return;
+            if (importer == null) return false;
             _associatedImporter = importer;
             OnSave?.Invoke(AssetDatabase.LoadAssetAtPath<Texture2D>(importer.assetPath));
-            _retainedStatus.text = RetainedText.Get("studio_saved", "Saved") + " " + System.IO.Path.GetFileName(importer.assetPath);
+            _retainedStatus.text = RetainedText.Get("studio_saved", "Saved") + " " + importer.assetPath;
+            _retainedStatus.tooltip = importer.assetPath;
+            return true;
         }
 
         void BuildGraphExports(VisualElement root)
@@ -305,17 +342,6 @@ namespace Thry.ThryEditor.TexturePacker
                 _output.extensionContainer.Add(settings);
             }
 
-            internal static Color ChannelColor(int channel)
-            {
-                switch (channel) {
-                    case 0: return new Color(.94f, .39f, .43f);
-                    case 1: return new Color(.42f, .82f, .54f);
-                    case 2: return new Color(.40f, .64f, .96f);
-                    case 3: return new Color(.88f, .91f, .96f);
-                    default: return new Color(.80f, .72f, .40f);
-                }
-            }
-
             static void StylePortColumn(VisualElement column, float width = 48)
             {
                 // Override the built-in Node template's equal-width port columns.
@@ -328,7 +354,13 @@ namespace Thry.ThryEditor.TexturePacker
             {
                 var port = Port.Create<StudioEdge>(Orientation.Horizontal, direction, Port.Capacity.Multi, typeof(float));
                 port.name = name; port.portName = channel < 4 ? "RGBA"[channel].ToString() : channel == 4 ? "MAX" : "None";
-                port.portColor = ChannelColor(channel);
+                port.AddToClassList("thry-studio-channel-" + (channel >= 0 && channel < 4 ? "rgba"[channel].ToString() : "max"));
+                port.RegisterCallback<CustomStyleResolvedEvent>(e => {
+                    // GraphView caches wire colors separately from the port's USS color.
+                    port.schedule.Execute(() => {
+                        foreach (var edge in port.connections) edge.UpdateEdgeControl();
+                    });
+                });
                 port.edgeConnector.activators.Add(new ManipulatorActivationFilter { button = MouseButton.LeftMouse, modifiers = EventModifiers.Shift });
                 port.RegisterCallback<MouseDownEvent>(e => {
                     if (e.button != 0 || !e.altKey) return;

@@ -376,7 +376,7 @@ namespace Thry.ThryEditor.TexturePacker
                 EditorUtility.DisplayDialog("Choose an asset folder", "Save the packed texture inside this project's Assets folder.", "OK");
                 return null;
             }
-            path = "Assets/" + absolute.Substring(assets.Length).Replace('\\', '/');
+            path = CanonicalAssetPath("Assets/" + absolute.Substring(assets.Length).Replace('\\', '/'));
             if (File.Exists(path))
             {
                 // open dialog
@@ -413,6 +413,24 @@ namespace Thry.ThryEditor.TexturePacker
                 if (AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath) == null) throw new IOException("The exported texture could not be loaded at " + assetPath + ".");
                 return importer;
             });
+        }
+
+        static string CanonicalAssetPath(string path)
+        {
+            // Unity resolves asset paths without case sensitivity, even on Linux.
+            // Reuse existing spelling before creating any directories or checking for overwrite.
+            string existing = AssetDatabase.GetAssetPath(AssetDatabase.LoadMainAssetAtPath(path));
+            if (!string.IsNullOrEmpty(existing)) return existing;
+            string suffix = Path.GetFileName(path);
+            string folder = Path.GetDirectoryName(path).Replace('\\', '/');
+            while (!string.IsNullOrEmpty(folder))
+            {
+                existing = AssetDatabase.GetAssetPath(AssetDatabase.LoadMainAssetAtPath(folder));
+                if (!string.IsNullOrEmpty(existing) && AssetDatabase.IsValidFolder(existing)) return existing + "/" + suffix;
+                suffix = Path.GetFileName(folder) + "/" + suffix;
+                folder = Path.GetDirectoryName(folder)?.Replace('\\', '/');
+            }
+            return path;
         }
         #endregion
     }

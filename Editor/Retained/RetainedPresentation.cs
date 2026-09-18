@@ -165,6 +165,21 @@ namespace Thry.ThryEditor
         private void AddCustomPresentation(VisualElement root, ShaderProperty property, string[] args)
         {
             var type = args.Length == 3 ? Type.GetType(args[0] + ", " + args[1]) : null;
+            var retainedMethod = type?.GetMethod(args[2] + "Retained", BindingFlags.Public | BindingFlags.Static, null,
+                new[] { typeof(MaterialProperty), typeof(MaterialEditor), typeof(ShaderEditor), typeof(Action) }, null);
+            if (retainedMethod != null && typeof(VisualElement).IsAssignableFrom(retainedMethod.ReturnType))
+            {
+                Model.Shader.ActivateRetained();
+                var retained = (VisualElement)retainedMethod.Invoke(null, new object[] {
+                    property.MaterialProperty, Model.Editor, Model.Shader,
+                    (Action)(() => { Model.Shader.ActivateRetained(); Model.Notify(); }) });
+                if (retained != null)
+                {
+                    root.Add(retained);
+                    Track(retained, () => retained.SetEnabled(Model.CanEdit(property)));
+                    return;
+                }
+            }
             var method = type?.GetMethod(args[2], BindingFlags.Public | BindingFlags.Static, null,
                 new[] { typeof(Rect), typeof(MaterialProperty), typeof(GUIContent), typeof(MaterialEditor), typeof(ShaderEditor) }, null);
             if (method == null)
