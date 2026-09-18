@@ -22,6 +22,36 @@ namespace Thry
         private int _retainedValueRevision = -1;
         private Dictionary<string, ShaderPart[]> _retainedPartsByName;
         private bool _retainedPreparedAnimation;
+        private MaterialEditor _retainedHeaderEditor;
+        private Material[] _retainedHeaderTargets;
+        private int[] _retainedHeaderVersions;
+        private double _retainedHeaderEditTime = double.NegativeInfinity;
+
+        // The native header displays material metadata, not the thousands of
+        // shader values in its SerializedObject. Let its host coalesce that
+        // unused snapshot during our own rapid value edits. Any external dirty
+        // change immediately invalidates this hint; the host also checks metadata.
+        public bool CanDeferRetainedHeaderRefresh(MaterialEditor editor, UnityEngine.Object[] targets)
+        {
+            if (editor != _retainedHeaderEditor || _retainedHeaderTargets == null
+                || targets == null || targets.Length != _retainedHeaderTargets.Length
+                || EditorApplication.timeSinceStartup - _retainedHeaderEditTime >= .15) return false;
+            for (int i = 0; i < _retainedHeaderTargets.Length; i++)
+                if (_retainedHeaderTargets[i] == null
+                    || targets[i] != _retainedHeaderTargets[i]
+                    || EditorUtility.GetDirtyCount(_retainedHeaderTargets[i]) != _retainedHeaderVersions[i]) return false;
+            return true;
+        }
+
+        internal void RecordRetainedHeaderValueEdit(MaterialEditor editor, Material[] targets)
+        {
+            _retainedHeaderEditor = editor;
+            _retainedHeaderTargets = targets;
+            if (_retainedHeaderVersions == null || _retainedHeaderVersions.Length != targets.Length)
+                _retainedHeaderVersions = new int[targets.Length];
+            for (int i = 0; i < targets.Length; i++) _retainedHeaderVersions[i] = EditorUtility.GetDirtyCount(targets[i]);
+            _retainedHeaderEditTime = EditorApplication.timeSinceStartup;
+        }
 
         internal bool PrepareRetained(MaterialEditor editor, Renderer[] renderers, Func<MaterialProperty[]> propertyProvider = null)
         {
@@ -228,13 +258,19 @@ namespace Thry.ThryEditor
             if (part.MaterialProperty != null)
             {
                 if ((part.MaterialProperty.flags & MaterialProperty.PropFlags.NonModifiableTextureData) != 0) return false;
-                var owners = Owners(part).ToArray();
-                if (owners.Length == 0) return false;
-                if (!part.IsExemptFromLockedDisabling && owners.Any(m => m.IsLocked()
-                    && !(part.IsAnimatable && part is ShaderProperty property && !string.IsNullOrEmpty(property.GetOwnerAnimatedTag(m))))) return false;
+                bool hasOwner = false;
+                foreach (var target in part.MaterialProperty.targets)
+                {
+                    if (!(target is Material owner) || owner == null || !Shader.Materials.Contains(owner)
+                        || !owner.HasProperty(part.MaterialProperty.name)) continue;
+                    hasOwner = true;
+                    if (!part.IsExemptFromLockedDisabling && owner.IsLocked()
+                        && !(part.IsAnimatable && part is ShaderProperty property && !string.IsNullOrEmpty(property.GetOwnerAnimatedTag(owner)))) return false;
 #if UNITY_2022_1_OR_NEWER
-                if (owners.Any(m => m.IsPropertyLockedByAncestor(part.MaterialProperty.name))) return false;
+                    if (owner.IsPropertyLockedByAncestor(part.MaterialProperty.name)) return false;
 #endif
+                }
+                if (!hasOwner) return false;
             }
             for (var parent = part.Parent; parent != null; parent = parent.Parent)
             {
@@ -268,19 +304,28 @@ namespace Thry.ThryEditor
             {
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Total))
             {
+                bool nativeUndo;
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Prepare))
                 {
                     if (!HasValidTargets(Editor)) return;
                     Refresh();
                     if (!CanEdit(property)) return;
                     Shader.ActivateRetained();
-                    Editor.RegisterPropertyChangeUndo(property.Content.text);
+                    // MaterialProperty's native setter already records a complete
+                    // Undo snapshot for its owners. Recording them again here adds
+                    // full-material diff work to every slider/color update. Keep
+                    // the explicit record where a callback can replace that setter,
+                    // or the operation can affect owners outside its native write.
+                    nativeUndo = singleProperty && !perMaterial && !AnimationMode.InAnimationMode()
+                        && property.MaterialProperty.applyPropertyCallback == null
+                        && property.MaterialProperty.targets.Length == SelectedMaterials.Length;
+                    if (!nativeUndo) Editor.RegisterPropertyChangeUndo(property.Content.text);
                     Shader.CurrentProperty = property;
                 }
                 var cachedProperties = PropertyProvider?.Target as RetainedCrossSelectionProperties;
                 bool patch = singleProperty && !Renderers.Any(r => r != null && r.HasPropertyBlock()) && cachedProperties != null
                     && cachedProperties.CanPatchProperty(property.MaterialProperty);
-                var editVersions = patch ? SelectedMaterials.Select(EditorUtility.GetDirtyCount).ToArray() : null;
+                var editVersions = patch || nativeUndo ? SelectedMaterials.Select(EditorUtility.GetDirtyCount).ToArray() : null;
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Mutation))
                 {
                     if (perMaterial)
@@ -296,6 +341,16 @@ namespace Thry.ThryEditor
                         }
                     }
                     else mutation(property.MaterialProperty);
+                }
+                // A clamped/no-op setter can skip Unity's native Undo registration,
+                // while an authored callback still changes another value below.
+                // Nothing has changed yet in this case, so record before callbacks.
+                if (nativeUndo)
+                {
+                    bool changed = false;
+                    for (int i = 0; i < SelectedMaterials.Length; i++)
+                        if (EditorUtility.GetDirtyCount(SelectedMaterials[i]) != editVersions[i]) { changed = true; break; }
+                    if (!changed) Editor.RegisterPropertyChangeUndo(property.Content.text);
                 }
                 if (patch)
                 {
@@ -319,6 +374,8 @@ namespace Thry.ThryEditor
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.EditorInvalidation)) Editor.PropertiesChanged();
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.FinalRefresh)) Refresh();
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Synchronize)) Changed?.Invoke();
+                if (singleProperty && !perMaterial && !AnimationMode.InAnimationMode())
+                    Shader.RecordRetainedHeaderValueEdit(Editor, SelectedMaterials);
             }
             }
             finally { DeferSummaryRefresh = previousDeferral; }

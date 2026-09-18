@@ -36,7 +36,9 @@ namespace Thry.ThryEditor
         {
             internal VisualElement Element;
             internal Action Update;
+            internal VisualElement VisibilityAnchor, ClipAnchor;
             internal bool Tracked = true;
+            internal bool Deferred;
         }
         private readonly List<Binding> _updates = new List<Binding>();
         private Binding[] _updateSnapshot;
@@ -57,18 +59,33 @@ namespace Thry.ThryEditor
                 if (reference.RefreshRetainedProjection(Model.Renderers)) yield return reference;
             }
         }
-        internal RetainedFields(RetainedMaterialModel model, MaterialInspectorView view) { Model = model; _view = view; }
+        private readonly RetainedViewport _viewport;
+        internal RetainedFields(RetainedMaterialModel model, MaterialInspectorView view) : this(model, view, null) { }
+        internal RetainedFields(RetainedMaterialModel model, MaterialInspectorView view, RetainedViewport viewport) { Model = model; _view = view; _viewport = viewport; }
         internal void Synchronize() => Synchronize(null);
         internal int LastSynchronizeCount { get; private set; }
-        internal void Synchronize(Func<VisualElement, bool> include)
+        internal void Synchronize(Func<VisualElement, bool> include) => Synchronize(include, false);
+        internal void SynchronizeVisuals() => Synchronize(null, true);
+        internal int LastSkippedCount { get; private set; }
+        private void Synchronize(Func<VisualElement, bool> include, bool visualsOnly)
         {
-            LastSynchronizeCount = 0;
+            LastSynchronizeCount = 0; LastSkippedCount = 0;
+            _viewport?.Begin();
+            if (visualsOnly && _viewport != null && _viewport.IsOffscreen) return;
             // Updating a section can add/remove bindings. Keep a stable snapshot
             // for this pass, allocating a new one only when registrations change.
             var updates = _updateSnapshot ?? (_updateSnapshot = _updates.ToArray());
             using (RetainedPropertyDefaults.BeginEvaluation(Model.Shader))
                 foreach (var binding in updates)
-                    if (AncestorsDisplayed(binding.Element) && (include == null || include(binding.Element))) { binding.Update(); LastSynchronizeCount++; }
+                {
+                    if (visualsOnly && (binding.VisibilityAnchor == null || !binding.Deferred)) continue;
+                    if (binding.VisibilityAnchor != null && _viewport != null && !_viewport.Includes(
+                        binding.ClipAnchor ?? (binding.ClipAnchor = RetainedViewport.Anchor(binding.VisibilityAnchor))))
+                    { binding.Deferred = true; LastSkippedCount++; continue; }
+                    if (!AncestorsDisplayed(binding.Element) || (include != null && !include(binding.Element)))
+                    { if (binding.VisibilityAnchor != null) binding.Deferred = true; continue; }
+                    binding.Update(); binding.Deferred = false; LastSynchronizeCount++;
+                }
         }
         // Check ancestors, not the element itself: a hidden conditional field must
         // still be able to show itself again. Inline display reflects foldout changes
@@ -79,9 +96,11 @@ namespace Thry.ThryEditor
                 if (parent.style.display == DisplayStyle.None) return false;
             return true;
         }
-        internal void Track(VisualElement element, Action update)
+        internal void Track(VisualElement element, Action update) => TrackCore(element, update, null);
+        internal void TrackVisible(VisualElement element, Action update, VisualElement anchor = null) => TrackCore(element, update, anchor ?? element);
+        private void TrackCore(VisualElement element, Action update, VisualElement anchor)
         {
-            var binding = new Binding { Element = element, Update = update };
+            var binding = new Binding { Element = element, Update = update, VisibilityAnchor = anchor };
             _updates.Add(binding);
             _updateSnapshot = null;
             element.RegisterCallback<DetachFromPanelEvent>(e => {
@@ -90,6 +109,7 @@ namespace Thry.ThryEditor
             });
             element.RegisterCallback<AttachToPanelEvent>(e => {
                 if (e.target != element) return;
+                binding.ClipAnchor = null;
                 if (!binding.Tracked) { _updates.Add(binding); binding.Tracked = true; _updateSnapshot = null; }
                 update();
             });
@@ -132,6 +152,8 @@ namespace Thry.ThryEditor
             Decorators(root,property,attributes);
             Track(root, () => {
                 root.style.display = property.RetainedVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            });
+            TrackVisible(root, () => {
                 // Texture references have their own lock/animation state. Keep their
                 // container interactive and gate only the texture's actual controls.
                 root.SetEnabled(property is ShaderTextureProperty
@@ -148,7 +170,7 @@ namespace Thry.ThryEditor
             var row = Row(inline ? "" : RetainedText.PropertyCaption(property), out input);
             var label = row.Q<Label>(className: "thry-property-label");
             string lastCaption = null, lastTooltip = null, lastNote = null;
-            Track(label, () => {
+            TrackVisible(label, () => {
                 string caption = RetainedMaterialBody.SectionCaption(property);
                 string tooltip = property.TooltipText, note = property.Note;
                 if (caption == lastCaption && tooltip == lastTooltip && note == lastNote) return;
@@ -156,7 +178,7 @@ namespace Thry.ThryEditor
                 label.text = inline ? "" : separator < 0 ? caption : caption.Substring(0, separator);
                 label.tooltip = RetainedMaterialBody.Hover(caption, tooltip, note);
                 lastCaption = caption; lastTooltip = tooltip; lastNote = note;
-            });
+            }, row);
             if (!inline) ChangedPropertyIndicator(row, label, property);
             if (inline) row.AddToClassList("thry-inline");
             root.Add(row);
@@ -180,7 +202,8 @@ namespace Thry.ThryEditor
                     // ThryHDR changes only the picker, not the property's color-space flags or stored value.
                     var color = new ColorField { hdr = property.MaterialProperty.GetPropertyFlags().HasFlag(UnityEngine.Rendering.ShaderPropertyFlags.HDR)
                         || attributes.Any(a => a.Name == "ThryHDR"), showAlpha = true, showEyeDropper = true };
-                    Bind(color, property, p => p.colorValue, (p,v) => p.colorValue = v); input.Add(color); break;
+                    Bind(color, property, p => p.colorValue, (p,v) => p.colorValue = v);
+                    RetainedColorPicker.Attach(color); input.Add(color); break;
                 case MaterialProperty.PropType.Vector:
                     var vector = attributes.FirstOrDefault(a => a.Name == "VectorLabel" || a.Name == "Vector2" || a.Name == "Vector3" || a.Name == "Vector31");
                     string[] labels = vector?.Name == "VectorLabel" ? vector.Args.Where(a => !a.Equals("link", StringComparison.OrdinalIgnoreCase)).ToArray() :
@@ -214,14 +237,24 @@ namespace Thry.ThryEditor
             var number = new FloatField(); input.style.flexDirection = FlexDirection.Row;
             slider.style.flexGrow = 1; number.style.width = 52; number.style.flexGrow = 0;
             input.Add(slider); input.Add(number);
-            Track(slider, () => { slider.SetValueWithoutNotify(PowerValue(property.MaterialProperty.GetNumber(), 1 / power)); slider.showMixedValue = property.MaterialProperty.hasMixedValue; });
+            TrackVisible(slider, () => { SynchronizeValue(slider, PowerValue(property.MaterialProperty.GetNumber(), 1 / power), property.MaterialProperty.hasMixedValue); });
             slider.RegisterValueChangedCallback(e => Model.Number(property, Mathf.Clamp(PowerValue(e.newValue, power), limits.x, limits.y)));
             Bind(number, property, p => p.GetNumber(), (p,v) => p.SetNumber(Mathf.Clamp(v, limits.x, limits.y)));
+        }
+        // SetValueWithoutNotify still invalidates paint and updates slider text/geometry
+        // in Unity. Leave unchanged controls alone while another value is being dragged.
+        internal static void SynchronizeValue<T>(BaseField<T> field, T value, bool mixed)
+        {
+            bool changed = !EqualityComparer<T>.Default.Equals(field.value, value) || field.showMixedValue != mixed;
+            // Popup fields clear their value while mixed. Clear that state before
+            // restoring a concrete value, so the first refresh is already correct.
+            field.showMixedValue = mixed;
+            if (changed) field.SetValueWithoutNotify(value);
         }
         internal void Bind<T>(BaseField<T> field, ShaderProperty property, Func<MaterialProperty,T> read, Action<MaterialProperty,T> write)
         {
             field.AddToClassList("thry-input"); field.name = "value-" + property.MaterialProperty.name;
-            Track(field, () => { field.SetValueWithoutNotify(read(property.MaterialProperty)); field.showMixedValue = property.MaterialProperty.hasMixedValue; });
+            TrackVisible(field, () => { SynchronizeValue(field, read(property.MaterialProperty), property.MaterialProperty.hasMixedValue); });
             field.RegisterValueChangedCallback(e => Model.EditSingleProperty(property, p => write(p, e.newValue)));
             var numeric = field as IValueField<T>;
             if (numeric != null)
@@ -303,7 +336,7 @@ namespace Thry.ThryEditor
             dot.RegisterCallback<TooltipEvent>(e => { e.tooltip = RetainedValueDetails.Describe(property); e.rect = dot.worldBound; e.StopImmediatePropagation(); });
             Action position = () =>
             {
-                if (caption.panel == null || caption.contentRect.width <= 0) return;
+                if (dot.style.display == DisplayStyle.None || caption.panel == null || caption.contentRect.width <= 0) return;
                 Rect bounds = caption.ChangeCoordinatesTo(row, caption.contentRect);
                 float measured = caption.MeasureTextSize(caption.text, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x;
                 if (float.IsNaN(measured) || float.IsNaN(bounds.x)) return;
@@ -312,17 +345,17 @@ namespace Thry.ThryEditor
             };
             caption.RegisterCallback<GeometryChangedEvent>(e => position());
             row.RegisterCallback<GeometryChangedEvent>(e => position());
-            Track(dot, () =>
+            TrackVisible(dot, () =>
             {
                 dot.style.display = RetainedMaterialBody.HasChangedValue(property) || RetainedMaterialBody.HasChangedTextureTransform(property)
                     ? DisplayStyle.Flex : DisplayStyle.None;
                 dot.style.backgroundColor = caption.resolvedStyle.color;
                 position();
-            });
+            }, row);
         }
         internal void Toggle(VisualElement parent, ShaderProperty property)
         {
-            var toggle = new Toggle(); Bind(toggle, property, p => Mathf.Abs(p.GetNumber()) > .001f, (p,v) => p.SetNumber(v ? 1 : 0)); Track(toggle,()=>toggle.SetEnabled(Model.CanEdit(property))); parent.Add(toggle);
+            var toggle = new Toggle(); Bind(toggle, property, p => Mathf.Abs(p.GetNumber()) > .001f, (p,v) => p.SetNumber(v ? 1 : 0)); TrackVisible(toggle,()=>toggle.SetEnabled(Model.CanEdit(property))); parent.Add(toggle);
         }
         internal void Vector(VisualElement parent, ShaderProperty property, string[] labels, int start = 0, bool texture = false, bool link = false)
         {
@@ -352,17 +385,17 @@ namespace Thry.ThryEditor
                     RetainedUiState.Set(property.MyShader.name, key, linked); synchronizeLink();
                 });
                 synchronizeLink();
-                Track(linkToggle, () => { linkToggle.SetEnabled(Model.CanEdit(property)); icon.tintColor = EditorGUIUtility.isProSkin ? Color.white : new Color(.35f, .35f, .35f); });
+                TrackVisible(linkToggle, () => { linkToggle.SetEnabled(Model.CanEdit(property)); icon.tintColor = EditorGUIUtility.isProSkin ? Color.white : new Color(.35f, .35f, .35f); });
             }
             for (int i = 0; i < labels.Length; i++)
             {
                 int index = start + i; var field = new FloatField(labels[i]); field.AddToClassList("thry-component"); field.name = "component-" + index;
                 if (labels[i] == "X" || labels[i] == "Y" || labels[i] == "Z" || labels[i] == "W") field.AddToClassList("thry-component-axis");
                 if (i > 0) field.AddToClassList("thry-component-spaced");
-                Track(field, () => {
+                TrackVisible(field, () => {
                     var p = property.MaterialProperty; var v = texture ? p.textureScaleAndOffset : p.vectorValue;
-                    field.SetValueWithoutNotify(v[index]);
-                    field.showMixedValue = p.targets.OfType<Material>().Where(m => m.HasProperty(p.name)).Select(m => texture ? new Vector4(m.GetTextureScale(p.name).x, m.GetTextureScale(p.name).y, m.GetTextureOffset(p.name).x, m.GetTextureOffset(p.name).y)[index] : m.GetVector(p.name)[index]).Distinct().Skip(1).Any();
+                    bool mixed = p.targets.Length > 1 && p.targets.OfType<Material>().Where(m => m.HasProperty(p.name)).Select(m => texture ? new Vector4(m.GetTextureScale(p.name).x, m.GetTextureScale(p.name).y, m.GetTextureOffset(p.name).x, m.GetTextureOffset(p.name).y)[index] : m.GetVector(p.name)[index]).Distinct().Skip(1).Any();
+                    SynchronizeValue(field, v[index], mixed);
                 });
                 var gesture = new RetainedPropertyGesture(Model, property);
                 var originalBaselines = new Dictionary<Material, Vector4>();
@@ -425,7 +458,7 @@ namespace Thry.ThryEditor
             names = names.Select(n => Model.Shader.Locale.Get(n,n)).ToArray();
             var field = new DropdownField(names.ToList(), 0); field.AddToClassList("thry-input"); field.name = "value-" + property.MaterialProperty.name;
             _view.UseInspectorMenu(field);
-            Track(field, () => { int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber()); field.SetValueWithoutNotify(selected < 0 ? "—" : names[selected]); field.showMixedValue = property.MaterialProperty.hasMixedValue; });
+            TrackVisible(field, () => { int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber()); SynchronizeValue(field, selected < 0 ? "—" : names[selected], property.MaterialProperty.hasMixedValue); });
             field.RegisterValueChangedCallback(e => { int index = Array.IndexOf(names, e.newValue); if(index >= 0) Model.Number(property, values[index]); }); parent.Add(field);
         }
         private static readonly Dictionary<string,Type> EnumTypes = new Dictionary<string,Type>();
@@ -454,7 +487,7 @@ namespace Thry.ThryEditor
             foldIcon.AddToClassList("thry-header-icon"); foldIcon.AddToClassList("thry-texture-caret"); foldout.Add(foldIcon);
             var foldCaption = new Label(RetainedText.PropertyCaption(property)) { pickingMode = PickingMode.Ignore };
             foldCaption.AddToClassList("thry-texture-caption"); foldout.Add(foldCaption);
-            Track(foldCaption, () => { foldCaption.text = RetainedText.PropertyCaption(property);
+            TrackVisible(foldCaption, () => { foldCaption.text = RetainedText.PropertyCaption(property);
             foldout.tooltip = RetainedMaterialBody.Hover(foldCaption.text, property.TooltipText, property.Note, "Expand or collapse texture settings"); });
             ChangedPropertyIndicator(row, foldCaption, property);
             var dimension = property.MaterialProperty.textureDimension;
@@ -463,14 +496,14 @@ namespace Thry.ThryEditor
             var objectField = new ObjectField { name = "value-" + property.MaterialProperty.name, objectType = cube ? typeof(Cubemap) : typeof(Texture), allowSceneObjects = false };
             objectField.AddToClassList("thry-input");
             Action<MaterialProperty, Texture2DArray, float> updateArrayReferences = null;
-            Track(objectField, () => { objectField.SetValueWithoutNotify(property.MaterialProperty.textureValue); objectField.showMixedValue = property.MaterialProperty.hasMixedValue; });
+            TrackVisible(objectField, () => { objectField.SetValueWithoutNotify(property.MaterialProperty.textureValue); objectField.showMixedValue = property.MaterialProperty.hasMixedValue; });
             objectField.RegisterValueChangedCallback(e => {
                 var texture = e.newValue as Texture;
                 if (texture != null && dimension != UnityEngine.Rendering.TextureDimension.Any && texture.dimension != dimension)
                 { objectField.SetValueWithoutNotify(property.MaterialProperty.textureValue); e.StopImmediatePropagation(); return; }
                 Model.Edit(property, p => { p.textureValue = texture; Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(p, texture); updateArrayReferences?.Invoke(p, texture as Texture2DArray, 0); });
             }); value.Add(objectField);
-            Track(objectField, () => objectField.SetEnabled(Model.CanEdit(property)));
+            TrackVisible(objectField, () => objectField.SetEnabled(Model.CanEdit(property)));
             if (cube)
             {
                 // RenderTexture is not a Cubemap subclass, but cube render targets remain valid drops.
@@ -549,20 +582,20 @@ namespace Thry.ThryEditor
                 var card = new RetainedTextureCard(Model, property, objectField, array != null);
                 var gradient = attributes.FirstOrDefault(a => a.Name == "Gradient");
                 if (gradient != null) card.SetGradientAction(() => OpenGradientCreator(property, gradient, card));
-                details.Add(card); Track(card, card.Synchronize);
+                details.Add(card); TrackVisible(card, card.Synchronize);
                 if (property.hasScaleOffset)
                 {
                     VisualElement tiling, offset; details.Add(Row("Tiling", out tiling)); Vector(tiling, property, new[] { "X", "Y" }, 0, true);
                     details.Add(Row("Offset", out offset)); Vector(offset, property, new[] { "X", "Y" }, 2, true);
-                    Track(tiling, () => tiling.SetEnabled(Model.CanEdit(property)));
-                    Track(offset, () => offset.SetEnabled(Model.CanEdit(property)));
+                    TrackVisible(tiling, () => tiling.SetEnabled(Model.CanEdit(property)));
+                    TrackVisible(offset, () => offset.SetEnabled(Model.CanEdit(property)));
                 }
                 if (property.Options.reference_properties != null)
                     foreach (var name in property.Options.reference_properties)
                         foreach (var reference in ScopedReferences(property, name)) details.Add(Field(reference));
                 var textureTools = new VisualElement(); details.Add(textureTools);
                 TextureTools(textureTools, card, property, attributes);
-                Track(textureTools, () => textureTools.SetEnabled(Model.CanEdit(property)));
+                TrackVisible(textureTools, () => textureTools.SetEnabled(Model.CanEdit(property)));
             };
             foldout.clicked += () => {
                 property.showFoldoutProperties = !property.showFoldoutProperties;
@@ -664,7 +697,7 @@ namespace Thry.ThryEditor
             // Keep Unity's native picker beside the thumbnail, with metadata and
             // the separate clear action at the trailing edge of the field.
             display.Insert(1, selector);
-            Track(field, () => {
+            TrackVisible(field, () => {
                 var texture = getTexture();
                 bool mixed = isMixed();
                 bool assigned = texture != null && !mixed;

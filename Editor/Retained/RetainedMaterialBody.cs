@@ -13,14 +13,21 @@ namespace Thry.ThryEditor
         internal readonly RetainedMaterialModel Model;
         private readonly MaterialInspectorView _view;
         private RetainedFields _fields;
+        private readonly RetainedViewport _viewport;
         private int _revision = -1;
         private bool _editing;
         private Texture2D _expandedCaret, _collapsedCaret;
         internal RetainedMaterialBody(RetainedMaterialModel model, MaterialInspectorView view)
         {
             Model = model; _view = view; name = "thry-material-controls"; AddToClassList("thry-material-controls");
+            _viewport = new RetainedViewport(this, SynchronizeViewport);
             Model.Changed += Synchronize;
             RegisterCallback<DetachFromPanelEvent>(e => { if (e.target == this) Model.ReleaseCaches(); });
+        }
+        private void SynchronizeViewport()
+        {
+            Model.Shader.ActivateRetained();
+            _fields?.SynchronizeVisuals();
         }
         internal void Synchronize()
         {
@@ -38,7 +45,7 @@ namespace Thry.ThryEditor
         }
         private void Build()
         {
-            Clear(); _fields = new RetainedFields(Model,_view);
+            Clear(); _fields = new RetainedFields(Model,_view,_viewport);
             _expandedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-down");
             _collapsedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-right");
             var shader = Model.Shader;
@@ -142,7 +149,7 @@ namespace Thry.ThryEditor
             animated.AddToClassList("thry-header-animation-dot"); titleArea.Add(animated);
             var renamed = new VisualElement { name = "renamed-animated-descendant", pickingMode = PickingMode.Ignore };
             renamed.AddToClassList("thry-header-animation-dot"); titleArea.Add(renamed);
-            _fields.Track(animated, () =>
+            _fields.TrackVisible(header, () =>
             {
                 animated.style.display = Config.Instance.showAnimatedDotOnHeaders && group.HasAnimatedDescendant ? DisplayStyle.Flex : DisplayStyle.None;
                 animated.style.backgroundColor = Styles.AnimatedColor;
@@ -151,7 +158,7 @@ namespace Thry.ThryEditor
             });
             var note=new Label();note.AddToClassList("thry-note");header.Add(note);_fields.Track(note,()=>{note.text=group.Note;note.style.display=Config.Instance.showNotes&&!string.IsNullOrEmpty(note.text)?DisplayStyle.Flex:DisplayStyle.None;});
             var link = HeaderAction("link", RetainedText.Get(Model.Shader, "global_links", "Global links"), () => GlobalLinker.Popup(group)); header.Add(link);
-            _fields.Track(link, () => link.EnableInClassList("thry-linked", group.MaterialProperty != null && Model.Shader.Materials.Any(m => GlobalLinker.IsGloballyLinked(m, group.MaterialProperty.name))));
+            _fields.TrackVisible(link, () => link.EnableInClassList("thry-linked", group.MaterialProperty != null && Model.Shader.Materials.Any(m => GlobalLinker.IsGloballyLinked(m, group.MaterialProperty.name))));
             var resources = new[] { group.Options.button_help, group.Options.button_video, group.Options.button_author };
             var resourceIcons = new[] { "help", "video", "author" };
             for (int i = 0; i < resources.Length; i++)
@@ -181,11 +188,13 @@ namespace Thry.ThryEditor
             }); header.Add(menu);
             var children = new VisualElement(); children.AddToClassList("thry-section-content"); root.Add(children);
             bool built = false;
-            Action update = () => {
+            _fields.TrackVisible(header, () => {
                 title.text = SectionCaption(group);
                 if (!Model.DeferSummaryRefresh)
                     changedDot.style.display = RetainedPropertyDefaults.HasChangedSection(Model.Shader, changedProperties) ? DisplayStyle.Flex : DisplayStyle.None;
                 changedDot.style.backgroundColor = title.resolvedStyle.color;
+            });
+            Action update = () => {
                 bool category = depth != 0 || Model.Shader.FocusedCategory == null || group.MaterialProperty.name == Model.Shader.FocusedCategory;
                 root.style.display = category && group.RetainedVisible ? DisplayStyle.Flex : DisplayStyle.None;
                 header.EnableInClassList("thry-excluded", SectionEditing.IsExcluded?.Invoke(group) == true);
@@ -309,7 +318,18 @@ namespace Thry.ThryEditor
             {
                 var fallbackRow = RetainedFields.Row("VRChat Fallback Shader",out input);
                 var fallback = new DropdownField(VRCFallbackProperty.RetainedNames.ToList(),0); _view.UseInspectorMenu(fallback); input.Add(fallback);
-                _fields.Track(fallback,()=>{string tag=Model.Shader.Materials[0].GetTag("VRCFallback",false,"None");int index=Array.IndexOf(VRCFallbackProperty.RetainedValues,tag);fallback.SetValueWithoutNotify(index<0?tag:VRCFallbackProperty.RetainedNames[index]); fallback.showMixedValue=Model.Shader.Materials.Select(m=>m.GetTag("VRCFallback",false,"None")).Distinct().Skip(1).Any();});
+                fallback.name = "thry-vrc-fallback";
+                _fields.TrackVisible(fallback, () => {
+                    var materials = Model.Shader.Materials;
+                    string tag = materials[0].GetTag("VRCFallback", false, "None");
+                    bool mixed = false;
+                    // The first owner's tag is already known. Avoid reading it again
+                    // just to establish that a single material is never mixed.
+                    for (int i = 1; i < materials.Length && !mixed; i++)
+                        mixed = materials[i].GetTag("VRCFallback", false, "None") != tag;
+                    int index = Array.IndexOf(VRCFallbackProperty.RetainedValues, tag);
+                    RetainedFields.SynchronizeValue(fallback, index < 0 ? tag : VRCFallbackProperty.RetainedNames[index], mixed);
+                });
                 fallback.RegisterValueChangedCallback(e=>{if(fallback.index>=0)Model.Mutate("VRChat Fallback",m=>m.SetOverrideTag("VRCFallback",VRCFallbackProperty.RetainedValues[fallback.index]));}); Add(fallbackRow);
             }
             var row = RetainedFields.Row(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),out input);
@@ -319,19 +339,20 @@ namespace Thry.ThryEditor
             int[] queueValues = { -1, 1000, 2000, 2450, 3000, 4000 };
             var queuePreset = new DropdownField(queueNames.ToList(), 0); _view.UseInspectorMenu(queuePreset); input.Add(queuePreset); queuePreset.style.flexGrow = 1;
             queuePreset.style.flexBasis = 0; queuePreset.style.flexShrink = 1; queuePreset.style.minWidth = 0;
-            _fields.Track(queuePreset, () => {
+            _fields.TrackVisible(queuePreset, () => {
                 int value = Model.Shader.Materials[0].renderQueue;
                 int index = Array.IndexOf(queueValues, value);
                 // A queue matching no preset is named by its offset from the nearest one, as Unity
                 // does: 2225 reads "Geometry +225". The word "Custom" named nothing at all.
-                queuePreset.SetValueWithoutNotify(index < 0 ? Helpers.RenderQueueHelper.GetDisplayName(value, queueNames, queueValues) : queueNames[index]);
-                queuePreset.showMixedValue = Model.Shader.Materials.Select(m => m.renderQueue).Distinct().Skip(1).Any(); });
+                RetainedFields.SynchronizeValue(queuePreset, index < 0 ? Helpers.RenderQueueHelper.GetDisplayName(value, queueNames, queueValues) : queueNames[index],
+                    Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value)); });
                 queuePreset.RegisterValueChangedCallback(e => { if (queuePreset.index >= 0) Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"), m => m.renderQueue = queueValues[queuePreset.index]);
             });
-            var queue = new UnityEngine.UIElements.IntegerField(); input.Add(queue);
+            var queue = new UnityEngine.UIElements.IntegerField { name = "thry-render-queue" }; input.Add(queue);
             queue.style.width = 64;
             queue.style.flexShrink = 0;
-            _fields.Track(queue, () => { queue.SetValueWithoutNotify(Model.Shader.Materials[0].renderQueue); queue.showMixedValue = Model.Shader.Materials.Select(m=>m.renderQueue).Distinct().Skip(1).Any(); });
+            _fields.TrackVisible(queue, () => { int value = Model.Shader.Materials[0].renderQueue;
+                RetainedFields.SynchronizeValue(queue, value, Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value)); });
             queue.RegisterValueChangedCallback(e => Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),m => m.renderQueue = e.newValue)); Add(row);
             var footer = new VisualElement(); footer.AddToClassList("thry-footer");
             var credit = new Label("@UI Made by Thryrallo"); credit.AddToClassList("thry-footer-credit"); footer.Add(credit);
