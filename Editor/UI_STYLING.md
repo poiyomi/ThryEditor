@@ -6,7 +6,7 @@ Edit `Resources/ThryTheme.uss`. The active Studio visual direction keeps the est
 
 - The original neutral dark/light palettes and focus colors, with the new Studio shapes and layout.
 - The original Monokai icons in a compact toolbar well, and a joined search/filter strip that stacks at narrow widths.
-- Neutral shader-lock, Presets, and rendering-mode actions with matching surfaces and hover states.
+- Shader-lock, Presets, rendering mode, and all other filled action buttons share the darker action surface and hover colors (`--thry-action-background` and `--thry-action-hover-background`), including decal positioning and Bake Color Adjust.
 - All retained buttons automatically share normal, hover, pressed, disabled, and focused styling, including Bake Color Adjust, positioning, Pathing, toolbars, and companion windows. Disabled actions keep muted text and respond visually to hover while remaining unclickable. Bake Color Adjust has a Monokai yellow palette icon; Raycast and Scene Tools retain their original green icons, with light-skin equivalents for each.
 - Connected section surfaces and matching header/child frames for nested groups.
 - Outlined editable fields, quiet property rows, neutral checkboxes, and slim slider handles without outline rings.

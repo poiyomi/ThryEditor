@@ -1467,15 +1467,15 @@
     --thry-row-hover: rgba(255, 255, 255, .045);
     --thry-track-color: #5e5e5e;
     --thry-thumb-color: #999999;
-    --thry-action-background: #505050;
-    --thry-action-hover-background: #5a5a5a;
+    --thry-action-background: #4c4c4c;
+    --thry-action-hover-background: #575757;
     --thry-disabled-background: #323232;
     --thry-disabled-border: #434343;
 }
 .thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
     --thry-chrome-background: var(--thry-surface-color);
-    --thry-action-background: var(--thry-surface-color);
-    --thry-action-hover-background: #e5e5e5;
+    --thry-action-background: #a0a0a0;
+    --thry-action-hover-background: #ababab;
     --thry-row-alternate: rgba(0, 0, 0, .025);
     --thry-section-background: #bebebe;
     --thry-input-background: #dddddd;
