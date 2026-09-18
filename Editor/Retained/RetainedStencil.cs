@@ -76,9 +76,7 @@ namespace Thry.ThryEditor
                     }).Distinct().ToArray();
                     comparison.text = texts.Length == 1 ? texts[0] : "Comparison inputs differ between selected materials.";
                 });
-                StencilEnum<StencilOp>(block, config, "Pass · visible", config.StencilPassOpPropertyName);
-                StencilEnum<StencilOp>(block, config, "Pass · occluded", config.StencilZFailOpPropertyName);
-                StencilEnum<StencilOp>(block, config, "Fail", config.StencilFailOpPropertyName);
+                StencilFlow(block, config);
             }
             else
             {
@@ -109,9 +107,83 @@ namespace Thry.ThryEditor
             return block;
         }
 
+        private void StencilFlow(VisualElement block, StencilConfig config)
+        {
+            var flow = new VisualElement { name = "stencil-flow" };
+            flow.AddToClassList("thry-stencil-flow"); block.Add(flow);
+            var pass = StencilRoute(flow, "Pass", 33.333f, 12);
+            StencilLine(pass, 50, 0, 50, 10); StencilLine(pass, 33.333f, 10, 50, 10);
+            StencilLine(pass, 33.333f, 10, 33.333f, 34);
+            var visible = StencilRoute(flow, null, 0, 0);
+            StencilLine(visible, 16.667f, 34, 33.333f, 34); StencilLine(visible, 16.667f, 34, 16.667f, 56);
+            var occluded = StencilRoute(flow, null, 0, 0);
+            StencilLine(occluded, 33.333f, 34, 50, 34); StencilLine(occluded, 50, 34, 50, 56);
+            var fail = StencilRoute(flow, "Fail", 83.333f, 12);
+            fail.AddToClassList("thry-stencil-fail-route");
+            StencilLine(fail, 50, 0, 50, 10); StencilLine(fail, 50, 10, 83.333f, 10);
+            StencilLine(fail, 83.333f, 10, 83.333f, 56);
+            var cards = new VisualElement(); cards.AddToClassList("thry-stencil-flow-cards"); block.Add(cards);
+            var routes = new[] { visible, occluded, fail };
+            var labels = new[] { "Visible", "Occluded", "Failed" };
+            var properties = new[] { config.StencilPassOpPropertyName, config.StencilZFailOpPropertyName, config.StencilFailOpPropertyName };
+            var operationLabels = new[] { "Pass Op", "ZFail Op", "Fail Op" };
+            var panels = new VisualElement[3];
+            for (int i = 0; i < 3; i++)
+            {
+                var arrow = new Label("▼") { pickingMode = PickingMode.Ignore };
+                arrow.AddToClassList("thry-stencil-flow-arrow"); arrow.style.left = Length.Percent(16.667f + i * 33.333f);
+                routes[i].Add(arrow);
+                var card = new VisualElement { name = "stencil-flow-" + labels[i].ToLowerInvariant() };
+                card.AddToClassList("thry-stencil-flow-card"); if (i == 2) card.AddToClassList("thry-stencil-fail-route");
+                cards.Add(card); panels[i] = card;
+                var label = new Label(labels[i]); label.AddToClassList("thry-stencil-flow-title"); card.Add(label);
+                StencilEnum<StencilOp>(card, config, operationLabels[i], properties[i]);
+            }
+            Track(flow, () => {
+                var selected = Model.Shader.Materials.Select(m => {
+                    bool passed; StencilOutput(m, config, out passed);
+                    return !passed ? 2 : StencilValue(m, config.StencilIsOccludedPropertyName) != 0 ? 1 : 0;
+                }).Distinct().ToArray();
+                int active = selected.Length == 1 ? selected[0] : -1;
+                pass.EnableInClassList("thry-stencil-route-active", active == 0 || active == 1);
+                for (int i = 0; i < 3; i++)
+                {
+                    routes[i].EnableInClassList("thry-stencil-route-active", active == i);
+                    panels[i].EnableInClassList("thry-stencil-route-active", active == i);
+                }
+                // Both branches share the first segment; paint the selected branch last.
+                if (active == 0 || active == 1) pass.BringToFront(); else fail.BringToFront();
+            });
+        }
+
+        private static VisualElement StencilRoute(VisualElement flow, string text, float x, float y)
+        {
+            var route = new VisualElement { pickingMode = PickingMode.Ignore };
+            route.AddToClassList("thry-stencil-route"); flow.Add(route);
+            if (text != null)
+            {
+                var label = new Label(text); label.AddToClassList("thry-stencil-flow-caption");
+                label.style.left = Length.Percent(x); label.style.top = y; route.Add(label);
+            }
+            return route;
+        }
+
+        private static void StencilLine(VisualElement route, float x1, float y1, float x2, float y2)
+        {
+            var line = new VisualElement { pickingMode = PickingMode.Ignore };
+            line.AddToClassList("thry-stencil-line");
+            line.style.left = Length.Percent(x1); line.style.top = y1;
+            if (x1 == x2) { line.style.width = 2; line.style.height = y2 - y1; }
+            else { line.style.width = Length.Percent(x2 - x1); line.style.height = 2; }
+            route.Add(line);
+        }
+
         private void StencilByte(VisualElement block, StencilConfig config, string label, string id, Func<Material, int> read)
         {
             var row = new VisualElement { name = "stencil-row-" + (id ?? label.Replace(" ", "-")) }; row.AddToClassList("thry-stencil-byte-row"); block.Add(row);
+            bool isMask = id == config.StencilReadMaskPropertyName || id == config.StencilWriteMaskPropertyName;
+            row.AddToClassList(isMask ? "thry-stencil-mask" : id == config.StencilBufferValuePropertyName
+                ? "thry-stencil-buffer" : id == config.StencilRefPropertyName ? "thry-stencil-reference" : "thry-stencil-output");
             var caption = new Label(label); caption.AddToClassList("thry-stencil-label"); row.Add(caption);
             var valuesRow = new VisualElement(); valuesRow.AddToClassList("thry-stencil-values"); row.Add(valuesRow);
             var bits = new VisualElement(); bits.AddToClassList("thry-stencil-bits"); valuesRow.Add(bits);
@@ -125,8 +197,11 @@ namespace Thry.ThryEditor
                 else { cell.SetEnabled(false); row.AddToClassList("thry-stencil-derived"); }
                 Track(cell, () => {
                     var values = Model.Shader.Materials.Select(m => (read(m) >> bit) & 1).Distinct().ToArray();
-                    cell.text = values.Length == 1 ? values[0].ToString() : "—";
+                    cell.text = values.Length != 1 ? "—" : isMask ? (values[0] == 1 ? "↓" : "✕") : values[0].ToString();
+                    if (isMask) cell.tooltip = "Bit " + bit + " · value " + (1 << bit) + " · "
+                        + (values.Length != 1 ? "Mixed mask values" : values[0] == 1 ? "Passes through mask" : "Blocked by mask");
                     cell.EnableInClassList("thry-stencil-bit-set", values.Length == 1 && values[0] == 1);
+                    cell.EnableInClassList("thry-stencil-bit-blocked", isMask && values.Length == 1 && values[0] == 0);
                     ShaderProperty p; if (id != null) cell.SetEnabled(Model.Shader.PropertyDictionary.TryGetValue(id, out p) && Model.CanEdit(p));
                 });
             }

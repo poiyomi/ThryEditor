@@ -1082,6 +1082,7 @@
 
 /* ===== ThryStencil ===== */
 .thry-stencil-view {
+    --thry-stencil-lit-color: #66d9ef;
     padding: var(--thry-space-6);
     margin: var(--thry-space-2) 0;
     background-color: #333333;
@@ -1142,9 +1143,9 @@
 }
 
 .thry-stencil-bit.thry-stencil-bit-set {
-    background-color: #425563;
-    border-color: #617b8e;
-    color: #ebebeb;
+    background-color: var(--thry-stencil-lit-color);
+    border-color: var(--thry-stencil-lit-color);
+    color: #202020;
 }
 
 .thry-stencil-bit:hover {
@@ -1187,8 +1188,9 @@
 }
 
 .thry-stencil-derived .thry-stencil-bit.thry-stencil-bit-set:disabled {
-    color: #d6d6d6;
-    background-color: #434b50;
+    color: #202020;
+    background-color: var(--thry-stencil-lit-color);
+    opacity: 0.65;
 }
 
 .thry-stencil-operation {
@@ -1261,8 +1263,8 @@
 }
 
 .thry-light .thry-stencil-bit.thry-stencil-bit-set {
-    background-color: #aac7db;
-    border-color: #6991b1;
+    background-color: var(--thry-stencil-lit-color);
+    border-color: var(--thry-stencil-lit-color);
     color: #202020;
 }
 
@@ -1285,13 +1287,52 @@
 }
 
 .thry-light .thry-stencil-derived .thry-stencil-bit.thry-stencil-bit-set:disabled {
-    background-color: #c3ccd2;
+    background-color: var(--thry-stencil-lit-color);
     color: #252525;
 }
 
 .thry-light .thry-stencil-outcome {
     border-top-color: #b0b0b0;
 }
+
+/* Monokai role colors; keep decimal fields compact and mask symbols unfilled. */
+.thry-stencil-buffer { --thry-stencil-lit-color: #e6db74; }
+.thry-stencil-reference { --thry-stencil-lit-color: #66d9ef; }
+.thry-stencil-output { --thry-stencil-lit-color: #a6e22e; }
+.thry-stencil-view .thry-stencil-mask .thry-stencil-bit,
+.thry-light .thry-stencil-view .thry-stencil-mask .thry-stencil-bit {
+    background-color: transparent;
+    border-color: transparent;
+    color: #999999;
+    font-size: 15px;
+}
+.thry-stencil-view .thry-stencil-mask .thry-stencil-bit-blocked { color: #fd971f; }
+.thry-light .thry-stencil-view .thry-stencil-mask .thry-stencil-bit-blocked { color: #a85c00; }
+.thry-stencil-view .thry-stencil-mask .thry-stencil-bit-set { color: var(--thry-channel-r-color); }
+.thry-light .thry-stencil-view .thry-stencil-mask .thry-stencil-bit-set { color: var(--thry-channel-r-color); }
+.thry-stencil-view .thry-stencil-mask .thry-stencil-bit:hover,
+.thry-stencil-view .thry-stencil-mask .thry-stencil-bit:focus,
+.thry-light .thry-stencil-view .thry-stencil-mask .thry-stencil-bit:hover,
+.thry-light .thry-stencil-view .thry-stencil-mask .thry-stencil-bit:focus {
+    border-color: var(--thry-accent-color);
+}
+
+/* Stencil comparison branches remain aligned with their operation cards. */
+.thry-stencil-flow { position: relative; height: 62px; margin-top: 4px; }
+.thry-stencil-route { position: absolute; left: 0; right: 0; top: 0; bottom: 0; color: var(--thry-muted-color); }
+.thry-stencil-line { position: absolute; background-color: var(--thry-muted-color); }
+.thry-stencil-flow-caption { position: absolute; margin-left: 7px; font-size: 10px; }
+.thry-stencil-flow-arrow { position: absolute; top: 49px; margin-left: -5px; padding: 0; font-size: 12px; }
+.thry-stencil-flow-cards { flex-direction: row; }
+.thry-stencil-flow-card { flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; padding: 5px; margin: 0 2px; border-width: 1px; border-color: var(--thry-border-color); border-radius: 3px; }
+.thry-stencil-flow-title { -unity-text-align: middle-center; -unity-font-style: bold; font-size: 11px; }
+.thry-stencil-flow-card .thry-stencil-operation { flex-direction: column; align-items: stretch; }
+.thry-stencil-flow-card .thry-stencil-operation > .unity-base-field__label { width: auto; min-width: 0; font-size: 10px; margin-bottom: 3px; }
+.thry-stencil-flow-card .unity-base-field__input { min-width: 0; }
+.thry-stencil-route-active { color: var(--thry-channel-g-color); border-color: var(--thry-channel-g-color); }
+.thry-stencil-route-active .thry-stencil-line { background-color: var(--thry-channel-g-color); }
+.thry-stencil-fail-route.thry-stencil-route-active { color: var(--thry-channel-r-color); border-color: var(--thry-channel-r-color); }
+.thry-stencil-fail-route.thry-stencil-route-active .thry-stencil-line { background-color: var(--thry-channel-r-color); }
 
 /* ===== ThryTextureStudio ===== */
 /* A pannable channel-packing board with fixed node positions. */
@@ -1489,10 +1530,10 @@
 /* Open sections form a continuous surface.
    Nested groups retain a frame in exactly the same color as their header. */
 .thry-inspector .thry-root-section { border-radius: var(--thry-radius-header); background-color: var(--thry-panel-background); }
-.thry-inspector .thry-root-section > .thry-section-header { background-color: var(--thry-section-background); border-color: var(--thry-section-background); }
+.thry-inspector .thry-root-section > .thry-section-header { background-color: var(--thry-root-section-background); border-color: var(--thry-root-section-background); }
 .thry-inspector .thry-root-section.thry-section-open > .thry-section-header { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.thry-inspector .thry-root-section > .thry-section-header .thry-section-title { -unity-font-style: normal; color: var(--thry-value-color); }
-.thry-inspector .thry-root-section > .thry-section-content { border-left-width: 1px; border-left-color: var(--thry-section-background); padding-left: var(--thry-space-7); }
+.thry-inspector .thry-root-section > .thry-section-header .thry-section-title { -unity-font-style: bold; color: var(--thry-value-color); }
+.thry-inspector .thry-root-section > .thry-section-content { border-left-width: 1px; border-left-color: var(--thry-root-section-background); padding-left: var(--thry-space-7); }
 .thry-inspector .thry-subsection-panel,
 .thry-inspector .thry-positioning-panel { background-color: var(--thry-panel-background); border-color: var(--thry-subsection-background); }
 .thry-inspector .thry-subsection-panel > .thry-section-header,
