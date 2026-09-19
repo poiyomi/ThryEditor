@@ -406,7 +406,7 @@ are using Poiyomi Shaders, this folder is very important!
 
     static class LockedShaderCacheMenu
     {
-        const string MenuRoot = "Thry/ThryEditor/Optimized Shader Cache/";
+        const string MenuRoot = "Poi/Thry/ThryEditor/Optimized Shader Cache/";
 
         static string DescribeCache()
         {

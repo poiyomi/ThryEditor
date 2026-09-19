@@ -184,7 +184,7 @@ namespace Thry.ThryEditor
 
         #region Menu
 
-        [MenuItem("Thry/ThryEditor/Recover Locked Materials With Missing Shaders", priority = 50)]
+        [MenuItem("Poi/Thry/ThryEditor/Recover Locked Materials With Missing Shaders", priority = 50)]
         static void MenuRecoverAll()
         {
             int recovered = RecoverAll();

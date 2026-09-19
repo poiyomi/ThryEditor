@@ -1673,38 +1673,38 @@ namespace Thry
             if(count > 1) EditorUtility.ClearProgressBar();
         }
 
-        [MenuItem("Thry/Twitter", priority = -100)]
+        [MenuItem("Poi/Thry/Twitter", priority = -100)]
         static void MenuThryTwitter()
         {
             Application.OpenURL("https://www.twitter.com/thryrallo");
         }
 
-        [MenuItem("Thry/Texture Packer", priority = 1)]
+        [MenuItem("Poi/Thry/Texture Packer", priority = 1)]
         static void MenuTexturePacker()
         {
             ThryEditor.TexturePacker.NodeGUI.Open();
         }
 
-        [MenuItem("Thry/Cross Shader Editor", priority = 2)]
+        [MenuItem("Poi/Thry/Cross Shader Editor", priority = 2)]
         public static void ShowWindow()
         {
             CrossEditor.GetInstance();
         }
 
-        [MenuItem("Thry/Material Lock Manager", priority = 3)]
+        [MenuItem("Poi/Thry/Material Lock Manager", priority = 3)]
         static void MenuShaderOptUnlockedMaterials()
         {
             EditorWindow.GetWindow<UnlockedMaterialsList>(false, "Material Lock Manager", true);
         }
 
-        [MenuItem("Thry/ThryEditor/Settings",priority = 4)]
+        [MenuItem("Poi/Thry/ThryEditor/Settings",priority = 4)]
         static void MenuShaderUISettings()
         {
             EditorWindow.GetWindow<Settings>(false, "Thry Settings", true);
         }
 
         /// <summary> Iterate through all materials with FixKeywords. </summary>
-        [MenuItem("Thry/ThryEditor/Fix Keywords for All Materials (Slow)", priority = 50)]
+        [MenuItem("Poi/Thry/ThryEditor/Fix Keywords for All Materials (Slow)", priority = 50)]
         static void FixAllKeywords()
         {
             IEnumerable<Material> materialsToFix = AssetDatabase.FindAssets("t:material")
@@ -1716,13 +1716,13 @@ namespace Thry
             FixKeywords(materialsToFix);
         }
 
-        [MenuItem("Thry/ThryEditor/Upgraded Animated Properties", priority = 50)]
+        [MenuItem("Poi/Thry/ThryEditor/Upgraded Animated Properties", priority = 50)]
         static void MenuUpgradeAnimatedPropertiesToTagsOnAllMaterials()
         {
             ShaderOptimizer.UpgradeAnimatedPropertiesToTagsOnAllMaterials();
         }
         
-        [MenuItem("Thry/ThryEditor/Rebuild Presets Cache", priority = 50)]
+        [MenuItem("Poi/Thry/ThryEditor/Rebuild Presets Cache", priority = 50)]
         static void RebuildCache()
         {
             Presets.RebuildCache();
