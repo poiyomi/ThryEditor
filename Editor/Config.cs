@@ -43,6 +43,10 @@ namespace Thry.ThryEditor
         public bool showAnimatedDotOnHeaders = true;
         public bool showNotes = true;
         public bool staggeringRowColors = false;
+        public int inspectorDarkGray = 0;
+        public int inspectorMediumGray = 0;
+        public int inspectorLightGray = 0;
+        public InspectorTextSize inspectorTextSize = InspectorTextSize.Default;
         public TextureImporterFormat texturePackerCompressionWithAlphaOverwrite = TextureImporterFormat.Automatic;
         public TextureImporterFormat texturePackerCompressionNoAlphaOverwrite = TextureImporterFormat.Automatic;
         public TextureImporterFormat gradientEditorCompressionOverwrite = TextureImporterFormat.Automatic;
@@ -204,6 +208,8 @@ namespace Thry.ThryEditor
             return base.GetHashCode();
         }
     }
+
+    public enum InspectorTextSize { Default, Small, Large, Larger }
 
     public enum TextureDisplayType
     {

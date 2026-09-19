@@ -2,6 +2,12 @@
 
 Edit `Resources/ThryTheme.uss`. The active Studio visual direction uses compact text and section spacing while keeping the established input heights and label columns. There is no temporary theme selector.
 
+## Appearance settings
+
+Poi/Thry/Settings → Theme offers independent Dark gray, Medium gray, and Light gray sliders from −20 to 20, plus a dropdown for 11–14 px text. Gray sliders use broader neutral ranges for each Unity skin, with foreground adjustments at the extremes. Enabled text adapts to the extended range; the gray controls can also bring neighboring surfaces closer together. Default preserves the existing appearance; Reset shades and text size restores only these four preferences.
+
+Changes update attached inspectors, menus, and retained tool windows immediately without rebuilding the material editor. Preferences are saved in Thry/Config.json. Text changes use the shared typography tokens; input heights, 18 px checkboxes, locked-material dimming, material previews, and explicit drawer font sizes keep their existing behavior. Legacy IMGUI controls and independently styled tools retain their own appearance.
+
 ## Studio direction
 
 - The original neutral dark/light palettes and focus colors, with the new Studio shapes and layout.

@@ -60,6 +60,7 @@ namespace Thry.ThryEditor
         {
             root.AddToClassList("thry-inspector");root.AddToClassList("thry-active");root.AddToClassList("thry-window");root.EnableInClassList("thry-light",!EditorGUIUtility.isProSkin);
             var sheet=Resources.Load<StyleSheet>("ThryTheme");if(sheet!=null && !root.styleSheets.Contains(sheet))root.styleSheets.Add(sheet);
+            RetainedAppearance.Install(root);
         }
         internal static void Dropdown(DropdownField field)
         {
@@ -106,6 +107,7 @@ namespace Thry.ThryEditor
             var scroll=new ScrollView();scroll.style.flexGrow=1;root.Add(scroll);
             var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settings…"));search.AddToClassList("thry-settings-search");root.Insert(1,search);
             string[][] groups={
+                new[]{"Theme","inspectorDarkGray","inspectorMediumGray","inspectorLightGray","inspectorTextSize"},
                 new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes","staggeringRowColors"},
                 new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming"},
                 new[]{"Avatar fixes","autoSetAnchorOverride","humanBoneAnchor","anchorOverrideObjectName"},
@@ -123,8 +125,19 @@ namespace Thry.ThryEditor
                 {
                     var member=typeof(Config).GetField(key);string label=EditorLocale.editor.Get(key);if(string.IsNullOrEmpty(label)||label==key)label=ObjectNames.NicifyVariableName(key);
                     VisualElement value;var row=RetainedFields.Row(label,out value);row.tooltip=EditorLocale.editor.Get(key+"_tooltip");row.name=key;section.Add(row);
-                    Action<object> save=v=>{member.SetValue(Config.Instance,v);Config.Instance.Save();ShaderEditor.ReloadActive();};
-                    if(member.FieldType==typeof(bool)){var field=new Toggle {value=(bool)member.GetValue(Config.Instance)};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
+                    Action<object> save=v=>{
+                        member.SetValue(Config.Instance,v);Config.Instance.Save();
+                        if (key.StartsWith("inspector", StringComparison.Ordinal)) RetainedAppearance.Refresh();
+                        else ShaderEditor.ReloadActive();
+                    };
+                    if (key == "inspectorDarkGray" || key == "inspectorMediumGray" || key == "inspectorLightGray")
+                    {
+                        int initial = (int)member.GetValue(Config.Instance);
+                        var field = new SliderInt(-20, 20) { showInputField = true, value = Mathf.Clamp(initial, -20, 20) };
+                        field.RegisterValueChangedCallback(e => save(Mathf.Clamp(e.newValue, field.lowValue, field.highValue)));
+                        value.Add(field);
+                    }
+                    else if(member.FieldType==typeof(bool)){var field=new Toggle {value=(bool)member.GetValue(Config.Instance)};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
                     else if(member.FieldType==typeof(int)){var field=new IntegerField {value=(int)member.GetValue(Config.Instance),isDelayed=true};field.RegisterValueChangedCallback(e=>save(Mathf.Max(0,e.newValue)));value.Add(field);}
                     else if(member.FieldType==typeof(string)){var field=new TextField {value=(string)member.GetValue(Config.Instance),isDelayed=true};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
                     else if(member.FieldType.IsEnum)
@@ -140,6 +153,22 @@ namespace Thry.ThryEditor
                     if (key == "inlinePackerSaveLocationCustom")
                         row.tooltip = RetainedText.Get("custom_texture_folder_help", "Used when Texture save location is Custom folder. Choose a folder inside Assets.");
                     searchable.Rows.Add(new KeyValuePair<string, VisualElement>(group[0] + " " + label + " " + key, row));
+                }
+                if (group[0] == "Theme")
+                {
+                    var reset = new Button(() => {
+                        Config.Instance.inspectorDarkGray = Config.Instance.inspectorMediumGray = Config.Instance.inspectorLightGray = 0;
+                        Config.Instance.inspectorTextSize = InspectorTextSize.Default;
+                        Config.Instance.Save(); RetainedAppearance.Refresh();
+                        foreach (string key in new[] { "inspectorDarkGray", "inspectorMediumGray", "inspectorLightGray", "inspectorTextSize" })
+                        {
+                            if (key == "inspectorTextSize")
+                            { var field = section.Q(key).Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[0]); }
+                            else section.Q(key).Q<SliderInt>().SetValueWithoutNotify(0);
+                        }
+                    }) { name = "reset-inspector-appearance", text = RetainedText.Get("reset_inspector_appearance", "Reset shades and text size") };
+                    section.Add(reset);
+                    searchable.Rows.Add(new KeyValuePair<string, VisualElement>("Theme gray grey shades font text size reset", reset));
                 }
             }
             var noResults = new Label(RetainedText.Get("settings_no_matches", "No settings match your search.")) { name = "settings-search-empty" };

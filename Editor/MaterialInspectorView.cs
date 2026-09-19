@@ -56,6 +56,7 @@ namespace Thry.ThryEditor
             AddToClassList("thry-inspector");
             var sheet = Resources.Load<StyleSheet>("ThryTheme");
             if (sheet != null) styleSheets.Add(sheet);
+            RetainedAppearance.Install(this);
             RetainedAvailability.Install(this);
 
             _chrome = new VisualElement { name = "thry-chrome" };
@@ -585,6 +586,7 @@ namespace Thry.ThryEditor
             EnableInClassList("thry-active", visible);
             UpdateHostInsets(visible);
             EnableInClassList("thry-light", !EditorGUIUtility.isProSkin);
+            EnableInClassList("thry-dark", EditorGUIUtility.isProSkin);
             if (!visible) { EnableInClassList("thry-filtering", false); _propertySearch.Refresh(null, ""); _body.style.display = DisplayStyle.Flex; return; }
             if (_shader != current) { _shader = current; _shader.FocusCategory(null); _builtTools = false; _localeIndex = -1; }
             string title = Regex.Replace(_shader.InspectorTitle, "<[^>]+>", "");
