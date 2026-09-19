@@ -23,8 +23,6 @@ namespace Thry.ThryEditor
         public bool force_texture_options = false;
         public bool is_visible_simple = false;
         public string file_name;
-        public string remote_version_url;
-        public string generic_string;
         public bool never_lock;
         public float margin_top = 0;
         public float margin_bottom = 0;

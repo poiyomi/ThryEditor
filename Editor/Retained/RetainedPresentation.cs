@@ -79,8 +79,7 @@ namespace Thry.ThryEditor
                         root.Add(label); handled = true;
                         break;
                     case "LocalMessage":
-                    case "RemoteMessage":
-                        Drawers.LocalMessageDrawer message = attribute.Name == "RemoteMessage" ? new Drawers.RemoteMessageDrawer() : new Drawers.LocalMessageDrawer();
+                        var message = new Drawers.LocalMessageDrawer();
                         root.Add(message.CreateRetained(property.MaterialProperty.displayName, PresentationTargets(property),
                             action => PerformPresentationAction(property, action), () => RetainedMaterialModel.HasValidTargets(Model.Editor)));
                         handled = true;

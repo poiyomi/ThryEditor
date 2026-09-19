@@ -23,7 +23,6 @@ namespace Thry
         public const string PROPERTY_NAME_MASTER_LABEL = "shader_master_label";
         public const string PROPERTY_NAME_LOCALE = "shader_locale";
         public const string PROPERTY_NAME_ON_SWAP_TO_ACTIONS = "shader_on_swap_to";
-        public const string PROPERTY_NAME_SHADER_VERSION = "shader_version";
         public const string PROPERTY_NAME_IN_SHADER_PRESETS = "_Mode";
 
         //Static
@@ -89,13 +88,6 @@ namespace Thry
         private string _duplicatePropertyNamesString = null;
 
         public MaterialPropertyNotesContainer[] NoteContainers { get; private set; }
-
-        //Shader Versioning
-        private ThryEditor.Version _shaderVersionLocal;
-        private ThryEditor.Version _shaderVersionRemote;
-        private bool _hasShaderUpdateUrl = false;
-        private bool _isShaderUpToDate = true;
-        private string _shaderUpdateUrl = null;
 
         //other
         string ShaderOptimizerPropertyName = null;
@@ -216,7 +208,7 @@ namespace Thry
 
         internal enum ThryPropertyType
         {
-            hidden_property, shown_property, master_label, footer, header, header_end, header_start, group_start, group_end, section_start, section_end, subsection_start, subsection_end, instancing, dsgi, lightmap_flags, locale, on_swap_to, space, shader_version, optimizer, in_shader_presets
+            hidden_property, shown_property, master_label, footer, header, header_end, header_start, group_start, group_end, section_start, section_end, subsection_start, subsection_end, instancing, dsgi, lightmap_flags, locale, on_swap_to, space, optimizer, in_shader_presets
         }
 
         internal ThryPropertyType GetPropertyType(MaterialProperty p)
@@ -245,7 +237,6 @@ namespace Thry
 
                 if (name == PROPERTY_NAME_MASTER_LABEL) return ThryPropertyType.master_label;
                 if (name == PROPERTY_NAME_ON_SWAP_TO_ACTIONS) return ThryPropertyType.on_swap_to;
-                if (name == PROPERTY_NAME_SHADER_VERSION) return ThryPropertyType.shader_version;
                 if (name == PROPERTY_NAME_LOCALE) return ThryPropertyType.locale;
 
                 if (name == "Instancing") return ThryPropertyType.instancing;
@@ -546,14 +537,6 @@ namespace Thry
                     case ThryPropertyType.locale:
                         LocaleProperty = new LocaleProperty(this, props[i], displayName, offset, optionsRaw, false, i);
                         break;
-                    case ThryPropertyType.shader_version:
-                        PropertyOptions options = PropertyOptions.Deserialize(optionsRaw);
-                        _shaderVersionRemote = new ThryEditor.Version(WebHelper.GetCachedString(options.remote_version_url));
-                        _shaderVersionLocal = new ThryEditor.Version(displayName);
-                        _isShaderUpToDate = _shaderVersionLocal >= _shaderVersionRemote;
-                        _shaderUpdateUrl = options.generic_string;
-                        _hasShaderUpdateUrl = _shaderUpdateUrl != null;
-                        break;
                     case ThryPropertyType.optimizer:
                         ShaderOptimizerProperty = new ShaderProperty(this, props[i], displayName, offset, optionsRaw, false, i);
                         ShaderOptimizerProperty.SetIsExemptFromLockedDisabling(true);
@@ -598,7 +581,6 @@ namespace Thry
         {
             Config config = Config.Instance;
             Active = this;
-            Helper.RegisterEditorUse();
             RegisterCallacks();
             HookInspectorContainers();
 
@@ -1049,7 +1031,6 @@ namespace Thry
             DoVariantWarning();
             GUIManualReloadButton();
             GUIDevloperMode();
-            GUIShaderVersioning();
 
             GUILayout.Space(HasRetainedToolbar ? 2 : 6);
             if (!HasRetainedToolbar) GUITopBar();
@@ -1149,16 +1130,6 @@ namespace Thry
                 {
                     EditorGUILayout.HelpBox("Duplicate Property Names:\n" + _duplicatePropertyNamesString, MessageType.Warning);
                 }
-            }
-        }
-
-        private void GUIShaderVersioning()
-        {
-            if (!_isShaderUpToDate)
-            {
-                Rect r = EditorGUILayout.GetControlRect(false, _hasShaderUpdateUrl ? 30 : 15);
-                EditorGUI.LabelField(r, $"[New Shader Version available] {_shaderVersionLocal} -> {_shaderVersionRemote}" + (_hasShaderUpdateUrl ? "\n    Click here to download." : ""), Styles.redStyle);
-                if(Input.HadMouseDownRepaint && _hasShaderUpdateUrl && GUILayoutUtility.GetLastRect().Contains(Input.mouse_position)) Application.OpenURL(_shaderUpdateUrl);
             }
         }
 

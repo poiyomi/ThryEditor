@@ -1,5 +1,4 @@
 using System;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -30,8 +29,6 @@ namespace Thry.ThryEditor.Drawers
                 image.style.display = _buttonData?.texture == null ? DisplayStyle.None : DisplayStyle.Flex;
                 if (_buttonData?.texture != null)
                 {
-                    // Downloads replace the cached texture without replacing ButtonData.
-                    // Revisit the image while waiting instead of freezing its placeholder.
                     image.image = _buttonData.texture.loaded_texture;
                     float width = root.contentRect.width;
                     image.style.height = width > 0 ? Mathf.Min(_buttonData.texture.height, width) : _buttonData.texture.height;
@@ -40,7 +37,8 @@ namespace Thry.ThryEditor.Drawers
                     else image.style.width = StyleKeyword.Auto;
                 }
             };
-            refresh(); root.schedule.Execute(refresh).Every(150);
+            refresh();
+            root.RegisterCallback<GeometryChangedEvent>(e => refresh());
             return root;
         }
     }

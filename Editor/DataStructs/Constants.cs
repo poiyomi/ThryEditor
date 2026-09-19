@@ -14,14 +14,6 @@ namespace Thry.ThryEditor
         public const string GLOBAL_LINKS_FILE = "Thry/global_links.json";
     }
 
-    public class URL
-    {
-        public const string MODULE_COLLECTION = "https://raw.githubusercontent.com/Thryrallo/ThryEditorStreamedResources/main/packages.json";
-        public const string SETTINGS_MESSAGE_URL = "https://www.poiyomi.com/assets/somethingcool.json"; // Forgive me, Thryrallo.
-        public const string COUNT_PROJECT = "http://thryeditor.thryrallo.de/count_project.php";
-        public const string COUNT_USER = "http://thryeditor.thryrallo.de/count_user.php";
-    }
-
     public class RESOURCE_GUID
     {
         public const string RECT = "2329f8696fd09a743a5baf2a5f4986af";

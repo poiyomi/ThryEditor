@@ -904,8 +904,6 @@ namespace Thry.ThryEditor
         
         private static bool SetLockedForAllMaterialsInternal(IEnumerable<Material> materials, int lockState, bool showProgressbar = false, bool showDialog = false, bool allowCancel = true, MaterialProperty shaderOptimizerProp = null)
         {
-            Helper.RegisterEditorUse();
-            
             // Clear stale state from previous operations
             s_applyStructsLater.Clear();
             s_lockedShaderNamesThisBatch.Clear();

@@ -12,8 +12,6 @@ namespace Thry.ThryEditor.Helpers
 {
     public class Helper
     {
-        static bool s_didTryRegsiterThisSession = false;
-
         public static bool ClassWithNamespaceExists(string classname)
         {
             return (from assembly in AppDomain.CurrentDomain.GetAssemblies()
@@ -45,30 +43,6 @@ namespace Thry.ThryEditor.Helpers
         public static long GetUnityStartUpTimeStamp()
         {
             return GetCurrentUnixTimestampMillis() - (long)EditorApplication.timeSinceStartup * 1000;
-        }
-
-        public static void RegisterEditorUse()
-        {
-            if (s_didTryRegsiterThisSession) return;
-            if (!EditorPrefs.GetBool("thry_has_counted_user", false))
-            {
-                WebHelper.DownloadStringASync(URL.COUNT_USER, delegate (string s)
-                {
-                    if (s == "true")
-                        EditorPrefs.SetBool("thry_has_counted_user", true);
-                });
-            }
-
-            string projectPrefix = PlayerSettings.companyName + "." + PlayerSettings.productName;
-            if (!EditorPrefs.GetBool(projectPrefix + "_thry_has_counted_project", false))
-            {
-                WebHelper.DownloadStringASync(URL.COUNT_PROJECT, delegate (string s)
-                {
-                    if (s == "true")
-                        EditorPrefs.SetBool(projectPrefix + "_thry_has_counted_project", true);
-                });
-            }
-            s_didTryRegsiterThisSession = true;
         }
 
         //-------------------Comparetors----------------------

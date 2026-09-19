@@ -20,7 +20,6 @@ namespace Thry.ThryEditor
         public FilterMode filterMode = FilterMode.Bilinear;
         public TextureWrapMode wrapMode = TextureWrapMode.Repeat;
         public bool center_position = false;
-        bool _isLoading;
 
         public void ApplyModes(Texture texture)
         {
@@ -58,40 +57,11 @@ namespace Thry.ThryEditor
                 {
                     if (!s_loaded_textures.ContainsKey(name) || s_loaded_textures[name] == null)
                     {
-                        // Retrieve downloaded image from sessionstate (base64 encoded)
-                        if (SessionState.GetString(name, "") != "")
-                        {
-                            s_loaded_textures[name] = new Texture2D(1, 1, TextureFormat.ARGB32, false);
-                            ImageConversion.LoadImage((Texture2D)s_loaded_textures[name], Convert.FromBase64String(SessionState.GetString(name, "")), false);
-                            return s_loaded_textures[name];
-                        }
-
-                        if (IsUrl())
-                        {
-                            if (!_isLoading)
-                            {
-                                s_loaded_textures[name] = Texture2D.whiteTexture;
-                                WebHelper.DownloadBytesASync(name, (byte[] b) =>
-                                {
-                                    _isLoading = false;
-                                    if (b == null || b.Length == 0)
-                                        return;
-                                    Texture2D tex = new Texture2D(1, 1, TextureFormat.ARGB32, false);
-                                    ImageConversion.LoadImage(tex, b, false);
-                                    s_loaded_textures[name] = tex;
-                                    SessionState.SetString(name, Convert.ToBase64String(((Texture2D)s_loaded_textures[name]).EncodeToPNG()));
-                                });
-                                _isLoading = true;
-                            }
-                        }
+                        string path = FileHelper.FindFile(name, "texture");
+                        if (path != null)
+                            s_loaded_textures[name] = AssetDatabase.LoadAssetAtPath<Texture>(path);
                         else
-                        {
-                            string path = FileHelper.FindFile(name, "texture");
-                            if (path != null)
-                                s_loaded_textures[name] = AssetDatabase.LoadAssetAtPath<Texture>(path);
-                            else
-                                s_loaded_textures[name] = Texture2D.whiteTexture;
-                        }
+                            s_loaded_textures[name] = Texture2D.whiteTexture;
                     }
                     return s_loaded_textures[name];
                 }
@@ -112,10 +82,6 @@ namespace Thry.ThryEditor
             return Parser.Deserialize<TextureData>(s);
         }
 
-        bool IsUrl()
-        {
-            return name.StartsWith("http") && (name.EndsWith(".jpg") || name.EndsWith(".png"));
-        }
     }
 
 }

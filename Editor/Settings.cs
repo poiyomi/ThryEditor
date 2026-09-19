@@ -59,8 +59,6 @@ namespace Thry.ThryEditor
         private bool _isInstallingVAI = false;
         Vector2 _scrollPosition;
         
-        public static ButtonData thry_message = null;
-
         //---------------------Stuff checkers and fixers-------------------
 
         public void Awake()
@@ -79,9 +77,6 @@ namespace Thry.ThryEditor
             }
 
             _is_init = true;
-
-            if (thry_message == null)
-                WebHelper.DownloadStringASync(URL.SETTINGS_MESSAGE_URL, (Action<string>)delegate (string s) { thry_message = Parser.Deserialize<ButtonData>(s);});
         }
 
         //------------------Main GUI
@@ -94,7 +89,6 @@ namespace Thry.ThryEditor
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
             GUINotification();
             DrawHorizontalLine();
-            GUIMessage();
             LocaleDropdown();
             GUIEditor();
             DrawHorizontalLine();
@@ -124,37 +118,6 @@ namespace Thry.ThryEditor
                 GUILayout.Label(" " + EditorLocale.editor.Get("update_message"), Styles.greenStyle);
             else if (_showDowngradeWarning)
                 GUILayout.Label(" " + EditorLocale.editor.Get("downgrade_message"), Styles.orangeStyle);
-        }
-
-        private void GUIMessage()
-        {
-            if(thry_message!=null)
-            {
-                bool doDrawLine = false;
-                if(thry_message.text.Length > 0)
-                {
-                    doDrawLine = true;
-                    GUILayout.Label(new GUIContent(thry_message.text,thry_message.hover), thry_message.center_position?Styles.middleCenter_richText_wordWrap: Styles.upperLeft_richText_wordWrap);
-                    Rect r = GUILayoutUtility.GetLastRect();
-                    if(thry_message.action.type != DefineableActionType.NONE)
-                        EditorGUIUtility.AddCursorRect(r, MouseCursor.Link);
-                    if (Event.current.type == EventType.MouseDown && r.Contains(Event.current.mousePosition))
-                        thry_message.action.Perform(ShaderEditor.Active?.Materials);
-                }
-                if(thry_message.texture != null)
-                {
-                    doDrawLine = true;
-                    if(thry_message.center_position) GUILayout.Label(new GUIContent(thry_message.texture.loaded_texture, thry_message.hover), EditorStyles.centeredGreyMiniLabel, GUILayout.MaxHeight(thry_message.texture.height));
-                    else GUILayout.Label(new GUIContent(thry_message.texture.loaded_texture, thry_message.hover), GUILayout.MaxHeight(thry_message.texture.height));
-                    Rect r = GUILayoutUtility.GetLastRect();
-                    if(thry_message.action.type != DefineableActionType.NONE)
-                        EditorGUIUtility.AddCursorRect(r, MouseCursor.Link);
-                    if (Event.current.type == EventType.MouseDown && r.Contains(Event.current.mousePosition))
-                        thry_message.action.Perform(ShaderEditor.Active?.Materials);
-                }
-                if(doDrawLine)
-                    DrawHorizontalLine();
-            }
         }
 
         private void GUIEditor()

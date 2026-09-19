@@ -315,7 +315,6 @@ namespace Thry.ThryEditor
 
             string _translateByValueIn = "";
             string _translateByValueOut = "";
-            string _autoTranslateLanguageShortCode = "EN";
 
             UnityWebRequest _spreadsheetRequest;
             Localization _spreadsheetTarget;
@@ -666,7 +665,6 @@ namespace Thry.ThryEditor
                     if (key == ShaderEditor.PROPERTY_NAME_MASTER_LABEL) continue;
                     if (key == ShaderEditor.PROPERTY_NAME_LOCALE) continue;
                     if (key == ShaderEditor.PROPERTY_NAME_ON_SWAP_TO_ACTIONS) continue;
-                    if (key == ShaderEditor.PROPERTY_NAME_SHADER_VERSION) continue;
                     if (!string.IsNullOrWhiteSpace(value) && !locale._localizedStrings.ContainsKey(key))
                     {
                         locale._localizedStrings.Add(key, new string[locale.Languages.Length]);
@@ -743,11 +741,6 @@ namespace Thry.ThryEditor
                 EditorGUILayout.LabelField("Missing Entries", EditorStyles.boldLabel);
                 EditorGUILayout.HelpBox("This will search all properties and list all that have no translation for the selected language.", MessageType.Info);
                 GUIMissingEntries(locale);
-
-                EditorGUILayout.Space(20);
-                EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
-                EditorGUILayout.LabelField("Automatic Translation using Google", EditorStyles.boldLabel);
-                GUIGoogleTranslate(locale);
 
                 EditorGUILayout.Space(20);
                 EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
@@ -901,40 +894,6 @@ namespace Thry.ThryEditor
                 if (kvToRemove != default)
                 {
                     _missingKeys.Remove(kvToRemove);
-                }
-            }
-
-            void GUIGoogleTranslate(Localization locale)
-            {
-                _autoTranslateLanguageShortCode = EditorGUILayout.TextField("Language Short Code", _autoTranslateLanguageShortCode);
-                EditorGUILayout.HelpBox("Short code must be valid short code. See https://cloud.google.com/translate/docs/languages for a list of valid short codes.", MessageType.Info);
-                if (Event.current.type == EventType.MouseDown && GUILayoutUtility.GetLastRect().Contains(Event.current.mousePosition))
-                {
-                    Application.OpenURL("https://cloud.google.com/translate/docs/languages");
-                }
-                if (GUILayout.Button("Auto Translate"))
-                {
-                    int _missingKeysCount = _missingKeys.Count;
-                    int i = 0;
-                    foreach ((string key, string defaultValue, string newValue) in _missingKeys)
-                    {
-                        EditorUtility.DisplayProgressBar("Auto Translate", $"Translating {i}/{_missingKeysCount}", (float)i / _missingKeysCount);
-                        try
-                        {
-                            if (!locale._localizedStrings.ContainsKey(key))
-                            {
-                                locale._localizedStrings.Add(key, new string[locale.Languages.Length]);
-                            }
-                            locale._localizedStrings[key][_selectedLanguageIndex] = WebHelper.Translate(defaultValue, _autoTranslateLanguageShortCode);
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.LogError(e);
-                        }
-                        i += 1;
-                    }
-                    EditorUtility.ClearProgressBar();
-                    locale.Save();
                 }
             }
 
