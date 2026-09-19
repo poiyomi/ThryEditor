@@ -1251,6 +1251,8 @@ namespace Thry.ThryEditor
             // source. The optimizer's own version matters for the same reason.
             stringBuilder.Append('|').Append(AssetDatabase.GetAssetDependencyHash(AssetDatabase.GetAssetPath(m.shader)).ToString());
             stringBuilder.Append('|').Append((string)Config.Instance.Version);
+            // Invalidate shaders generated before explicit texture samplers followed renaming.
+            stringBuilder.Append("|texture-sampler-renaming:1");
 
             // Keywords drive both the #define block and which #ifdef branches survive. FixKeywords
             // usually derives them from property values, but that is user-configurable, so they cannot
@@ -1380,6 +1382,9 @@ namespace Thry.ThryEditor
 
                 if (prop.GetPropertyType() == ShaderPropertyType.Texture)
                 {
+                    // UNITY_DECLARE_TEX2D builds this name via token pasting. Explicit Sample/
+                    // SampleGrad calls must reference the same sampler after the texture is renamed.
+                    toRename.Add(new RenamingProperty(prop, "sampler" + prop.name, "sampler" + prop.name + "_" + animPropertySuffix));
                     toRename.Add(new RenamingProperty(prop, prop.name + "_ST", prop.name + "_" + animPropertySuffix + "_ST"));
                     toRename.Add(new RenamingProperty(prop, prop.name + "_TexelSize", prop.name + "_" + animPropertySuffix + "_TexelSize"));
                 }
