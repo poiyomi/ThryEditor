@@ -94,21 +94,6 @@ namespace Thry.ThryEditor.Helpers
             return ar;
         }
 
-        private static Color[] Gradient_Smooth(Color[] values)
-        {
-            Color[] ar = new Color[values.Length];
-            ar[0] = values[0];
-            ar[ar.Length - 1] = values[ar.Length - 1];
-            for (int i = 1; i < values.Length - 1; i++)
-            {
-                ar[i] = new Color();
-                ar[i].r = (values[i - 1].r + values[i].r + values[i + 1].r) / 3;
-                ar[i].g = (values[i - 1].g + values[i].g + values[i + 1].g) / 3;
-                ar[i].b = (values[i - 1].b + values[i].b + values[i + 1].b) / 3;
-            }
-            return ar;
-        }
-
         private static Color[] CalcDelta(Color[] values)
         {
             Color[] delta = new Color[values.Length];
@@ -192,26 +177,11 @@ namespace Thry.ThryEditor.Helpers
             return gradient;
         }
 
-        private static void PrintColorArray(Color[] ar)
-        {
-            foreach (Color c in ar)
-                Debug.Log(c.ToString());
-        }
-        private static void PrintColorList(List<Color[]> ar)
-        {
-            foreach (Color[] x in ar)
-                Debug.Log(ColorValueForDelta(x[0]) + ":" + x[0].ToString());
-        }
-
         private static float ColorValueForDelta(Color col)
         {
             return Mathf.Abs(col.r) + Mathf.Abs(col.g) + Mathf.Abs(col.b);
         }
 
-        private static Color ColorAdd(Color col1, Color col2)
-        {
-            return new Color(col1.r + col2.r, col1.g + col2.g, col1.b + col2.b);
-        }
         private static Color ColorSubtract(Color col1, Color col2)
         {
             return new Color(col1.r - col2.r, col1.g - col2.g, col1.b - col2.b);

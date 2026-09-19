@@ -70,7 +70,6 @@ namespace Thry.ThryEditor.ShaderTranslations
                                 editor.PropertyDictionary[trans.Target].FloatValue = textureValue;
                             }
                             break;
-#if UNITY_2022_1_OR_NEWER
                         case ShaderPropertyType.Int:
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_Ints", trans.Origin);
                             if(p != null)
@@ -112,7 +111,6 @@ namespace Thry.ThryEditor.ShaderTranslations
                                 editor.PropertyDictionary[trans.Target].FloatValue = (int)textureValue;
                             }
                             break;
-#endif
                         case ShaderPropertyType.Vector:
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_Colors", trans.Origin);
                             if(p != null) editor.PropertyDictionary[trans.Target].VectorValue = p.FindPropertyRelative("second").vector4Value;
@@ -164,7 +162,6 @@ namespace Thry.ThryEditor.ShaderTranslations
                 _editor.PropertyDictionary[trans.Target].FloatValue = f;
             }
 
-#if UNITY_2022_1_OR_NEWER
             void _HandleIntProperty(ShaderEditor _editor, PropertyTranslation trans, SerializedProperty p)
             {
                 float f = p.FindPropertyRelative("second").intValue;
@@ -179,7 +176,6 @@ namespace Thry.ThryEditor.ShaderTranslations
                 }
                 _editor.PropertyDictionary[trans.Target].FloatValue = (int)f;
             }
-#endif
 
             void _HandlePropertyModifications(ShaderEditor _editor, Shader _originShader, List<ShaderNameMatchedModifications> modifications)
             {
@@ -226,9 +222,7 @@ namespace Thry.ThryEditor.ShaderTranslations
             switch(prop.MaterialProperty.GetPropertyType())
             {
                 case ShaderPropertyType.Float:
-#if UNITY_2021_1_OR_NEWER
                 case ShaderPropertyType.Int:
-#endif
                     prop.MaterialProperty.SetNumber(value);
                     break;
                     // If our property is 0f, clear texture

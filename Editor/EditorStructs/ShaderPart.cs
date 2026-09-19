@@ -180,9 +180,7 @@ namespace Thry.ThryEditor
         public int ShaderPropertyIndex { protected set; get; } = -1;
         private string[] ShaderPropertyAttributes = null;
         protected string[] InitializedPropertyAttributes => ShaderPropertyAttributes;
-#if UNITY_2021_3_OR_NEWER
         internal RetainedShaderDeclarations.Declaration RetainedDeclaration { get; private set; }
-#endif
         
         /// <summary>
         /// Additional property names that should be checked when determining if this property is at default value.
@@ -246,13 +244,11 @@ namespace Thry.ThryEditor
         static Func<Shader, int , Vector4> FastGetPropertyDefaultValue =
             (Func<Shader, int, Vector4>)Delegate.CreateDelegate(typeof(Func<Shader, int, Vector4>), s_fastGetPropertyDefaultValueMethod);
 
-#if UNITY_2022_1_OR_NEWER
         // private static extern int GetPropertyDefaultIntValue([NotNull("ArgumentNullException")] Shader shader, int propertyIndex);
         static MethodInfo s_fastGetPropertyDefaultIntValueMethod =
             typeof(Shader).GetMethod("GetPropertyDefaultIntValue", BindingFlags.NonPublic | BindingFlags.Static, null, new Type[] { typeof(Shader), typeof(int) }, null);
         static Func<Shader, int, int> FastGetPropertyDefaultIntValue = 
             (Func<Shader, int, int>)Delegate.CreateDelegate(typeof(Func<Shader, int, int>), s_fastGetPropertyDefaultIntValueMethod);
-#endif
 
         // private static extern string GetPropertyTextureDefaultName([NotNull("ArgumentNullException")] Shader shader, int propertyIndex);
         static MethodInfo s_fastGetPropertyTextureDefaultNameMethod =
@@ -287,11 +283,9 @@ namespace Thry.ThryEditor
                                 if (tex != null) _propertyDefaultValue = tex.name;
                                 else _propertyDefaultValue = FastGetPropertyTextureDefaultName(MyShader, ShaderPropertyIndex);
                                 break;
-#if UNITY_2022_1_OR_NEWER
                             case ShaderPropertyType.Int:
                                 _propertyDefaultValue = FastGetPropertyDefaultIntValue(MyShader, ShaderPropertyIndex);
                                 break;
-#endif
                             default:
                                 _propertyDefaultValue = -1;
                                 break;
@@ -334,11 +328,9 @@ namespace Thry.ThryEditor
                                  || ((Texture)PropertyValue)?.name == (string)PropertyDefaultValue;
                             //if(!_isPropertyValueDefault.Value) Debug.Log($"{MaterialProperty.name} {PropertyDefaultValue} {PropertyValue}");
                             break;
-#if UNITY_2022_1_OR_NEWER
                         case ShaderPropertyType.Int:
                             _isPropertyValueDefault = (int)PropertyDefaultValue == (int)PropertyValue;
                             break;
-#endif
                         default:
                             _isPropertyValueDefault = false;
                             break;
@@ -532,10 +524,8 @@ namespace Thry.ThryEditor
                     SerializedProperty arrayProp = null;
                     if (type == ShaderPropertyType.Float)
                     arrayProp = serializedObject.FindProperty("m_SavedProperties.m_Floats.Array");
-#if UNITY_2022_1_OR_NEWER
                     else if (type == ShaderPropertyType.Int)
                         arrayProp = serializedObject.FindProperty("m_SavedProperties.m_Ints.Array");
-#endif
                     else if (type == ShaderPropertyType.Vector)
                     arrayProp = serializedObject.FindProperty($"m_SavedProperties.m_Colors.Array");
                     else if (type == ShaderPropertyType.Texture)
@@ -561,10 +551,8 @@ namespace Thry.ThryEditor
 
                     if (type == ShaderPropertyType.Float)
                     this.MaterialProperty.floatValue = valueProp.floatValue;
-#if UNITY_2022_1_OR_NEWER
                     else if (type == ShaderPropertyType.Int)
                         this.MaterialProperty.intValue = valueProp.intValue;
-#endif
                     else if (type == ShaderPropertyType.Vector)
                     this.MaterialProperty.colorValue = valueProp.colorValue;
                     else if (type == ShaderPropertyType.Texture)
@@ -602,12 +590,8 @@ namespace Thry.ThryEditor
             this.XOffset.ResetTemporaryOffset();
             this.XOffset = new XOffsetManager(Options.offset + XOffset);
             if(MaterialProperty == null) return;
-#if UNITY_2021_3_OR_NEWER
             RetainedDeclaration = RetainedShaderDeclarations.Get(MyShader, ShaderPropertyIndex);
             this.ShaderPropertyAttributes = RetainedDeclaration.CopyAttributes();
-#else
-            this.ShaderPropertyAttributes = MyShader.GetPropertyAttributes(this.ShaderPropertyIndex);
-#endif
             this.IsAnimatable &= !HasAttribute("DoNotAnimate");
             this.IsExemptFromLockedDisabling |= ShaderOptimizer.IsPropertyExcemptFromLocking(this);
         }
@@ -962,7 +946,6 @@ namespace Thry.ThryEditor
         internal GenericMenu RetainedContextMenu()
         {
             _contextMenu = new GenericMenu();
-#if UNITY_2021_3_OR_NEWER
             if (MyShaderUI.Locale.EditInUI)
                 _contextMenu.AddItem(new GUIContent("Edit label"), false, () => RetainedTextPrompt.Open("Edit label", Content.text, value =>
                 {
@@ -973,7 +956,6 @@ namespace Thry.ThryEditor
                 {
                     var window = ScriptableObject.CreateInstance<SetNotePopup>(); window.Init(this, new Rect()); window.ShowUtility();
                 });
-#endif
             if (IsAnimatable && !MyShaderUI.IsLockedMaterial)
             {
                 _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => SetAnimated(!IsAnimated, false));
@@ -987,13 +969,9 @@ namespace Thry.ThryEditor
                 _contextMenu.AddItem(new GUIContent("Copy Animated Property Path"), false, CopyPropertyPath);
                 _contextMenu.AddItem(new GUIContent("Copy Property as Keyframe"), false, CopyPropertyAsKeyframe);
                 if (IsAnimationWindowRecording()) _contextMenu.AddItem(new GUIContent("Add Keyframe to Animation"), false, AddKeyToAnimationClip);
-#if UNITY_2022_1_OR_NEWER
                 var targets = PropertyContextTargets();
                 DoVariantMenuStuff(_contextMenu, targets.All(m => m.IsPropertyOverriden(ShaderPropertyId)),
                     targets.Any(m => m.IsPropertyLockedByAncestor(ShaderPropertyId)), targets.Any(m => m.IsPropertyLocked(ShaderPropertyId)), targets, true);
-#else
-                _contextMenu.AddItem(new GUIContent("Reset"), false, ResetMaterialProperties);
-#endif
             }
             return _contextMenu;
         }
@@ -1036,7 +1014,6 @@ namespace Thry.ThryEditor
                         _contextMenu.AddItem(new GUIContent("Copy Animated Property Path"), false, CopyPropertyPath);
                         _contextMenu.AddItem(new GUIContent("Copy Property as Keyframe"), false, CopyPropertyAsKeyframe);
                         if (IsAnimationWindowRecording()) _contextMenu.AddItem(new GUIContent("Add Keyframe to Animation"), false, AddKeyToAnimationClip);
-#if UNITY_2022_1_OR_NEWER
                         bool isLockedInChildren = false;
                         bool isLockedByAncestor = false;
                         bool isOverriden = true;
@@ -1050,14 +1027,12 @@ namespace Thry.ThryEditor
                             isOverriden &= target.IsPropertyOverriden(nameId);
                         }
                         DoVariantMenuStuff(_contextMenu, isOverriden, isLockedByAncestor, isLockedInChildren, targets, true);
-#endif
                     }
                     if (_contextMenu.GetItemCount() > 0) _contextMenu.ShowAsContext();
                 }
             }
         }
 
-#if UNITY_2022_1_OR_NEWER
         // static Type s_PropertyData = typeof(MaterialProperty).GetNestedType("PropertyData", BindingFlags.NonPublic);
         // static MethodInfo s_HandleApplyRevert = s_PropertyData.GetMethod("HandleApplyRevert", BindingFlags.NonPublic | BindingFlags.Static);
 
@@ -1223,9 +1198,7 @@ namespace Thry.ThryEditor
 
         void ResetMaterialProperties()
         {
-#if UNITY_2021_3_OR_NEWER
             MyShaderUI?.ActivateRetained();
-#endif
             ResetSingleProperty(this);
             
             // Also reset additional properties (for multi-property drawers like ThryMultiFloatButtons)
@@ -1262,9 +1235,7 @@ namespace Thry.ThryEditor
                 Shader shader = material.shader;
                 int index = shader.FindPropertyIndex(prop.name);
                 if (index < 0) continue;
-#if UNITY_2022_1_OR_NEWER
                 if (material.IsPropertyLockedByAncestor(prop.name)) continue;
-#endif
                 var target = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { material }, prop.name);
                 // Retain Unity's animation-recording callback while narrowing its owners.
                 target.applyPropertyCallback = prop.applyPropertyCallback;
@@ -1280,11 +1251,9 @@ namespace Thry.ThryEditor
                     case ShaderPropertyType.Color:
                         target.colorValue = shader.GetPropertyDefaultVectorValue(index);
                         break;
-#if UNITY_2022_1_OR_NEWER
                     case ShaderPropertyType.Int:
                         target.intValue = shader.GetPropertyDefaultIntValue(index);
                         break;
-#endif
                     case ShaderPropertyType.Texture:
                         Thry.ThryEditor.Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(target);
                         var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(shader)) as ShaderImporter;
@@ -1300,7 +1269,6 @@ namespace Thry.ThryEditor
             shaderPart.MaterialProperty = MaterialEditor.GetMaterialProperty(owners.Cast<UnityEngine.Object>().ToArray(), prop.name);
             shaderPart.MaterialProperty.applyPropertyCallback = prop.applyPropertyCallback;
         }
-#endif
 
         void ToggleIsPreset()
         {
@@ -1366,13 +1334,11 @@ namespace Thry.ThryEditor
                 clip.SetCurve(path, rendererType, propertyname, new AnimationCurve(new Keyframe(0, MaterialProperty.floatValue)));
                 keyframeList.Add(ClipToKeyFrame(animationCurveType, clip, path, "", rendererType));
             }
-#if UNITY_2022_1_OR_NEWER
             else if (MaterialProperty.GetPropertyType() == ShaderPropertyType.Int)
             {
                 clip.SetCurve(path, rendererType, propertyname, new AnimationCurve(new Keyframe(0, MaterialProperty.intValue)));
                 keyframeList.Add(ClipToKeyFrame(animationCurveType, clip, path, "", rendererType));
             }
-#endif
             else if (MaterialProperty.GetPropertyType() == ShaderPropertyType.Color)
             {
                 clip.SetCurve(path, rendererType, propertyname + ".r", new AnimationCurve(new Keyframe(0, MaterialProperty.colorValue.r)));
@@ -1470,12 +1436,10 @@ namespace Thry.ThryEditor
             {
                 WriteKey("", MaterialProperty.floatValue);
             }
-#if UNITY_2022_1_OR_NEWER
             else if (type == ShaderPropertyType.Int)
             {
                 WriteKey("", MaterialProperty.intValue);
             }
-#endif
             else if (type == ShaderPropertyType.Color)
             {
                 Color c = MaterialProperty.colorValue;

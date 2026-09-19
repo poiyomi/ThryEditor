@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Linq;
 using Thry.ThryEditor.Helpers;
@@ -167,11 +166,9 @@ namespace Thry.ThryEditor.Drawers
             var channels=new[]{_current._input_r,_current._input_g,_current._input_b,_current._input_a};
             Undo.UndoRedoCallback refreshAfterUndo = RefreshRetainedPacker;
             fields.Track(root, RefreshRetainedPackerIfChanged);
-#if UNITY_2022_1_OR_NEWER
             // Init also serves the immediate inspector. Retained subscriptions
             // follow panel attachment so temporary removal can safely reattach.
             Undo.undoRedoEvent -= OnUndoRedo;
-#endif
             root.RegisterCallback<AttachToPanelEvent>(e =>
             {
                 Undo.undoRedoPerformed -= refreshAfterUndo;
@@ -304,9 +301,7 @@ namespace Thry.ThryEditor.Drawers
             heading.Add(advanced);
             root.RegisterCallback<DetachFromPanelEvent>(e=>{
                 Undo.undoRedoPerformed -= refreshAfterUndo;
-#if UNITY_2022_1_OR_NEWER
                 Undo.undoRedoEvent-=OnUndoRedo;
-#endif
             });
             return root;
         }
@@ -324,4 +319,3 @@ namespace Thry.ThryEditor.Drawers
         }
     }
 }
-#endif

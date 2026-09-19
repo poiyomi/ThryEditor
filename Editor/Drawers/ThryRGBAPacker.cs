@@ -242,7 +242,6 @@ namespace Thry.ThryEditor.Drawers
             _current._previousTexture = _prop.textureValue;
             _current._isInit = true;
 
-#if UNITY_2022_1_OR_NEWER
             Undo.undoRedoEvent += OnUndoRedo;
         }
 
@@ -254,7 +253,6 @@ namespace Thry.ThryEditor.Drawers
                 _current._overwriteShowInline = 2;
                 Undo.undoRedoEvent -= OnUndoRedo;
             }
-#endif
         }
 
         void Save()

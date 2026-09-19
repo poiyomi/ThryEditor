@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.IO;
 using Thry.ThryEditor.Helpers;
@@ -63,4 +62,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

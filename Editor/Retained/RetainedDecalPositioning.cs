@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Linq;
 using UnityEditor;
@@ -107,7 +106,6 @@ namespace Thry.ThryEditor
         {
             var button = new Button(action); button.AddToClassList("thry-positioning-button"); button.AddToClassList("thry-action-button");
             var icon = new VisualElement { pickingMode = PickingMode.Ignore }; icon.AddToClassList("thry-positioning-icon"); button.Add(icon);
-#if UNITY_2022_1_OR_NEWER
             icon.generateVisualContent += context =>
             {
                 var p = context.painter2D; p.strokeColor = icon.resolvedStyle.color; p.lineWidth = 1.5f;
@@ -124,9 +122,7 @@ namespace Thry.ThryEditor
                 }
                 p.Stroke();
             };
-#endif
             button.Add(new Label(text) { pickingMode = PickingMode.Ignore }); return button;
         }
     }
 }
-#endif

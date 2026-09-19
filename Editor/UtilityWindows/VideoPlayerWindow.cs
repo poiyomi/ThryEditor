@@ -18,7 +18,6 @@ namespace Thry.ThryEditor
         private bool _isPrepared;
         private bool _hasError;
         private string _errorMessage;
-        private double _lastClickTime;
         private bool _isDraggingSeekbar;
         private float _dragSeekTime;
         private bool _isDraggingVolume;
@@ -147,9 +146,7 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if (rootVisualElement.childCount > 0) return;
-#endif
             EnsureStyles();
             Rect windowRect = new Rect(0, 0, position.width, position.height);
 

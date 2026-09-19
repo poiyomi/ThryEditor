@@ -13,8 +13,6 @@ namespace Thry.ThryEditor.Drawers
 	// Packs: x=startValue, y=endValue, z=startTime, w=endTime
 	public class Ramp4Drawer : MaterialPropertyDrawer
 	{
-		private Texture2D _previewTex;
-		private Vector4 _lastRamp;
 		private int _activeHandle = -1; // 0 = t0, 1 = t1, 2 = v0, 3 = v1
 		private bool _normalized; // Show normalized visualization for values outside 0-1
 		private bool _unclampedZ; // Allow z to exceed 0-1

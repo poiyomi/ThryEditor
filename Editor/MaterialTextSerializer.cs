@@ -160,10 +160,8 @@ namespace Thry.ThryEditor
                     var v4 = m.GetVector(name);
                     return new SerializedProp { n = name, t = "Vector", v = new[] { v4.x, v4.y, v4.z, v4.w } };
                 }
-                #if UNITY_2022_3_OR_NEWER
                 case UnityEngine.Rendering.ShaderPropertyType.Int:
                     return new SerializedProp { n = name, t = "Int", v = new[] { (float)m.GetInteger(name) } };
-                #endif
                 case UnityEngine.Rendering.ShaderPropertyType.Texture:
                 default:
                     return null;
@@ -282,11 +280,7 @@ namespace Thry.ThryEditor
                         if (p.v.Length >= 1) { target.SetFloat(p.n, p.v[0]); applied++; }
                         break;
                     case "Int":
-                        #if UNITY_2022_3_OR_NEWER
                         if (p.v.Length >= 1) { target.SetInteger(p.n, Mathf.RoundToInt(p.v[0])); applied++; }
-                        #else
-                        if (p.v.Length >= 1) { target.SetFloat(p.n, p.v[0]); applied++; }
-                        #endif
                         break;
                     case "Color":
                         if (p.v.Length >= 4) { target.SetColor(p.n, new Color(p.v[0], p.v[1], p.v[2], p.v[3])); applied++; }

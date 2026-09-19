@@ -1,9 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
-#if !UNITY_2022_1_OR_NEWER
-using UnityEditor.UIElements;
-#endif
 namespace Thry.ThryEditor.ShaderTranslations
 {
     public class PropertyModificationListItem : BindableElement

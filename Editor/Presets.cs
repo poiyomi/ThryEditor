@@ -8,9 +8,7 @@ using Thry.ThryEditor.Drawers;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
-#if UNITY_2021_3_OR_NEWER
 using UnityEngine.UIElements;
-#endif
 
 namespace Thry.ThryEditor
 {
@@ -842,7 +840,6 @@ namespace Thry.ThryEditor
             }
         }
 
-#if UNITY_2021_3_OR_NEWER
         internal static List<string> PreviewChanges(ShaderEditor editor, Material[] originals, IList<Material> presets, ShaderPart parent = null)
         {
             var changes = new List<string>();
@@ -892,7 +889,6 @@ namespace Thry.ThryEditor
             var asset = value as UnityEngine.Object;
             return asset != null ? asset.name : value == null ? RetainedText.Get("none", "None") : value.ToString();
         }
-#endif
 
         public static void ApplyFullList(ShaderEditor shaderEditor, Material[] originals, List<Material> presets, ShaderPart parent = null)
         {
@@ -1250,9 +1246,7 @@ namespace Thry.ThryEditor
             try { this.beforePreset = shaderEditor.Materials.Select(m => new Material(m)).ToArray(); }
             finally { ShaderOptimizer.RestoreApplyMaterialPropertyDrawers(); }
             mainStruct = new PresetStruct("");
-#if UNITY_2021_3_OR_NEWER
             InitializeBrowser(names, guids);
-#endif
             for (int i = 0; i < names.Count; i++)
             {
                 string[] path = names[i].Split('/');
@@ -1270,9 +1264,7 @@ namespace Thry.ThryEditor
             if (m == null) return;
             if (tickedPresets.Contains(m) && !on) tickedPresets.Remove(m);
             if (!tickedPresets.Contains(m) && on) tickedPresets.Add(m);
-#if UNITY_2021_3_OR_NEWER
             if (_retainedStaging) { UpdatePreview(); return; }
-#endif
             Presets.ApplyFullList(shaderEditor, beforePreset, tickedPresets, _parent);
             shaderEditor.Repaint();
         }
@@ -1281,9 +1273,7 @@ namespace Thry.ThryEditor
         bool _save;
         void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if(rootVisualElement.childCount>0)return;
-#endif
             if (mainStruct == null) { this.Close(); return; }
 
             GUILayout.BeginHorizontal();
@@ -1308,20 +1298,15 @@ namespace Thry.ThryEditor
         }
         private void OnDestroy()
         {
-#if UNITY_2021_3_OR_NEWER
             _browserWatch?.Pause();
-#endif
             if (!_save && shaderEditor != null
-#if UNITY_2021_3_OR_NEWER
                 && !_retainedStaging
-#endif
                 )
             {
                 Revert();
             }
             if(beforePreset!=null)foreach(var material in beforePreset)DestroyImmediate(material);
         }
-#if UNITY_2021_3_OR_NEWER
         bool _retainedStaging;
         VisualElement _preview;
         void ApplyStaged()
@@ -1345,7 +1330,6 @@ namespace Thry.ThryEditor
         {
             BuildPresetBrowser();
         }
-#endif
 
         void TopStructGUI()
         {

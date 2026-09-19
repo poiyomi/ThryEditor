@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -77,7 +76,6 @@ namespace Thry.ThryEditor
             var navigation = new VisualElement(); navigation.AddToClassList("thry-navigation");
             _search = new ToolbarSearchField { name = "thry-search", tooltip = "Filter properties and edit them here. Combine the type and changed filters, or type t:texture, is:changed, is:animated, or is:missing. Escape clears all filters." };
             _search.AddToClassList("thry-search");
-#if UNITY_2022_1_OR_NEWER
             var searchIcon = _search.Q(className: "unity-search-field-base__search-button");
             searchIcon.style.backgroundImage = StyleKeyword.None;
             searchIcon.generateVisualContent += context => {
@@ -87,7 +85,6 @@ namespace Thry.ThryEditor
                 painter.BeginPath(); painter.Arc(new Vector2(7,7),4.5f,0,360); painter.Stroke();
                 painter.BeginPath(); painter.MoveTo(new Vector2(10.3f,10.3f)); painter.LineTo(new Vector2(15,15)); painter.Stroke();
             };
-#endif
             _search.RegisterCallback<FocusInEvent>(evt => _search.AddToClassList("thry-search-focused"));
             _search.RegisterCallback<FocusOutEvent>(evt => _search.RemoveFromClassList("thry-search-focused"));
             _placeholder = new Label("Search...") { pickingMode = PickingMode.Ignore };
@@ -212,7 +209,6 @@ namespace Thry.ThryEditor
             collapse.Clear(); collapse.AddToClassList("thry-collapse-tool");
             var icon = new VisualElement { pickingMode = PickingMode.Ignore };
             icon.style.width = 18; icon.style.height = 18;
-#if UNITY_2022_1_OR_NEWER
             icon.generateVisualContent += context => {
                 var painter = context.painter2D;
                 painter.lineWidth = 2; painter.strokeColor = icon.resolvedStyle.color;
@@ -222,9 +218,6 @@ namespace Thry.ThryEditor
                     painter.LineTo(new Vector2(9, 3 + y)); painter.LineTo(new Vector2(14, 8 + y)); painter.Stroke();
                 }
             };
-#else
-            icon.Add(new Label("⌃") { pickingMode = PickingMode.Ignore });
-#endif
             collapse.Add(icon);
         }
 
@@ -245,7 +238,6 @@ namespace Thry.ThryEditor
             language.Clear(); language.AddToClassList("thry-language-tool");
             var icon = new VisualElement { pickingMode = PickingMode.Ignore };
             icon.style.width = 18; icon.style.height = 18;
-#if UNITY_2022_1_OR_NEWER
             icon.generateVisualContent += context => {
                 var painter = context.painter2D;
                 painter.lineWidth = 1.4f; painter.strokeColor = icon.resolvedStyle.color;
@@ -259,9 +251,6 @@ namespace Thry.ThryEditor
                 }
                 painter.Stroke();
             };
-#else
-            icon.Add(new Label("A") { pickingMode = PickingMode.Ignore });
-#endif
             language.Add(icon);
         }
 
@@ -650,4 +639,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

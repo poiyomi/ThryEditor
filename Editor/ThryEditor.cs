@@ -580,12 +580,7 @@ namespace Thry
                         groupStack.Peek().AddPart(NewProperty);
                     }
                     
-#if UNITY_2022_1_OR_NEWER // Unity 2019 needs to check if key exists before adding? (Information from pumkin did not check)
                     PropertyDictionary.TryAdd(props[i].name, NewProperty);
-#else
-                    if(!PropertyDictionary.ContainsKey(props[i].name))
-                        PropertyDictionary.Add(props[i].name, NewProperty);
-#endif
                 }
                 if (newPart != null)
                 {
@@ -695,9 +690,7 @@ namespace Thry
             _didRegisterCallbacks = true;
             s_editorsWithCallbacks.Add(this);
             //TODO: Handle these in Unity <2022.2
-            #if UNITY_2022_2_OR_NEWER
             Undo.undoRedoEvent += UndoRedoEvent;
-            #endif
         }
 
         private void UnregisterCallbacks()
@@ -706,13 +699,10 @@ namespace Thry
             _didRegisterCallbacks = false;
             s_editorsWithCallbacks.Remove(this);
             //TODO: Handle these in Unity <2022.2
-            #if UNITY_2022_2_OR_NEWER
             Undo.undoRedoEvent -= UndoRedoEvent;
-            #endif
         }
         
         //TODO: Handle these in Unity <2022.2
-        #if UNITY_2022_2_OR_NEWER
         private bool HasUndoTargets()
         {
             if (!_didRegisterCallbacks || _doReloadNextDraw || Editor == null || ShaderParts == null || Materials == null || Materials.Length == 0
@@ -750,7 +740,6 @@ namespace Thry
                 };   
             }
         }
-        #endif
 
         public override void OnClosed(Material material)
         {
@@ -780,13 +769,11 @@ namespace Thry
             s_editorCache.Clear();
         }
 
-        #if UNITY_2021_2_OR_NEWER
         public override void ValidateMaterial(Material material)
         {
             base.ValidateMaterial(material);
             WatchForMaterialReset(material, Undo.GetCurrentGroup());
         }
-        #endif
 
         private const string RESET_MATERIAL_UNDO_NAME = "Reset Material";
         // Unity has named the group by the tick after ValidateMaterial in some resets and later in others,
@@ -1057,9 +1044,7 @@ namespace Thry
         {
 
             IsDrawing = true;
-#if UNITY_2022_1_OR_NEWER
             if (!IsCrossEditor && !HasRetainedToolbar) EditorGUI.indentLevel -= 2;
-#endif
 
             DoVariantWarning();
             GUIManualReloadButton();
@@ -1078,9 +1063,7 @@ namespace Thry
             Presets.PresetEditorGUI(this);
             ShaderTranslator.SuggestedTranslationButtonGUI(this);
 
-#if UNITY_2022_1_OR_NEWER
             if (!IsCrossEditor && !HasRetainedToolbar) EditorGUI.indentLevel += 2;
-#endif
 
             GUILayout.Space(2);
             //PROPERTIES
@@ -1328,12 +1311,10 @@ namespace Thry
 
         private void DoVariantWarning()
         {
-#if UNITY_2022_1_OR_NEWER
             if(Materials[0].isVariant)
             {
                 EditorGUILayout.HelpBox("This material is a variant, which isn't supported by Poiyomi at this time.\nThe material cannot be locked or uploaded to VRChat. To continue using this material, clear the Parent box above.", MessageType.Warning);
             }
-#endif
         }
 
         private void PopupTools(Rect position)

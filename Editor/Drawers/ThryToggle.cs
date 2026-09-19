@@ -67,9 +67,7 @@ namespace Thry.ThryEditor.Drawers
         {
             return prop.GetPropertyType() == ShaderPropertyType.Float
                    || prop.GetPropertyType() == ShaderPropertyType.Range
-#if UNITY_2022_1_OR_NEWER
                    || prop.GetPropertyType() == ShaderPropertyType.Int;
-#endif
             ;
         }
 

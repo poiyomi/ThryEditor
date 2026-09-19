@@ -71,9 +71,7 @@ namespace Thry.ThryEditor
             _targets = _materialList.Where(t => t != null && t.shader != null && !t.shader.IsBroken() && !_incompatibleMaterials.Contains(t) && !_disabledMaterials.Contains(t)).ToList();
 
             DiscardShaderEditor();
-#if UNITY_2021_3_OR_NEWER
             CreateGUI();
-#endif
         }
 
         /// <summary>
@@ -109,10 +107,8 @@ namespace Thry.ThryEditor
 
         private void OnDisable()
         {
-#if UNITY_2021_3_OR_NEWER
             // Detach scheduled retained views before destroying their material editor.
             rootVisualElement.Clear();
-#endif
             DiscardShaderEditor();
         }
 
@@ -156,9 +152,7 @@ namespace Thry.ThryEditor
 
         private void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if (rootVisualElement.childCount > 0) return;
-#endif
             // Unlike the inspector's container, a plain window does not reset this between passes, and the
             // material list below is drawn before the shader editor gets a chance to clean up after itself.
             EditorGUI.showMixedValue = false;

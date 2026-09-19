@@ -599,7 +599,6 @@ namespace Thry.ThryEditor
             }
         }
 
-#if UNITY_2021_3_OR_NEWER
         private ShaderProperty _retainedProjectionSource;
         private Material[] _retainedProjectionOwners;
         private Shader[] _retainedProjectionShaders;
@@ -711,7 +710,6 @@ namespace Thry.ThryEditor
             if (declaration.Keyword != null) SetKeyword(declaration.Keyword);
         }
 
-#endif
         protected virtual void PreDraw() { }
 
         private void DrawAlignedProperty(Rect position, GUIContent label)

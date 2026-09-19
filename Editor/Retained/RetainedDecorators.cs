@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Linq;
 using System.Reflection;
@@ -166,7 +165,6 @@ namespace Thry.ThryEditor
                         };
                     }) { text="Bake Color Adjust", name="bake-color-adjust" };
                     button.AddToClassList("thry-action-button");
-#if UNITY_2022_1_OR_NEWER
                     button.AddToClassList("thry-bake-color-button");
                     button.text = "";
                     var icon = new VisualElement { pickingMode = PickingMode.Ignore };
@@ -190,7 +188,6 @@ namespace Thry.ThryEditor
                         painter.BeginPath(); painter.Arc(new Vector2(10.6f, 5.3f), .8f, 0, 360); painter.Fill();
                     };
                     button.Add(icon); button.Add(new Label("Bake Color Adjust") { pickingMode = PickingMode.Ignore });
-#endif
                     Track(button,()=>button.SetEnabled(!pending && RetainedMaterialModel.HasValidTargets(Model.Editor) && Model.CanEdit(property)
                         && PresentationTargets(property).Any(m=>(bool)check.Invoke(null,new object[]{m}))));root.Add(button);
                 }
@@ -206,4 +203,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

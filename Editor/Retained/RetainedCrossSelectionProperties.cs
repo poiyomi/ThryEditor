@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,11 +58,7 @@ namespace Thry.ThryEditor
 
             private static Material Parent(Material material)
             {
-#if UNITY_2022_1_OR_NEWER
                 return material.parent;
-#else
-                return null;
-#endif
             }
         }
 
@@ -103,9 +98,7 @@ namespace Thry.ThryEditor
                 {
                     case ShaderPropertyType.Float:
                     case ShaderPropertyType.Range: _number = material.GetFloat(Id); break;
-#if UNITY_2021_2_OR_NEWER
                     case ShaderPropertyType.Int: _integer = material.GetInteger(Id); break;
-#endif
                     case ShaderPropertyType.Color: _vector = material.GetColor(Id); break;
                     case ShaderPropertyType.Vector: _vector = material.GetVector(Id); break;
                     case ShaderPropertyType.Texture:
@@ -219,9 +212,7 @@ namespace Thry.ThryEditor
                 if (_homogeneousProperties == null || valuesChanged || animation || _wasInAnimationMode != animation)
                 {
                     bool canCompare = _singleTargetValues != null && !forceRead && !animation && !_wasInAnimationMode;
-#if UNITY_2022_1_OR_NEWER
                     canCompare &= !targets[0].isVariant;
-#endif
                     if (canCompare) RefreshSingleTargetValues();
                     else
                     {
@@ -333,9 +324,7 @@ namespace Thry.ThryEditor
         {
             _singleTargetValues = null;
             if (_targets.Length != 1) return;
-#if UNITY_2022_1_OR_NEWER
             if (_targets[0].isVariant) return;
-#endif
             _singleTargetValues = new SingleTargetValue[_homogeneousProperties.Length];
             for (int i = 0; i < _singleTargetValues.Length; i++)
             {
@@ -391,4 +380,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

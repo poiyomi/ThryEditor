@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Globalization;
 using UnityEditor;
@@ -68,9 +67,7 @@ namespace Thry.ThryEditor
             {
                 case ShaderPropertyType.Float:
                 case ShaderPropertyType.Range: EditorGUIUtility.systemCopyBuffer = p.floatValue.ToString("R", Invariant); break;
-#if UNITY_2022_1_OR_NEWER
                 case ShaderPropertyType.Int: EditorGUIUtility.systemCopyBuffer = p.intValue.ToString(Invariant); break;
-#endif
                 case ShaderPropertyType.Color: EditorGUIUtility.systemCopyBuffer = Format("RGBA", p.colorValue); break;
                 case ShaderPropertyType.Vector: EditorGUIUtility.systemCopyBuffer = Format("Vector4", p.vectorValue); break;
                 case ShaderPropertyType.Texture:
@@ -121,12 +118,10 @@ namespace Thry.ThryEditor
                     apply = target => target.floatValue = target.GetPropertyType() == ShaderPropertyType.Range
                         ? Mathf.Clamp(number, target.rangeLimits.x, target.rangeLimits.y) : number;
                     break;
-#if UNITY_2022_1_OR_NEWER
                 case ShaderPropertyType.Int:
                     if (!int.TryParse(text, NumberStyles.Integer, Invariant, out int integer)) return false;
                     apply = target => target.intValue = integer;
                     break;
-#endif
                 case ShaderPropertyType.Color:
                     Color color;
                     if (Components(text, "RGBA", out var rgba) || Components(text, "Color", out rgba)) color = rgba;
@@ -153,4 +148,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

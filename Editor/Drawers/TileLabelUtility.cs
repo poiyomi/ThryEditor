@@ -255,9 +255,7 @@ namespace Thry.ThryEditor.Drawers
 
             void OnGUI()
             {
-#if UNITY_2021_3_OR_NEWER
                 if (rootVisualElement.childCount > 0) return;
-#endif
                 Event e = Event.current;
                 if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
                 {
@@ -297,7 +295,6 @@ namespace Thry.ThryEditor.Drawers
                 }
             }
 
-#if UNITY_2021_3_OR_NEWER
             public void CreateGUI()
             {
                 var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
@@ -314,7 +311,6 @@ namespace Thry.ThryEditor.Drawers
                 });
                 field.Focus();
             }
-#endif
             void OnLostFocus()
             {
                 Close();

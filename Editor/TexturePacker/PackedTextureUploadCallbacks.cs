@@ -1,4 +1,4 @@
-#if UNITY_2021_3_OR_NEWER && (VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3)
+#if (VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3)
 using System;
 using System.Collections.Generic;
 using System.Linq;

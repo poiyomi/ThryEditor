@@ -11,10 +11,8 @@ namespace Thry.ThryEditor
         public static Action<ShaderGroup, Rect> DrawHeaderToggle;
         public static Func<ShaderPart, bool> HidePart;
         public static Func<ShaderGroup, bool> IsExcluded;
-#if UNITY_2021_3_OR_NEWER
         public static Func<ShaderEditor, UnityEngine.UIElements.VisualElement> CreateToolbar;
         public static Action<ShaderGroup, bool> SetIncluded;
-#endif
 
         internal readonly struct HeaderTintScope : IDisposable
         {

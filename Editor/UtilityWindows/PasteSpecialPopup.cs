@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
-#if UNITY_2021_3_OR_NEWER
 using UnityEngine.UIElements;
-#endif
 
 namespace Thry.ThryEditor
 {
@@ -91,7 +89,6 @@ namespace Thry.ThryEditor
                     }
                 }
             }
-#if UNITY_2021_3_OR_NEWER
             public VisualElement CreateView()
             {
                 var root=new VisualElement();
@@ -113,7 +110,6 @@ namespace Thry.ThryEditor
                 }
                 return root;
             }
-#endif
 
             public void AddDisabledShaderPartsToListRecursive(ref List<ShaderPart> disabledParts)
             {
@@ -147,9 +143,7 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if(rootVisualElement.childCount>0)return;
-#endif
             if(partAdapter?.ShaderPart == null)
             {
                 Close();
@@ -179,7 +173,6 @@ namespace Thry.ThryEditor
             EditorGUILayout.EndHorizontal();
         }
         
-#if UNITY_2021_3_OR_NEWER
         public void CreateGUI()
         {
             rootVisualElement.Clear();RetainedWindow.Style(rootVisualElement);rootVisualElement.AddToClassList("thry-dialog");RetainedWindow.Shortcuts(rootVisualElement, Close);if(partAdapter==null)return;
@@ -187,7 +180,6 @@ namespace Thry.ThryEditor
             var actions=new VisualElement();actions.AddToClassList("thry-components");actions.AddToClassList("thry-dialog-actions");rootVisualElement.Add(actions);
             actions.Add(new Button(Close){text=RetainedText.Get("cancel","Cancel")});var paste=new Button(()=>{var disabled=new List<ShaderPart>();partAdapter.AddDisabledShaderPartsToListRecursive(ref disabled);OnPasteClicked?.Invoke(disabled);Close();}){text=RetainedText.Get("paste_selected","Paste Selected")};paste.AddToClassList("thry-primary-action");actions.Add(paste);
         }
-#endif
         static void DrawShaderProperty(MaterialProperty prop, GUILayoutOption propertyWidth)
         {
             using(new EditorGUI.DisabledScope(true))
@@ -200,11 +192,9 @@ namespace Thry.ThryEditor
                     case ShaderPropertyType.Vector:
                         EditorGUILayout.Vector4Field(GUIContent.none, prop.vectorValue, propertyWidth);
                         break;
-#if UNITY_2021_1_OR_NEWER
                     case ShaderPropertyType.Int:
                         EditorGUILayout.IntField(prop.intValue, propertyWidth);
                         break;
-#endif
                     case ShaderPropertyType.Range:
                         EditorGUILayout.Slider(GUIContent.none, prop.floatValue, prop.rangeLimits.x, prop.rangeLimits.y,
                             propertyWidth);

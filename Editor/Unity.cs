@@ -140,20 +140,16 @@ namespace Thry.ThryEditor
         {
             public DetourMaterialPropertyVariantIcon()
             {
-#if UNITY_2022_1_OR_NEWER
                 for (int i = 0; i < method_PropertyBeginOriginal.Length; i++)
                     Helper.TryDetourFromTo(method_PropertyBeginOriginal[i], method_PropertyBeginPatch[i]);
                 Helper.TryDetourFromTo(method_PropertyEnd, method_PropertyEndPatch);
-#endif
             }
 
             public void Dispose()
             {
-#if UNITY_2022_1_OR_NEWER
                 for (int i = 0; i < method_PropertyBeginOriginal.Length; i++)
                     Helper.RestoreDetour(method_PropertyBeginOriginal[i]);
                 Helper.RestoreDetour(method_PropertyEnd);
-#endif
             }
         }
 
@@ -194,42 +190,34 @@ namespace Thry.ThryEditor
         // MaterialProperty extension for setting floats / ints
         public static void SetNumber(this MaterialProperty prop, float value)
         {
-#if UNITY_2022_1_OR_NEWER
             if(prop.GetPropertyType() == ShaderPropertyType.Int)
                 prop.intValue = (int)value;
             else
-#endif
                 prop.floatValue = value;
         }
 
         public static float GetNumber(this MaterialProperty prop)
         {
-#if UNITY_2022_1_OR_NEWER
             if(prop.GetPropertyType() == ShaderPropertyType.Int)
                 return prop.intValue;
             else
-#endif  
                 return prop.floatValue;
         }
 
         public static void SetNumber(this Material mat, string name, float value)
         {
-#if UNITY_2022_1_OR_NEWER
             MaterialProperty prop = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { mat }, name);
             if(prop.GetPropertyType() == ShaderPropertyType.Int)
                 mat.SetInteger(name, (int)value);
             else
-#endif
                 mat.SetFloat(name, value);
         }
         
         public static float GetNumber(this Material mat, MaterialProperty prop)
         {
-#if UNITY_2022_1_OR_NEWER
             if(prop.GetPropertyType() == ShaderPropertyType.Int)
                 return mat.GetInt(prop.name);
             else
-#endif
                 return mat.GetFloat(prop.name);
         }
 
@@ -258,11 +246,7 @@ namespace Thry.ThryEditor
         /// On earlier versions of Unity, this method will always return <see langword="null"/>.</remarks>
         public static Material GetParent(this Material mat)
         {
-#if UNITY_2022_1_OR_NEWER
             return mat.parent;
-#else
-            return null;
-#endif
         }
 
         public static Material GetRoot(this Material mat)
@@ -308,32 +292,6 @@ namespace Thry.ThryEditor
         }
     }
 
-#if !UNITY_2019_3_OR_NEWER
-    public enum ShaderPropertyType
-    {
-        Color,
-        Vector,
-        Float,
-        Range,
-        Texture,
-        Int
-    }
-
-    [Flags]
-    public enum ShaderPropertyFlags
-    {
-        None = 0,
-        HideInInspector = 1,
-        PerRendererData = 2,
-        NoScaleOffset = 4,
-        Normal = 8,
-        HDR = 0x10,
-        Gamma = 0x20,
-        NonModifiableTextureData = 0x40,
-        MainTexture = 0x80,
-        MainColor = 0x100
-    }
-#endif
 
     public class UnityFixer
     {

@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -161,11 +160,7 @@ namespace Thry.ThryEditor
 
         private static Material Parent(Material material)
         {
-#if UNITY_2022_1_OR_NEWER
             return material.parent;
-#else
-            return null;
-#endif
         }
 
         private static bool SnapshotsMatch(Cache cache, ShaderEditor shader)
@@ -207,7 +202,6 @@ namespace Thry.ThryEditor
 
         private static bool UpdateParents(Material material, OwnerChecks checks, Dictionary<Material, int> versions)
         {
-#if UNITY_2022_1_OR_NEWER
             if (material.parent != null)
             {
                 var parents = new List<Material>(); var dirty = new List<int>();
@@ -219,7 +213,6 @@ namespace Thry.ThryEditor
                 if (checks.Parents.SequenceEqual(parents) && checks.ParentVersions.SequenceEqual(dirty)) return false;
                 checks.Parents = parents.ToArray(); checks.ParentVersions = dirty.ToArray(); return true;
             }
-#endif
             if (checks.Parents.Length == 0) return false;
             checks.Parents = Array.Empty<Material>(); checks.ParentVersions = Array.Empty<int>(); return true;
         }
@@ -291,9 +284,7 @@ namespace Thry.ThryEditor
                         case ShaderPropertyType.Texture: value.Texture = importer?.GetDefaultTexture(name) ?? defaults.GetTexture(name); break;
                         case ShaderPropertyType.Vector: value.Vector = defaults.GetVector(name); break;
                         case ShaderPropertyType.Color: value.Vector = defaults.GetColor(name); break;
-#if UNITY_2022_1_OR_NEWER
                         case ShaderPropertyType.Int: value.Integer = defaults.GetInteger(name); break;
-#endif
                         default: value.Number = defaults.GetFloat(name); break;
                     }
                     values.Add(name, value);
@@ -364,9 +355,7 @@ namespace Thry.ThryEditor
                     break;
                 case ShaderPropertyType.Color: if ((Vector4)(snapshot != null ? snapshot.colorValue : material.GetColor(name)) != value.Vector) return true; break;
                 case ShaderPropertyType.Vector: if ((snapshot != null ? snapshot.vectorValue : material.GetVector(name)) != value.Vector) return true; break;
-#if UNITY_2022_1_OR_NEWER
                 case ShaderPropertyType.Int: if ((snapshot != null ? snapshot.intValue : material.GetInteger(name)) != value.Integer) return true; break;
-#endif
                 default: if ((snapshot != null ? snapshot.floatValue : material.GetFloat(name)) != value.Number) return true; break;
             }
             return false;
@@ -412,4 +401,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

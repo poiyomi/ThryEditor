@@ -219,11 +219,9 @@ namespace Thry.ThryEditor
                 case ShaderPropertyType.Range:
                     target.SetFloat(propName, source.GetFloat(propName));
                     break;
-                #if UNITY_2022_3_OR_NEWER
                 case ShaderPropertyType.Int:
                     target.SetInt(propName, source.GetInt(propName));
                     break;
-                #endif
                 case ShaderPropertyType.Color:
                     target.SetColor(propName, source.GetColor(propName));
                     break;

@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using Thry.ThryEditor.Helpers;
 using System.Collections.Generic;
@@ -35,4 +34,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

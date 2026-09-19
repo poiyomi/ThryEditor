@@ -87,9 +87,7 @@ namespace Thry.ThryEditor
         //------------------Main GUI
         void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if(rootVisualElement.childCount > 0)return;
-#endif
             if (!_is_init || moduleSettings==null) InitVariables();
             GUILayout.Label("ThryEditor v" + Config.Instance.Version);
 

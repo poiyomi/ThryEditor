@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -182,10 +181,8 @@ namespace Thry.ThryEditor.TexturePacker
 
         static void AssertWritable(Material material, IEnumerable<string> slots)
         {
-#if UNITY_2022_1_OR_NEWER
             if (slots.Any(material.IsPropertyLockedByAncestor))
                 throw new InvalidOperationException("Upload stopped: a pending texture on material '" + material.name + "' is locked by its parent material.");
-#endif
             string path = AssetDatabase.GetAssetPath(material);
             if (string.IsNullOrEmpty(path)) return; // Temporary materials produced by the avatar build pipeline.
             if (!path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) || AssetDatabase.IsSubAsset(material)
@@ -253,4 +250,3 @@ namespace Thry.ThryEditor.TexturePacker
         }
     }
 }
-#endif

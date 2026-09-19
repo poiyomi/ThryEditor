@@ -1,8 +1,6 @@
 using UnityEditor;
 using UnityEngine;
-#if UNITY_2021_3_OR_NEWER
 using UnityEngine.UIElements;
-#endif
 
 namespace Thry.ThryEditor
 {
@@ -26,9 +24,7 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if(rootVisualElement.childCount>0)return;
-#endif
             if(ShaderPart == null)
             {
                 Close();
@@ -67,7 +63,6 @@ namespace Thry.ThryEditor
             ShaderPart.Note = TextFieldContent;
             Close();
         }
-#if UNITY_2021_3_OR_NEWER
         public void CreateGUI()
         {
             minSize=new Vector2(320,150);rootVisualElement.Clear();RetainedWindow.Style(rootVisualElement);rootVisualElement.AddToClassList("thry-dialog");
@@ -78,6 +73,5 @@ namespace Thry.ThryEditor
             RetainedWindow.Shortcuts(rootVisualElement, Close, () => UpdateNoteAndClose(false), true);
             text.schedule.Execute(text.Focus);
         }
-#endif
     }
 }

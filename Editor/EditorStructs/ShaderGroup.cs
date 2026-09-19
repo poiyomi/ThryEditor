@@ -162,22 +162,8 @@ namespace Thry.ThryEditor
                 {
                     if (AnimationMode.InAnimationMode())
                     {
-#if UNITY_2020_1_OR_NEWER
                         // So we do this instead
                         _isExpanded = value;
-#else
-                        // This fails when unselecting the object in hirearchy
-                        // Then reselecting it
-                        // Don't know why
-                        // It seems AnimationMode is not working properly in Unity 2022
-                        // It worked fine in Unity 2019
-                        
-                        AnimationMode.StopAnimationMode();
-                        this.MaterialProperty.SetNumber(value ? 1 : 0);
-                        Undo.SetCurrentGroupName((value ? "Expand" : "Collapse") + $" {Content.text} of {ShaderEditor.Active.TargetName}");
-                        RaisePropertyValueChanged();
-                        AnimationMode.StartAnimationMode();
-#endif
                     }
                     else
                     {
@@ -413,6 +399,54 @@ namespace Thry.ThryEditor
             IEnumerable<Material> linked_materials = MaterialLinker.GetLinked(MaterialProperty);
             if (linked_materials != null)
                 this.CopyTo(linked_materials.ToArray());
+        }
+
+        protected void DrawMenuIcon(Rect border, Event e)
+        {
+            Rect buttonRect = new Rect(border);
+            buttonRect.x = border.x + border.width - 18;
+            buttonRect.y = border.y + (InspectorTheme.SectionHeight - 16) / 2;
+            buttonRect.width = 16;
+            buttonRect.height = 16;
+
+            if (GUILib.Button(buttonRect, Icons.menu))
+            {
+                ShaderEditor.Input.Use();
+                ShowContextMenu(buttonRect);
+            }
+        }
+
+        protected void ShowContextMenu(Rect position)
+        {
+            ShaderGroup section = this;
+            Material[] materials = MyShaderUI.Materials;
+
+            var menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Reset"), false, delegate()
+            {
+                section.ResetSection(materials);
+            });
+            menu.DropDown(position);
+        }
+
+        private void ResetSection(Material[] materials)
+        {
+            int undoGroup = Undo.GetCurrentGroup();
+            var defaults = new Material(materials[0].shader);
+            try
+            {
+                CopyFrom(defaults, true);
+                var linkedMaterials = MaterialLinker.GetLinked(MaterialProperty);
+                if (linkedMaterials != null)
+                    foreach (Material material in linkedMaterials)
+                        CopyTo(material, true);
+                Undo.SetCurrentGroupName($"Reset {Content.text}");
+            }
+            finally
+            {
+                Object.DestroyImmediate(defaults);
+                Undo.CollapseUndoOperations(undoGroup);
+            }
         }
 
         protected void FoldoutArrow(Rect rect, Event e)

@@ -3,10 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Net;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
@@ -135,9 +132,7 @@ namespace Thry.ThryEditor
                 data.action = action;
                 data.arguments = args;
                 if (args == null || args.Length == 0 || args[0] == null)
-                    data.arguments = new object[] { "" };
-                else
-                    data.arguments = args;
+                    data.arguments = new object[] { action is Action<string> ? (object)"" : null };
                 queue.Add(data);
             }
 
@@ -210,17 +205,8 @@ namespace Thry.ThryEditor
             });
         }
 
-        private static void SetCertificate()
-        {
-            ServicePointManager.ServerCertificateValidationCallback =
-        delegate (object s, X509Certificate certificate,
-                 X509Chain chain, SslPolicyErrors sslPolicyErrors)
-        { return true; };
-        }
-
         private static string DownloadAsString(string url)
         {
-            SetCertificate();
             string contents = null;
             try
             {
@@ -235,7 +221,6 @@ namespace Thry.ThryEditor
 
         private static void DownloadAsStringASync(string url, Action<object, DownloadStringCompletedEventArgs> callback)
         {
-            SetCertificate();
             using (var wc = new System.Net.WebClient())
             {
                 wc.Headers["User-Agent"] = "Mozilla/4.0 (Compatible; Windows NT 5.1; MSIE 6.0)";
@@ -244,35 +229,14 @@ namespace Thry.ThryEditor
             }
         }
 
-        private static void DownloadAsFileASync(string url, string path, Action<object, AsyncCompletedEventArgs> callback)
-        {
-            SetCertificate();
-            using (var wc = new System.Net.WebClient())
-            {
-                wc.DownloadFileCompleted += new AsyncCompletedEventHandler(callback);
-                wc.DownloadFileAsync(new Uri(url), path);
-            }
-        }
-
         private static void DownloadAsFile(string url, string path)
         {
-            SetCertificate();
             using (var wc = new System.Net.WebClient())
                 wc.DownloadFile(url, path);
         }
 
-        private static byte[] DownloadAsBytes(string url)
-        {
-            SetCertificate();
-            byte[] contents = null;
-            using (var wc = new System.Net.WebClient())
-                contents = wc.DownloadData(url);
-            return contents;
-        }
-
         private static void DownloadAsBytesASync(string url, Action<object, DownloadDataCompletedEventArgs> callback)
         {
-            SetCertificate();
             using (var wc = new System.Net.WebClient())
             {
                 wc.DownloadDataCompleted += new DownloadDataCompletedEventHandler(callback);

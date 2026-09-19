@@ -10,7 +10,6 @@ namespace Thry.ThryEditor.ShaderTranslations
     [CustomEditor(typeof(ShaderTranslator))]
     public class ShaderTranslatorEditor : Editor
     {
-#if UNITY_2022_1_OR_NEWER
         List<string> shaderNames;
         public List<string> sourceShaderPropertyNames;
         public List<string> targetShaderPropertyNames;
@@ -120,6 +119,5 @@ namespace Thry.ThryEditor.ShaderTranslations
 
             sectionsList.Rebuild();
         }
-#endif
     }
 }

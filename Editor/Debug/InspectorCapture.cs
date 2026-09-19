@@ -1,6 +1,5 @@
 // InspectorCapture.cs from https://gist.github.com/markeahogan/69fc4d9722eadc20882c9aeda261fc56
 
-#if UNITY_2019_1_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -44,11 +43,7 @@ namespace Thry.ThryEditor
             var finalPath = $"{saveDirectory}/{filename}";
             if(Directory.Exists(saveDirectory))
             {
-                #if UNITY_2021_1_OR_NEWER
                 await File.WriteAllBytesAsync(finalPath, bytes);
-                #else
-                File.WriteAllBytes(finalPath, bytes);
-                #endif
                 Debug.Log($"Saved screenshot to {finalPath}");
             }
             else
@@ -182,4 +177,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

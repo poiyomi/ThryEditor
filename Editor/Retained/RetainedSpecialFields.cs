@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Linq;
 using UnityEditor;
@@ -12,9 +11,7 @@ namespace Thry.ThryEditor
     {
         private static int ReadBitValue(Material material, ShaderProperty property)
         {
-#if UNITY_2022_1_OR_NEWER
             if (property.MaterialProperty.type == MaterialProperty.PropType.Int) return material.GetInteger(property.MaterialProperty.name);
-#endif
             return (int)material.GetFloat(property.MaterialProperty.name);
         }
         partial void SpecialFields(VisualElement parent, ShaderProperty property, DrawerAttribute[] attributes, ref bool handled)
@@ -407,4 +404,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

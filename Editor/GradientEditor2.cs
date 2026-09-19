@@ -24,7 +24,6 @@ namespace Thry.ThryEditor
         private int _outputDirection;
         private Func<bool> _canApply;
 
-#if UNITY_2021_3_OR_NEWER
         internal static GradientEditor2 OpenTexture(Gradient gradient, TextureData settings, bool fixedOutput,
             Action<Gradient, TextureData, int> apply, Func<bool> canApply, int direction = 0)
         {
@@ -41,7 +40,6 @@ namespace Thry.ThryEditor
             window.ShowUtility(); window.CreateGUI();
             return window;
         }
-#endif
 
         public static void Open(Gradient gradient, Action<Gradient, Texture2D> onGradientChanged, bool textureVertical, bool allowSizeSelection, Vector2Int minTextureSize, Vector2Int maxTextureSize)
         {
@@ -60,9 +58,7 @@ namespace Thry.ThryEditor
             float height = 400;
             window.position = new Rect(Screen.width / 2 - width / 2, Screen.height / 2 - height / 2, width, height);
             window.Show();
-#if UNITY_2021_3_OR_NEWER
             window.CreateGUI();
-#endif
         }
 
         static MethodInfo s_gradientEditorGUIMethodInfo = null;
@@ -107,11 +103,7 @@ namespace Thry.ThryEditor
             Type gradientEditorType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.GradientEditor");
             var gradientEditorInit = gradientEditorType.GetMethod("Init");
 
-#if UNITY_2020_1_OR_NEWER
             gradientEditorInit.Invoke(gradientEditor, new object[] { gradient, 0, true, ColorSpace.Linear });
-#else
-            gradientEditorInit.Invoke(gradientEditor, new object[] { gradient, 0, true });
-#endif
         }
 
         public static object GetGradientLibary(Action<int, object> presetSelectedCallback)
@@ -140,9 +132,7 @@ namespace Thry.ThryEditor
 
         private void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if (rootVisualElement.childCount > 0) return;
-#endif
             if(_gradientEditor == null) _gradientEditor = GetGradientEditor(_gradient);
             if(_gradientLibary == null) _gradientLibary = GetGradientLibary(PresetHasBeenSelected);
 
@@ -183,11 +173,9 @@ namespace Thry.ThryEditor
 
         private void OnDestroy()
         {
-#if UNITY_2021_3_OR_NEWER
             // The retained dialog stages edits until Apply; Cancel, Escape and the
             // window close control must not manufacture a texture or change a material.
             if (_retainedWasBuilt) return;
-#endif
             Apply();
         }
 

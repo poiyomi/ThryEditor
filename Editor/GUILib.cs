@@ -1067,13 +1067,11 @@ namespace Thry.ThryEditor
         public static Rect GetRect(int height)
         {
             Rect r = EditorGUILayout.GetControlRect(false, height);
-#if UNITY_2022_1_OR_NEWER
             if (ShaderEditor.Active == null || (!ShaderEditor.Active.IsCrossEditor && !ShaderEditor.Active.HasRetainedToolbar))
             {
                 r.x -= 30;
                 r.width += 30;
             }
-#endif
             return r;
         }
 

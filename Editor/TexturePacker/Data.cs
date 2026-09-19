@@ -187,18 +187,7 @@ namespace Thry.ThryEditor.TexturePacker
 
         public override int GetHashCode()
         {
-#if UNITY_2021_2_OR_NEWER
             return HashCode.Combine(Brightness, Hue, Saturation, Rotation, Scale, Offset);
-#else
-            int hash = 17;
-            hash = hash * 23 + Brightness.GetHashCode();
-            hash = hash * 23 + Hue.GetHashCode();
-            hash = hash * 23 + Saturation.GetHashCode();
-            hash = hash * 23 + Rotation.GetHashCode();
-            hash = hash * 23 + Scale.GetHashCode();
-            hash = hash * 23 + Offset.GetHashCode();
-            return hash;
-#endif
         }
     }
 
@@ -487,27 +476,5 @@ namespace Thry.ThryEditor.TexturePacker
             RemappingMode = remapMode;
             Remapping = remap == default ? new Vector4(0, 1, 0, 1) : remap;
         }
-    }
-
-    struct ConnectionBezierPoints
-    {
-        public Vector3 Start;
-        public Vector3 End;
-        public Vector3 StartTangent;
-        public Vector3 EndTangent;
-        public ConnectionBezierPoints(Connection c, PackerSource[] sources, Vector2[] positionsOut)
-        {
-            Start = sources[c.FromTextureIndex].ChannelPositions[(int)c.FromChannel];
-            End = positionsOut[(int)c.ToChannel];
-            StartTangent = Start + Vector3.right * 50;
-            EndTangent = End + Vector3.left * 50;
-        }
-    }
-
-    struct InteractionWithConnection
-    {
-        public int ListIndex;
-        public Connection Data;
-        public float DistanceX;
     }
 }

@@ -17,9 +17,7 @@ namespace Thry.ThryEditor
         {
             if (
                 (p.GetPropertyType() == ShaderPropertyType.Float && p.floatValue.ToString() == value) ||
-#if UNITY_2022_1_OR_NEWER
                 (p.GetPropertyType() == ShaderPropertyType.Int && p.intValue.ToString() == value) ||
-#endif
                 (p.GetPropertyType() == ShaderPropertyType.Range && p.floatValue.ToString() == value) ||
                 (p.GetPropertyType() == ShaderPropertyType.Color && p.colorValue.ToString() == value) ||
                 (p.GetPropertyType() == ShaderPropertyType.Vector && p.vectorValue.ToString() == value) ||

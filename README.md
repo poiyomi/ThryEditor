@@ -16,7 +16,7 @@ All the code retained in this repository appears in Poiyomi Shaders v10.0 and ne
 >
 > *This method may not work with VCC versions, as VCC will overwrite this folder on project launch.*
 >
-> Due to major code changes, this repository does not support Unity 2019!
+> Requires Unity 2022.3 or newer.
 
 More detailed information of the code here in the Poiyomi Docs: https://www.poiyomi.com/thryeditor/
 

@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using UnityEditor;
 using UnityEngine;
@@ -122,4 +121,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

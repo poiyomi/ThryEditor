@@ -1,8 +1,5 @@
-using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 namespace Thry.ThryEditor
 {
@@ -93,39 +90,5 @@ namespace Thry.ThryEditor
 			EditorGUILayout.EndVertical();
 		}
 
-		private void DrawMenuIcon(Rect border, Event e)
-		{
-			Rect buttonRect = new Rect(border);
-			buttonRect.x = border.x + border.width - 18;
-			buttonRect.y = border.y + (HEADER_HEIGHT - 16) / 2;
-			buttonRect.width = 16;
-			buttonRect.height = 16;
-
-			if (GUILib.Button(buttonRect, Icons.menu))
-			{
-				ShaderEditor.Input.Use();
-				ShowContextMenu(buttonRect);
-			}
-		}
-
-		private void ShowContextMenu(Rect position)
-		{
-			ShaderSubSection section = this;
-			Material[] materials = ShaderEditor.Active.Materials;
-			
-			var menu = new GenericMenu();
-			menu.AddItem(new GUIContent("Reset"), false, delegate()
-			{
-				int undoGroup = Undo.GetCurrentGroup();
-				section.CopyFrom(new Material(materials[0].shader), true);
-				IEnumerable<Material> linked_materials = MaterialLinker.GetLinked(section.MaterialProperty);
-				if (linked_materials != null)
-					foreach (Material m in linked_materials)
-						section.CopyTo(m, true);
-				Undo.SetCurrentGroupName($"Reset {section.Content.text}");
-				Undo.CollapseUndoOperations(undoGroup);
-			});
-			menu.DropDown(position);
-		}
 	}
 }

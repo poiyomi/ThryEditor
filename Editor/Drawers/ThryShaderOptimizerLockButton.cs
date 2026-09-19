@@ -25,9 +25,7 @@ namespace Thry.ThryEditor.Drawers
             }
 
             bool disabled = false;
-#if UNITY_2022_1_OR_NEWER
             disabled |= ShaderEditor.Active.Materials[0].isVariant;
-#endif
             EditorGUI.BeginDisabledGroup(disabled); // for variant materials
 
             // Theoretically this shouldn't ever happen since locked in materials have different shaders.

@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -266,9 +265,7 @@ namespace Thry.ThryEditor
                     hasOwner = true;
                     if (!part.IsExemptFromLockedDisabling && owner.IsLocked()
                         && !(part.IsAnimatable && part is ShaderProperty property && !string.IsNullOrEmpty(property.GetOwnerAnimatedTag(owner)))) return false;
-#if UNITY_2022_1_OR_NEWER
                     if (owner.IsPropertyLockedByAncestor(part.MaterialProperty.name)) return false;
-#endif
                 }
                 if (!hasOwner) return false;
             }
@@ -438,4 +435,3 @@ namespace Thry.ThryEditor
         internal void Notify() { if (!HasValidTargets(Editor)) return; Refresh(true); Changed?.Invoke(); }
     }
 }
-#endif

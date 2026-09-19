@@ -74,6 +74,8 @@ namespace Thry.ThryEditor
                                 WebHelper.DownloadBytesASync(name, (byte[] b) =>
                                 {
                                     _isLoading = false;
+                                    if (b == null || b.Length == 0)
+                                        return;
                                     Texture2D tex = new Texture2D(1, 1, TextureFormat.ARGB32, false);
                                     ImageConversion.LoadImage(tex, b, false);
                                     s_loaded_textures[name] = tex;

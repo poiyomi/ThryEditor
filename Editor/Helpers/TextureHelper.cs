@@ -279,11 +279,9 @@ namespace Thry.ThryEditor.Helpers
         { TextureImporterFormat.PVRTC_RGB4 , 4 },
         { TextureImporterFormat.ARGB32 , 32 },
         { TextureImporterFormat.ARGB16 , 16 },
-        #if (UNITY_2020_1_OR_NEWER || UNITY_2019_4_23 || UNITY_2019_4_24 || UNITY_2019_4_25 || UNITY_2019_4_26 || UNITY_2019_4_27 || UNITY_2019_4_28 || UNITY_2019_4_29 || UNITY_2019_4_30 || UNITY_2019_4_31 || UNITY_2019_4_32 || UNITY_2019_4_33 || UNITY_2019_4_34 || UNITY_2019_4_35 || UNITY_2019_4_36 || UNITY_2019_4_37 || UNITY_2019_4_38 || UNITY_2019_4_39 || UNITY_2019_4_40)
         { TextureImporterFormat.RGBA64 , 64 },
         { TextureImporterFormat.RGB48 , 64 },
         { TextureImporterFormat.RG32 , 32 },
-        #endif
     };
 
             static Dictionary<RenderTextureFormat, int> RT_BPP = new Dictionary<RenderTextureFormat, int>()

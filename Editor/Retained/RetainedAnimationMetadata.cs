@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -36,9 +35,7 @@ namespace Thry.ThryEditor
                 for (var material = owner; material != null && seen.Add(material);)
                 {
                     Material parent = null;
-#if UNITY_2022_1_OR_NEWER
                     parent = material.parent;
-#endif
                     int dirty = EditorUtility.GetDirtyCount(material);
                     var shader = material.shader;
                     int shaderDirty = shader == null ? 0 : EditorUtility.GetDirtyCount(shader);
@@ -110,4 +107,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

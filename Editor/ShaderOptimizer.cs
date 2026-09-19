@@ -435,7 +435,6 @@ namespace Thry.ThryEditor
             public List<RenamingProperty> animatedPropsToRename;
             public List<RenamingProperty> animatedPropsToDuplicate;
             public string animPropertySuffix;
-            public bool shared;
             public List<string> stripTextures;
         }
 
@@ -814,11 +813,9 @@ namespace Thry.ThryEditor
                 case ShaderPropertyType.Range:
                     material.SetFloat(targetName, source.floatValue);
                     break;
-#if UNITY_2022_1_OR_NEWER
                 case ShaderPropertyType.Int:
                     material.SetInt(targetName, source.intValue);
                     break;
-#endif
                 case ShaderPropertyType.Texture:
                     material.SetTexture(targetName, source.textureValue);
                     material.SetTextureScale(targetName, new Vector2(source.textureScaleAndOffset.x, source.textureScaleAndOffset.y));
@@ -1309,12 +1306,10 @@ namespace Thry.ThryEditor
                         case ShaderPropertyType.Float:
                             AppendNumber(stringBuilder, m.GetFloat(propName));
                             break;
-#if UNITY_2022_1_OR_NEWER
                         case ShaderPropertyType.Int:
                             stringBuilder.Append(m.GetInt(propName)
                                 .ToString(CultureInfo.InvariantCulture));
                             break;
-#endif
                         case ShaderPropertyType.Texture:
                             Texture t = m.GetTexture(propName);
                             Vector4 texelSize = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1549,7 +1544,6 @@ namespace Thry.ThryEditor
                         propData.value = new Vector4(prop.floatValue, 0, 0, 0);
                         constantProps.Add(propData);
                         break;
-#if UNITY_2022_1_OR_NEWER
                     case ShaderPropertyType.Int:
                         propData = new PropertyData();
                         propData.type = PropertyType.Float;
@@ -1557,7 +1551,6 @@ namespace Thry.ThryEditor
                         propData.value = new Vector4(prop.intValue, 0, 0, 0);
                         constantProps.Add(propData);
                         break;
-#endif
                     case ShaderPropertyType.Texture:
                         PropertyData ST = new PropertyData();
                         ST.type = PropertyType.Vector;
@@ -1865,15 +1858,7 @@ namespace Thry.ThryEditor
 
         private static bool LockApplyShader(Material material)
         {
-            if (s_applyStructsLater.ContainsKey(material) == false) return false;
-            ApplyStruct applyStruct = s_applyStructsLater[material];
-            if (applyStruct.shared)
-            {
-                material.shader = applyStruct.material.shader;
-                return true;
-            }
-            //applyStructsLater.Remove(material);
-            return LockApplyShader(applyStruct);
+            return s_applyStructsLater.TryGetValue(material, out var applyStruct) && LockApplyShader(applyStruct);
         }
 
         public static void ApplyMaterialPropertyDrawersPatch(Material material) {}
@@ -1888,17 +1873,13 @@ namespace Thry.ThryEditor
         {
         // Unity 2022 Crashes on apple silicon when detouring ApplyMaterialPropertyDrawers
             Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersOriginalMethodInfo, ApplyMaterialPropertyDrawersPatchMethodInfo);
-#if UNITY_2022_1_OR_NEWER
             Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo, ApplyMaterialPropertyDrawersFromNativePatchMethodInfo);
-#endif
         }
 
         public static void RestoreApplyMaterialPropertyDrawers()
         {
             Helper.RestoreDetour(ApplyMaterialPropertyDrawersOriginalMethodInfo);
-#if UNITY_2022_1_OR_NEWER
             Helper.RestoreDetour(ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo);
-#endif
         }
 
         private static bool LockApplyShader(ApplyStruct applyStruct)

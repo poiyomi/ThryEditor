@@ -144,9 +144,7 @@ namespace Thry.ThryEditor
 
             if (rescan) Rescan();
             if (_needsViewRebuild) RebuildView();
-#if UNITY_2021_3_OR_NEWER
             RefreshRetainedList();
-#endif
 
             Repaint();
         }
@@ -297,9 +295,7 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if (rootVisualElement.childCount > 0) return;
-#endif
             float y = DrawToolbar(0);
             y = DrawSummary(y);
             y = DrawNotice(y);

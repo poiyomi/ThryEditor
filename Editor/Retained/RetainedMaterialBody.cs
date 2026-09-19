@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -234,14 +233,12 @@ namespace Thry.ThryEditor
                 foldIcon.image = group.RetainedExpanded ? _expandedCaret : _collapsedCaret;
                 if (!group.RetainedExpanded || built) return;
                 built = true;
-#if UNITY_2022_1_OR_NEWER
                 if (!_editing && RetainedPathing.CanBuild(group, Model))
                 {
                     children.Add(new RetainedPathing(Model, _fields, group,
                         (container, child) => AddPart(container, child, depth + 1)));
                     return;
                 }
-#endif
                 // Sections and subsections organize their parent header's preset; only
                 // headers own named preset collections (matching the legacy inspector).
                 if (group is ShaderHeader && Model.Shader.IsSectionedPresetEditor)
@@ -438,4 +435,3 @@ namespace Thry.ThryEditor
     }
 
 }
-#endif

@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -82,11 +81,9 @@ namespace Thry.ThryEditor
                     .Any(material => material != null && shader.Materials.Contains(material) && material.HasProperty(part.MaterialProperty.name) && material.IsLocked()
                         && !(part.IsAnimatable && part is ShaderProperty property && !string.IsNullOrEmpty(property.GetOwnerAnimatedTag(material)))))
                     return "Unlock the shader to edit this property.";
-#if UNITY_2022_1_OR_NEWER
                 foreach (var material in part.MaterialProperty.targets.OfType<Material>().Where(m => shader.Materials.Contains(m)))
                     if (material != null && material.HasProperty(part.MaterialProperty.name) && material.IsPropertyLockedByAncestor(part.MaterialProperty.name))
                         return "This property is locked by a parent material. Edit or unlock it on the parent material.";
-#endif
             }
             if (part.Options.condition_enable != null && !part.Options.condition_enable.Test())
                 return Describe(part.Options.condition_enable, shader);
@@ -132,4 +129,3 @@ namespace Thry.ThryEditor
         }
     }
 }
-#endif

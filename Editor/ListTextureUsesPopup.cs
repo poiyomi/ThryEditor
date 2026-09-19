@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-#if UNITY_2021_3_OR_NEWER
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
-#endif
 
 namespace Thry.ThryEditor
 {
@@ -22,16 +20,12 @@ namespace Thry.ThryEditor
             ListTextureUsesPopup window = GetWindow<ListTextureUsesPopup>("Texture Uses");
             window._texture = texture;
             window._textureUses = textureUses;
-#if UNITY_2021_3_OR_NEWER
             window.CreateGUI();
-#endif
         }
 
         private void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if (rootVisualElement.childCount > 0) return;
-#endif
             if (_texture == null)
             {
                 GUILayout.Label("No texture selected", EditorStyles.boldLabel);
@@ -93,7 +87,6 @@ namespace Thry.ThryEditor
             }
         }
 
-#if UNITY_2021_3_OR_NEWER
         public void CreateGUI()
         {
             var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
@@ -115,7 +108,6 @@ namespace Thry.ThryEditor
                 ShaderEditor.Active.SetSearchTerm(_selectedPropertyName); _selectedMaterial = null; _selectedPropertyName = null;
             }).Every(150);
         }
-#endif
         [MenuItem("Assets/Thry/Textures/Find Uses", true)]
         private static bool FindReferencesValidate()
         {

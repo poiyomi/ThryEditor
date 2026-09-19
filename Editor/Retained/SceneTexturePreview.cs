@@ -1,4 +1,3 @@
-#if UNITY_2021_3_OR_NEWER
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -192,4 +191,3 @@ namespace Thry.ThryEditor
         static float Number(string property) => _source.HasProperty(property) ? _source.GetFloat(property) : 0;
     }
 }
-#endif

@@ -141,13 +141,11 @@ namespace Thry.ThryEditor.Helpers
                 prev = p.floatValue;
                 p.floatValue = Parser.ParseFloat(value, p.floatValue);
             }
-#if UNITY_2022_1_OR_NEWER
             else if (p.GetPropertyType() == ShaderPropertyType.Int)
             {
                 prev = p.intValue;
                 p.intValue = (int)Parser.ParseFloat(value, p.intValue);
             }
-#endif
             else if (p.GetPropertyType() == ShaderPropertyType.Vector)
             {
                 prev = p.vectorValue;
@@ -173,12 +171,10 @@ namespace Thry.ThryEditor.Helpers
                     prev = target.floatValue;
                     target.floatValue = source.GetNumber(target);
                     break;
-#if UNITY_2022_1_OR_NEWER
                 case ShaderPropertyType.Int:
                     prev = target.intValue;
                     target.intValue = source.GetInt(target.name);
                     break;
-#endif
                 case ShaderPropertyType.Color:
                     prev = target.colorValue;
                     target.colorValue = source.GetColor(target.name);
@@ -209,12 +205,10 @@ namespace Thry.ThryEditor.Helpers
                     prev = target.floatValue;
                     target.floatValue = source.floatValue;
                     break;
-#if UNITY_2022_1_OR_NEWER
                 case ShaderPropertyType.Int:
                     prev = target.intValue;
                     target.intValue = source.intValue;
                     break;
-#endif
                 case ShaderPropertyType.Color:
                     prev = target.colorValue;
                     target.colorValue = source.colorValue;
@@ -252,10 +246,8 @@ namespace Thry.ThryEditor.Helpers
                 case ShaderPropertyType.Float:
                 case ShaderPropertyType.Range:
                     return property.floatValue;
-#if UNITY_2022_1_OR_NEWER
                 case ShaderPropertyType.Int:
                     return property.intValue;
-#endif
                 case ShaderPropertyType.Color:
                     return property.colorValue;
                 case ShaderPropertyType.Vector:

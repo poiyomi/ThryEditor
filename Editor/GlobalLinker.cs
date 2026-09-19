@@ -36,9 +36,7 @@ using System.Linq;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
-#if UNITY_2021_3_OR_NEWER
 using UnityEngine.UIElements;
-#endif
 using UnityEngine.Rendering;
 
 namespace Thry.ThryEditor
@@ -155,11 +153,7 @@ namespace Thry.ThryEditor
             if (dirty) Save();
             if (s_window != null)
             {
-#if UNITY_2021_3_OR_NEWER
                 s_window.CreateGUI();
-#else
-                s_window.Repaint();
-#endif
             }
         }
 
@@ -442,11 +436,7 @@ namespace Thry.ThryEditor
                         if (pv.floatValue != f) { pv.floatValue = f; changed = true; }
                         break;
                     case "Int":
-                        #if UNITY_2022_1_OR_NEWER
                         int i = material.GetInteger(pv.name);
-                        #else
-                        int i = (int)material.GetFloat(pv.name);
-                        #endif
                         if (pv.intValue != i) { pv.intValue = i; changed = true; }
                         break;
                     case "Color":
@@ -577,12 +567,10 @@ namespace Thry.ThryEditor
                     pv.type = "Float";
                     pv.floatValue = prop.floatValue;
                     break;
-                #if UNITY_2022_1_OR_NEWER
                 case ShaderPropertyType.Int:
                     pv.type = "Int";
                     pv.intValue = prop.intValue;
                     break;
-                #endif
                 case ShaderPropertyType.Color:
                     pv.type = "Color";
                     pv.colorValue = new float[]
@@ -640,11 +628,7 @@ namespace Thry.ThryEditor
                         material.SetFloat(pv.name, pv.floatValue);
                         break;
                     case "Int":
-                        #if UNITY_2022_1_OR_NEWER
                         material.SetInteger(pv.name, pv.intValue);
-                        #else
-                        material.SetFloat(pv.name, pv.intValue);
-                        #endif
                         break;
                     case "Color":
                         if (pv.colorValue != null && pv.colorValue.Length == 4) material.SetColor(pv.name, new Color(pv.colorValue[0], pv.colorValue[1], pv.colorValue[2], pv.colorValue[3]));
@@ -756,9 +740,7 @@ namespace Thry.ThryEditor
 
             void OnGUI()
             {
-#if UNITY_2021_3_OR_NEWER
                 if(rootVisualElement.childCount>0)return;
-#endif
                 if (_section == null)
                 {
                     Close();
@@ -870,7 +852,6 @@ namespace Thry.ThryEditor
                 if (GUILayout.Button("Done")) Close();
             }
 
-#if UNITY_2021_3_OR_NEWER
             public void CreateGUI()
             {
                 var root=rootVisualElement;root.Clear();RetainedWindow.Style(root);minSize=new Vector2(340,300);
@@ -904,7 +885,6 @@ namespace Thry.ThryEditor
                     Unsubscribe(_materials,_sectionPropertyName);CreateLink(_newLinkName,_sectionPropertyName,_section,_materials,_newIncludeTextures);_newLinkName="";CreateGUI();
                 }){text="Create link"});root.Add(new UnityEngine.UIElements.Button(Close){text="Done"});
             }
-#endif
             private void SelectLink(GlobalLink link)
             {
                 bool linkHasProperties = link.properties.Length > 0;

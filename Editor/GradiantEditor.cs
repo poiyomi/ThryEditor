@@ -32,9 +32,7 @@ namespace Thry.ThryEditor
             window._show_texture_options = show_texture_options;
             window.minSize = new Vector2(350, 350);
             window.Show();
-#if UNITY_2021_3_OR_NEWER
             window.CreateGUI();
-#endif
         }
 
         private ColorSpace _colorSpace = ColorSpace.Linear;
@@ -195,19 +193,13 @@ namespace Thry.ThryEditor
         void SetGradient(Gradient gradient)
         {
             _data.Gradient = gradient;
-#if UNITY_2020_1_OR_NEWER
             _gradient_editor_init.Invoke(_gradient_editor, new object[] { gradient, 0, true, ColorSpace.Linear });
-#else
-            _gradient_editor_init.Invoke(_gradient_editor, new object[] { gradient, 0, true });
-#endif
             UpdateGradientPreviewTexture();
         }
 
         void OnGUI()
         {
-#if UNITY_2021_3_OR_NEWER
             if (rootVisualElement.childCount > 0) return;
-#endif
             if (!_inited)
                 InitSomeStuff();
             float gradientEditorHeight = Mathf.Min(position.height, 146);
