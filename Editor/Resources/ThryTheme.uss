@@ -744,8 +744,15 @@
 .thry-texture-card-compact .thry-texture-channels #texture-channel-RGB { width: 30px; }
 .thry-texture-card .thry-texture-channels .thry-texture-gradient-action { width: 62px; min-width: 58px; flex-shrink: 0; margin-left: var(--thry-space-4); padding: 0 var(--thry-space-4); font-size: var(--thry-type-small); }
 
-/* Nested disabled containers must not multiply opacity until controls disappear. */
-.thry-material-controls .unity-disabled { opacity: 1; }
+/* Dim the entire disabled control, including custom drawers and texture thumbnails.
+   Apply the fade once so nested fields remain readable. */
+.thry-inspector .thry-material-controls .unity-disabled { opacity: 0.5; }
+.thry-inspector .thry-material-controls .unity-disabled .unity-disabled { opacity: 1; }
+/* Texture foldouts remain interactive even when their assignment is locked. */
+.thry-inspector .thry-material-controls .thry-readonly-texture-foldout { opacity: 0.5; }
+.thry-inspector .thry-material-controls .thry-readonly-texture-foldout .thry-texture-caption { color: #969696; }
+.thry-inspector.thry-light .thry-material-controls .thry-readonly-texture-foldout .thry-texture-caption { color: #696969; }
+.thry-inspector .thry-material-controls .unity-disabled .thry-readonly-texture-foldout { opacity: 1; }
 .thry-material-controls .unity-disabled .thry-property-label,
 .thry-material-controls .unity-disabled .thry-texture-caption,
 .thry-material-controls .unity-disabled .unity-base-field__label,
@@ -1613,6 +1620,9 @@
 .thry-inspector .thry-subsection-panel > .thry-section-header,
 .thry-inspector .thry-positioning-panel > .thry-section-header { background-color: var(--thry-subsection-background); border-color: var(--thry-subsection-background); }
 .thry-inspector .thry-section-title { color: var(--thry-caption-color); }
+/* Fade the whole locked header while preserving its navigation and control behavior. */
+.thry-inspector .thry-material-locked .thry-section-header { opacity: 0.5; }
+.thry-inspector .thry-material-locked .unity-disabled .thry-section-header { opacity: 1; }
 .thry-inspector .thry-section-header .thry-header-action { opacity: .8; }
 .thry-inspector .thry-section-header .thry-header-action:hover,
 .thry-inspector .thry-section-header .thry-header-action:focus,

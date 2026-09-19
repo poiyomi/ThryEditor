@@ -489,6 +489,7 @@ namespace Thry.ThryEditor
             var foldCaption = new Label(RetainedText.PropertyCaption(property)) { pickingMode = PickingMode.Ignore };
             foldCaption.AddToClassList("thry-texture-caption"); foldout.Add(foldCaption);
             TrackVisible(foldCaption, () => { foldCaption.text = RetainedText.PropertyCaption(property);
+            foldout.EnableInClassList("thry-readonly-texture-foldout", !Model.CanEdit(property));
             foldout.tooltip = RetainedMaterialBody.Hover(foldCaption.text, property.TooltipText, property.Note, "Expand or collapse texture settings"); });
             ChangedPropertyIndicator(row, foldCaption, property);
             var dimension = property.MaterialProperty.textureDimension;
@@ -581,6 +582,34 @@ namespace Thry.ThryEditor
                 foldIcon.image = property.showFoldoutProperties ? expandedCaret : collapsedCaret;
                 if (!property.showFoldoutProperties || built) return; built = true;
                 var card = new RetainedTextureCard(Model, property, objectField, array != null);
+                if (dimension == UnityEngine.Rendering.TextureDimension.Tex2D)
+                {
+                    var scenePreview = new Button(() =>
+                    {
+                        var owners = Model.Owners(property).ToArray();
+                        if (owners.Length == 1) SceneTexturePreview.Toggle(owners[0], property.MaterialProperty.name, RetainedText.PropertyCaption(property), card.PreviewChannel);
+                    }) { name = "scene-preview-" + property.MaterialProperty.name };
+                    scenePreview.style.width = 24; scenePreview.style.minWidth = 24; scenePreview.style.height = 22; scenePreview.style.minHeight = 22;
+                    scenePreview.style.marginLeft = scenePreview.style.marginRight = scenePreview.style.marginTop = scenePreview.style.marginBottom = 0;
+                    scenePreview.style.marginRight = 4;
+                    scenePreview.style.paddingLeft = scenePreview.style.paddingRight = scenePreview.style.paddingTop = scenePreview.style.paddingBottom = 0;
+                    scenePreview.style.alignItems = Align.Center; scenePreview.style.justifyContent = Justify.Center;
+                    scenePreview.style.flexShrink = 0;
+                    scenePreview.Add(new Image { image = EditorGUIUtility.IconContent("scenevis_visible_hover").image,
+                        scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore, style = { width = 16, height = 16, flexShrink = 0 } });
+                    card.Q(className: "thry-texture-channels").Insert(0, scenePreview);
+                    TrackVisible(scenePreview, () =>
+                    {
+                        var owners = Model.Owners(property).ToArray();
+                        bool active = owners.Length == 1 && SceneTexturePreview.Active && SceneTexturePreview.Source == owners[0]
+                            && SceneTexturePreview.Property == property.MaterialProperty.name;
+                        scenePreview.SetEnabled(owners.Length == 1 && SceneTexturePreview.CanPreview(owners[0], property.MaterialProperty.name)
+                            && !EditorApplication.isPlayingOrWillChangePlaymode);
+                        scenePreview.tooltip = owners.Length != 1 ? "Select one material to preview its texture in Scene View."
+                            : active ? "Exit Scene View texture preview" : "Preview this texture on meshes in Scene View";
+                        scenePreview.style.backgroundColor = active ? new Color(.08f, .4f, .5f) : StyleKeyword.Null;
+                    });
+                }
                 var gradient = attributes.FirstOrDefault(a => a.Name == "Gradient");
                 if (gradient != null) card.SetGradientAction(() => OpenGradientCreator(property, gradient, card));
                 details.Add(card); TrackVisible(card, card.Synchronize);

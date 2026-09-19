@@ -32,6 +32,7 @@ namespace Thry.ThryEditor
         internal void Synchronize()
         {
             Model.Shader.ActivateRetained();
+            EnableInClassList("thry-material-locked", Model.Shader.IsLockedMaterial);
             bool editing = Model.Shader.RootCategories.Any(g => SectionEditing.IsEditing(g));
             if (_revision != Model.Shader.RetainedRevision || editing != _editing)
             {

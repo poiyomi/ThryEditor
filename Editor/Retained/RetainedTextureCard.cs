@@ -202,7 +202,7 @@ namespace Thry.ThryEditor
                 _description.tooltip = _description.text;
                 UpdateResponsiveLayout();
             }
-            if (changed) UpdatePreview();
+            if (changed) SetChannel(_channel);
         }
 
         bool IsVisible()
@@ -267,7 +267,11 @@ namespace Thry.ThryEditor
         {
             if (!CanInspectChannels && channel != 0) return;
             _channel = channel; UpdatePreview();
+            foreach (var owner in _model.Owners(_property))
+                SceneTexturePreview.SetChannel(owner, _property.MaterialProperty.name, channel);
         }
+
+        internal int PreviewChannel => _channel;
 
         void UpdatePreview()
         {
@@ -279,7 +283,7 @@ namespace Thry.ThryEditor
             _sliceField.SetValueWithoutNotify(_slice + 1); _faceField.text = Faces[Mathf.Clamp(_slice, 0, 5)];
             if (slices) _sliceField.tooltip = string.Format(Text("textureSliceHint", "Preview slice 1–{0}. This does not change the material."), RetainedTexturePreview.SliceCount(_texture));
             int index = 0;
-            foreach (var button in _channels.Children().OfType<Button>().Where(b => b != _gradient))
+            foreach (var button in _channels.Children().OfType<Button>().Where(b => b.name != null && b.name.StartsWith("texture-channel-", StringComparison.Ordinal)))
             {
                 button.EnableInClassList("thry-selected", index == _channel);
                 button.SetEnabled(_texture != null && !_mixed && (index == 0 || CanInspectChannels)); index++;
