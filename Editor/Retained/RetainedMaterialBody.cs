@@ -82,6 +82,9 @@ namespace Thry.ThryEditor
                     _fields.Track(suffix, () => { suffix.SetValueWithoutNotify(shader.RenamedPropertySuffix); suffix.showMixedValue = shader.HasMixedCustomPropertySuffix; suffix.SetEnabled(Config.Instance.allowCustomLockingRenaming && !shader.IsLockedMaterial); });
                     suffix.RegisterValueChangedCallback(e =>
                     {
+                        // Unity's delayed TextField can commit its mixed-value dash on focus loss
+                        // without an edit. It is display text, not a suffix for every selected material.
+                        if (suffix.showMixedValue && e.newValue == "\u2014") return;
                         var clean = ShaderOptimizer.CleanStringForPropertyNames(e.newValue.Replace(" ", "_"));
                         Model.Mutate(RetainedText.Get(Model.Shader, "locked_property_suffix", "Locked property suffix"), m => m.SetOverrideTag("thry_rename_suffix", clean));
                         shader.Reload(); Model.Notify();
