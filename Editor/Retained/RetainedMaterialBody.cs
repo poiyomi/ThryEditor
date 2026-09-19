@@ -77,7 +77,7 @@ namespace Thry.ThryEditor
                     VisualElement suffixInput;
                     materialActions.Add(RetainedFields.Row(RetainedText.Get(Model.Shader, "locked_property_suffix", "Locked property suffix"), out suffixInput));
                     var suffix = new TextField { isDelayed = true, name = "thry-locked-property-suffix",
-                        tooltip = "Added to properties marked Renamed Animated when locking. Changing it changes the property names used by animations. Clear it to use the material name." };
+                        tooltip = "When you lock the material, this text is added to property names marked ‘Renamed Animated’. For example, entering Shirt changes _Color to _Color_Shirt. Animations must use the new names. Clear this field to use the material name." };
                     suffixInput.Add(suffix);
                     bool suffixEdited = false;
                     bool suffixCancelled = false;
@@ -112,16 +112,6 @@ namespace Thry.ThryEditor
                         var clean = ShaderOptimizer.CleanStringForPropertyNames((suffixEdited ? suffixDraft : e.newValue).Replace(" ", "_"));
                         Model.Mutate(RetainedText.Get(Model.Shader, "locked_property_suffix", "Locked property suffix"), m => m.SetOverrideTag("thry_rename_suffix", clean));
                         shader.Reload(); Model.Notify();
-                    });
-                    var suffixHelp = new HelpBox("", HelpBoxMessageType.Info) { name = "thry-locked-property-suffix-help" };
-                    materialActions.Add(suffixHelp);
-                    _fields.Track(suffixHelp, () =>
-                    {
-                        bool customRenaming = Config.Instance.allowCustomLockingRenaming;
-                        suffixHelp.text = !customRenaming
-                            ? "This suffix names properties marked Renamed Animated. Enable ‘Allow custom renaming for locking’ in Thry Settings under Editing & animation to edit it while unlocked."
-                            : "Unlock the material to edit this suffix.";
-                        suffixHelp.style.display = !customRenaming || shader.IsLockedMaterial ? DisplayStyle.Flex : DisplayStyle.None;
                     });
                 }
             }

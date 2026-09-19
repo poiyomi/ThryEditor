@@ -1777,7 +1777,14 @@
 /* Rendering mode is a toolbar action and uses the same surface as Presets.
    This follows the generic field rules so a popup's input fill cannot win. */
 .thry-inspector .thry-rendering-mode .unity-base-popup-field__input,
-.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input { background-color: var(--thry-action-background); border-color: var(--thry-action-background); margin: 0; }
+.thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input {
+    background-color: var(--thry-action-background);
+    border-color: var(--thry-action-background);
+    margin: 0;
+    height: var(--thry-section-height);
+    min-height: var(--thry-section-height);
+    max-height: var(--thry-section-height);
+}
 .thry-inspector .thry-rendering-mode .unity-base-popup-field__input:hover,
 .thry-inspector.thry-light .thry-rendering-mode .unity-base-popup-field__input:hover { background-color: var(--thry-action-hover-background); border-color: var(--thry-action-hover-background); }
 
