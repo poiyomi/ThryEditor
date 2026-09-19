@@ -79,13 +79,37 @@ namespace Thry.ThryEditor
                     var suffix = new TextField { isDelayed = true, name = "thry-locked-property-suffix",
                         tooltip = "Added to properties marked Renamed Animated when locking. Changing it changes the property names used by animations. Clear it to use the material name." };
                     suffixInput.Add(suffix);
-                    _fields.Track(suffix, () => { suffix.SetValueWithoutNotify(shader.RenamedPropertySuffix); suffix.showMixedValue = shader.HasMixedCustomPropertySuffix; suffix.SetEnabled(Config.Instance.allowCustomLockingRenaming && !shader.IsLockedMaterial); });
+                    bool suffixEdited = false;
+                    bool suffixCancelled = false;
+                    string suffixDraft = null;
+                    suffix.RegisterCallback<FocusInEvent>(e => { suffixEdited = false; suffixCancelled = false; suffixDraft = null; });
+                    suffix.RegisterCallback<UnityEngine.UIElements.InputEvent>(e =>
+                    {
+                        if (suffixCancelled) return;
+                        suffixEdited = true;
+                        suffixDraft = e.newData;
+                    });
+                    suffix.RegisterCallback<KeyDownEvent>(e =>
+                    {
+                        if (e.keyCode == KeyCode.Escape) suffixCancelled = true;
+                    }, TrickleDown.TrickleDown);
+                    _fields.Track(suffix, () =>
+                    {
+                        var focused = suffix.panel?.focusController?.focusedElement as VisualElement;
+                        // Periodic inspector refreshes must not replace an uncommitted text draft.
+                        if (focused != suffix && (focused == null || !suffix.Contains(focused)))
+                        {
+                            suffix.SetValueWithoutNotify(shader.RenamedPropertySuffix);
+                            suffix.showMixedValue = shader.HasMixedCustomPropertySuffix;
+                        }
+                        suffix.SetEnabled(Config.Instance.allowCustomLockingRenaming && !shader.IsLockedMaterial);
+                    });
                     suffix.RegisterValueChangedCallback(e =>
                     {
-                        // Unity's delayed TextField can commit its mixed-value dash on focus loss
-                        // without an edit. It is display text, not a suffix for every selected material.
-                        if (suffix.showMixedValue && e.newValue == "\u2014") return;
-                        var clean = ShaderOptimizer.CleanStringForPropertyNames(e.newValue.Replace(" ", "_"));
+                        // Unity can replace a delayed mixed field's text with its display placeholder
+                        // before committing. Use the actual input draft, including intentional dashes.
+                        if (suffixCancelled || (suffix.showMixedValue && !suffixEdited)) return;
+                        var clean = ShaderOptimizer.CleanStringForPropertyNames((suffixEdited ? suffixDraft : e.newValue).Replace(" ", "_"));
                         Model.Mutate(RetainedText.Get(Model.Shader, "locked_property_suffix", "Locked property suffix"), m => m.SetOverrideTag("thry_rename_suffix", clean));
                         shader.Reload(); Model.Notify();
                     });
