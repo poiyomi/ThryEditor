@@ -1,4 +1,4 @@
-# Unreleased
+# [2.74.2]
 ## Changes
 - Added **Include Textures** to Global Links. Disable it before adding other materials to keep their AO maps and other textures, tiling, offset and texture animation tags local while synchronizing the section's other settings. The option applies to the whole link; existing links remain enabled.
 - Changing the option supports undo/redo. Reenabling it copies textures from the inspected material. This is not an individual-property override system.
