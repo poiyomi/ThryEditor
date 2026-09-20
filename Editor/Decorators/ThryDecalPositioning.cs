@@ -48,6 +48,20 @@ namespace Thry.ThryEditor.Decorators
         public override void OnGUI(Rect position, MaterialProperty prop, string label, MaterialEditor editor)
         {
             position = new RectOffset(0, 0, 0, 3).Remove(EditorGUI.IndentedRect(position));
+            var bakePosition = position;
+            position.height = EditorGUIUtility.singleLineHeight + 3;
+            bakePosition.y += position.height + 3;
+            bakePosition.height = EditorGUIUtility.singleLineHeight + 3;
+            if (DecalBakeBridge.Available && _texturePropertyName.StartsWith("_DecalTexture", System.StringComparison.Ordinal))
+            {
+                using (new EditorGUI.DisabledScope(editor.targets.Length != 1))
+                    if (GUI.Button(bakePosition, new GUIContent("Bake to Main Texture", "Preview and bake this decal using the original image files.")))
+                    {
+                        DiscardSceneTool(_sceneTool != null && _sceneTool.GetMode() == DecalSceneTool.Mode.Raycast);
+                        var material = editor.target as Material;
+                        EditorApplication.delayCall += () => { if (material != null) DecalBakeBridge.Open(material, _texturePropertyName); };
+                    }
+            }
             bool isInScene = Selection.activeTransform != null && Selection.activeTransform.GetComponent<Renderer>() != null;
             if (isInScene)
             {
@@ -107,7 +121,7 @@ namespace Thry.ThryEditor.Decorators
         public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
         {
             ShaderProperty.RegisterDecorator(this);
-            return EditorGUIUtility.singleLineHeight + 6;
+            return (EditorGUIUtility.singleLineHeight + 6) * (DecalBakeBridge.Available && _texturePropertyName.StartsWith("_DecalTexture", System.StringComparison.Ordinal) ? 2 : 1);
         }
     }
 

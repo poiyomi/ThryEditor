@@ -98,6 +98,20 @@ namespace Thry.ThryEditor
                 }
             };
             Track(tools, update);
+            if (DecalBakeBridge.Available && args.Length == 6 && args[0].StartsWith("_DecalTexture", StringComparison.Ordinal))
+            {
+                var bake = new Button(() =>
+                {
+                    if (!RetainedMaterialModel.HasValidTargets(Model.Editor) || Model.Shader.Materials.Length != 1 || !Model.CanEdit(property)) return;
+                    stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast);
+                    var material = Model.Shader.Materials[0];
+                    EditorApplication.delayCall += () => { if (material != null) DecalBakeBridge.Open(material, args[0]); };
+                }) { text = "Bake to Main Texture", name = "decal-bake-" + args[0],
+                    tooltip = "Preview and bake this decal using the original image files." };
+                bake.AddToClassList("thry-action-button"); root.Add(bake);
+                Track(bake, () => bake.SetEnabled(RetainedMaterialModel.HasValidTargets(Model.Editor)
+                    && Model.Shader.Materials.Length == 1 && Model.CanEdit(property)));
+            }
             root.RegisterCallback<DetachFromPanelEvent>(e => { if (e.target == root) stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast); });
             root.RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == KeyCode.Escape && tool != null) { stop(true); Model.Notify(); update(); e.StopPropagation(); } });
         }
