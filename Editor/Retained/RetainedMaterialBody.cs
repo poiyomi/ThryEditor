@@ -160,7 +160,8 @@ namespace Thry.ThryEditor
                 ShaderProperty reference;
                 if(Model.Shader.PropertyDictionary.TryGetValue(id,out reference))
                 {
-                    var holder = new VisualElement(); holder.AddToClassList("thry-header-reference"); _fields.Toggle(holder,reference); header.Add(holder);
+                    var holder = new VisualElement(); holder.AddToClassList("thry-header-reference");
+                    _fields.Toggle(holder, reference); _fields.Context(holder, reference); header.Add(holder);
                 }
             }
             var titleArea = new VisualElement { tooltip = group.TooltipText }; titleArea.AddToClassList("thry-section-title-area"); header.Add(titleArea);

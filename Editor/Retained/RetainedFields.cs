@@ -645,7 +645,7 @@ namespace Thry.ThryEditor
             }
             Context(root, property);
         }
-        private void Context(VisualElement element, ShaderProperty property)
+        internal void Context(VisualElement element, ShaderProperty property)
         {
             element.RegisterCallback<PointerDownEvent>(e => {
                 if (e.button != 1) return;
