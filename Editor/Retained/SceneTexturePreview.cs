@@ -165,7 +165,8 @@ namespace Thry.ThryEditor
                     || (camera.cullingMask & (1 << renderer.gameObject.layer)) == 0
                     || SceneVisibilityManager.instance.IsHidden(renderer.gameObject)
                     || StageUtility.GetStageHandle(renderer.gameObject) != StageUtility.GetCurrentStageHandle()) continue;
-                var mesh = renderer is SkinnedMeshRenderer skin ? skin.sharedMesh : renderer.GetComponent<MeshFilter>()?.sharedMesh;
+                var filter = renderer.GetComponent<MeshFilter>();
+                var mesh = renderer is SkinnedMeshRenderer skin ? skin.sharedMesh : filter != null ? filter.sharedMesh : null;
                 if (mesh == null) continue;
                 var materials = renderer.sharedMaterials;
                 for (int slot = 0; slot < materials.Length; slot++)
