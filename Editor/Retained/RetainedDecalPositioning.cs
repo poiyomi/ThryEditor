@@ -105,9 +105,9 @@ namespace Thry.ThryEditor
                     if (!RetainedMaterialModel.HasValidTargets(Model.Editor) || Model.Shader.Materials.Length != 1 || !Model.CanEdit(property)) return;
                     stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast);
                     var material = Model.Shader.Materials[0];
-                    EditorApplication.delayCall += () => { if (material != null) DecalBakeBridge.Open(material, args[0]); };
+                    EditorApplication.delayCall += () => { if (material != null) DecalBakeBridge.Bake(material, args[0]); };
                 }) { text = "Bake to Main Texture", name = "decal-bake-" + args[0],
-                    tooltip = "Preview and bake this decal using the original image files." };
+                    tooltip = "Bake this decal into a new main texture and disable the decal. Uses the main image’s source resolution, which may reduce decal sharpness. Use Undo to restore it." };
                 bake.AddToClassList("thry-action-button"); root.Add(bake);
                 Track(bake, () => bake.SetEnabled(RetainedMaterialModel.HasValidTargets(Model.Editor)
                     && Model.Shader.Materials.Length == 1 && Model.CanEdit(property)));

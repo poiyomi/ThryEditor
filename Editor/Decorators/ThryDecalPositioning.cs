@@ -55,11 +55,11 @@ namespace Thry.ThryEditor.Decorators
             if (DecalBakeBridge.Available && _texturePropertyName.StartsWith("_DecalTexture", System.StringComparison.Ordinal))
             {
                 using (new EditorGUI.DisabledScope(editor.targets.Length != 1))
-                    if (GUI.Button(bakePosition, new GUIContent("Bake to Main Texture", "Preview and bake this decal using the original image files.")))
+                    if (GUI.Button(bakePosition, new GUIContent("Bake to Main Texture", "Bake this decal into a new main texture and disable the decal. Uses the main image’s source resolution, which may reduce decal sharpness. Use Undo to restore it.")))
                     {
                         DiscardSceneTool(_sceneTool != null && _sceneTool.GetMode() == DecalSceneTool.Mode.Raycast);
                         var material = editor.target as Material;
-                        EditorApplication.delayCall += () => { if (material != null) DecalBakeBridge.Open(material, _texturePropertyName); };
+                        EditorApplication.delayCall += () => { if (material != null) DecalBakeBridge.Bake(material, _texturePropertyName); };
                     }
             }
             bool isInScene = Selection.activeTransform != null && Selection.activeTransform.GetComponent<Renderer>() != null;

@@ -9,11 +9,11 @@ namespace Thry.ThryEditor
     internal static class DecalBakeBridge
     {
         static readonly Type Baker = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Poi.Tools.PoiDecalBaker")).FirstOrDefault(t => t != null);
-        static readonly MethodInfo OpenMethod = Baker?.GetMethod("Open");
-        internal static bool Available => OpenMethod != null;
-        internal static void Open(Material material, string textureProperty)
+        static readonly MethodInfo BakeMethod = Baker?.GetMethod("Bake");
+        internal static bool Available => BakeMethod != null;
+        internal static void Bake(Material material, string textureProperty)
         {
-            try { OpenMethod?.Invoke(null, new object[] { material, textureProperty }); }
+            try { BakeMethod?.Invoke(null, new object[] { material, textureProperty }); }
             catch (TargetInvocationException e) { Debug.LogException(e.InnerException ?? e); }
         }
     }
