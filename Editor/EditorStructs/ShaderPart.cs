@@ -925,10 +925,15 @@ namespace Thry.ThryEditor
 
         private void DrawPresetProperty()
         {
+            bool animationOnly = Presets.GetPropertyMode(MyShaderUI.Materials[0], this) == Presets.PropertyMode.AnimationOnly;
+            var content = animationOnly
+                ? new GUIContent("PA", "Preset: animation only. Keeps each material's value.")
+                : new GUIContent("P", "Is part of preset");
+            var style = animationOnly ? Styles.presetAnimationOnlyIndicatorStyle : Styles.presetIndicatorStyle;
             for (int i = 0; i < DrawingData.IconsPositioningCount; i++)
             {
-                Rect r = new Rect(3, DrawingData.IconsPositioningHeights[i], 8, 16);
-                GUI.Label(r, "P", Styles.presetIndicatorStyle);
+                Rect r = new Rect(1, DrawingData.IconsPositioningHeights[i], 12, 16);
+                GUI.Label(r, content, style);
             }
         }
 
@@ -961,7 +966,7 @@ namespace Thry.ThryEditor
                 _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => SetAnimated(!IsAnimated, false));
                 _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => SetAnimated(true, !IsRenaming));
             }
-            if (MyShaderUI.IsPresetEditor) _contextMenu.AddItem(new GUIContent("Is part of preset"), IsPreset, ToggleIsPreset);
+            AddPresetMenu(_contextMenu);
             if (MaterialProperty != null)
             {
                 _contextMenu.AddItem(new GUIContent("Copy Property Name"), false, () => EditorGUIUtility.systemCopyBuffer = MaterialProperty.name);
@@ -1002,7 +1007,7 @@ namespace Thry.ThryEditor
                     }
                     if (ShaderEditor.Active.IsPresetEditor)
                     {
-                        _contextMenu.AddItem(new GUIContent("Is part of preset"), IsPreset, ToggleIsPreset);
+                        AddPresetMenu(_contextMenu);
                         if (MaterialProperty != null) _contextMenu.AddSeparator("");
                     }
 
@@ -1272,12 +1277,27 @@ namespace Thry.ThryEditor
 
         void ToggleIsPreset()
         {
-            IsPreset = !IsPreset;
-            
-            // Presets.SetProperty writes a tag for whichever identifiers this part has. Gating on MaterialProperty
-            // meant parts identified by a string tag instead (Render Queue, VRC Fallback) flipped the checkmark
-            // without ever recording it on the preset material, so the choice was lost on the next reload.
-            Presets.SetProperty(MyShaderUI.Materials[0], this, IsPreset);
+            SetPresetMode(Presets.IsPreset(MyShaderUI.Materials[0], this)
+                ? Presets.PropertyMode.Excluded : Presets.PropertyMode.ValueAndAnimation);
+        }
+
+        internal void AddPresetMenu(GenericMenu menu)
+        {
+            if (!MyShaderUI.IsPresetEditor) return;
+            var mode = Presets.GetPropertyMode(MyShaderUI.Materials[0], this);
+            menu.AddItem(new GUIContent("Is part of preset"), mode != Presets.PropertyMode.Excluded, ToggleIsPreset);
+            if (!(this is ShaderProperty) || MaterialProperty == null || !IsAnimatable) return;
+            menu.AddItem(new GUIContent("Preset content/Value and animation"), mode == Presets.PropertyMode.ValueAndAnimation,
+                () => SetPresetMode(Presets.PropertyMode.ValueAndAnimation));
+            menu.AddItem(new GUIContent("Preset content/Animation only"), mode == Presets.PropertyMode.AnimationOnly,
+                () => SetPresetMode(Presets.PropertyMode.AnimationOnly));
+        }
+
+        void SetPresetMode(Presets.PropertyMode mode)
+        {
+            Undo.RecordObjects(MyShaderUI.Materials, "Change preset contents");
+            Presets.SetPropertyMode(MyShaderUI.Materials[0], this, mode);
+            IsPreset = mode != Presets.PropertyMode.Excluded;
             ShaderEditor.RepaintActive();
         }
 

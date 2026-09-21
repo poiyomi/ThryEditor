@@ -29,7 +29,13 @@ namespace Thry.ThryEditor
                 // with the preset contents, without relying on cached IsPreset.
                 // Keep the marker gutter on unmarked rows too, so toggling inclusion
                 // does not move labels, controls, or section titles.
-                indicator.style.visibility = Presets.IsPreset(Model.Shader.Materials[0], part)
+                var mode = Presets.GetPropertyMode(Model.Shader.Materials[0], part);
+                bool animationOnly = mode == Presets.PropertyMode.AnimationOnly;
+                indicator.text = animationOnly ? "PA" : "P";
+                indicator.EnableInClassList("thry-preset-animation-only", animationOnly);
+                indicator.tooltip = animationOnly
+                    ? "Preset: animation only. Keeps each material's value." : "Is part of preset";
+                indicator.style.visibility = mode != Presets.PropertyMode.Excluded
                     ? Visibility.Visible : Visibility.Hidden;
             });
         }

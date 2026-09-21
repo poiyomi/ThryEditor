@@ -390,6 +390,13 @@ namespace Thry.ThryEditor
         {
             if (shaderEditor.IsInAnimationMode) return;
 
+            var animationOnly = Presets.AnimationOnlyProperties(shaderEditor, preset);
+            if (animationOnly.Count > 0)
+            {
+                PropagatePresetProperties(shaderEditor, preset, parent, animationOnly);
+                return;
+            }
+
             if (!Presets.IsMaterialSectionedPreset(preset))
             {
                 foreach (ShaderPart part in shaderEditor.ShaderParts)
@@ -408,6 +415,58 @@ namespace Thry.ThryEditor
                 GlobalLink link = GetLinkForMaterial(self, group.MaterialProperty.name);
                 if (link != null) OnSectionChanged(group);
             }
+        }
+
+        // Animation-only entries must not broadcast the first material's values through a section link.
+        // Keep the link's stored values and update only the fields selected by this preset.
+        static void PropagatePresetProperties(ShaderEditor editor, Material preset, ShaderPart parent, HashSet<string> animationOnly)
+        {
+            var affected = new HashSet<ShaderProperty>();
+            Presets.CollectPresetProperties(editor, preset, parent, affected);
+            foreach (var group in Presets.PresetLinkGroups(editor, preset, parent, affected))
+            {
+                var self = (Material)group.MaterialProperty.targets[0];
+                var link = GetLinkForMaterial(self, group.MaterialProperty.name);
+                if (link == null) continue;
+                var names = new HashSet<string>(Presets.PropertiesInGroup(editor, preset, group, affected)
+                    .Where(p => p.MaterialProperty != null).Select(p => p.MaterialProperty.name));
+                var captured = new List<GlobalLinkPropertyValue>();
+                CaptureRecursive(captured, group);
+                var stored = link.properties.ToList();
+                var updates = new List<GlobalLinkPropertyValue>();
+                bool changed = false;
+                foreach (var value in captured)
+                {
+                    if (!names.Contains(value.name) || (!link.includeTextures && value.type == "Texture")) continue;
+                    int index = stored.FindIndex(p => p.name == value.name);
+                    if (animationOnly.Contains(value.name))
+                    {
+                        if (index < 0) continue;
+                        var previous = stored[index];
+                        changed |= !previous.hasAnimatedTag || previous.animatedTag != value.animatedTag;
+                        previous.hasAnimatedTag = value.hasAnimatedTag;
+                        previous.animatedTag = value.animatedTag;
+                        updates.Add(previous);
+                    }
+                    else
+                    {
+                        changed |= index < 0 || !IsSameProperty(stored[index], value);
+                        if (index < 0) stored.Add(value); else stored[index] = value;
+                        updates.Add(value);
+                    }
+                }
+                if (updates.Count == 0) continue;
+                if (changed) { link.properties = stored.ToArray(); Save(); }
+                var update = new GlobalLink { name = link.name, includeTextures = link.includeTextures, properties = updates.ToArray() };
+                string selfGuid = UnityHelper.GetGUID(self);
+                foreach (string guid in link.subscribedMaterialGuids)
+                {
+                    if (guid == selfGuid) continue;
+                    var target = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(guid));
+                    if (target != null) ApplyLinkPropertiesToMaterial(update, target, true, animationOnly);
+                }
+            }
+            RequestRepaint(false);
         }
 
         public static void ApplyAllLinksToMaterial(Material material)
@@ -429,6 +488,11 @@ namespace Thry.ThryEditor
             {
                 if (!link.includeTextures && pv.type == "Texture") continue;
                 if (!material.HasProperty(pv.name)) continue;
+                if (pv.hasAnimatedTag)
+                {
+                    string tag = ShaderOptimizer.GetAnimatedTag(material, pv.name);
+                    if (pv.animatedTag != tag) { pv.animatedTag = tag; changed = true; }
+                }
                 switch (pv.type)
                 {
                     case "Float":
@@ -615,6 +679,9 @@ namespace Thry.ThryEditor
         }
 
         private static void ApplyLinkToMaterial(GlobalLink link, Material material, bool recordUndo)
+            => ApplyLinkPropertiesToMaterial(link, material, recordUndo, null);
+
+        private static void ApplyLinkPropertiesToMaterial(GlobalLink link, Material material, bool recordUndo, HashSet<string> preserveValues)
         {
             if (recordUndo) Undo.RecordObject(material, "Update Global Link \"" + link.name + "\"");
             foreach (GlobalLinkPropertyValue pv in link.properties)
@@ -622,7 +689,7 @@ namespace Thry.ThryEditor
                 if (!link.includeTextures && pv.type == "Texture") continue;
                 if (!material.HasProperty(pv.name)) continue;
 
-                switch (pv.type)
+                if (preserveValues == null || !preserveValues.Contains(pv.name)) switch (pv.type)
                 {
                     case "Float":
                         material.SetFloat(pv.name, pv.floatValue);

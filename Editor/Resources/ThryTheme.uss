@@ -61,6 +61,8 @@
     --thry-hover-color: #4c4c4c;
     --thry-border-color: #4b4b4b;
     --thry-accent-color: #7aadd6;
+    --thry-preset-color: #66d9ef;
+    --thry-preset-animation-color: #ae81ff;
     --thry-panel-background: #333333;
     --thry-root-section-text-color: var(--thry-value-color);
     --thry-action-text-color: var(--thry-value-color);
@@ -84,6 +86,8 @@
     --thry-hover-color: #e8e8e8;
     --thry-border-color: #b5b5b5;
     --thry-accent-color: #3b78a8;
+    --thry-preset-color: #16798b;
+    --thry-preset-animation-color: #7545b8;
     --thry-panel-background: #c9c9c9;
     --thry-root-section-background: #a8a8a8;
     --thry-root-section-hover-background: #b3b3b3;
@@ -591,7 +595,8 @@
 .thry-section-title, .thry-property-label, .thry-texture-caption { -unity-font-style: normal; }
 .thry-caption-has-changed-indicator { padding-right: var(--thry-space-10); }
 .thry-property-changed-dot { position: absolute; width: 5px; height: 5px; border-radius: var(--thry-radius-compact); }
-.thry-preset-indicator { color: var(--thry-accent-color); -unity-font-style: bold; width: 12px; min-width: 12px; flex-shrink: 0; align-self: center; margin-right: var(--thry-space-4); }
+.thry-preset-indicator { color: var(--thry-preset-color); -unity-font-style: bold; width: 20px; min-width: 20px; flex-shrink: 0; align-self: center; margin-right: var(--thry-space-4); }
+.thry-preset-indicator.thry-preset-animation-only { color: var(--thry-preset-animation-color); }
 
 /* Native popup/object captions have their own foreground styles; background-only
    light overrides cannot rely on inherited text color from the field container. */

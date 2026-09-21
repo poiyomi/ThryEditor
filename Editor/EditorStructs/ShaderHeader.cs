@@ -476,6 +476,8 @@ namespace Thry.ThryEditor
         internal static GenericMenu RetainedHeaderMenu(ShaderGroup property, Material[] materials)
         {
             var menu = new GenericMenu();
+            property.AddPresetMenu(menu);
+            if (menu.GetItemCount() > 0) menu.AddSeparator("");
             menu.AddItem(new GUIContent("Reset"), false, delegate ()
             {
                 ThryLogger.LogDetail("ShaderHeader", $"Resetting '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");

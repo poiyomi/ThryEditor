@@ -176,7 +176,7 @@ namespace Thry.ThryEditor
             detailsScroll.Add(_browserOrderHint);
             _browserChangesTitle = BrowserLabel(PresetText("preset_preview", "Changes to apply"), "thry-preset-subtitle"); detailsScroll.Add(_browserChangesTitle);
             _preview = new VisualElement { name = "thry-preset-differences" }; _preview.AddToClassList("thry-preset-changes"); detailsScroll.Add(_preview);
-            _browserChangesTitle.tooltip = PresetText("preset_preview_note", "Property values are previewed here. Preset actions and linked materials update when you apply.");
+            _browserChangesTitle.tooltip = "Property values and animation settings are previewed here. Preset actions and linked materials update when you apply.";
 
             var footer = new VisualElement(); footer.AddToClassList("thry-preset-browser-footer"); root.Add(footer);
             footer.style.flexShrink = 0;

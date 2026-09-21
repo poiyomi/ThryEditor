@@ -23,6 +23,8 @@ namespace Thry.ThryEditor
         const string FILE_NAME_KNOWN_MATERIALS = "Thry/presets_known_materials.txt";
         const string PRESET_VERSION = "1.1.0";
 
+        public enum PropertyMode { Excluded, ValueAndAnimation, AnimationOnly }
+
         struct AppliedPreset
         {
             public string name;
@@ -731,6 +733,7 @@ namespace Thry.ThryEditor
                 previous.DestroySnapshots();
             }
             s_appliedPresets[key] = AppliedPreset.Create(name, preset, shaderEditor.Materials, parent);
+            Undo.RecordObjects(shaderEditor.Materials, "Apply preset");
             ApplyPresetInternal(shaderEditor, preset, preset, parent);
             GlobalLinker.PropagateAfterPreset(shaderEditor, preset, parent);
             PropagateLinkedMaterials(shaderEditor, preset, parent);
@@ -748,6 +751,7 @@ namespace Thry.ThryEditor
             ThryLogger.Log($"Revert '{appliedPreset.preset.name}' from '{key.name}'");
             Material[] materials = shaderEditor.Materials;
             Material[] snapshots = appliedPreset.prePresetStates;
+            Undo.RecordObjects(materials, "Revert preset");
             if (materials.Length == 1 || snapshots.Length != materials.Length)
             {
                 // Single material, or the selection changed since the preset was applied: the shared
@@ -761,7 +765,7 @@ namespace Thry.ThryEditor
                 HashSet<ShaderProperty> affected = new HashSet<ShaderProperty>();
                 CollectPresetProperties(shaderEditor, appliedPreset.preset, appliedPreset.parent, affected);
                 for (int i = 0; i < materials.Length; i++)
-                    RevertMaterial(materials[i], snapshots[i], affected);
+                    CopyPresetPropertiesToMaterial(appliedPreset.preset, materials[i], snapshots[i], affected);
                 shaderEditor.Reload();
             }
             GlobalLinker.PropagateAfterPreset(shaderEditor, appliedPreset.preset, appliedPreset.parent);
@@ -775,17 +779,18 @@ namespace Thry.ThryEditor
         }
 
         // Mirrors what ApplyPresetInternal would touch, as a flat set of properties.
-        static void CollectPresetProperties(ShaderEditor shaderEditor, Material preset, ShaderPart parent, HashSet<ShaderProperty> into)
+        internal static void CollectPresetProperties(ShaderEditor shaderEditor, Material preset, ShaderPart parent, HashSet<ShaderProperty> into)
         {
             if (!IsMaterialSectionedPreset(preset))
             {
                 foreach (ShaderPart part in shaderEditor.ShaderParts)
                     if (IsPreset(preset, part))
-                        CollectPartProperties(shaderEditor, part, copyReferenceProperties: part is ShaderGroup, into);
+                        CollectPartProperties(shaderEditor, part, copyReferenceProperties: part is ShaderGroup, into, preset);
             }
             else if (parent is ShaderGroup)
             {
-                CollectPresetPropertiesRecursive(shaderEditor, preset, parent as ShaderGroup, into);
+                if (IsPreset(preset, parent)) CollectPartProperties(shaderEditor, parent, true, into, preset);
+                else CollectPresetPropertiesRecursive(shaderEditor, preset, parent as ShaderGroup, into);
             }
         }
 
@@ -796,26 +801,32 @@ namespace Thry.ThryEditor
                 if (part is ShaderGroup)
                     CollectPresetPropertiesRecursive(shaderEditor, preset, part as ShaderGroup, into);
                 if (IsPreset(preset, part))
-                    CollectPartProperties(shaderEditor, part, copyReferenceProperties: true, into);
+                    CollectPartProperties(shaderEditor, part, copyReferenceProperties: true, into, preset);
             }
         }
 
-        static void CollectPartProperties(ShaderEditor shaderEditor, ShaderPart part, bool copyReferenceProperties, HashSet<ShaderProperty> into)
+        static void CollectPartProperties(ShaderEditor shaderEditor, ShaderPart part, bool copyReferenceProperties,
+            HashSet<ShaderProperty> into, Material preset, HashSet<ShaderPart> visited = null)
         {
+            if (visited == null) visited = new HashSet<ShaderPart>();
+            if (!visited.Add(part)) return;
             if (part is ShaderProperty prop) into.Add(prop);
+            // A metadata-only property does not copy its associated values or reference properties.
+            if (GetPropertyMode(preset, part) == PropertyMode.AnimationOnly) return;
             if (part is ShaderGroup group)
                 foreach (ShaderPart child in group.Children)
-                    CollectPartProperties(shaderEditor, child, copyReferenceProperties, into);
+                    CollectPartProperties(shaderEditor, child, copyReferenceProperties, into, preset, visited);
             if (!copyReferenceProperties) return;
             if (part.Options.reference_properties != null)
                 foreach (string name in part.Options.reference_properties)
-                    if (shaderEditor.PropertyDictionary.TryGetValue(name, out ShaderProperty reference)) into.Add(reference);
+                    if (shaderEditor.PropertyDictionary.TryGetValue(name, out ShaderProperty reference))
+                        CollectPartProperties(shaderEditor, reference, true, into, preset, visited);
             if (!string.IsNullOrWhiteSpace(part.Options.reference_property)
                 && shaderEditor.PropertyDictionary.TryGetValue(part.Options.reference_property, out ShaderProperty singleReference))
-                into.Add(singleReference);
+                CollectPartProperties(shaderEditor, singleReference, true, into, preset, visited);
         }
 
-        static void RevertMaterial(Material target, Material snapshot, HashSet<ShaderProperty> properties)
+        static void CopyPresetPropertiesToMaterial(Material preset, Material target, Material source, HashSet<ShaderProperty> properties)
         {
             UnityEngine.Object[] targets = { target };
             foreach (ShaderProperty property in properties)
@@ -823,10 +834,15 @@ namespace Thry.ThryEditor
                 if (property.MaterialProperty == null || !target.HasProperty(property.MaterialProperty.name)) continue;
                 MaterialProperty single = MaterialEditor.GetMaterialProperty(targets, property.MaterialProperty.name);
                 if (single == null) continue;
-                MaterialHelper.CopyValue(snapshot, single);
-                TileLabelUtility.CopyTileLabelTag(snapshot, single);
-                if (property.IsAnimatable) ShaderOptimizer.CopyAnimatedTag(snapshot, single);
+                if (GetPropertyMode(preset, property) != PropertyMode.AnimationOnly)
+                {
+                    MaterialHelper.CopyValue(source, single);
+                    TileLabelUtility.CopyTileLabelTag(source, single);
+                }
+                if (property.IsAnimatable) ShaderOptimizer.CopyAnimatedTag(source, single);
             }
+            ShaderProperty.InvalidateRetainedAnimatedOwner(target);
+            EditorUtility.SetDirty(target);
         }
 
         static void Dismiss(ShaderEditor shaderEditor)
@@ -862,7 +878,10 @@ namespace Thry.ThryEditor
                                 var name = property.MaterialProperty?.name;
                                 if (name == null || !preview.HasProperty(name)) continue;
                                 var destination = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { preview }, name);
-                                MaterialHelper.CopyValue(source, destination); affected.Add(property);
+                                if (GetPropertyMode(preset, property) != PropertyMode.AnimationOnly)
+                                    MaterialHelper.CopyValue(source, destination);
+                                if (property.IsAnimatable) ShaderOptimizer.CopyAnimatedTag(source, destination);
+                                affected.Add(property);
                             }
                         }
                         finally { UnityEngine.Object.DestroyImmediate(source); }
@@ -873,17 +892,22 @@ namespace Thry.ThryEditor
                         var before = MaterialHelper.GetValue(original, name); var after = MaterialHelper.GetValue(preview, name);
                         bool transform = property.MaterialProperty.type == MaterialProperty.PropType.Texture
                             && (original.GetTextureScale(name) != preview.GetTextureScale(name) || original.GetTextureOffset(name) != preview.GetTextureOffset(name));
-                        if (Equals(before, after) && !transform) continue;
                         string caption = RetainedMaterialBody.SectionCaption(property).TrimEnd('*');
                         string prefix = originals.Length > 1 ? original.name + " / " : "";
-                        changes.Add(prefix + caption + ": " + PreviewValue(before) + " → " + PreviewValue(after)
-                            + (transform ? " (tiling / offset)" : ""));
+                        if (!Equals(before, after) || transform)
+                            changes.Add(prefix + caption + ": " + PreviewValue(before) + " → " + PreviewValue(after)
+                                + (transform ? " (tiling / offset)" : ""));
+                        string beforeAnimation = ShaderOptimizer.GetAnimatedTag(original, name);
+                        string afterAnimation = ShaderOptimizer.GetAnimatedTag(preview, name);
+                        if (beforeAnimation != afterAnimation)
+                            changes.Add(prefix + caption + " / Animation: " + AnimationCaption(beforeAnimation) + " → " + AnimationCaption(afterAnimation));
                     }
                 }
                 finally { UnityEngine.Object.DestroyImmediate(preview); }
             }
             return changes;
         }
+        static string AnimationCaption(string tag) => tag == "2" ? "RA" : tag == "1" ? "A" : "Off";
         static string PreviewValue(object value)
         {
             var asset = value as UnityEngine.Object;
@@ -914,48 +938,72 @@ namespace Thry.ThryEditor
             // the Standard shader keeps orphaned properties after the swap), which triggers a
             // "Original shader not saved to material" warning when the scene is saved.
             Material source = new Material(preset);
-            // Assigning a shader resets the render queue to the shader's default and drops the material's own
-            // override tags, so a preset storing a Render Queue or VRC Fallback would hand those defaults to the
-            // target instead of the values it recorded. Swap through the helper that carries both across.
-            MaterialHelper.SwapShaderPreservingSettings(source, shaderEditor.Shader);
-            // If values were meant to be copied straight from the preset, read them from the clone instead.
-            if (copyFrom == preset) copyFrom = source;
-
-            if (!IsMaterialSectionedPreset(preset))
+            try
             {
-                ThryLogger.LogDetail($"Apply preset '{preset.name}' to '{shaderEditor.Materials[0].name}'");
-                foreach (ShaderPart part in shaderEditor.ShaderParts)
+                // Assigning a shader resets the render queue to the shader's default and drops the material's own
+                // override tags, so a preset storing a Render Queue or VRC Fallback would hand those defaults to the
+                // target instead of the values it recorded. Swap through the helper that carries both across.
+                MaterialHelper.SwapShaderPreservingSettings(source, shaderEditor.Shader);
+                // If values were meant to be copied straight from the preset, read them from the clone instead.
+                if (copyFrom == preset) copyFrom = source;
+
+                var animationOnly = AnimationOnlyProperties(shaderEditor, preset);
+
+                if (!IsMaterialSectionedPreset(preset))
                 {
-                    if (IsPreset(preset, part))
+                    ThryLogger.LogDetail($"Apply preset '{preset.name}' to '{shaderEditor.Materials[0].name}'");
+                    foreach (ShaderPart part in shaderEditor.ShaderParts)
                     {
-                        if(part is ShaderGroup)
-                            part.CopyFrom(copyFrom, applyDrawers: false, copyReferenceProperties: true, deepCopy: true);
-                        else
-                            part.CopyFrom(copyFrom, applyDrawers: false, copyReferenceProperties: false);
+                        if (GetPropertyMode(preset, part) == PropertyMode.ValueAndAnimation)
+                        {
+                            if(part is ShaderGroup)
+                                part.CopyFrom(copyFrom, applyDrawers: false, copyReferenceProperties: true, deepCopy: true, skipPropertyNames: animationOnly);
+                            else
+                                part.CopyFrom(copyFrom, applyDrawers: false, copyReferenceProperties: false, skipPropertyNames: animationOnly);
+                        }
+                    }
+                }
+                else if(parent is ShaderGroup)
+                {
+                    ThryLogger.LogDetail($"Apply values from '{copyFrom.name}' to '{parent.Content.text}' group");
+                    if (GetPropertyMode(preset, parent) == PropertyMode.ValueAndAnimation)
+                        parent.CopyFrom(copyFrom, applyDrawers: false, skipPropertyNames: animationOnly);
+                    else ApplyPresetRecursive(preset, copyFrom, parent as ShaderGroup, animationOnly);
+                }
+
+                if (animationOnly.Count > 0)
+                {
+                    var affected = new HashSet<ShaderProperty>();
+                    CollectPresetProperties(shaderEditor, preset, parent, affected);
+                    foreach (var property in affected)
+                    {
+                        if (property.MaterialProperty == null || !property.IsAnimatable
+                            || !animationOnly.Contains(property.MaterialProperty.name)) continue;
+                        ShaderOptimizer.CopyAnimatedTag(copyFrom, property.MaterialProperty);
+                        foreach (Material target in property.MaterialProperty.targets)
+                        {
+                            EditorUtility.SetDirty(target);
+                            ShaderProperty.InvalidateRetainedAnimatedOwner(target);
+                        }
+                        property.RefreshRetainedAnimatedState();
                     }
                 }
             }
-            else if(parent is ShaderGroup)
-            {
-                ThryLogger.LogDetail($"Apply values from '{copyFrom.name}' to '{parent.Content.text}' group");
-                ApplyPresetRecursive(preset, copyFrom, parent as ShaderGroup);
-            }
-
-            UnityEngine.Object.DestroyImmediate(source);
+            finally { UnityEngine.Object.DestroyImmediate(source); }
         }
         
-        static void ApplyPresetRecursive(Material preset, Material copyFrom, ShaderGroup parent)
+        static void ApplyPresetRecursive(Material preset, Material copyFrom, ShaderGroup parent, HashSet<string> animationOnly)
         {
             foreach (ShaderPart part in parent.Children)
             {
                 if(part is ShaderGroup)
                 {
-                    ApplyPresetRecursive(preset, copyFrom, part as ShaderGroup);
+                    ApplyPresetRecursive(preset, copyFrom, part as ShaderGroup, animationOnly);
                 }
-                if (IsPreset(preset, part))
+                if (GetPropertyMode(preset, part) == PropertyMode.ValueAndAnimation)
                 {
                     // ThryDebug.Detail($"Apply values from '{copyFrom.name}' to '{part.Content.text}' ({copyFrom.name} -> {part.MaterialProperty.targets[0].name}) ({MaterialHelper.GetValue(part.MaterialProperty)} -> {MaterialHelper.GetValue(copyFrom, part.MaterialProperty.name)})");
-                    part.CopyFrom(copyFrom, applyDrawers: false);
+                    part.CopyFrom(copyFrom, applyDrawers: false, skipPropertyNames: animationOnly);
                 }
             }
         }
@@ -963,6 +1011,26 @@ namespace Thry.ThryEditor
         static void PropagateLinkedMaterials(ShaderEditor shaderEditor, Material preset, ShaderPart parent)
         {
             if (shaderEditor.IsInAnimationMode) return;
+
+            if (AnimationOnlyProperties(shaderEditor, preset).Count > 0)
+            {
+                var affected = new HashSet<ShaderProperty>();
+                CollectPresetProperties(shaderEditor, preset, parent, affected);
+                foreach (var group in PresetLinkGroups(shaderEditor, preset, parent, affected))
+                {
+                    var linked = MaterialLinker.GetLinked(group.MaterialProperty);
+                    if (linked == null) continue;
+                    var groupProperties = PropertiesInGroup(shaderEditor, preset, group, affected);
+                    foreach (Material target in linked)
+                    {
+                        if (shaderEditor.Materials.Contains(target)) continue;
+                        Undo.RecordObject(target, "Apply linked preset");
+                        CopyPresetPropertiesToMaterial(preset, target, (Material)group.MaterialProperty.targets[0], groupProperties);
+                        MaterialEditor.ApplyMaterialPropertyDrawers(target);
+                    }
+                }
+                return;
+            }
 
             if (!IsMaterialSectionedPreset(preset))
             {
@@ -977,20 +1045,58 @@ namespace Thry.ThryEditor
             }
         }
 
-        public static void SetProperty(Material m, ShaderPart prop, bool value)
+        internal static HashSet<string> AnimationOnlyProperties(ShaderEditor editor, Material preset)
+            => new HashSet<string>(editor.PropertyDictionary.Where(p => GetPropertyMode(preset, p.Value) == PropertyMode.AnimationOnly).Select(p => p.Key));
+
+        internal static HashSet<ShaderGroup> PresetLinkGroups(ShaderEditor editor, Material preset, ShaderPart parent, HashSet<ShaderProperty> affected)
         {
-            if (prop.CustomStringTagID  != null) m.SetOverrideTag(prop.CustomStringTagID + TAG_POSTFIX_IS_PROPERTY_PRESET, value ? "true" : "");
-            if (prop.MaterialProperty   != null) m.SetOverrideTag(prop.MaterialProperty.name + TAG_POSTFIX_IS_PROPERTY_PRESET, value ? "true" : "");
-            if (prop.PropertyIdentifier != null) m.SetOverrideTag(prop.PropertyIdentifier    + TAG_POSTFIX_IS_PROPERTY_PRESET, value ? "true" : "");
+            var groups = new HashSet<ShaderGroup>();
+            if (IsMaterialSectionedPreset(preset))
+            {
+                if (parent is ShaderGroup group) groups.Add(group);
+            }
+            else
+                foreach (var group in editor.ShaderParts.OfType<ShaderGroup>())
+                    if (IsPreset(preset, group)) groups.Add(group);
+            foreach (var property in affected)
+                if (GetPropertyMode(preset, property) == PropertyMode.AnimationOnly)
+                    for (var group = property.Parent; group != null; group = group.Parent)
+                        if (group is ShaderGroup shaderGroup && group.MaterialProperty != null) groups.Add(shaderGroup);
+            return groups;
         }
 
-        public static bool IsPreset(Material m, ShaderPart prop)
+        internal static HashSet<ShaderProperty> PropertiesInGroup(ShaderEditor editor, Material preset, ShaderGroup group, HashSet<ShaderProperty> affected)
         {
-            if (prop.CustomStringTagID  != null) return m.GetTag(prop.CustomStringTagID + TAG_POSTFIX_IS_PROPERTY_PRESET, false, "") == "true";
-            if (prop.MaterialProperty   != null) return m.GetTag(prop.MaterialProperty.name + TAG_POSTFIX_IS_PROPERTY_PRESET, false, "") == "true";
-            if (prop.PropertyIdentifier != null) return m.GetTag(prop.PropertyIdentifier    + TAG_POSTFIX_IS_PROPERTY_PRESET, false, "") == "true";
-            return false;
+            var properties = new HashSet<ShaderProperty>();
+            CollectPartProperties(editor, group, true, properties, preset);
+            properties.IntersectWith(affected);
+            return properties;
         }
+
+        public static void SetProperty(Material m, ShaderPart prop, bool value)
+            => SetPropertyMode(m, prop, value ? PropertyMode.ValueAndAnimation : PropertyMode.Excluded);
+
+        public static void SetPropertyMode(Material m, ShaderPart prop, PropertyMode mode)
+        {
+            if (mode == PropertyMode.AnimationOnly && (!(prop is ShaderProperty) || !prop.IsAnimatable || prop.MaterialProperty == null))
+                throw new ArgumentException("Animation-only presets require an animatable property.", nameof(prop));
+            string value = mode == PropertyMode.AnimationOnly ? "animation" : mode == PropertyMode.ValueAndAnimation ? "true" : "";
+            if (prop.CustomStringTagID  != null) m.SetOverrideTag(prop.CustomStringTagID + TAG_POSTFIX_IS_PROPERTY_PRESET, value);
+            if (prop.MaterialProperty   != null) m.SetOverrideTag(prop.MaterialProperty.name + TAG_POSTFIX_IS_PROPERTY_PRESET, value);
+            if (prop.PropertyIdentifier != null) m.SetOverrideTag(prop.PropertyIdentifier    + TAG_POSTFIX_IS_PROPERTY_PRESET, value);
+            EditorUtility.SetDirty(m);
+        }
+
+        public static PropertyMode GetPropertyMode(Material m, ShaderPart prop)
+            => GetPropertyMode(m, prop.CustomStringTagID ?? prop.MaterialProperty?.name ?? prop.PropertyIdentifier);
+
+        public static PropertyMode GetPropertyMode(Material m, string propertyName)
+        {
+            string value = m != null && propertyName != null ? m.GetTag(propertyName + TAG_POSTFIX_IS_PROPERTY_PRESET, false, "") : "";
+            return value == "true" ? PropertyMode.ValueAndAnimation : value == "animation" ? PropertyMode.AnimationOnly : PropertyMode.Excluded;
+        }
+
+        public static bool IsPreset(Material m, ShaderPart prop) => GetPropertyMode(m, prop) != PropertyMode.Excluded;
 
         public static bool ArePreset(Material[] mats)
         {

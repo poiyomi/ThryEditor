@@ -43,8 +43,6 @@ namespace Thry.ThryEditor
 {
     public class Blueprint : ScriptableObject
     {
-        const string TAG_POSTFIX_IS_PROPERTY_PRESET = "_isPreset";
-
         [Tooltip("The shader to assign to the new material.")]
         public Shader TargetShader;
 
@@ -157,51 +155,55 @@ namespace Thry.ThryEditor
             return savePath;
         }
 
-        static void ApplyPresetToMaterial(Material preset, Material target)
+        static void ApplyPresetToMaterial(Material presetAsset, Material target)
         {
-            if (preset == null || target == null) return;
+            if (presetAsset == null || target == null) return;
 
-            // Temporarily swap the Preset's shader to the target's shader
-            // so that Property Names align (same approach as Presets.ApplyPresetInternal)
-            Shader prevPresetShader = preset.shader;
-            preset.shader = target.shader;
-
-            Shader shader = target.shader;
-            int propCount = shader.GetPropertyCount();
-
-            for (int i = 0; i < propCount; i++)
+            var preset = new Material(presetAsset);
+            try
             {
-                string propName = shader.GetPropertyName(i);
+                MaterialHelper.SwapShaderPreservingSettings(preset, target.shader);
 
-                // Check if this property is tagged as a preset property
-                bool isPresetProp = preset.GetTag(propName + TAG_POSTFIX_IS_PROPERTY_PRESET, false, "") == "true";
-                if (!isPresetProp) continue;
+                Shader shader = target.shader;
+                int propCount = shader.GetPropertyCount();
 
-                // Copy the values from the preset to target based on property type
-                ShaderPropertyType propType = shader.GetPropertyType(i);
-                CopyProperty(preset, target, propName, propType);
-                CopyAnimatedTag(preset, target, propName);
+                for (int i = 0; i < propCount; i++)
+                {
+                    string propName = shader.GetPropertyName(i);
+
+                    // Check if this property is tagged as a preset property
+                    var mode = Presets.GetPropertyMode(preset, propName);
+                    if (mode == Presets.PropertyMode.Excluded) continue;
+                    if (mode == Presets.PropertyMode.AnimationOnly)
+                    {
+                        target.SetOverrideTag(propName + ShaderOptimizer.AnimatedTagSuffix, ShaderOptimizer.GetAnimatedTag(preset, propName));
+                        continue;
+                    }
+
+                    // Copy the values from the preset to target based on property type
+                    ShaderPropertyType propType = shader.GetPropertyType(i);
+                    CopyProperty(preset, target, propName, propType);
+                    CopyAnimatedTag(preset, target, propName);
+                }
+
+                // Also check for header/section properties
+                string[] serializedFloatProps = MaterialHelper.GetFloatPropertiesFromSerializedObject(preset);
+                foreach (string propName in serializedFloatProps)
+                {
+                    // Skip properties we already handled above
+                    if (shader.FindPropertyIndex(propName) >= 0) continue;
+
+                    if (Presets.GetPropertyMode(preset, propName) != Presets.PropertyMode.ValueAndAnimation) continue;
+
+                    // Float and Header properties
+                    if (target.HasProperty(propName)) target.SetFloat(propName, preset.GetFloat(propName));
+
+                    // Copy the animation tags for Header/Section properties too, if supported.
+                    CopyAnimatedTag(preset, target, propName);
+                }
+
             }
-
-            // Also check for header/section properties
-            string[] serializedFloatProps = MaterialHelper.GetFloatPropertiesFromSerializedObject(preset);
-            foreach (string propName in serializedFloatProps)
-            {
-                // Skip properties we already handled above
-                if (shader.FindPropertyIndex(propName) >= 0) continue;
-
-                bool isPresetProp = preset.GetTag(propName + TAG_POSTFIX_IS_PROPERTY_PRESET, false, "") == "true";
-                if (!isPresetProp) continue;
-
-                // Float and Header properties
-                if (target.HasProperty(propName)) target.SetFloat(propName, preset.GetFloat(propName));
-
-                // Copy the animation tags for Header/Section properties too, if supported.
-                CopyAnimatedTag(preset, target, propName);
-            }
-
-            // Restore Preset's original shader
-            preset.shader = prevPresetShader;
+            finally { Object.DestroyImmediate(preset); }
         }
 
         static void ApplySectionPresetToMaterial(Material preset, Material target, string collectionKey)

@@ -55,8 +55,11 @@ namespace Thry.ThryEditor
 			get => InspectorTheme.Header;
 		}
 
-		public static Color AnimatedColor => EditorGUIUtility.isProSkin ? new Color(0.3f, 1f, 0.3f) : new Color(0f, 0.5f, 0f);
-		public static Color AnimatedRenamedColor => EditorGUIUtility.isProSkin ? new Color(1f, 0.85f, 0.2f) : new Color(0.55f, 0.4f, 0f);
+		// Monokai markings, with the same light-skin counterparts as the toolbar.
+		public static Color AnimatedColor => InspectorTheme.Skin(0xa6e22e, 0x638f14);
+		public static Color AnimatedRenamedColor => InspectorTheme.Skin(0xe6db74, 0x82721e);
+		public static Color PresetColor => InspectorTheme.Skin(0x66d9ef, 0x16798b);
+		public static Color PresetAnimationOnlyColor => InspectorTheme.Skin(0xae81ff, 0x7545b8);
 
 		private static GUIStyle _animatedIndicatorStyle;
 		public static GUIStyle animatedIndicatorStyle
@@ -71,6 +74,7 @@ namespace Thry.ThryEditor
 						alignment = TextAnchor.MiddleRight
 					};
 				}
+				_animatedIndicatorStyle.normal.textColor = AnimatedColor;
 				return _animatedIndicatorStyle;
 			}
 		}
@@ -88,6 +92,7 @@ namespace Thry.ThryEditor
 						alignment = TextAnchor.MiddleRight
 					};
 				}
+				_animatedRenamedIndicatorStyle.normal.textColor = AnimatedRenamedColor;
 				return _animatedRenamedIndicatorStyle;
 			}
 		}
@@ -106,6 +111,7 @@ namespace Thry.ThryEditor
 						alignment = TextAnchor.MiddleLeft
 					};
 				}
+				_headerAnimatedDotStyle.normal.textColor = AnimatedColor;
 				return _headerAnimatedDotStyle;
 			}
 		}
@@ -124,6 +130,7 @@ namespace Thry.ThryEditor
 						alignment = TextAnchor.MiddleLeft
 					};
 				}
+				_headerAnimatedRenamedDotStyle.normal.textColor = AnimatedRenamedColor;
 				return _headerAnimatedRenamedDotStyle;
 			}
 		}
@@ -137,11 +144,24 @@ namespace Thry.ThryEditor
 				{
 					_presetIndicatorStyle = new GUIStyle()
 					{
-						normal = new GUIStyleState() { textColor = EditorGUIUtility.isProSkin ? new Color(0f, 1f, 1f) : new Color(0f, 0.5f, 0.71f) },
+						normal = new GUIStyleState() { textColor = PresetColor },
 						alignment = TextAnchor.MiddleRight
 					};
 				}
+				_presetIndicatorStyle.normal.textColor = PresetColor;
 				return _presetIndicatorStyle;
+			}
+		}
+
+		private static GUIStyle _presetAnimationOnlyIndicatorStyle;
+		public static GUIStyle presetAnimationOnlyIndicatorStyle
+		{
+			get
+			{
+				if (_presetAnimationOnlyIndicatorStyle == null)
+					_presetAnimationOnlyIndicatorStyle = new GUIStyle(presetIndicatorStyle) { fontSize = 8 };
+				_presetAnimationOnlyIndicatorStyle.normal.textColor = PresetAnimationOnlyColor;
+				return _presetAnimationOnlyIndicatorStyle;
 			}
 		}
 
