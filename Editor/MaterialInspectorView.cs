@@ -158,14 +158,14 @@ namespace Thry.ThryEditor
         }
 
 
-        internal void UseInspectorMenu(DropdownField field)
+        internal void UseInspectorMenu(DropdownField field, bool applyOnReselect = false)
         {
             Action open = () => {
                 field.Focus();
                 ShowMenu(field.worldBound, field.choices.Select(s => new GUIContent(s)).ToArray(), new[] { field.index }, i =>
                 {
                     if (i < 0 || i >= field.choices.Count) return;
-                    RetainedWindow.SelectDropdownChoice(field, field.choices[i]);
+                    RetainedWindow.SelectDropdownChoice(field, field.choices[i], applyOnReselect);
                 }, field);
             };
             field.RegisterCallback<PointerDownEvent>(evt => {

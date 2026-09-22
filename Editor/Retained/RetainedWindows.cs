@@ -72,15 +72,15 @@ namespace Thry.ThryEditor
             field.RegisterCallback<NavigationSubmitEvent>(e=>{e.PreventDefault();e.StopImmediatePropagation();show();},TrickleDown.TrickleDown);
         }
 
-        internal static void SelectDropdownChoice(DropdownField field, string value)
+        internal static void SelectDropdownChoice(DropdownField field, string value, bool applyOnReselect = false)
         {
             if (!field.choices.Contains(value)) return;
             bool applyMixed = field.showMixedValue;
             string previous = field.value;
             field.showMixedValue = false;
-            // Selecting the first material's existing option still resolves a mixed
-            // selection. BaseField suppresses ordinary equal-value assignments.
-            if (applyMixed)
+            // BaseField suppresses equal-value assignments, but an explicit selection
+            // must still resolve mixed values and reapply authored preset actions.
+            if (applyMixed || (applyOnReselect && previous == value))
             {
                 field.SetValueWithoutNotify(value);
                 using (var change = ChangeEvent<string>.GetPooled(previous, value))
