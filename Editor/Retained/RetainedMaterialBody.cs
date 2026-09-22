@@ -248,6 +248,7 @@ namespace Thry.ThryEditor
                     children.Add(presetName);
                     presetName.RegisterValueChangedCallback(e => Model.Mutate("Section preset name", m => Presets.SetSectionPreset(m, group.MaterialProperty.name, e.newValue)));
                 }
+                _fields.AddDecalBake(children, group);
                 foreach (var child in group.Children)
                 {
                     // The positioning toolbar provides contextual guidance in place of the legacy banner.

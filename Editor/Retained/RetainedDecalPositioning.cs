@@ -98,12 +98,25 @@ namespace Thry.ThryEditor
                 }
             };
             Track(tools, update);
+            root.RegisterCallback<DetachFromPanelEvent>(e => { if (e.target == root) stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast); });
+            root.RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == KeyCode.Escape && tool != null) { stop(true); Model.Notify(); update(); e.StopPropagation(); } });
+        }
+
+        internal void AddDecalBake(VisualElement root, ShaderGroup group)
+        {
+            if (!(group is ShaderHeader) || !DecalBakeBridge.Available) return;
+            var property = group.Children.OfType<ShaderGroup>()
+                .SelectMany(section => section.Children.OfType<ShaderProperty>()).FirstOrDefault(HasDecalPositioning);
+            if (property == null) return;
+            var args = property.MyShader.GetPropertyAttributes(property.ShaderPropertyIndex)
+                .Select(attribute => new DrawerAttribute(attribute)).First(attribute => attribute.Name == "ThryDecalPositioning").Args;
             if (DecalBakeBridge.Available && args.Length == 6 && args[0].StartsWith("_DecalTexture", StringComparison.Ordinal))
             {
                 var bake = new Button(() =>
                 {
                     if (!RetainedMaterialModel.HasValidTargets(Model.Editor) || Model.Shader.Materials.Length != 1 || !Model.CanEdit(property)) return;
-                    stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast);
+                    var tool = root.Q<VisualElement>("decal-positioning-" + property.MaterialProperty.name)?.userData as DecalSceneTool;
+                    if (tool != null) tool.Deactivate(tool.GetMode() == DecalSceneTool.Mode.Raycast);
                     var material = Model.Shader.Materials[0];
                     EditorApplication.delayCall += () => { if (material != null) DecalBakeBridge.Bake(material, args[0]); };
                 }) { text = "Bake to Main Texture", name = "decal-bake-" + args[0],
@@ -112,8 +125,6 @@ namespace Thry.ThryEditor
                 Track(bake, () => bake.SetEnabled(RetainedMaterialModel.HasValidTargets(Model.Editor)
                     && Model.Shader.Materials.Length == 1 && Model.CanEdit(property)));
             }
-            root.RegisterCallback<DetachFromPanelEvent>(e => { if (e.target == root) stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast); });
-            root.RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == KeyCode.Escape && tool != null) { stop(true); Model.Notify(); update(); e.StopPropagation(); } });
         }
 
         private static Button PositioningButton(string text, bool raycast, Action action)
