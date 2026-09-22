@@ -1029,6 +1029,8 @@ namespace Thry
             if (!IsCrossEditor && !HasRetainedToolbar) EditorGUI.indentLevel -= 2;
 
             DoVariantWarning();
+            if (ThryEditor.GrabPassQueueWarning.HasAffected(Materials))
+                EditorGUILayout.HelpBox(ThryEditor.GrabPassQueueWarning.Message, MessageType.Warning);
             GUIManualReloadButton();
             GUIDevloperMode();
 

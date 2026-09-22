@@ -50,6 +50,11 @@ namespace Thry.ThryEditor
             _collapsedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-right");
             var shader = Model.Shader;
             Add(RetainedMultiMaterial.SelectionSummary(Model));
+            var queueWarning = new VisualElement { name = "thry-grabpass-queue-warning" };
+            queueWarning.Add(new HelpBox(GrabPassQueueWarning.Message, HelpBoxMessageType.Warning));
+            Add(queueWarning);
+            _fields.Track(queueWarning, () => queueWarning.style.display =
+                GrabPassQueueWarning.HasAffected(Model.Shader.Materials) ? DisplayStyle.Flex : DisplayStyle.None);
             Add(Presets.CreateEditorControls(Model, _fields));
             var toolbar = SectionEditing.CreateToolbar?.Invoke(shader); if(toolbar != null) Add(toolbar);
             var materialActions = new VisualElement { name = "thry-material-actions" };
