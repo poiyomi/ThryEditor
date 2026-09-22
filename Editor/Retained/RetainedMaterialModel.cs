@@ -314,9 +314,12 @@ namespace Thry.ThryEditor
                     // the explicit record where a callback can replace that setter,
                     // or the operation can affect owners outside its native write.
                     nativeUndo = singleProperty && !perMaterial && !AnimationMode.InAnimationMode()
+                        && !(property.Options.on_value_actions?.Length > 0)
                         && property.MaterialProperty.applyPropertyCallback == null
                         && property.MaterialProperty.targets.Length == SelectedMaterials.Length;
-                    if (!nativeUndo) Editor.RegisterPropertyChangeUndo(property.Content.text);
+                    if (property.Options.on_value_actions?.Length > 0)
+                        Undo.RegisterCompleteObjectUndo(Editor.targets, property.Content.text);
+                    else if (!nativeUndo) Editor.RegisterPropertyChangeUndo(property.Content.text);
                     Shader.CurrentProperty = property;
                 }
                 var cachedProperties = PropertyProvider?.Target as RetainedCrossSelectionProperties;
