@@ -39,7 +39,7 @@ Shader "Hidden/Thry/TextureInspection"
                 else if (_TextureKind < 1.5) c = texCUBE(_Cube, FaceDirection(i.uv));
                 else if (_TextureKind < 2.5) c = UNITY_SAMPLE_TEX2DARRAY(_Array, float3(i.uv, _Slice));
                 else c = tex3D(_Volume, float3(i.uv, (_Slice + .5) / max(1, _Depth)));
-                if (_Channel < .5)
+                if (_Channel < .5 || _Channel > 4.5)
                 {
                     if (_NormalMap > .5)
                     {
@@ -50,6 +50,7 @@ Shader "Hidden/Thry/TextureInspection"
                         c.rgb = GammaToLinearSpace(c.rgb);
                         #endif
                     }
+                    if (_Channel < .5) c.a = 1;
                     return c;
                 }
                 if (_Channel < 1.5) return fixed4(c.r, 0, 0, 1);

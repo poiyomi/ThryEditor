@@ -206,6 +206,8 @@ ui_noTextureAssigned,No texture assigned,Keine Textur zugewiesen,テクスチャ
 ui_textureDrop,Drop texture,Textur ablegen,テクスチャをドロップ,Soltar textura,,,,,,
 ui_textureEmptyHint,Drop a texture here or use the field above.,Textur hier ablegen oder das Feld oben verwenden.,ここにテクスチャをドロップするか、上のフィールドを使用します。,Suelta una textura aquí o usa el campo de arriba.,,,,,,
 ui_textureMemory,Memory,Speicher,メモリ,Memoria,,,,,,
+ui_textureRGB,Color without transparency,,,,,,,,,
+ui_textureRGBA,Color with transparency,,,,,,,,,
 ui_textureFull,Full texture,Ganze Textur,テクスチャ全体,Textura completa,,,,,,
 ui_textureRed,Red channel,Rotkanal,赤チャンネル,Canal rojo,,,,,,
 ui_textureGreen,Green channel,Grünkanal,緑チャンネル,Canal verde,,,,,,

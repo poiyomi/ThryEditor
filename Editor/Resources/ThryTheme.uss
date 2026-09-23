@@ -748,6 +748,7 @@
 .thry-texture-card .thry-texture-channels { margin-top: var(--thry-space-2); flex-wrap: nowrap; min-width: 0; }
 .thry-texture-card .thry-texture-channels Button { flex-shrink: 1; min-width: 18px; margin-right: var(--thry-space-2); }
 .thry-texture-card .thry-texture-channels #texture-channel-RGB { min-width: 28px; }
+.thry-texture-card .thry-texture-channels #texture-channel-RGBA { width: 40px; min-width: 36px; }
 .thry-texture-card-compact .thry-texture-channels Button { width: 22px; height: 20px; min-height: 20px; }
 .thry-texture-card-compact .thry-texture-channels #texture-channel-RGB { width: 30px; }
 .thry-texture-card .thry-texture-channels .thry-texture-gradient-action { width: 62px; min-width: 58px; flex-shrink: 0; margin-left: var(--thry-space-4); padding: 0 var(--thry-space-4); font-size: var(--thry-type-small); }

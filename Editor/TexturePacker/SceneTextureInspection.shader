@@ -12,7 +12,7 @@ Shader "Hidden/Thry/SceneTextureInspection"
             Cull [_ThryInspectCull]
             ZWrite Off ZTest LEqual
             Offset -1, -1
-            Blend Off
+            Blend SrcAlpha OneMinusSrcAlpha
             CGPROGRAM
             #pragma target 3.5
             #pragma only_renderers d3d11 vulkan
@@ -58,7 +58,9 @@ Shader "Hidden/Thry/SceneTextureInspection"
                 if (_ThryInspectShiftBackface > .5 && !frontFace) uv.x += 1;
                 uv = uv * _ThryInspectST.xy + _ThryInspectST.zw + _ThryInspectPan.xy * time.x;
                 float4 sample = tex2D(_ThryInspectTex, uv);
-                // Match the existing texture-card channel previews.
+                // Match the texture-card RGB, RGBA, and individual channel previews.
+                if (_ThryInspectChannel > 4.5)
+                    return _ThryInspectNormal > .5 ? float4(UnpackNormal(sample) * .5 + .5, 1) : sample;
                 if (_ThryInspectChannel > 3.5) return float4(sample.aaa, 1);
                 if (_ThryInspectChannel > 2.5) return float4(0, 0, sample.b, 1);
                 if (_ThryInspectChannel > 1.5) return float4(0, sample.g, 0, 1);

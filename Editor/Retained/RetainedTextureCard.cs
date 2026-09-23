@@ -84,12 +84,14 @@ namespace Thry.ThryEditor
             _description = new Label(); _description.AddToClassList("thry-muted"); _description.AddToClassList("thry-texture-description"); info.Add(_description);
             FullTextTooltip(_name); FullTextTooltip(_description);
             _channels = new VisualElement(); _channels.AddToClassList("thry-texture-channels"); info.Add(_channels);
-            string[] names = { "RGB", "R", "G", "B", "A" };
-            string[] hints = { Text("textureFull", "Full texture"), Text("textureRed", "Red channel"), Text("textureGreen", "Green channel"), Text("textureBlue", "Blue channel"), Text("textureAlpha", "Alpha channel") };
+            string[] names = { "RGB", "RGBA", "R", "G", "B", "A" };
+            int[] channels = { 0, 5, 1, 2, 3, 4 };
+            string[] hints = { Text("textureRGB", "Color without transparency"), Text("textureRGBA", "Color with transparency"), Text("textureRed", "Red channel"), Text("textureGreen", "Green channel"), Text("textureBlue", "Blue channel"), Text("textureAlpha", "Alpha channel") };
             for (int i = 0; i < names.Length; i++)
             {
-                int channel = i;
+                int channel = channels[i];
                 var button = ActionButton(() => SetChannel(channel));
+                button.userData = channel;
                 button.name = "texture-channel-" + names[i]; button.text = names[i]; button.tooltip = hints[i];
                 _channels.Add(button);
             }
@@ -148,7 +150,7 @@ namespace Thry.ThryEditor
             // making every expanded texture taller. Preserve room for all channels.
             float height = assigned ? (available >= 440 ? 66 : 64) : 40;
             float aspect = assigned && _texture.height > 0 ? Mathf.Clamp((float)_texture.width / _texture.height, 1, 1.8f) : 1;
-            float width = Mathf.Min(height * aspect, Mathf.Max(40, available - (_gradient != null ? 215 : 150)));
+            float width = Mathf.Min(height * aspect, Mathf.Max(40, available - (_gradient != null ? 255 : 190)));
             _frame.style.height = height;
             _frame.style.width = width;
         }
@@ -243,7 +245,7 @@ namespace Thry.ThryEditor
             bool sourceChanged = _sourceDirty != EditorUtility.GetDirtyCount(_texture) || _sourceUpdate != _texture.updateCount
                 || _projectRevision != RetainedTextureRevision.Version || _sourceName != _texture.name
                 || _sourceWidth != _texture.width || _sourceHeight != _texture.height;
-            bool live = _texture is RenderTexture && (_channel != 0 || _texture.dimension != TextureDimension.Tex2D);
+            bool live = _texture is RenderTexture && (_channel != 5 || _texture.dimension != TextureDimension.Tex2D);
             if (sourceChanged) RefreshDescription();
             if (sourceChanged || _previewReleased || (live && EditorApplication.timeSinceStartup >= _nextLiveRefresh)) UpdatePreview();
             else if (!CanInspectChannels) _thumbnail.image = PreviewSource(); // AssetPreview can arrive asynchronously.
@@ -281,16 +283,17 @@ namespace Thry.ThryEditor
             _slice = Mathf.Clamp(_slice, 0, cube ? 5 : RetainedTexturePreview.SliceCount(_texture) - 1);
             _sliceField.SetValueWithoutNotify(_slice + 1); _faceField.text = Faces[Mathf.Clamp(_slice, 0, 5)];
             if (slices) _sliceField.tooltip = string.Format(Text("textureSliceHint", "Preview slice 1–{0}. This does not change the material."), RetainedTexturePreview.SliceCount(_texture));
-            int index = 0;
             foreach (var button in _channels.Children().OfType<Button>().Where(b => b.name != null && b.name.StartsWith("texture-channel-", StringComparison.Ordinal)))
             {
-                button.EnableInClassList("thry-selected", index == _channel);
-                button.SetEnabled(_texture != null && !_mixed && (index == 0 || CanInspectChannels)); index++;
+                int channel = (int)button.userData;
+                button.EnableInClassList("thry-selected", channel == _channel);
+                button.SetEnabled(_texture != null && !_mixed && (channel == 0 || CanInspectChannels));
             }
-            _thumbnail.tooltip = CanInspectChannels ? (_channel == 4 ? Text("textureAlphaHint", "Alpha · black is transparent, white is opaque") : _channel == 0 ? Text("textureFull", "Full texture")
+            _thumbnail.tooltip = CanInspectChannels ? (_channel == 4 ? Text("textureAlphaHint", "Alpha · black is transparent, white is opaque") : _channel == 0 ? Text("textureRGB", "Color without transparency")
+                : _channel == 5 ? Text("textureRGBA", "Color with transparency")
                 : new[] { "", Text("textureRed", "Red channel"), Text("textureGreen", "Green channel"), Text("textureBlue", "Blue channel") }[_channel])
                 : Text("textureUnsupportedChannels", "Asset preview · channel inspection is unavailable for this texture type.");
-            if ((_channel == 0 && _texture != null && _texture.dimension == TextureDimension.Tex2D
+            if ((_channel == 5 && _texture != null && _texture.dimension == TextureDimension.Tex2D
                 && !RetainedTexturePreview.IsNormalMap(_texture)) || !CanInspectChannels)
             {
                 ReleasePreview(); _thumbnail.image = PreviewSource(); _previewReleased = false; return;

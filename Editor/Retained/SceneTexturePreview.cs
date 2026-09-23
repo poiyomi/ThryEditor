@@ -58,7 +58,7 @@ namespace Thry.ThryEditor
         public static void SetChannel(Material material, string property, int channel)
         {
             if (!Active || _source != material || _property != property) return;
-            _channel = Mathf.Clamp(channel, 0, 4);
+            _channel = Mathf.Clamp(channel, 0, 5);
             _view.Repaint();
         }
 
@@ -75,7 +75,7 @@ namespace Thry.ThryEditor
             if (shader == null || !shader.isSupported) return false;
             _view = SceneView.lastActiveSceneView ?? EditorWindow.GetWindow<SceneView>();
             _source = material; _property = property;
-            _channel = Mathf.Clamp(channel, 0, 4);
+            _channel = Mathf.Clamp(channel, 0, 5);
             _stage = StageUtility.GetCurrentStageHandle();
             _preview = new Material(shader) { hideFlags = HideFlags.HideAndDontSave, name = "Scene texture inspection (temporary)" };
             _commands = new CommandBuffer { name = "Thry Scene Texture Inspection" };
