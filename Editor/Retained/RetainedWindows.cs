@@ -141,7 +141,10 @@ namespace Thry.ThryEditor
                         var heights = key == "inspectorHeaderHeight" ? new[] { 18, 20, 22, 24 } : new[] { 18, 20, 22 };
                         int selected = Array.IndexOf(heights, (int)member.GetValue(Config.Instance));
                         int defaultIndex = key == "inspectorHeaderHeight" ? 2 : 0;
-                        var field = new DropdownField(heights.Select(height => height + " px").ToList(), selected < 0 ? defaultIndex : selected);
+                        var captions = heights.Select((height, index) => index == defaultIndex
+                            ? RetainedText.Get("default", "Default") + " (" + height + " px)"
+                            : height + " px").ToList();
+                        var field = new DropdownField(captions, selected < 0 ? defaultIndex : selected);
                         RetainedWindow.Dropdown(field);
                         field.RegisterValueChangedCallback(e => { if (field.index >= 0 && field.index < heights.Length) save(heights[field.index]); });
                         value.Add(field);
