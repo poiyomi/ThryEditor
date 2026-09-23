@@ -92,6 +92,46 @@ namespace Thry.ThryEditor
 
     public partial class Settings
     {
+        private void OnEnable() { RetainedAppearance.Changed += RefreshAppearanceControls; }
+        private void OnDisable() { RetainedAppearance.Changed -= RefreshAppearanceControls; }
+
+        private void ChangeAppearance(Action change, bool saveProject)
+        {
+            try { change(); if (saveProject) Config.Instance.Save(); }
+            catch (Exception e) when (e is System.IO.InvalidDataException || e is System.IO.IOException || e is UnauthorizedAccessException || e is ArgumentException)
+            { Debug.LogError("[ThryEditor] Could not save inspector appearance. " + e.Message); }
+            RetainedAppearance.Refresh();
+        }
+
+        private void RefreshAppearanceControls()
+        {
+            var root = rootVisualElement;
+            var shared = root.Q<Toggle>("use-shared-inspector-appearance");
+            if (shared == null) return;
+            shared.SetValueWithoutNotify(Config.Instance.useSharedInspectorAppearance);
+            var appearance = InspectorAppearancePreferences.Shared.Get(Config.Instance);
+            foreach (string key in InspectorAppearancePreferences.Fields)
+            {
+                var row = root.Q(key);
+                if (row == null) continue;
+                if (key == "inspectorTextSize")
+                { var field = row.Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[Mathf.Clamp((int)appearance.inspectorTextSize, 0, field.choices.Count - 1)]); }
+                else if (key == "inspectorPropertyHeight" || key == "inspectorHeaderHeight")
+                {
+                    int value = (int)typeof(Config).GetField(key).GetValue(appearance);
+                    int[] heights = key == "inspectorHeaderHeight" ? new[] { 18, 20, 22, 24 } : new[] { 18, 20, 22 };
+                    int index = Array.IndexOf(heights, value);
+                    if (index < 0) index = key == "inspectorHeaderHeight" ? 2 : 0;
+                    var field = row.Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[index]);
+                }
+                else row.Q<SliderInt>().SetValueWithoutNotify((int)typeof(Config).GetField(key).GetValue(appearance));
+            }
+            var reset = root.Q<Button>("reset-inspector-appearance");
+            if (reset != null) reset.text = Config.Instance.useSharedInspectorAppearance
+                ? RetainedText.Get("reset_shared_inspector_appearance", "Reset shared appearance")
+                : RetainedText.Get("reset_inspector_appearance", "Reset appearance");
+        }
+
         private sealed class SearchSection
         {
             internal Foldout Section;
@@ -120,18 +160,34 @@ namespace Thry.ThryEditor
             {
                 var section=new Foldout {text=RetainedText.Get("settings_"+group[0].ToLowerInvariant().Replace(" ","_"),group[0]),value=true};RetainedUiState.Bind(section,"settings",group[0],true);scroll.Add(section);
                 var searchable = new SearchSection { Section = section }; sections.Add(searchable);
+                if (group[0] == "Theme")
+                {
+                    var shared = new Toggle(RetainedText.Get("use_shared_inspector_appearance", "Use shared appearance on this computer")) {
+                        name = "use-shared-inspector-appearance", value = Config.Instance.useSharedInspectorAppearance
+                    };
+                    shared.labelElement.style.whiteSpace = WhiteSpace.Normal;
+                    shared.labelElement.style.flexShrink = 1;
+                    shared.tooltip = RetainedText.Get("use_shared_inspector_appearance_help",
+                        "Share the Theme controls across projects for your user account. Turn this off to restore this project's appearance.");
+                    shared.RegisterValueChangedCallback(e => ChangeAppearance(
+                        () => InspectorAppearancePreferences.Shared.SetShared(Config.Instance, e.newValue), true));
+                    section.Add(shared);
+                    searchable.Rows.Add(new KeyValuePair<string, VisualElement>("Theme shared appearance computer projects", shared));
+                }
                 foreach(var key in group.Skip(1))
                 {
                     var member=typeof(Config).GetField(key);string label=EditorLocale.editor.Get(key);if(string.IsNullOrEmpty(label)||label==key)label=ObjectNames.NicifyVariableName(key);
                     VisualElement value;var row=RetainedFields.Row(label,out value);row.tooltip=EditorLocale.editor.Get(key+"_tooltip");row.name=key;section.Add(row);
+                    bool isTheme = group[0] == "Theme";
+                    var source = isTheme ? InspectorAppearancePreferences.Shared.Get(Config.Instance) : Config.Instance;
                     Action<object> save=v=>{
-                        member.SetValue(Config.Instance,v);Config.Instance.Save();
-                        if (key.StartsWith("inspector", StringComparison.Ordinal)) RetainedAppearance.Refresh();
-                        else ShaderEditor.ReloadActive();
+                        if (isTheme) ChangeAppearance(() => InspectorAppearancePreferences.Shared.SetValue(Config.Instance, key, v),
+                            !Config.Instance.useSharedInspectorAppearance);
+                        else { member.SetValue(Config.Instance,v); Config.Instance.Save(); ShaderEditor.ReloadActive(); }
                     };
                     if (key == "inspectorDarkGray" || key == "inspectorMediumGray" || key == "inspectorLightGray")
                     {
-                        int initial = (int)member.GetValue(Config.Instance);
+                        int initial = (int)member.GetValue(source);
                         var field = new SliderInt(-20, 20) { showInputField = true, value = Mathf.Clamp(initial, -20, 20) };
                         field.RegisterValueChangedCallback(e => save(Mathf.Clamp(e.newValue, field.lowValue, field.highValue)));
                         value.Add(field);
@@ -139,7 +195,7 @@ namespace Thry.ThryEditor
                     else if (key == "inspectorPropertyHeight" || key == "inspectorHeaderHeight")
                     {
                         var heights = key == "inspectorHeaderHeight" ? new[] { 18, 20, 22, 24 } : new[] { 18, 20, 22 };
-                        int selected = Array.IndexOf(heights, (int)member.GetValue(Config.Instance));
+                        int selected = Array.IndexOf(heights, (int)member.GetValue(source));
                         int defaultIndex = key == "inspectorHeaderHeight" ? 2 : 0;
                         var captions = heights.Select((height, index) => index == defaultIndex
                             ? RetainedText.Get("default", "Default") + " (" + height + " px)"
@@ -149,14 +205,14 @@ namespace Thry.ThryEditor
                         field.RegisterValueChangedCallback(e => { if (field.index >= 0 && field.index < heights.Length) save(heights[field.index]); });
                         value.Add(field);
                     }
-                    else if(member.FieldType==typeof(bool)){var field=new Toggle {value=(bool)member.GetValue(Config.Instance)};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
-                    else if(member.FieldType==typeof(int)){var field=new IntegerField {value=(int)member.GetValue(Config.Instance),isDelayed=true};field.RegisterValueChangedCallback(e=>save(Mathf.Max(0,e.newValue)));value.Add(field);}
-                    else if(member.FieldType==typeof(string)){var field=new TextField {value=(string)member.GetValue(Config.Instance),isDelayed=true};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
+                    else if(member.FieldType==typeof(bool)){var field=new Toggle {value=(bool)member.GetValue(source)};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
+                    else if(member.FieldType==typeof(int)){var field=new IntegerField {value=(int)member.GetValue(source),isDelayed=true};field.RegisterValueChangedCallback(e=>save(Mathf.Max(0,e.newValue)));value.Add(field);}
+                    else if(member.FieldType==typeof(string)){var field=new TextField {value=(string)member.GetValue(source),isDelayed=true};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
                     else if(member.FieldType.IsEnum)
                     {
                         var names = Enum.GetNames(member.FieldType);
                         var captions = names.Select(name => RetainedText.EnumCaption(member.FieldType, name)).ToList();
-                        int selected = Array.IndexOf(names, member.GetValue(Config.Instance).ToString());
+                        int selected = Array.IndexOf(names, member.GetValue(source).ToString());
                         var field = new DropdownField(captions, Mathf.Max(0, selected));
                         RetainedWindow.Dropdown(field);
                         field.RegisterValueChangedCallback(e => { if (field.index >= 0 && field.index < names.Length) save(Enum.Parse(member.FieldType, names[field.index])); });
@@ -168,23 +224,13 @@ namespace Thry.ThryEditor
                 }
                 if (group[0] == "Theme")
                 {
-                    var reset = new Button(() => {
-                        Config.Instance.inspectorDarkGray = Config.Instance.inspectorMediumGray = Config.Instance.inspectorLightGray = 0;
-                        Config.Instance.inspectorTextSize = InspectorTextSize.Default;
-                        Config.Instance.inspectorPropertyHeight = 18;
-                        Config.Instance.inspectorHeaderHeight = 22;
-                        Config.Instance.Save(); RetainedAppearance.Refresh();
-                        foreach (string key in new[] { "inspectorDarkGray", "inspectorMediumGray", "inspectorLightGray", "inspectorTextSize", "inspectorPropertyHeight", "inspectorHeaderHeight" })
-                        {
-                            if (key == "inspectorTextSize")
-                            { var field = section.Q(key).Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[0]); }
-                            else if (key == "inspectorPropertyHeight")
-                            { var field = section.Q(key).Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[0]); }
-                            else if (key == "inspectorHeaderHeight")
-                            { var field = section.Q(key).Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[2]); }
-                            else section.Q(key).Q<SliderInt>().SetValueWithoutNotify(0);
-                        }
-                    }) { name = "reset-inspector-appearance", text = RetainedText.Get("reset_inspector_appearance", "Reset appearance") };
+                    var reset = new Button(() => ChangeAppearance(
+                        () => InspectorAppearancePreferences.Shared.Reset(Config.Instance), !Config.Instance.useSharedInspectorAppearance)) {
+                        name = "reset-inspector-appearance",
+                        text = Config.Instance.useSharedInspectorAppearance
+                            ? RetainedText.Get("reset_shared_inspector_appearance", "Reset shared appearance")
+                            : RetainedText.Get("reset_inspector_appearance", "Reset appearance")
+                    };
                     section.Add(reset);
                     searchable.Rows.Add(new KeyValuePair<string, VisualElement>("Theme gray grey shades font text size property header height spacing reset", reset));
                 }

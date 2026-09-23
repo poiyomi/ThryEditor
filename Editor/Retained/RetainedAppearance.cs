@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -9,6 +10,25 @@ namespace Thry.ThryEditor
     internal static class RetainedAppearance
     {
         private sealed class Registration { }
+        internal static event System.Action Changed;
+        private static double nextSharedCheck;
+        private static string lastSharedAppearance;
+
+        static RetainedAppearance() { EditorApplication.update += CheckSharedAppearance; }
+
+        private static void CheckSharedAppearance()
+        {
+            if (Attached.Count == 0 || EditorApplication.timeSinceStartup < nextSharedCheck) return;
+            nextSharedCheck = EditorApplication.timeSinceStartup + 1;
+            if (!Config.Instance.useSharedInspectorAppearance) { lastSharedAppearance = null; return; }
+            var appearance = InspectorAppearancePreferences.Shared.Get(Config.Instance);
+            string signature = string.Join(":", appearance.inspectorDarkGray, appearance.inspectorMediumGray,
+                appearance.inspectorLightGray, (int)appearance.inspectorTextSize,
+                appearance.inspectorPropertyHeight, appearance.inspectorHeaderHeight);
+            if (signature == lastSharedAppearance) return;
+            lastSharedAppearance = signature;
+            Refresh();
+        }
         private static readonly ConditionalWeakTable<VisualElement, Registration> Installed = new ConditionalWeakTable<VisualElement, Registration>();
         private static readonly HashSet<VisualElement> Attached = new HashSet<VisualElement>();
 
@@ -29,13 +49,15 @@ namespace Thry.ThryEditor
 
         internal static void Refresh()
         {
-            foreach (var root in Attached) Apply(root);
+            var appearance = InspectorAppearancePreferences.Shared.Get(Config.Instance);
+            foreach (var root in Attached) Apply(root, appearance);
+            Changed?.Invoke();
         }
 
-        private static void Apply(VisualElement root)
+        private static void Apply(VisualElement root, Config appearance = null)
         {
             root.EnableInClassList("thry-dark", !root.ClassListContains("thry-light"));
-            var config = Config.Instance;
+            var config = appearance ?? InspectorAppearancePreferences.Shared.Get(Config.Instance);
             for (int height = 18; height <= 22; height += 2)
                 root.EnableInClassList("thry-property-height-" + height, config.inspectorPropertyHeight == height);
             for (int height = 18; height <= 24; height += 2)

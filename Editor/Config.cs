@@ -22,7 +22,9 @@ namespace Thry.ThryEditor
                 if (s_config == null)
                 {
                     if(!LoadFromFile(ref s_config))
-                        s_config = new Config().Save();
+                        s_config = new Config {
+                            useSharedInspectorAppearance = !File.Exists(PATH_CONFIG_FILE) && InspectorAppearancePreferences.Shared.HasProfile
+                        }.Save();
                 }
                 return s_config;
             }
@@ -43,6 +45,7 @@ namespace Thry.ThryEditor
         public bool showAnimatedDotOnHeaders = true;
         public bool showNotes = true;
         public bool staggeringRowColors = false;
+        public bool useSharedInspectorAppearance = false;
         public int inspectorDarkGray = 0;
         public int inspectorMediumGray = 0;
         public int inspectorLightGray = 0;
