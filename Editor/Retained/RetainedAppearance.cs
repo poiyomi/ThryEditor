@@ -36,6 +36,10 @@ namespace Thry.ThryEditor
         {
             root.EnableInClassList("thry-dark", !root.ClassListContains("thry-light"));
             var config = Config.Instance;
+            for (int height = 18; height <= 22; height += 2)
+                root.EnableInClassList("thry-property-height-" + height, config.inspectorPropertyHeight == height);
+            for (int height = 18; height <= 24; height += 2)
+                root.EnableInClassList("thry-header-height-" + height, config.inspectorHeaderHeight == height);
             SetShade(root, "thry-gray-dark-", config.inspectorDarkGray);
             SetShade(root, "thry-gray-medium-", config.inspectorMediumGray);
             SetShade(root, "thry-gray-light-", config.inspectorLightGray);

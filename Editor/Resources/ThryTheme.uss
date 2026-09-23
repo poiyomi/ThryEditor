@@ -317,7 +317,10 @@
 .thry-dropdown-menu.thry-light .unity-base-dropdown__label { color: #252525; }
 .thry-dropdown-menu.thry-light .unity-base-dropdown__item:hover, .thry-dropdown-menu.thry-light .unity-base-dropdown__item:checked { background-color: #eeeeee; }
 /* Native material controls share one responsive label/value grid. */
-.thry-material-controls { margin: 0 var(--thry-space-3); }
+.thry-material-controls { --thry-control-height: 18px; --thry-property-checkbox-size: 16px; margin: 0 var(--thry-space-3); }
+.thry-property-height-18 .thry-material-controls { --thry-control-height: 18px; }
+.thry-property-height-20 .thry-material-controls { --thry-control-height: 20px; --thry-property-checkbox-size: 18px; }
+.thry-property-height-22 .thry-material-controls { --thry-control-height: 22px; --thry-property-checkbox-size: 18px; }
 .thry-property-row { flex-direction: row; align-items: center; min-height: var(--thry-control-height); margin: var(--thry-space-1) 0; }
 .thry-property-label { width: 38%; flex-shrink: 0; margin: 0; padding: 0 var(--thry-space-8) 0 0; -unity-text-align: middle-left; color: var(--thry-caption-color); font-size: var(--thry-font-size); overflow: hidden; text-overflow: ellipsis; }
 .thry-property-value { flex-grow: 1; flex-shrink: 1; min-width: 0; }
@@ -362,10 +365,10 @@
 }
 /* High-resolution tick artwork keeps property checkboxes crisp. */
 .thry-material-controls .thry-property-value > .unity-toggle > .unity-toggle__input > .unity-toggle__checkmark {
-    width: 18px;
-    min-width: 18px;
-    height: 18px;
-    min-height: 18px;
+    width: var(--thry-property-checkbox-size);
+    min-width: var(--thry-property-checkbox-size);
+    height: var(--thry-property-checkbox-size);
+    min-height: var(--thry-property-checkbox-size);
     align-self: center;
     background-image: none;
     -unity-background-scale-mode: scale-to-fit;
@@ -384,7 +387,12 @@
 .thry-component > .unity-base-field__label { min-width: 10px; width: auto; margin: 0 var(--thry-space-4) 0 0; padding: 0; -unity-text-align: middle-center; color: var(--thry-muted-color); }
 .thry-inline .thry-property-label { display: none; }
 .thry-inline { flex-grow: 1; }
-/* A collapsed root header plus this gap occupies 24px, as in 10.0. */
+/* Header height preferences are scoped to section bars. */
+.thry-header-height-18 .thry-section-header { --thry-section-height: 18px; --thry-nested-section-height: 18px; }
+.thry-header-height-20 .thry-section-header { --thry-section-height: 20px; --thry-nested-section-height: 18px; }
+.thry-header-height-22 .thry-section-header { --thry-section-height: 22px; --thry-nested-section-height: 20px; }
+.thry-header-height-24 .thry-section-header { --thry-section-height: 24px; --thry-nested-section-height: 22px; }
+/* At the default height, a collapsed root header plus this gap occupies 24px. */
 .thry-section { margin: 0 0 var(--thry-space-2); }
 .thry-section-header { flex-direction: row; align-items: center; height: var(--thry-nested-section-height); background-color: #494949; border-radius: var(--thry-radius-subheader); padding: 0 var(--thry-space-4); overflow: hidden; border-color: #494949; }
 .thry-root-section > .thry-section-header { height: var(--thry-section-height); background-color: var(--thry-section-background); border-radius: var(--thry-radius-header); border-color: var(--thry-section-background); }
@@ -1709,7 +1717,7 @@
 
 /* Slim instrument-like slider handles; the native drag and keyboard behavior stays intact. */
 .thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__tracker { position: absolute; top: 50%; left: 0; right: 0; height: 2px; margin: -1px 0 0; border-width: 0; border-radius: 1px; background-color: var(--thry-track-color); }
-.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger { position: absolute; top: 50%; left: 0; width: 6px; height: 12px; margin: -6px 0 0; border-width: 0; border-radius: 2px; background-color: var(--thry-thumb-color); }
+.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger { position: absolute; top: 50%; left: 0; width: 6px; height: 10px; margin: -5px 0 0; border-width: 0; border-radius: 2px; background-color: var(--thry-thumb-color); }
 .thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger-border { display: none; }
 .thry-inspector .unity-slider:hover .unity-base-slider__dragger,
 .thry-inspector .unity-slider:focus .unity-base-slider__dragger { background-color: var(--thry-value-color); }

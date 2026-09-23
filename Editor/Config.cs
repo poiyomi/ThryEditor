@@ -47,6 +47,8 @@ namespace Thry.ThryEditor
         public int inspectorMediumGray = 0;
         public int inspectorLightGray = 0;
         public InspectorTextSize inspectorTextSize = InspectorTextSize.Default;
+        public int inspectorPropertyHeight = 18;
+        public int inspectorHeaderHeight = 22;
         public TextureImporterFormat texturePackerCompressionWithAlphaOverwrite = TextureImporterFormat.Automatic;
         public TextureImporterFormat texturePackerCompressionNoAlphaOverwrite = TextureImporterFormat.Automatic;
         public TextureImporterFormat gradientEditorCompressionOverwrite = TextureImporterFormat.Automatic;
@@ -104,6 +106,7 @@ namespace Thry.ThryEditor
             try
             {
                 config = JsonUtility.FromJson<Config>(data);
+                if (config.inspectorPropertyHeight == 16) config.inspectorPropertyHeight = 18;
             }
             catch (System.Exception e)
             {

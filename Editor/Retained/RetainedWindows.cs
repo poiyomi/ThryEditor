@@ -106,7 +106,7 @@ namespace Thry.ThryEditor
             var scroll=new ScrollView();scroll.style.flexGrow=1;root.Add(scroll);
             var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settings…"));search.AddToClassList("thry-settings-search");root.Insert(1,search);
             string[][] groups={
-                new[]{"Theme","inspectorDarkGray","inspectorMediumGray","inspectorLightGray","inspectorTextSize"},
+                new[]{"Theme","inspectorDarkGray","inspectorMediumGray","inspectorLightGray","inspectorTextSize","inspectorPropertyHeight","inspectorHeaderHeight"},
                 new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes","staggeringRowColors"},
                 new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming"},
                 new[]{"Avatar fixes","autoSetAnchorOverride","humanBoneAnchor","anchorOverrideObjectName"},
@@ -136,6 +136,16 @@ namespace Thry.ThryEditor
                         field.RegisterValueChangedCallback(e => save(Mathf.Clamp(e.newValue, field.lowValue, field.highValue)));
                         value.Add(field);
                     }
+                    else if (key == "inspectorPropertyHeight" || key == "inspectorHeaderHeight")
+                    {
+                        var heights = key == "inspectorHeaderHeight" ? new[] { 18, 20, 22, 24 } : new[] { 18, 20, 22 };
+                        int selected = Array.IndexOf(heights, (int)member.GetValue(Config.Instance));
+                        int defaultIndex = key == "inspectorHeaderHeight" ? 2 : 0;
+                        var field = new DropdownField(heights.Select(height => height + " px").ToList(), selected < 0 ? defaultIndex : selected);
+                        RetainedWindow.Dropdown(field);
+                        field.RegisterValueChangedCallback(e => { if (field.index >= 0 && field.index < heights.Length) save(heights[field.index]); });
+                        value.Add(field);
+                    }
                     else if(member.FieldType==typeof(bool)){var field=new Toggle {value=(bool)member.GetValue(Config.Instance)};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
                     else if(member.FieldType==typeof(int)){var field=new IntegerField {value=(int)member.GetValue(Config.Instance),isDelayed=true};field.RegisterValueChangedCallback(e=>save(Mathf.Max(0,e.newValue)));value.Add(field);}
                     else if(member.FieldType==typeof(string)){var field=new TextField {value=(string)member.GetValue(Config.Instance),isDelayed=true};field.RegisterValueChangedCallback(e=>save(e.newValue));value.Add(field);}
@@ -158,16 +168,22 @@ namespace Thry.ThryEditor
                     var reset = new Button(() => {
                         Config.Instance.inspectorDarkGray = Config.Instance.inspectorMediumGray = Config.Instance.inspectorLightGray = 0;
                         Config.Instance.inspectorTextSize = InspectorTextSize.Default;
+                        Config.Instance.inspectorPropertyHeight = 18;
+                        Config.Instance.inspectorHeaderHeight = 22;
                         Config.Instance.Save(); RetainedAppearance.Refresh();
-                        foreach (string key in new[] { "inspectorDarkGray", "inspectorMediumGray", "inspectorLightGray", "inspectorTextSize" })
+                        foreach (string key in new[] { "inspectorDarkGray", "inspectorMediumGray", "inspectorLightGray", "inspectorTextSize", "inspectorPropertyHeight", "inspectorHeaderHeight" })
                         {
                             if (key == "inspectorTextSize")
                             { var field = section.Q(key).Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[0]); }
+                            else if (key == "inspectorPropertyHeight")
+                            { var field = section.Q(key).Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[0]); }
+                            else if (key == "inspectorHeaderHeight")
+                            { var field = section.Q(key).Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[2]); }
                             else section.Q(key).Q<SliderInt>().SetValueWithoutNotify(0);
                         }
-                    }) { name = "reset-inspector-appearance", text = RetainedText.Get("reset_inspector_appearance", "Reset shades and text size") };
+                    }) { name = "reset-inspector-appearance", text = RetainedText.Get("reset_inspector_appearance", "Reset appearance") };
                     section.Add(reset);
-                    searchable.Rows.Add(new KeyValuePair<string, VisualElement>("Theme gray grey shades font text size reset", reset));
+                    searchable.Rows.Add(new KeyValuePair<string, VisualElement>("Theme gray grey shades font text size property header height spacing reset", reset));
                 }
             }
             var noResults = new Label(RetainedText.Get("settings_no_matches", "No settings match your search.")) { name = "settings-search-empty" };
