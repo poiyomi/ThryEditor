@@ -122,14 +122,14 @@
     --thry-preset-color: var(--thry-monokai-cyan);
     --thry-preset-animation-color: var(--thry-monokai-purple);
     --thry-panel-background: #c9c9c9;
-    --thry-root-section-background: #a8a8a8;
-    --thry-root-section-hover-background: #b3b3b3;
-    --thry-subsection-background: #c3c3c3;
-    --thry-subsection-hover-background: #cecece;
+    --thry-root-section-background: #a0a0a0;
+    --thry-root-section-hover-background: #ababab;
+    --thry-subsection-background: #b6b6b6;
+    --thry-subsection-hover-background: #bfbfbf;
     --thry-control-border-color: #b5b5b5;
     --thry-field-background: #dddddd;
-    --thry-dropdown-background: #d1d1d1;
-    --thry-dropdown-hover-background: #dddddd;
+    --thry-dropdown-background: #e1e1e1;
+    --thry-dropdown-hover-background: #ebebeb;
     --thry-selection-background: #bfd1df;
     --thry-channel-r-color: var(--thry-monokai-pink);
     --thry-channel-g-color: var(--thry-monokai-green);
@@ -629,8 +629,8 @@
 .thry-dropdown-menu .unity-base-dropdown__item {
     flex-direction: row;
     align-items: center;
-    height: var(--thry-toolbar-height);
-    min-height: var(--thry-toolbar-height);
+    height: var(--thry-menu-item-height);
+    min-height: var(--thry-menu-item-height);
     margin: 0;
     padding: 0 var(--thry-space-8);
     border-radius: var(--thry-radius-panel-small);
@@ -688,6 +688,20 @@
 .thry-property-height-22 .thry-material-controls {
     --thry-control-height: 22px;
     --thry-property-checkbox-size: 18px;
+}
+
+/* Menu rows follow the property height with a small hit-target margin.
+   RetainedMenu.RowHeight mirrors these values to size the menu card. */
+.thry-dropdown-menu {
+    --thry-menu-item-height: 22px;
+}
+
+.thry-dropdown-menu.thry-property-height-20 {
+    --thry-menu-item-height: 24px;
+}
+
+.thry-dropdown-menu.thry-property-height-22 {
+    --thry-menu-item-height: 26px;
 }
 
 .thry-property-row {
@@ -1500,8 +1514,8 @@
 .thry-menu-item {
     flex-direction: row;
     align-items: center;
-    min-height: var(--thry-toolbar-height);
-    max-height: var(--thry-toolbar-height);
+    min-height: var(--thry-menu-item-height);
+    max-height: var(--thry-menu-item-height);
     padding: 0 var(--thry-space-8);
     border-radius: var(--thry-radius-compact);
 }
@@ -2977,7 +2991,7 @@
 }
 
 .thry-menu-back {
-    height: var(--thry-toolbar-height);
+    height: var(--thry-menu-item-height);
     margin: 0;
     border-width: 0;
     background-color: transparent;
@@ -5516,6 +5530,17 @@
     -unity-background-image-tint-color: var(--thry-value-color);
 }
 
+/* Header toggles share the tintable property tick. Unity's native checkmark carries
+   its own colors, so the light-skin value tint would darken it almost to black. */
+.thry-inspector .thry-header-reference > .unity-toggle > .unity-toggle__input > .unity-toggle__checkmark {
+    background-image: none;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.thry-inspector .thry-header-reference > .unity-toggle:checked > .unity-toggle__input > .unity-toggle__checkmark {
+    background-image: url("ThryToolbar/property-checkmark.png");
+}
+
 /* Property checkboxes use the same surface as text fields in every toggle state.
    Explicit property ancestry overrides Unity's native checkbox state rules. */
 .thry-inspector .thry-material-controls .thry-property-value > .unity-toggle > .unity-toggle__input > .unity-toggle__checkmark {
@@ -5763,8 +5788,9 @@
     color: var(--thry-monokai-yellow);
 }
 
+/* A deeper ochre keeps the painted icon at 5:1 on light action buttons. */
 .thry-light .thry-bake-color-icon {
-    color: var(--thry-monokai-yellow);
+    color: #6b5c10;
 }
 
 .thry-inspector .thry-positioning-status {
@@ -6475,220 +6501,220 @@
 .thry-inspector.thry-light.thry-gray-medium-n10, .thry-dropdown-menu.thry-light.thry-gray-medium-n10 {
     --thry-background-color: #bebebe;
     --thry-panel-background: #bfbfbf;
-    --thry-subsection-background: #b9b9b9;
-    --thry-subsection-hover-background: #c4c4c4;
+    --thry-subsection-background: #acacac;
+    --thry-subsection-hover-background: #b5b5b5;
     --thry-section-background: #b4b4b4;
-    --thry-dropdown-background: #c7c7c7;
-    --thry-dropdown-hover-background: #d3d3d3;
+    --thry-dropdown-background: #d7d7d7;
+    --thry-dropdown-hover-background: #e1e1e1;
     --thry-disabled-background: #bababa;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n9, .thry-dropdown-menu.thry-light.thry-gray-medium-n9 {
     --thry-background-color: #bfbfbf;
     --thry-panel-background: #c0c0c0;
-    --thry-subsection-background: #bababa;
-    --thry-subsection-hover-background: #c5c5c5;
+    --thry-subsection-background: #adadad;
+    --thry-subsection-hover-background: #b6b6b6;
     --thry-section-background: #b5b5b5;
-    --thry-dropdown-background: #c8c8c8;
-    --thry-dropdown-hover-background: #d4d4d4;
+    --thry-dropdown-background: #d8d8d8;
+    --thry-dropdown-hover-background: #e2e2e2;
     --thry-disabled-background: #bbbbbb;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n8, .thry-dropdown-menu.thry-light.thry-gray-medium-n8 {
     --thry-background-color: #c0c0c0;
     --thry-panel-background: #c1c1c1;
-    --thry-subsection-background: #bbbbbb;
-    --thry-subsection-hover-background: #c6c6c6;
+    --thry-subsection-background: #aeaeae;
+    --thry-subsection-hover-background: #b7b7b7;
     --thry-section-background: #b6b6b6;
-    --thry-dropdown-background: #c9c9c9;
-    --thry-dropdown-hover-background: #d5d5d5;
+    --thry-dropdown-background: #d9d9d9;
+    --thry-dropdown-hover-background: #e3e3e3;
     --thry-disabled-background: #bcbcbc;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n7, .thry-dropdown-menu.thry-light.thry-gray-medium-n7 {
     --thry-background-color: #c1c1c1;
     --thry-panel-background: #c2c2c2;
-    --thry-subsection-background: #bcbcbc;
-    --thry-subsection-hover-background: #c7c7c7;
+    --thry-subsection-background: #afafaf;
+    --thry-subsection-hover-background: #b8b8b8;
     --thry-section-background: #b7b7b7;
-    --thry-dropdown-background: #cacaca;
-    --thry-dropdown-hover-background: #d6d6d6;
+    --thry-dropdown-background: #dadada;
+    --thry-dropdown-hover-background: #e4e4e4;
     --thry-disabled-background: #bdbdbd;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n6, .thry-dropdown-menu.thry-light.thry-gray-medium-n6 {
     --thry-background-color: #c2c2c2;
     --thry-panel-background: #c3c3c3;
-    --thry-subsection-background: #bdbdbd;
-    --thry-subsection-hover-background: #c8c8c8;
+    --thry-subsection-background: #b0b0b0;
+    --thry-subsection-hover-background: #b9b9b9;
     --thry-section-background: #b8b8b8;
-    --thry-dropdown-background: #cbcbcb;
-    --thry-dropdown-hover-background: #d7d7d7;
+    --thry-dropdown-background: #dbdbdb;
+    --thry-dropdown-hover-background: #e5e5e5;
     --thry-disabled-background: #bebebe;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n5, .thry-dropdown-menu.thry-light.thry-gray-medium-n5 {
     --thry-background-color: #c3c3c3;
     --thry-panel-background: #c4c4c4;
-    --thry-subsection-background: #bebebe;
-    --thry-subsection-hover-background: #c9c9c9;
+    --thry-subsection-background: #b1b1b1;
+    --thry-subsection-hover-background: #bababa;
     --thry-section-background: #b9b9b9;
-    --thry-dropdown-background: #cccccc;
-    --thry-dropdown-hover-background: #d8d8d8;
+    --thry-dropdown-background: #dcdcdc;
+    --thry-dropdown-hover-background: #e6e6e6;
     --thry-disabled-background: #bfbfbf;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n4, .thry-dropdown-menu.thry-light.thry-gray-medium-n4 {
     --thry-background-color: #c4c4c4;
     --thry-panel-background: #c5c5c5;
-    --thry-subsection-background: #bfbfbf;
-    --thry-subsection-hover-background: #cacaca;
+    --thry-subsection-background: #b2b2b2;
+    --thry-subsection-hover-background: #bbbbbb;
     --thry-section-background: #bababa;
-    --thry-dropdown-background: #cdcdcd;
-    --thry-dropdown-hover-background: #d9d9d9;
+    --thry-dropdown-background: #dddddd;
+    --thry-dropdown-hover-background: #e7e7e7;
     --thry-disabled-background: #c0c0c0;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n3, .thry-dropdown-menu.thry-light.thry-gray-medium-n3 {
     --thry-background-color: #c5c5c5;
     --thry-panel-background: #c6c6c6;
-    --thry-subsection-background: #c0c0c0;
-    --thry-subsection-hover-background: #cbcbcb;
+    --thry-subsection-background: #b3b3b3;
+    --thry-subsection-hover-background: #bcbcbc;
     --thry-section-background: #bbbbbb;
-    --thry-dropdown-background: #cecece;
-    --thry-dropdown-hover-background: #dadada;
+    --thry-dropdown-background: #dedede;
+    --thry-dropdown-hover-background: #e8e8e8;
     --thry-disabled-background: #c1c1c1;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n2, .thry-dropdown-menu.thry-light.thry-gray-medium-n2 {
     --thry-background-color: #c6c6c6;
     --thry-panel-background: #c7c7c7;
-    --thry-subsection-background: #c1c1c1;
-    --thry-subsection-hover-background: #cccccc;
+    --thry-subsection-background: #b4b4b4;
+    --thry-subsection-hover-background: #bdbdbd;
     --thry-section-background: #bcbcbc;
-    --thry-dropdown-background: #cfcfcf;
-    --thry-dropdown-hover-background: #dbdbdb;
+    --thry-dropdown-background: #dfdfdf;
+    --thry-dropdown-hover-background: #e9e9e9;
     --thry-disabled-background: #c2c2c2;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n1, .thry-dropdown-menu.thry-light.thry-gray-medium-n1 {
     --thry-background-color: #c7c7c7;
     --thry-panel-background: #c8c8c8;
-    --thry-subsection-background: #c2c2c2;
-    --thry-subsection-hover-background: #cdcdcd;
+    --thry-subsection-background: #b5b5b5;
+    --thry-subsection-hover-background: #bebebe;
     --thry-section-background: #bdbdbd;
-    --thry-dropdown-background: #d0d0d0;
-    --thry-dropdown-hover-background: #dcdcdc;
+    --thry-dropdown-background: #e0e0e0;
+    --thry-dropdown-hover-background: #eaeaea;
     --thry-disabled-background: #c3c3c3;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p1, .thry-dropdown-menu.thry-light.thry-gray-medium-p1 {
     --thry-background-color: #c9c9c9;
     --thry-panel-background: #cacaca;
-    --thry-subsection-background: #c4c4c4;
-    --thry-subsection-hover-background: #cfcfcf;
+    --thry-subsection-background: #b7b7b7;
+    --thry-subsection-hover-background: #c0c0c0;
     --thry-section-background: #bfbfbf;
-    --thry-dropdown-background: #d2d2d2;
-    --thry-dropdown-hover-background: #dedede;
+    --thry-dropdown-background: #e2e2e2;
+    --thry-dropdown-hover-background: #ececec;
     --thry-disabled-background: #c5c5c5;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p2, .thry-dropdown-menu.thry-light.thry-gray-medium-p2 {
     --thry-background-color: #cacaca;
     --thry-panel-background: #cbcbcb;
-    --thry-subsection-background: #c5c5c5;
-    --thry-subsection-hover-background: #d0d0d0;
+    --thry-subsection-background: #b8b8b8;
+    --thry-subsection-hover-background: #c1c1c1;
     --thry-section-background: #c0c0c0;
-    --thry-dropdown-background: #d3d3d3;
-    --thry-dropdown-hover-background: #dfdfdf;
+    --thry-dropdown-background: #e3e3e3;
+    --thry-dropdown-hover-background: #ededed;
     --thry-disabled-background: #c6c6c6;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p3, .thry-dropdown-menu.thry-light.thry-gray-medium-p3 {
     --thry-background-color: #cacaca;
     --thry-panel-background: #cbcbcb;
-    --thry-subsection-background: #c5c5c5;
-    --thry-subsection-hover-background: #d0d0d0;
+    --thry-subsection-background: #b8b8b8;
+    --thry-subsection-hover-background: #c1c1c1;
     --thry-section-background: #c0c0c0;
-    --thry-dropdown-background: #d3d3d3;
-    --thry-dropdown-hover-background: #dfdfdf;
+    --thry-dropdown-background: #e3e3e3;
+    --thry-dropdown-hover-background: #ededed;
     --thry-disabled-background: #c6c6c6;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p4, .thry-dropdown-menu.thry-light.thry-gray-medium-p4 {
     --thry-background-color: #cbcbcb;
     --thry-panel-background: #cccccc;
-    --thry-subsection-background: #c6c6c6;
-    --thry-subsection-hover-background: #d1d1d1;
+    --thry-subsection-background: #b9b9b9;
+    --thry-subsection-hover-background: #c2c2c2;
     --thry-section-background: #c1c1c1;
-    --thry-dropdown-background: #d4d4d4;
-    --thry-dropdown-hover-background: #e0e0e0;
+    --thry-dropdown-background: #e4e4e4;
+    --thry-dropdown-hover-background: #eeeeee;
     --thry-disabled-background: #c7c7c7;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p5, .thry-dropdown-menu.thry-light.thry-gray-medium-p5 {
     --thry-background-color: #cccccc;
     --thry-panel-background: #cdcdcd;
-    --thry-subsection-background: #c7c7c7;
-    --thry-subsection-hover-background: #d2d2d2;
+    --thry-subsection-background: #bababa;
+    --thry-subsection-hover-background: #c3c3c3;
     --thry-section-background: #c2c2c2;
-    --thry-dropdown-background: #d5d5d5;
-    --thry-dropdown-hover-background: #e1e1e1;
+    --thry-dropdown-background: #e5e5e5;
+    --thry-dropdown-hover-background: #efefef;
     --thry-disabled-background: #c8c8c8;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p6, .thry-dropdown-menu.thry-light.thry-gray-medium-p6 {
     --thry-background-color: #cdcdcd;
     --thry-panel-background: #cecece;
-    --thry-subsection-background: #c8c8c8;
-    --thry-subsection-hover-background: #d3d3d3;
+    --thry-subsection-background: #bbbbbb;
+    --thry-subsection-hover-background: #c4c4c4;
     --thry-section-background: #c3c3c3;
-    --thry-dropdown-background: #d6d6d6;
-    --thry-dropdown-hover-background: #e2e2e2;
+    --thry-dropdown-background: #e6e6e6;
+    --thry-dropdown-hover-background: #f0f0f0;
     --thry-disabled-background: #c9c9c9;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p7, .thry-dropdown-menu.thry-light.thry-gray-medium-p7 {
     --thry-background-color: #cecece;
     --thry-panel-background: #cfcfcf;
-    --thry-subsection-background: #c9c9c9;
-    --thry-subsection-hover-background: #d4d4d4;
+    --thry-subsection-background: #bcbcbc;
+    --thry-subsection-hover-background: #c5c5c5;
     --thry-section-background: #c4c4c4;
-    --thry-dropdown-background: #d7d7d7;
-    --thry-dropdown-hover-background: #e3e3e3;
+    --thry-dropdown-background: #e7e7e7;
+    --thry-dropdown-hover-background: #f1f1f1;
     --thry-disabled-background: #cacaca;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p8, .thry-dropdown-menu.thry-light.thry-gray-medium-p8 {
     --thry-background-color: #cecece;
     --thry-panel-background: #cfcfcf;
-    --thry-subsection-background: #c9c9c9;
-    --thry-subsection-hover-background: #d4d4d4;
+    --thry-subsection-background: #bcbcbc;
+    --thry-subsection-hover-background: #c5c5c5;
     --thry-section-background: #c4c4c4;
-    --thry-dropdown-background: #d7d7d7;
-    --thry-dropdown-hover-background: #e3e3e3;
+    --thry-dropdown-background: #e7e7e7;
+    --thry-dropdown-hover-background: #f1f1f1;
     --thry-disabled-background: #cacaca;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p9, .thry-dropdown-menu.thry-light.thry-gray-medium-p9 {
     --thry-background-color: #cfcfcf;
     --thry-panel-background: #d0d0d0;
-    --thry-subsection-background: #cacaca;
-    --thry-subsection-hover-background: #d5d5d5;
+    --thry-subsection-background: #bdbdbd;
+    --thry-subsection-hover-background: #c6c6c6;
     --thry-section-background: #c5c5c5;
-    --thry-dropdown-background: #d8d8d8;
-    --thry-dropdown-hover-background: #e4e4e4;
+    --thry-dropdown-background: #e8e8e8;
+    --thry-dropdown-hover-background: #f2f2f2;
     --thry-disabled-background: #cbcbcb;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p10, .thry-dropdown-menu.thry-light.thry-gray-medium-p10 {
     --thry-background-color: #d0d0d0;
     --thry-panel-background: #d1d1d1;
-    --thry-subsection-background: #cbcbcb;
-    --thry-subsection-hover-background: #d6d6d6;
+    --thry-subsection-background: #bebebe;
+    --thry-subsection-hover-background: #c7c7c7;
     --thry-section-background: #c6c6c6;
-    --thry-dropdown-background: #d9d9d9;
-    --thry-dropdown-hover-background: #e5e5e5;
+    --thry-dropdown-background: #e9e9e9;
+    --thry-dropdown-hover-background: #f3f3f3;
     --thry-disabled-background: #cccccc;
 }
 
@@ -7537,220 +7563,220 @@
 .thry-inspector.thry-light.thry-gray-medium-n20, .thry-dropdown-menu.thry-light.thry-gray-medium-n20 {
     --thry-background-color: #b4b4b4;
     --thry-panel-background: #b5b5b5;
-    --thry-subsection-background: #afafaf;
-    --thry-subsection-hover-background: #bababa;
+    --thry-subsection-background: #a2a2a2;
+    --thry-subsection-hover-background: #ababab;
     --thry-section-background: #aaaaaa;
-    --thry-dropdown-background: #bdbdbd;
-    --thry-dropdown-hover-background: #c9c9c9;
+    --thry-dropdown-background: #cdcdcd;
+    --thry-dropdown-hover-background: #d7d7d7;
     --thry-disabled-background: #b0b0b0;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n19, .thry-dropdown-menu.thry-light.thry-gray-medium-n19 {
     --thry-background-color: #b5b5b5;
     --thry-panel-background: #b6b6b6;
-    --thry-subsection-background: #b0b0b0;
-    --thry-subsection-hover-background: #bbbbbb;
+    --thry-subsection-background: #a3a3a3;
+    --thry-subsection-hover-background: #acacac;
     --thry-section-background: #ababab;
-    --thry-dropdown-background: #bebebe;
-    --thry-dropdown-hover-background: #cacaca;
+    --thry-dropdown-background: #cecece;
+    --thry-dropdown-hover-background: #d8d8d8;
     --thry-disabled-background: #b1b1b1;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n18, .thry-dropdown-menu.thry-light.thry-gray-medium-n18 {
     --thry-background-color: #b6b6b6;
     --thry-panel-background: #b7b7b7;
-    --thry-subsection-background: #b1b1b1;
-    --thry-subsection-hover-background: #bcbcbc;
+    --thry-subsection-background: #a4a4a4;
+    --thry-subsection-hover-background: #adadad;
     --thry-section-background: #acacac;
-    --thry-dropdown-background: #bfbfbf;
-    --thry-dropdown-hover-background: #cbcbcb;
+    --thry-dropdown-background: #cfcfcf;
+    --thry-dropdown-hover-background: #d9d9d9;
     --thry-disabled-background: #b2b2b2;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n17, .thry-dropdown-menu.thry-light.thry-gray-medium-n17 {
     --thry-background-color: #b7b7b7;
     --thry-panel-background: #b8b8b8;
-    --thry-subsection-background: #b2b2b2;
-    --thry-subsection-hover-background: #bdbdbd;
+    --thry-subsection-background: #a5a5a5;
+    --thry-subsection-hover-background: #aeaeae;
     --thry-section-background: #adadad;
-    --thry-dropdown-background: #c0c0c0;
-    --thry-dropdown-hover-background: #cccccc;
+    --thry-dropdown-background: #d0d0d0;
+    --thry-dropdown-hover-background: #dadada;
     --thry-disabled-background: #b3b3b3;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n16, .thry-dropdown-menu.thry-light.thry-gray-medium-n16 {
     --thry-background-color: #b8b8b8;
     --thry-panel-background: #b9b9b9;
-    --thry-subsection-background: #b3b3b3;
-    --thry-subsection-hover-background: #bebebe;
+    --thry-subsection-background: #a6a6a6;
+    --thry-subsection-hover-background: #afafaf;
     --thry-section-background: #aeaeae;
-    --thry-dropdown-background: #c1c1c1;
-    --thry-dropdown-hover-background: #cdcdcd;
+    --thry-dropdown-background: #d1d1d1;
+    --thry-dropdown-hover-background: #dbdbdb;
     --thry-disabled-background: #b4b4b4;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n15, .thry-dropdown-menu.thry-light.thry-gray-medium-n15 {
     --thry-background-color: #b9b9b9;
     --thry-panel-background: #bababa;
-    --thry-subsection-background: #b4b4b4;
-    --thry-subsection-hover-background: #bfbfbf;
+    --thry-subsection-background: #a7a7a7;
+    --thry-subsection-hover-background: #b0b0b0;
     --thry-section-background: #afafaf;
-    --thry-dropdown-background: #c2c2c2;
-    --thry-dropdown-hover-background: #cecece;
+    --thry-dropdown-background: #d2d2d2;
+    --thry-dropdown-hover-background: #dcdcdc;
     --thry-disabled-background: #b5b5b5;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n14, .thry-dropdown-menu.thry-light.thry-gray-medium-n14 {
     --thry-background-color: #bababa;
     --thry-panel-background: #bbbbbb;
-    --thry-subsection-background: #b5b5b5;
-    --thry-subsection-hover-background: #c0c0c0;
+    --thry-subsection-background: #a8a8a8;
+    --thry-subsection-hover-background: #b1b1b1;
     --thry-section-background: #b0b0b0;
-    --thry-dropdown-background: #c3c3c3;
-    --thry-dropdown-hover-background: #cfcfcf;
+    --thry-dropdown-background: #d3d3d3;
+    --thry-dropdown-hover-background: #dddddd;
     --thry-disabled-background: #b6b6b6;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n13, .thry-dropdown-menu.thry-light.thry-gray-medium-n13 {
     --thry-background-color: #bbbbbb;
     --thry-panel-background: #bcbcbc;
-    --thry-subsection-background: #b6b6b6;
-    --thry-subsection-hover-background: #c1c1c1;
+    --thry-subsection-background: #a9a9a9;
+    --thry-subsection-hover-background: #b2b2b2;
     --thry-section-background: #b1b1b1;
-    --thry-dropdown-background: #c4c4c4;
-    --thry-dropdown-hover-background: #d0d0d0;
+    --thry-dropdown-background: #d4d4d4;
+    --thry-dropdown-hover-background: #dedede;
     --thry-disabled-background: #b7b7b7;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n12, .thry-dropdown-menu.thry-light.thry-gray-medium-n12 {
     --thry-background-color: #bcbcbc;
     --thry-panel-background: #bdbdbd;
-    --thry-subsection-background: #b7b7b7;
-    --thry-subsection-hover-background: #c2c2c2;
+    --thry-subsection-background: #aaaaaa;
+    --thry-subsection-hover-background: #b3b3b3;
     --thry-section-background: #b2b2b2;
-    --thry-dropdown-background: #c5c5c5;
-    --thry-dropdown-hover-background: #d1d1d1;
+    --thry-dropdown-background: #d5d5d5;
+    --thry-dropdown-hover-background: #dfdfdf;
     --thry-disabled-background: #b8b8b8;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-n11, .thry-dropdown-menu.thry-light.thry-gray-medium-n11 {
     --thry-background-color: #bdbdbd;
     --thry-panel-background: #bebebe;
-    --thry-subsection-background: #b8b8b8;
-    --thry-subsection-hover-background: #c3c3c3;
+    --thry-subsection-background: #ababab;
+    --thry-subsection-hover-background: #b4b4b4;
     --thry-section-background: #b3b3b3;
-    --thry-dropdown-background: #c6c6c6;
-    --thry-dropdown-hover-background: #d2d2d2;
+    --thry-dropdown-background: #d6d6d6;
+    --thry-dropdown-hover-background: #e0e0e0;
     --thry-disabled-background: #b9b9b9;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p11, .thry-dropdown-menu.thry-light.thry-gray-medium-p11 {
     --thry-background-color: #d1d1d1;
     --thry-panel-background: #d2d2d2;
-    --thry-subsection-background: #cccccc;
-    --thry-subsection-hover-background: #d7d7d7;
+    --thry-subsection-background: #bfbfbf;
+    --thry-subsection-hover-background: #c8c8c8;
     --thry-section-background: #c7c7c7;
-    --thry-dropdown-background: #dadada;
-    --thry-dropdown-hover-background: #e6e6e6;
+    --thry-dropdown-background: #eaeaea;
+    --thry-dropdown-hover-background: #f4f4f4;
     --thry-disabled-background: #cdcdcd;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p12, .thry-dropdown-menu.thry-light.thry-gray-medium-p12 {
     --thry-background-color: #d2d2d2;
     --thry-panel-background: #d3d3d3;
-    --thry-subsection-background: #cdcdcd;
-    --thry-subsection-hover-background: #d8d8d8;
+    --thry-subsection-background: #c0c0c0;
+    --thry-subsection-hover-background: #c9c9c9;
     --thry-section-background: #c8c8c8;
-    --thry-dropdown-background: #dbdbdb;
-    --thry-dropdown-hover-background: #e7e7e7;
+    --thry-dropdown-background: #ebebeb;
+    --thry-dropdown-hover-background: #f5f5f5;
     --thry-disabled-background: #cecece;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p13, .thry-dropdown-menu.thry-light.thry-gray-medium-p13 {
     --thry-background-color: #d2d2d2;
     --thry-panel-background: #d3d3d3;
-    --thry-subsection-background: #cdcdcd;
-    --thry-subsection-hover-background: #d8d8d8;
+    --thry-subsection-background: #c0c0c0;
+    --thry-subsection-hover-background: #c9c9c9;
     --thry-section-background: #c8c8c8;
-    --thry-dropdown-background: #dbdbdb;
-    --thry-dropdown-hover-background: #e7e7e7;
+    --thry-dropdown-background: #ebebeb;
+    --thry-dropdown-hover-background: #f5f5f5;
     --thry-disabled-background: #cecece;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p14, .thry-dropdown-menu.thry-light.thry-gray-medium-p14 {
     --thry-background-color: #d3d3d3;
     --thry-panel-background: #d4d4d4;
-    --thry-subsection-background: #cecece;
-    --thry-subsection-hover-background: #d9d9d9;
+    --thry-subsection-background: #c1c1c1;
+    --thry-subsection-hover-background: #cacaca;
     --thry-section-background: #c9c9c9;
-    --thry-dropdown-background: #dcdcdc;
-    --thry-dropdown-hover-background: #e8e8e8;
+    --thry-dropdown-background: #ececec;
+    --thry-dropdown-hover-background: #f6f6f6;
     --thry-disabled-background: #cfcfcf;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p15, .thry-dropdown-menu.thry-light.thry-gray-medium-p15 {
     --thry-background-color: #d4d4d4;
     --thry-panel-background: #d5d5d5;
-    --thry-subsection-background: #cfcfcf;
-    --thry-subsection-hover-background: #dadada;
+    --thry-subsection-background: #c2c2c2;
+    --thry-subsection-hover-background: #cbcbcb;
     --thry-section-background: #cacaca;
-    --thry-dropdown-background: #dddddd;
-    --thry-dropdown-hover-background: #e9e9e9;
+    --thry-dropdown-background: #ededed;
+    --thry-dropdown-hover-background: #f7f7f7;
     --thry-disabled-background: #d0d0d0;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p16, .thry-dropdown-menu.thry-light.thry-gray-medium-p16 {
     --thry-background-color: #d5d5d5;
     --thry-panel-background: #d6d6d6;
-    --thry-subsection-background: #d0d0d0;
-    --thry-subsection-hover-background: #dbdbdb;
+    --thry-subsection-background: #c3c3c3;
+    --thry-subsection-hover-background: #cccccc;
     --thry-section-background: #cbcbcb;
-    --thry-dropdown-background: #dedede;
-    --thry-dropdown-hover-background: #eaeaea;
+    --thry-dropdown-background: #eeeeee;
+    --thry-dropdown-hover-background: #f8f8f8;
     --thry-disabled-background: #d1d1d1;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p17, .thry-dropdown-menu.thry-light.thry-gray-medium-p17 {
     --thry-background-color: #d6d6d6;
     --thry-panel-background: #d7d7d7;
-    --thry-subsection-background: #d1d1d1;
-    --thry-subsection-hover-background: #dcdcdc;
+    --thry-subsection-background: #c4c4c4;
+    --thry-subsection-hover-background: #cdcdcd;
     --thry-section-background: #cccccc;
-    --thry-dropdown-background: #dfdfdf;
-    --thry-dropdown-hover-background: #ebebeb;
+    --thry-dropdown-background: #efefef;
+    --thry-dropdown-hover-background: #f9f9f9;
     --thry-disabled-background: #d2d2d2;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p18, .thry-dropdown-menu.thry-light.thry-gray-medium-p18 {
     --thry-background-color: #d6d6d6;
     --thry-panel-background: #d7d7d7;
-    --thry-subsection-background: #d1d1d1;
-    --thry-subsection-hover-background: #dcdcdc;
+    --thry-subsection-background: #c4c4c4;
+    --thry-subsection-hover-background: #cdcdcd;
     --thry-section-background: #cccccc;
-    --thry-dropdown-background: #dfdfdf;
-    --thry-dropdown-hover-background: #ebebeb;
+    --thry-dropdown-background: #efefef;
+    --thry-dropdown-hover-background: #f9f9f9;
     --thry-disabled-background: #d2d2d2;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p19, .thry-dropdown-menu.thry-light.thry-gray-medium-p19 {
     --thry-background-color: #d7d7d7;
     --thry-panel-background: #d8d8d8;
-    --thry-subsection-background: #d2d2d2;
-    --thry-subsection-hover-background: #dddddd;
+    --thry-subsection-background: #c5c5c5;
+    --thry-subsection-hover-background: #cecece;
     --thry-section-background: #cdcdcd;
-    --thry-dropdown-background: #e0e0e0;
-    --thry-dropdown-hover-background: #ececec;
+    --thry-dropdown-background: #f0f0f0;
+    --thry-dropdown-hover-background: #fafafa;
     --thry-disabled-background: #d3d3d3;
 }
 
 .thry-inspector.thry-light.thry-gray-medium-p20, .thry-dropdown-menu.thry-light.thry-gray-medium-p20 {
     --thry-background-color: #d8d8d8;
     --thry-panel-background: #d9d9d9;
-    --thry-subsection-background: #d3d3d3;
-    --thry-subsection-hover-background: #dedede;
+    --thry-subsection-background: #c6c6c6;
+    --thry-subsection-hover-background: #cfcfcf;
     --thry-section-background: #cecece;
-    --thry-dropdown-background: #e1e1e1;
-    --thry-dropdown-hover-background: #ededed;
+    --thry-dropdown-background: #f1f1f1;
+    --thry-dropdown-hover-background: #fbfbfb;
     --thry-disabled-background: #d4d4d4;
 }
 
@@ -8007,5 +8033,114 @@
 }
 
 .thry-inspector Button.thry-uv-cell:focus {
+    border-color: var(--thry-focus-color);
+}
+
+/* Light skin contrast. Surfaces that read clearly on dark gray lose their edges on
+   light gray, so these rules add the tone step the dark skin gets for free. */
+.thry-dropdown-menu.thry-light .thry-menu-card {
+    background-color: var(--thry-surface-color);
+    border-color: #9a9a9a;
+}
+
+.thry-dropdown-menu.thry-light .thry-menu-selected {
+    background-color: #afc9dd;
+}
+
+.thry-dropdown-menu.thry-light .thry-menu-separator {
+    background-color: #b0b0b0;
+}
+
+/* Kept tiles read as fields; discarded tiles carry a saturated fill and outline. */
+.thry-inspector.thry-light Button.thry-uv-cell {
+    --thry-button-background: var(--thry-field-background);
+    --thry-button-hover-background: #e8e8e8;
+    --thry-button-pressed-background: #cfcfcf;
+    --thry-button-disabled-background: var(--thry-disabled-background);
+}
+
+.thry-inspector.thry-light Button.thry-uv-cell.thry-uv-discarded {
+    --thry-button-background: #e3a9bd;
+    --thry-button-hover-background: #ebbccc;
+    --thry-button-pressed-background: #d696ac;
+    --thry-button-disabled-background: var(--thry-monokai-pink-surface-disabled);
+    border-color: var(--thry-monokai-pink);
+}
+
+.thry-inspector.thry-light .thry-uv-cell.thry-uv-discarded > .thry-uv-caption {
+    color: #7d0d33;
+}
+
+.thry-inspector.thry-light Button.thry-uv-cell.thry-uv-discarded:hover {
+    border-color: var(--thry-monokai-cyan);
+}
+
+.thry-inspector.thry-light Button.thry-uv-cell.thry-uv-discarded:focus {
+    border-color: var(--thry-focus-color);
+}
+
+/* ButtonVector, Vector4Toggles and multi-float tiles: off reads as a field, on as a
+   filled accent. Borders are redeclared for each state because these selectors
+   outrank the shared Button hover and focus rules. */
+.thry-inspector.thry-light .thry-multi-value-controls > Button {
+    --thry-button-background: var(--thry-field-background);
+    --thry-button-hover-background: #e8e8e8;
+    --thry-button-pressed-background: #cfcfcf;
+    --thry-button-disabled-background: var(--thry-disabled-background);
+    border-color: var(--thry-control-border-color);
+}
+
+.thry-inspector.thry-light .thry-multi-value-controls > Button.thry-selected {
+    --thry-button-background: #a9c7de;
+    --thry-button-hover-background: #b9d3e6;
+    --thry-button-pressed-background: #98bbd5;
+    border-color: var(--thry-accent-color);
+}
+
+.thry-inspector.thry-light .thry-multi-value-controls > Button.thry-tile-mixed {
+    border-color: #777777;
+}
+
+.thry-inspector.thry-light .thry-multi-value-controls > Button:disabled {
+    border-color: var(--thry-disabled-border);
+}
+
+.thry-inspector.thry-light .thry-multi-value-controls > Button:focus,
+.thry-inspector.thry-light .thry-multi-value-controls > Button:enabled:active {
+    border-color: var(--thry-focus-color);
+}
+
+/* In-row actions (bake, mask picker, prefab spawner, positioning) are raised light
+   buttons rather than the toolbar gray, which matched root headers and hid icons. */
+.thry-inspector.thry-light .thry-material-controls Button.thry-action-button,
+.thry-inspector.thry-light .thry-material-controls Button.thry-mask-picker,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row Button {
+    --thry-button-background: #e6e6e6;
+    --thry-button-hover-background: #f0f0f0;
+    --thry-button-pressed-background: #cfcfcf;
+    --thry-button-disabled-background: var(--thry-disabled-background);
+    border-color: #a8a8a8;
+}
+
+.thry-inspector.thry-light .thry-material-controls Button.thry-action-button.thry-selected,
+.thry-inspector.thry-light .thry-material-controls Button.thry-action-button.thry-positioning-active {
+    --thry-button-background: #a9c7de;
+    --thry-button-hover-background: #b9d3e6;
+    --thry-button-pressed-background: #98bbd5;
+    border-color: var(--thry-accent-color);
+}
+
+.thry-inspector.thry-light .thry-material-controls Button.thry-action-button:disabled,
+.thry-inspector.thry-light .thry-material-controls Button.thry-mask-picker:disabled,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row Button:disabled {
+    border-color: var(--thry-disabled-border);
+}
+
+.thry-inspector.thry-light .thry-material-controls Button.thry-action-button:focus,
+.thry-inspector.thry-light .thry-material-controls Button.thry-mask-picker:focus,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row Button:focus,
+.thry-inspector.thry-light .thry-material-controls Button.thry-action-button:enabled:active,
+.thry-inspector.thry-light .thry-material-controls Button.thry-mask-picker:enabled:active,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row Button:enabled:active {
     border-color: var(--thry-focus-color);
 }
