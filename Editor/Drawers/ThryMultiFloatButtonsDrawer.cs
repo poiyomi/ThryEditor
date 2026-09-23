@@ -108,6 +108,9 @@ namespace Thry.ThryEditor.Drawers
 						{
 							props[i].floatValue = newOn ? 1f : 0f;
 							anyChanged = true;
+							if (TileLabelUtility.IsUdimProperty(prop.name) && ShaderEditor.Active.IsInAnimationMode
+								&& ShaderEditor.Active.PropertyDictionary.TryGetValue(propNames[i], out var animatedTile) && !animatedTile.IsAnimated)
+								animatedTile.SetAnimated(true, false);
 
 							// Force other properties to invalidate their cached default value check
 							// so the main property's IsPropertyValueDefault will be recalculated
@@ -120,8 +123,12 @@ namespace Thry.ThryEditor.Drawers
 				}
 			}
 
-			if (anyChanged && ShaderEditor.Active.IsInAnimationMode && !ShaderEditor.Active.CurrentProperty.IsAnimated)
+			if (anyChanged && !TileLabelUtility.IsUdimProperty(prop.name) && ShaderEditor.Active.IsInAnimationMode && !ShaderEditor.Active.CurrentProperty.IsAnimated)
 				ShaderEditor.Active.CurrentProperty.SetAnimated(true, false);
+
+			// The UV grid owns animation per tile. A legacy redraw must not copy
+			// column zero's state over the other three tiles.
+			if (TileLabelUtility.IsUdimProperty(prop.name)) return;
 
 			bool animated = ShaderEditor.Active.CurrentProperty.IsAnimated;
 			bool renamed = ShaderEditor.Active.CurrentProperty.IsRenaming;

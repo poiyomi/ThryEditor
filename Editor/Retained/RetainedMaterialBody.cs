@@ -245,6 +245,12 @@ namespace Thry.ThryEditor
                         (container, child) => AddPart(container, child, depth + 1)));
                     return;
                 }
+                if (!_editing && RetainedUVDiscard.CanBuild(group, Model))
+                {
+                    children.Add(new RetainedUVDiscard(Model, _fields, group,
+                        (container, child) => AddPart(container, child, depth + 1)));
+                    return;
+                }
                 // Sections and subsections organize their parent header's preset; only
                 // headers own named preset collections (matching the legacy inspector).
                 if (group is ShaderHeader && Model.Shader.IsSectionedPresetEditor)

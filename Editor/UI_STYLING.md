@@ -8,6 +8,12 @@ Poi/Thry/Settings → Theme offers independent Dark gray, Medium gray, and Light
 
 Changes update attached inspectors, menus, and retained tool windows immediately without rebuilding the material editor. Preferences are saved in Thry/Config.json. Text changes use the shared typography tokens; input heights, 18 px checkboxes, locked-material dimming, material previews, and explicit drawer font sizes keep their existing behavior. Legacy IMGUI controls and independently styled tools retain their own appearance.
 
+## Monokai palette
+
+Use `--thry-monokai-pink`, `-green`, `-yellow`, `-orange`, `-cyan`, `-purple`, and `-foreground` from `Resources/ThryTheme.uss` for shared accents. Each has a light-skin counterpart in the same palette block. Reuse the existing neutral surface, button-state, text, spacing, radius, and typography tokens for control styling.
+
+`--thry-animation-color` (A) and `--thry-animation-renamed-color` (RA) alias green and yellow. Preset, channel, toolbar, stencil, and UV-grid colors reference the same palette. UV discard uses the muted `--thry-monokai-pink-surface` tokens for its normal, hover, pressed, and disabled backgrounds, with normal theme text; mixed state uses purple. Legacy C# animation colors in `Styles.cs` still supply IMGUI and existing inline animation indicators; keep their skin equivalents aligned when changing the palette defaults.
+
 ## Studio direction
 
 - The original neutral dark/light palettes and focus colors, with the new Studio shapes and layout.
