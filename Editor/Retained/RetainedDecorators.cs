@@ -16,7 +16,7 @@ namespace Thry.ThryEditor
         {
             if ((property.MyShader.GetPropertyFlags(property.ShaderPropertyIndex) & ShaderPropertyFlags.Normal) == 0) return;
             var warning = new VisualElement { name = "normal-map-warning-" + property.MaterialProperty.name };
-            warning.Add(new HelpBox("Import the assigned textures as Normal Maps. These changes affect every material that uses them.", HelpBoxMessageType.Warning));
+            warning.Add(new HelpBox("This texture is not marked as a Normal Map in its import settings.", HelpBoxMessageType.Warning));
             Func<TextureImporter[]> mismatches = () => PresentationTargets(property)
                 .Where(m => m.HasProperty(property.MaterialProperty.name))
                 .Select(m => m.GetTexture(property.MaterialProperty.name)).OfType<Texture2D>()
@@ -64,11 +64,11 @@ namespace Thry.ThryEditor
             };
             var actions = new VisualElement { name = "normal-map-actions" };
             actions.AddToClassList("thry-normal-map-actions");
-            var fix = new Button(() => fixImport(false)) { text = "Fix Now", name = "fix-normal-map" };
+            var fix = new Button(() => fixImport(false)) { text = "Fix Now", name = "fix-normal-map", tooltip = "Set texture as a Normal Map in its import settings." };
             var fixBC5 = new Button(() => fixImport(true))
             {
                 text = "Fix + BC5 (Desktop)", name = "fix-normal-map-bc5",
-                tooltip = "Also sets desktop compression to BC5 and disables desktop Crunch. Creates or replaces the desktop format override, keeping the current size and other import settings."
+                tooltip = "Also sets desktop compression to BC5 and disables desktop Crunch."
             };
             fix.AddToClassList("thry-action-button");
             fixBC5.AddToClassList("thry-action-button");
