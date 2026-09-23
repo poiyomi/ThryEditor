@@ -531,6 +531,9 @@ namespace Thry.ThryEditor
             TextureAssetDisplay(objectField, property);
             if (attributes.Any(a => a.Name == "Curve")) value.Add(CurveCreatorButton(property, root));
             NormalMapImportWarning(root, property);
+            // Keep import warnings directly below the texture assignment row.
+            var colorSpaceWarning = root.Q("colorspace-warning-" + property.MaterialProperty.name);
+            if (colorSpaceWarning != null) colorSpaceWarning.PlaceInFront(row);
             var array = attributes.FirstOrDefault(a => a.Name == "TextureArray");
             if (array != null)
             {
