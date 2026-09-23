@@ -6,6 +6,8 @@ namespace Thry.ThryEditor
         public TextureData texture = null;
         public DefineableAction action = DefineableAction.None;
         public string hover = "";
+        // Property names handed to the action's target. See IThryButtonTarget.
+        public string[] args = null;
         public bool center_position = false;
         public DefineableCondition condition_show = DefineableCondition.None;
     }
