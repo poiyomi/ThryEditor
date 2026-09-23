@@ -690,9 +690,11 @@
 .thry-positioning-panel { margin: var(--thry-space-3) 0 var(--thry-space-7); }
 .thry-positioning-panel > .thry-section-content { padding: var(--thry-space-5) 0 var(--thry-space-5) var(--thry-space-5); }
 .thry-positioning-tools { margin: 0 0 var(--thry-space-5); padding-bottom: var(--thry-space-4); border-bottom-width: var(--thry-border-width); border-bottom-color: #494949; }
-.thry-positioning-actions { flex-direction: row; }
-.thry-positioning-actions > .thry-positioning-button { flex-grow: 1; flex-basis: 0; min-width: 0; height: 25px; margin: 0; padding: 0 var(--thry-space-5); flex-direction: row; align-items: center; justify-content: center; border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); }
-.thry-positioning-actions > .thry-positioning-secondary { margin-left: var(--thry-space-3); }
+.thry-positioning-actions, .thry-normal-map-actions { flex-direction: row; }
+.thry-positioning-actions > .thry-positioning-button,
+.thry-normal-map-actions > .thry-normal-map-button { flex-grow: 1; flex-basis: 0; min-width: 0; height: 25px; margin: 0; padding: 0 var(--thry-space-5); flex-direction: row; align-items: center; justify-content: center; border-width: var(--thry-border-width); border-radius: var(--thry-radius-button); }
+.thry-positioning-actions > .thry-positioning-secondary,
+.thry-normal-map-actions > .thry-normal-map-secondary { margin-left: var(--thry-space-3); }
 .thry-positioning-button > Label { margin: 0; font-size: var(--thry-type-body-small); }
 .thry-positioning-icon { width: 16px; height: 16px; min-width: 16px; margin-right: var(--thry-space-6); color: #a6e22e; }
 

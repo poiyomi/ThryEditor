@@ -16,16 +16,17 @@ namespace Thry.ThryEditor
         {
             if ((property.MyShader.GetPropertyFlags(property.ShaderPropertyIndex) & ShaderPropertyFlags.Normal) == 0) return;
             var warning = new VisualElement { name = "normal-map-warning-" + property.MaterialProperty.name };
-            warning.Add(new HelpBox("This slot expects a normal map. Fix Now imports the assigned textures as Normal Map assets, affecting every material that uses them.", HelpBoxMessageType.Warning));
+            warning.Add(new HelpBox("Import the assigned textures as Normal Maps. These changes affect every material that uses them.", HelpBoxMessageType.Warning));
             Func<TextureImporter[]> mismatches = () => PresentationTargets(property)
                 .Where(m => m.HasProperty(property.MaterialProperty.name))
                 .Select(m => m.GetTexture(property.MaterialProperty.name)).OfType<Texture2D>()
                 .Select(t => AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(t)) as TextureImporter)
                 .Where(i => i != null && i.textureType != TextureImporterType.NormalMap).Distinct().ToArray();
             bool pending = false;
-            var fix = new Button(() =>
+            Action<bool> fixImport = useBC5 =>
             {
                 if (pending || !RetainedMaterialModel.HasValidTargets(Model.Editor) || !Model.CanEdit(property)) return;
+                if (useBC5 && !TextureImporter.IsPlatformTextureFormatValid(TextureImporterType.NormalMap, BuildTarget.StandaloneWindows64, TextureImporterFormat.BC5)) return;
                 var paths = mismatches().Select(i => i.assetPath).ToArray();
                 if (paths.Length == 0) return;
                 pending = true;
@@ -44,18 +45,43 @@ namespace Thry.ThryEditor
                             importer.ReadTextureSettings(settings);
                             settings.textureType = TextureImporterType.NormalMap;
                             importer.SetTextureSettings(settings);
+                            if (useBC5)
+                            {
+                                var desktop = importer.GetPlatformTextureSettings("Standalone");
+                                // A new override starts with inherited values, not stale disabled overrides.
+                                if (!desktop.overridden) desktop = importer.GetDefaultPlatformTextureSettings();
+                                desktop.name = "Standalone";
+                                desktop.overridden = true;
+                                desktop.format = TextureImporterFormat.BC5;
+                                desktop.crunchedCompression = false;
+                                importer.SetPlatformTextureSettings(desktop);
+                            }
                             importer.SaveAndReimport();
                         }
                     }
                     finally { pending = false; Model.Notify(); }
                 };
-            }) { text = "Fix Now", name = "fix-normal-map" };
+            };
+            var actions = new VisualElement { name = "normal-map-actions" };
+            actions.AddToClassList("thry-normal-map-actions");
+            var fix = new Button(() => fixImport(false)) { text = "Fix Now", name = "fix-normal-map" };
+            var fixBC5 = new Button(() => fixImport(true))
+            {
+                text = "Fix + BC5 (Desktop)", name = "fix-normal-map-bc5",
+                tooltip = "Also sets desktop compression to BC5 and disables desktop Crunch. Creates or replaces the desktop format override, keeping the current size and other import settings."
+            };
             fix.AddToClassList("thry-action-button");
-            warning.Add(fix); root.Add(warning);
+            fixBC5.AddToClassList("thry-action-button");
+            fix.AddToClassList("thry-normal-map-button");
+            fixBC5.AddToClassList("thry-normal-map-button");
+            fixBC5.AddToClassList("thry-normal-map-secondary");
+            actions.Add(fix); actions.Add(fixBC5);
+            warning.Add(actions); root.Add(warning);
             Track(warning, () =>
             {
                 warning.style.display = mismatches().Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
                 fix.SetEnabled(!pending && Model.CanEdit(property));
+                fixBC5.SetEnabled(!pending && Model.CanEdit(property));
             });
         }
 
