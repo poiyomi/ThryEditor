@@ -6,6 +6,58 @@ namespace Thry.ThryEditor
 {
     internal sealed partial class RetainedFields
     {
+        private static bool HasMixedAnimation(ShaderProperty property) => property.HasPlainAnimatedOwners && property.HasRenamedAnimatedOwners;
+
+        private static Label AnimationIndicator(ShaderProperty property, string suffix = "")
+        {
+            var indicator = new Label { name = "animation-indicator-" + property.MaterialProperty.name + suffix, enableRichText = true };
+            indicator.AddToClassList("thry-animation-letter");
+            return indicator;
+        }
+
+        private static bool UpdateAnimationIndicator(Label indicator, ShaderProperty property)
+        {
+            bool animated = property.IsAnimatable && property.IsAnimated;
+            indicator.style.display = animated ? DisplayStyle.Flex : DisplayStyle.None;
+            indicator.text = HasMixedAnimation(property)
+                ? "<color=#" + ColorUtility.ToHtmlStringRGBA(Styles.AnimatedColor) + ">A</color>/<color=#"
+                    + ColorUtility.ToHtmlStringRGBA(Styles.AnimatedRenamedColor) + ">RA</color>"
+                : property.IsRenaming ? "RA" : "A";
+            indicator.tooltip = property.AnimatedOwnersTooltip;
+            indicator.style.width = HasMixedAnimation(property) ? 32 : 18;
+            indicator.style.color = property.IsRenaming ? Styles.AnimatedRenamedColor : Styles.AnimatedColor;
+            return animated;
+        }
+
+        internal void DecorateHeaderAnimation(VisualElement root, ShaderProperty property, Label caption)
+        {
+            var indicator = AnimationIndicator(property);
+            root.Insert(0, indicator);
+            var originalColor = caption != null ? caption.style.color : default(StyleColor);
+            Track(root, () => {
+                property.RefreshRetainedProjection(Model.Renderers);
+                bool animated = UpdateAnimationIndicator(indicator, property);
+                if (caption != null) caption.style.color = animated ? new StyleColor(indicator.style.color.value) : originalColor;
+            });
+        }
+
+        private void DecorateTransformAnimation(VisualElement row, ShaderTextureProperty property, string transform)
+        {
+            var caption = row.Q<Label>(className: "thry-property-label");
+            var indicator = AnimationIndicator(property, "-" + transform);
+            indicator.style.position = Position.Absolute;
+            row.Add(indicator);
+            var originalColor = caption.style.color;
+            var originalPadding = caption.style.paddingLeft;
+            TrackVisible(row, () => {
+                bool animated = UpdateAnimationIndicator(indicator, property);
+                caption.style.color = animated ? new StyleColor(indicator.style.color.value) : originalColor;
+                caption.style.paddingLeft = animated ? new StyleLength(HasMixedAnimation(property) ? 34 : 20) : originalPadding;
+                indicator.style.left = caption.layout.x;
+                indicator.style.top = Mathf.Max(0, (row.layout.height - 16) * .5f);
+            });
+        }
+
         private void DecorateAnimation(VisualElement root, ShaderProperty property, bool inline)
         {
             Label caption = null, indicator = null;
@@ -24,8 +76,7 @@ namespace Thry.ThryEditor
                     if (caption == null) return;
                     originalColor = caption.style.color;
                     originalPadding = labelContainer.style.paddingLeft;
-                    indicator = new Label { name = "animation-indicator-" + property.MaterialProperty.name };
-                    indicator.AddToClassList("thry-animation-letter");
+                    indicator = AnimationIndicator(property);
                     if (texture) labelContainer.Insert(1, indicator);
                     else
                     {
@@ -33,27 +84,19 @@ namespace Thry.ThryEditor
                         row.Add(indicator);
                     }
                 }
-                bool animated = property.IsAnimated;
-                indicator.style.display = animated ? DisplayStyle.Flex : DisplayStyle.None;
-                indicator.text = property.HasMixedAnimatedOwners ? "A/RA" : property.IsRenaming ? "RA" : "A";
-                if (property.HasMixedAnimatedOwners && !property.HasPlainAnimatedOwners) indicator.text = "RA";
-                if (property.HasMixedAnimatedOwners && !property.HasRenamedAnimatedOwners) indicator.text = "A";
-                indicator.tooltip = property.AnimatedOwnersTooltip;
-                indicator.style.width = indicator.text == "A/RA" ? 32 : 18;
-                var color = property.IsRenaming ? Styles.AnimatedRenamedColor : Styles.AnimatedColor;
-                indicator.style.color = color;
-                caption.style.color = animated ? new StyleColor(color) : originalColor;
+                bool animated = UpdateAnimationIndicator(indicator, property);
+                caption.style.color = animated ? new StyleColor(indicator.style.color.value) : originalColor;
                 if (texture) return;
                 if (inline)
                 {
                     // Inline reference values have no caption; reserve a small marker slot
                     // inside their own row, leaving the parent property's column intact.
-                    row.style.paddingLeft = animated ? (indicator.text == "A/RA" ? 34 : 20) : 0;
+                    row.style.paddingLeft = animated ? (HasMixedAnimation(property) ? 34 : 20) : 0;
                     indicator.style.left = 0;
                 }
                 else
                 {
-                    labelContainer.style.paddingLeft = animated ? new StyleLength(indicator.text == "A/RA" ? 34 : 20) : originalPadding;
+                    labelContainer.style.paddingLeft = animated ? new StyleLength(HasMixedAnimation(property) ? 34 : 20) : originalPadding;
                     indicator.style.left = labelContainer.layout.x;
                 }
                 indicator.style.top = Mathf.Max(0, (row.layout.height - 16) * .5f);

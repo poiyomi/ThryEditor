@@ -5371,6 +5371,7 @@
     opacity: 0.5;
 }
 
+.thry-inspector .thry-material-locked .thry-section-header.thry-has-animation,
 .thry-inspector .thry-material-locked .unity-disabled .thry-section-header {
     opacity: 1;
 }
@@ -8203,4 +8204,14 @@
 }
 .thry-inspector Button.thry-scene-preview-partial {
     border-color: var(--thry-monokai-yellow);
+}
+
+
+.thry-header-reference {
+    flex-direction: row;
+    align-items: center;
+}
+
+.thry-section-changed-dot {
+    background-color: var(--thry-caption-color);
 }

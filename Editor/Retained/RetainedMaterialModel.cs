@@ -232,6 +232,7 @@ namespace Thry.ThryEditor
                 // Parent tags and names can change without dirtying their variant.
                 foreach (var material in targets) ShaderProperty.InvalidateRetainedAnimatedOwner(material);
                 foreach (var property in Shader.ShaderParts.OfType<ShaderProperty>()) property.RefreshRetainedAnimatedState();
+                ShaderAnimationSummary.Invalidate(Shader);
                 AnimationRefreshCount++;
             }
             _animatedMaterialVersions.Clear();

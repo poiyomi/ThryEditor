@@ -160,17 +160,19 @@ namespace Thry.ThryEditor
             var references = new List<string>();
             if (group.Options.reference_property != null) references.Add(group.Options.reference_property);
             if (group.Options.reference_properties != null) references.AddRange(group.Options.reference_properties);
+            var headerReferences = new List<KeyValuePair<VisualElement, ShaderProperty>>();
             foreach (var id in references)
-            {
-                ShaderProperty reference;
-                if(Model.Shader.PropertyDictionary.TryGetValue(id,out reference))
+                foreach (var reference in _fields.ScopedReferences(group, id))
                 {
-                    var holder = new VisualElement(); holder.AddToClassList("thry-header-reference");
+                    var holder = new VisualElement { userData = reference }; holder.AddToClassList("thry-header-reference");
                     _fields.Toggle(holder, reference); _fields.Context(holder, reference); header.Add(holder);
+                    headerReferences.Add(new KeyValuePair<VisualElement, ShaderProperty>(holder, reference));
                 }
-            }
             var titleArea = new VisualElement { tooltip = group.TooltipText }; titleArea.AddToClassList("thry-section-title-area"); header.Add(titleArea);
             var title = new Label(SectionCaption(group)); title.AddToClassList("thry-section-title"); titleArea.Add(title);
+            foreach (var entry in headerReferences)
+                _fields.DecorateHeaderAnimation(headerReferences.Count == 1 ? titleArea : entry.Key, entry.Value,
+                    headerReferences.Count == 1 ? title : null);
             _fields.DecoratePreset(titleArea, group, true);
             var changedDot = new VisualElement { name = "changed-section-indicator" };
             changedDot.AddToClassList("thry-section-changed-dot"); titleArea.Add(changedDot);
@@ -186,9 +188,11 @@ namespace Thry.ThryEditor
             renamed.AddToClassList("thry-header-animation-dot"); titleArea.Add(renamed);
             _fields.TrackVisible(header, () =>
             {
-                animated.style.display = Config.Instance.showAnimatedDotOnHeaders && group.HasAnimatedDescendant ? DisplayStyle.Flex : DisplayStyle.None;
+                bool hasAnimated = group.HasAnimatedDescendant, hasRenamed = group.HasRenameAnimatedDescendant;
+                header.EnableInClassList("thry-has-animation", hasAnimated || hasRenamed);
+                animated.style.display = Config.Instance.showAnimatedDotOnHeaders && hasAnimated ? DisplayStyle.Flex : DisplayStyle.None;
                 animated.style.backgroundColor = Styles.AnimatedColor;
-                renamed.style.display = Config.Instance.showAnimatedDotOnHeaders && group.HasRenameAnimatedDescendant ? DisplayStyle.Flex : DisplayStyle.None;
+                renamed.style.display = Config.Instance.showAnimatedDotOnHeaders && hasRenamed ? DisplayStyle.Flex : DisplayStyle.None;
                 renamed.style.backgroundColor = Styles.AnimatedRenamedColor;
             });
             var note=new Label();note.AddToClassList("thry-note");header.Add(note);_fields.Track(note,()=>{note.text=group.Note;note.style.display=Config.Instance.showNotes&&!string.IsNullOrEmpty(note.text)?DisplayStyle.Flex:DisplayStyle.None;});
@@ -227,7 +231,6 @@ namespace Thry.ThryEditor
                 title.text = SectionCaption(group);
                 if (!Model.DeferSummaryRefresh)
                     changedDot.style.display = RetainedPropertyDefaults.HasChangedSection(Model.Shader, changedProperties) ? DisplayStyle.Flex : DisplayStyle.None;
-                changedDot.style.backgroundColor = title.resolvedStyle.color;
             });
             Action update = () => {
                 bool category = depth != 0 || Model.Shader.FocusedCategory == null || group.MaterialProperty.name == Model.Shader.FocusedCategory;

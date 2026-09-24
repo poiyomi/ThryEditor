@@ -41,9 +41,9 @@ namespace Thry.ThryEditor
         }
         private readonly List<Binding> _updates = new List<Binding>();
         private Binding[] _updateSnapshot;
-        private readonly Dictionary<Tuple<ShaderProperty, ShaderProperty>, ShaderProperty> _referenceProjections = new Dictionary<Tuple<ShaderProperty, ShaderProperty>, ShaderProperty>();
+        private readonly Dictionary<Tuple<ShaderPart, ShaderProperty>, ShaderProperty> _referenceProjections = new Dictionary<Tuple<ShaderPart, ShaderProperty>, ShaderProperty>();
         private ILookup<string, ShaderProperty> _referenceSources;
-        private IEnumerable<ShaderProperty> ScopedReferences(ShaderProperty owner, string name)
+        internal IEnumerable<ShaderProperty> ScopedReferences(ShaderPart owner, string name)
         {
             if (string.IsNullOrEmpty(name) || name == owner.MaterialProperty.name) yield break;
             if (_referenceSources == null) _referenceSources = Model.Shader.ShaderParts.OfType<ShaderProperty>().Where(p => p.MaterialProperty != null).ToLookup(p => p.MaterialProperty.name);
@@ -622,8 +622,11 @@ namespace Thry.ThryEditor
                 details.Add(card); TrackVisible(card, card.Synchronize);
                 if (property.hasScaleOffset)
                 {
-                    VisualElement tiling, offset; details.Add(Row("Tiling", out tiling)); Vector(tiling, property, new[] { "X", "Y" }, 0, true);
-                    details.Add(Row("Offset", out offset)); Vector(offset, property, new[] { "X", "Y" }, 2, true);
+                    VisualElement tiling, offset;
+                    var tilingRow = Row("Tiling", out tiling); details.Add(tilingRow); Vector(tiling, property, new[] { "X", "Y" }, 0, true);
+                    var offsetRow = Row("Offset", out offset); details.Add(offsetRow); Vector(offset, property, new[] { "X", "Y" }, 2, true);
+                    DecorateTransformAnimation(tilingRow, property, "tiling");
+                    DecorateTransformAnimation(offsetRow, property, "offset");
                     TrackVisible(tiling, () => tiling.SetEnabled(Model.CanEdit(property)));
                     TrackVisible(offset, () => offset.SetEnabled(Model.CanEdit(property)));
                 }

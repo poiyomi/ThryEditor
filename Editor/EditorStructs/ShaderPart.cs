@@ -1546,6 +1546,7 @@ namespace Thry.ThryEditor
 
         public void SetAnimated(bool animated, bool renamed)
         {
+            if (animated && !IsAnimatable) return;
             renamed = animated && renamed;
             UpdatedMaterialPropertyReference();
             if (MaterialProperty == null) return;
@@ -1562,7 +1563,7 @@ namespace Thry.ThryEditor
                 EditorUtility.SetDirty(material);
             }
             (this as ShaderProperty)?.RefreshRetainedAnimatedState();
-            (Parent as ShaderGroup)?.SetAnimatedDescendantStateDirty();
+            ShaderAnimationSummary.Invalidate(MyShaderUI);
             // A/RA is toggled from the context menu, which runs outside the section's change check, so the
             // linker has to be told directly - otherwise the new state never reaches the other subscribers.
             GlobalLinker.OnPropertyChanged(this);

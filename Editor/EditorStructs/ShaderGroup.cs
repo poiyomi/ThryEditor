@@ -28,46 +28,20 @@ namespace Thry.ThryEditor
 
         public virtual bool HasAnimatedDescendant
         {
-            get
-            {
-                if (_hasAnimatedDescendant == null)
-                {
-                    ResolveDescendantAnimatedStates();
-                    _hasAnimatedDescendant = Children.Any(p =>
-                        (p is ShaderGroup g && g.HasAnimatedDescendant) ||
-                        (p is ShaderProperty property ? property.HasPlainAnimatedOwners : p.IsAnimated && !p.IsRenaming));
-                }
-                return _hasAnimatedDescendant.Value;
-            }
+            get { ResolveAnimatedSummary(); return _hasAnimatedDescendant.Value; }
         }
 
         public virtual bool HasRenameAnimatedDescendant
         {
-            get
-            {
-                if (_hasRenameAnimatedDescendant == null)
-                {
-                    ResolveDescendantAnimatedStates();
-                    _hasRenameAnimatedDescendant = Children.Any(p =>
-                        (p is ShaderGroup g && g.HasRenameAnimatedDescendant) ||
-                        (p is ShaderProperty property ? property.HasRenamedAnimatedOwners : p.IsAnimated && p.IsRenaming));
-                }
-                return _hasRenameAnimatedDescendant.Value;
-            }
+            get { ResolveAnimatedSummary(); return _hasRenameAnimatedDescendant.Value; }
         }
 
-        // A property only reads its animated tag the first time it is drawn, and a collapsed group never draws
-        // its children, so their IsAnimated would still be false when the header asks for it. Pull the state
-        // straight from the material tags first so the dots reflect the section's contents whether it is
-        // expanded or not. Resolving is one-time per property, and this runs only on a cache miss.
-        // Done as a separate pass because the Any() below short-circuits and would leave the rest unresolved.
-        private void ResolveDescendantAnimatedStates()
+        private void ResolveAnimatedSummary()
         {
-            foreach (ShaderPart p in Children)
-            {
-                p.EnsureAnimatedStateResolved();
-                if (p is ShaderGroup g) g.ResolveDescendantAnimatedStates();
-            }
+            if (_hasAnimatedDescendant != null && _hasRenameAnimatedDescendant != null) return;
+            ShaderAnimationSummary.Resolve(this, out var animated, out var renamed);
+            _hasAnimatedDescendant = animated;
+            _hasRenameAnimatedDescendant = renamed;
         }
 
         internal void SetAnimatedDescendantStateDirty()
