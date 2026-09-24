@@ -1155,6 +1155,10 @@ namespace Thry
             {
                 PopupTools(iconRect);
             }
+            iconRect.x += 25;
+            if (GUILib.ButtonWithCursor(iconRect, ToolbarIcons.Camera, "Save a screenshot of the material settings to your desktop."))
+                InspectorCapture.CaptureActiveInspector(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+
             // Buttons added by packages built on this UI. Drawn last so the built-ins keep their
             // positions. The icon is resolved here rather than at registration time.
             foreach (var extra in TopBarButtons.All)

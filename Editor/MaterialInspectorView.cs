@@ -608,6 +608,10 @@ namespace Thry.ThryEditor
                     var button = extra;
                     AddTool(button.Tooltip, button.Icon()?.normal.background, () => button.OnClick());
                 }
+                var screenshot = AddTool("Screenshot", ToolbarIcons.Camera?.normal.background, () =>
+                    InspectorCapture.CaptureActiveInspector(Environment.GetFolderPath(Environment.SpecialFolder.Desktop)));
+                screenshot.name = "thry-tool-screenshot";
+                screenshot.tooltip = "Save a screenshot of the material settings to your desktop.";
                 Button toolsButton = null;
                 toolsButton = AddTool("Tools", ToolbarIcons.Tools?.normal.background, () =>
                     ShowLegacyMenu(_shader.RetainedToolsMenu(), toolsButton));

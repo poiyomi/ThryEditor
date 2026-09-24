@@ -1,6 +1,6 @@
 # Toolbar icons
 
-Phosphor filled icons: gear (settings), wrench (tools), pencil-simple (edit), and puzzle-piece (modules).
+Phosphor filled icons: gear (settings), wrench (tools), pencil-simple (edit), puzzle-piece (modules), and camera (inspector screenshot).
 Source: https://github.com/phosphor-icons/core/tree/2b75f3ad12b420c9504ef05df8d2564a28f8500e/assets/fill
 License: see LICENSE.txt (MIT).
 
@@ -14,6 +14,7 @@ Classic Monokai accents are used for the dark theme, with darker counterparts fo
 | wrench | #66D9EF | #16798B |
 | pencil | #E6DB74 | #82721E |
 | puzzle | #F92672 | #BF1855 |
+| camera | #A6E22E | #537D10 |
 
 The section header icons use the same Phosphor revision, fill style, and MIT license as the toolbar: share-network (global links), question (help), sliders-horizontal (presets), dots-three-outline-vertical (actions), play-circle (video), and user-circle (author). These symbols are solid standalone shapes; the boxed link and ellipsis variants are not used. Their original SVG sources are retained as `Source/header-*.svg.txt`. The white PNGs use a 64 x 64 transparent canvas. Action glyphs are trimmed, fitted within 62 x 48 pixels, and centered; carets are fitted within 48 x 48 pixels. All use a 14-point UI image slot, so visible glyph height is approximately 10.5 points, matching the ink height of the 12-point header labels. Section action hit areas remain 24 points. Filled caret-right and caret-down share the same assets and sizing between section and texture disclosure controls. UI Toolkit applies the editor-theme tint.
 

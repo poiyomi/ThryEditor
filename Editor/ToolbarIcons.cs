@@ -11,6 +11,7 @@ namespace Thry.ThryEditor
 
         public static GUIStyle Settings => Get("settings");
         public static GUIStyle Tools => Get("wrench");
+        public static GUIStyle Camera => Get("camera");
         public static GUIStyle Edit => Get("pencil");
         public static GUIStyle Modules => Get("puzzle");
 
