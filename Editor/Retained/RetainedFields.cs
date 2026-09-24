@@ -589,7 +589,7 @@ namespace Thry.ThryEditor
                     var scenePreview = new Button(() =>
                     {
                         var owners = Model.Owners(property).ToArray();
-                        if (owners.Length == 1) SceneTexturePreview.Toggle(owners[0], property.MaterialProperty.name, RetainedText.PropertyCaption(property), card.PreviewChannel);
+                        SceneTexturePreview.Toggle(owners, property.MaterialProperty.name, RetainedText.PropertyCaption(property), card.PreviewChannel);
                     }) { name = "scene-preview-" + property.MaterialProperty.name };
                     scenePreview.style.width = 24; scenePreview.style.minWidth = 24; scenePreview.style.height = 22; scenePreview.style.minHeight = 22;
                     scenePreview.style.marginLeft = scenePreview.style.marginRight = scenePreview.style.marginTop = scenePreview.style.marginBottom = 0;
@@ -599,17 +599,22 @@ namespace Thry.ThryEditor
                     scenePreview.style.flexShrink = 0;
                     scenePreview.Add(new Image { image = EditorGUIUtility.IconContent("scenevis_visible_hover").image,
                         scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore, style = { width = 16, height = 16, flexShrink = 0 } });
+                    scenePreview.AddToClassList("thry-scene-preview");
                     card.Q(className: "thry-texture-channels").Insert(0, scenePreview);
                     TrackVisible(scenePreview, () =>
                     {
                         var owners = Model.Owners(property).ToArray();
-                        bool active = owners.Length == 1 && SceneTexturePreview.Active && SceneTexturePreview.Source == owners[0]
-                            && SceneTexturePreview.Property == property.MaterialProperty.name;
-                        scenePreview.SetEnabled(owners.Length == 1 && SceneTexturePreview.CanPreview(owners[0], property.MaterialProperty.name)
+                        string name = property.MaterialProperty.name;
+                        int activeCount = owners.Count(m => SceneTexturePreview.IsActive(m, name));
+                        bool active = owners.Length > 0 && activeCount == owners.Length;
+                        string reason = owners.Select(m => SceneTexturePreview.UnavailableReason(m, name)).FirstOrDefault(r => r != null);
+                        scenePreview.SetEnabled(owners.Length > 0 && (active || reason == null)
                             && !EditorApplication.isPlayingOrWillChangePlaymode);
-                        scenePreview.tooltip = owners.Length != 1 ? "Select one material to preview its texture in Scene View."
-                            : active ? "Exit Scene View texture preview" : "Preview this texture on meshes in Scene View";
-                        scenePreview.style.backgroundColor = active ? new Color(.08f, .4f, .5f) : StyleKeyword.Null;
+                        scenePreview.tooltip = active ? "Stop previewing this texture on the selected materials"
+                            : reason ?? (activeCount > 0 ? "Some materials are previewing this texture. Preview it on all selected materials."
+                            : "Preview each selected material's texture on meshes in Scene View");
+                        scenePreview.EnableInClassList("thry-scene-preview-partial", activeCount > 0 && !active);
+                        scenePreview.EnableInClassList("thry-scene-preview-active", active);
                     });
                 }
                 var gradient = attributes.FirstOrDefault(a => a.Name == "Gradient");

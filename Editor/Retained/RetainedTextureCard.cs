@@ -171,14 +171,15 @@ namespace Thry.ThryEditor
             bool mixed = _property.MaterialProperty.targets.OfType<Material>()
                 .Where(m => m.HasProperty(_property.MaterialProperty.name))
                 .Select(m => m.GetTexture(_property.MaterialProperty.name)).Distinct().Skip(1).Any();
+            bool wasInitialized = _initialized;
             bool changed = !_initialized || texture != _texture || mixed != _mixed;
             _texture = texture; _mixed = mixed; _initialized = true;
             bool assigned = texture != null && !mixed;
             EnableInClassList("thry-texture-card-empty", texture == null && !mixed);
             _clear.style.display = texture != null || mixed ? DisplayStyle.Flex : DisplayStyle.None;
-            _channels.style.display = assigned || _gradient != null ? DisplayStyle.Flex : DisplayStyle.None;
+            _channels.style.display = assigned || _gradient != null || _channels.Q(className: "thry-scene-preview") != null ? DisplayStyle.Flex : DisplayStyle.None;
             if (_gradient != null) _gradient.SetEnabled(CanAssign);
-            foreach (var button in _channels.Children().OfType<Button>().Where(b => b != _gradient))
+            foreach (var button in _channels.Children().OfType<Button>().Where(b => b != _gradient && !b.ClassListContains("thry-scene-preview")))
                 button.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
             _clear.SetEnabled(CanAssign && (texture != null || mixed));
             if (changed)
@@ -203,7 +204,16 @@ namespace Thry.ThryEditor
                 _description.tooltip = _description.text;
                 UpdateResponsiveLayout();
             }
-            if (changed) SetChannel(_channel);
+            if (!wasInitialized && !mixed)
+            {
+                var owners = _model.Owners(_property).ToArray();
+                if (owners.Length == 1 && SceneTexturePreview.IsActive(owners[0], _property.MaterialProperty.name))
+                {
+                    _channel = SceneTexturePreview.GetChannel(owners[0], _property.MaterialProperty.name);
+                    UpdatePreview();
+                }
+            }
+            if (changed && wasInitialized && !mixed) SetChannel(_channel);
         }
 
         bool IsVisible()

@@ -8144,3 +8144,63 @@
 .thry-inspector.thry-light .thry-material-controls .thry-action-row Button:enabled:active {
     border-color: var(--thry-focus-color);
 }
+
+/* Scene texture inspection shares the live Poi appearance and button states. */
+.thry-inspector.thry-scene-texture-overlay {
+    position: absolute;
+    left: var(--thry-space-12);
+    bottom: var(--thry-space-12);
+    flex-direction: row;
+    align-items: center;
+    padding: var(--thry-space-8) var(--thry-space-12);
+    background-color: var(--thry-panel-background);
+    border-width: var(--thry-border-width);
+    border-color: var(--thry-panel-background);
+    border-radius: var(--thry-radius-panel);
+    color: var(--thry-value-color);
+    font-size: var(--thry-font-size);
+}
+.thry-scene-texture-overlay-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: var(--thry-space-8);
+    --unity-image-tint-color: var(--thry-monokai-cyan);
+}
+.thry-scene-texture-overlay-title {
+    -unity-font-style: bold;
+    margin-right: var(--thry-space-8);
+}
+.thry-scene-texture-overlay-count {
+    min-width: 26px;
+    padding: var(--thry-space-3) var(--thry-space-6);
+    border-radius: var(--thry-radius-control);
+    background-color: var(--thry-input-background);
+    color: var(--thry-monokai-cyan);
+    -unity-text-align: middle-center;
+}
+.thry-scene-texture-overlay-divider {
+    width: var(--thry-border-width);
+    height: 20px;
+    margin-left: var(--thry-space-12);
+    margin-right: var(--thry-space-8);
+    background-color: var(--thry-border-color);
+}
+.thry-scene-texture-overlay Button {
+    padding-left: var(--thry-space-10);
+    padding-right: var(--thry-space-10);
+    font-size: var(--thry-font-size);
+}
+.thry-scene-texture-overlay-shortcut {
+    margin-left: var(--thry-space-8);
+    font-size: var(--thry-type-caption);
+    color: var(--thry-muted-color);
+}
+
+.thry-inspector Button.thry-scene-preview-active {
+    --thry-button-background: var(--thry-selection-background);
+    --thry-button-hover-background: var(--thry-button-selected-hover-background);
+    border-color: var(--thry-accent-color);
+}
+.thry-inspector Button.thry-scene-preview-partial {
+    border-color: var(--thry-monokai-yellow);
+}
