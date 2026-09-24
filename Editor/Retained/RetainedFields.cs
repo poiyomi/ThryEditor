@@ -188,6 +188,8 @@ namespace Thry.ThryEditor
                 foreach (var reference in ScopedReferences(property, property.Options.reference_property))
                 { input.AddToClassList("thry-with-reference"); input.Add(Field(reference,true)); }
             }
+            var maskSources = attributes.FirstOrDefault(a => a.Name == "ThryMaskSources");
+            if (maskSources != null) { MaskSources(input, property, maskSources); return root; }
             if (Special(input, property, attributes)) return root;
             var enumeration = attributes.FirstOrDefault(a => a.Name == "ThryWideEnum" || a.Name == "Enum" || a.Name == "KeywordEnum");
             if (enumeration != null) { Enumeration(input, property, enumeration); return root; }
