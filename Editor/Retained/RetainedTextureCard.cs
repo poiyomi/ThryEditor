@@ -189,7 +189,11 @@ namespace Thry.ThryEditor
                 ReleasePreview();
                 // Import can replace Unity's managed/native texture wrapper while
                 // retaining the material's asset reference. Keep the inspection mode.
-                if (!sameAsset) { _channel = 0; _slice = 0; }
+                if (!sameAsset)
+                {
+                    _channel = CanInspectChannels && InspectorAppearancePreferences.Shared.Get(Config.Instance).defaultTexturePreview == TexturePreviewMode.RGBA ? 5 : 0;
+                    _slice = 0;
+                }
                 _assetGuid = guid; _assetDimension = assigned ? texture.dimension : TextureDimension.None;
                 _sourceDirty = -1; _projectRevision = -1;
                 _thumbnail.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
@@ -214,6 +218,7 @@ namespace Thry.ThryEditor
                 }
             }
             if (changed && wasInitialized && !mixed) SetChannel(_channel);
+            else if (changed) UpdatePreview();
         }
 
         bool IsVisible()

@@ -125,6 +125,7 @@ namespace Thry.ThryEditor
             EditorGUILayout.Space();
             GUILayout.Label(EditorLocale.editor.Get("shader_ui_design_header"), EditorStyles.boldLabel);
             Dropdown(nameof(Config.default_texture_type));
+            Dropdown(nameof(Config.defaultTexturePreview));
             Toggle(nameof(Config.showRenderQueue));
             Toggle(nameof(Config.showColorspaceWarnings));
             Toggle(nameof(Config.showStarNextToNonDefaultProperties));
@@ -342,7 +343,8 @@ namespace Thry.ThryEditor
             System.Reflection.FieldInfo field = typeof(Config).GetField(configField);
             if (field != null)
             {
-                Enum value = (Enum)field.GetValue(config);
+                bool sharedPreference = Array.IndexOf(InspectorAppearancePreferences.Fields, configField) >= 0;
+                Enum value = (Enum)field.GetValue(sharedPreference ? InspectorAppearancePreferences.Shared.Get(config) : config);
                 EditorGUI.BeginChangeCheck();
                 EditorGUILayout.BeginHorizontal();
                 GUILayout.Space(57);
@@ -351,8 +353,13 @@ namespace Thry.ThryEditor
                 EditorGUILayout.EndHorizontal();
                 if(EditorGUI.EndChangeCheck())
                 {
-                    field.SetValue(config, value);
-                    config.Save();
+                    if (sharedPreference)
+                    {
+                        InspectorAppearancePreferences.Shared.SetValue(config, configField, value);
+                        if (!config.useSharedInspectorAppearance) config.Save();
+                        RetainedAppearance.Refresh();
+                    }
+                    else { field.SetValue(config, value); config.Save(); }
                     ShaderEditor.RepaintActive();
                 }
             }

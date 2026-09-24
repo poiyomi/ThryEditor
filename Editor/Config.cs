@@ -36,6 +36,7 @@ namespace Thry.ThryEditor
         //actual config class
         public LoggingLevel loggingLevel = LoggingLevel.Normal;
         public TextureDisplayType default_texture_type = TextureDisplayType.small;
+        public TexturePreviewMode defaultTexturePreview = TexturePreviewMode.RGB;
         public bool showRenderQueue = true;
         public bool showManualReloadButton = false;
         public bool showColorspaceWarnings = true;
@@ -216,6 +217,8 @@ namespace Thry.ThryEditor
     }
 
     public enum InspectorTextSize { Default, Small, Large, Larger }
+
+    public enum TexturePreviewMode { RGB, RGBA }
 
     public enum TextureDisplayType
     {

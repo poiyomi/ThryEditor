@@ -114,7 +114,9 @@ namespace Thry.ThryEditor
             {
                 var row = root.Q(key);
                 if (row == null) continue;
-                if (key == "inspectorTextSize")
+                if (key == "defaultTexturePreview")
+                { var field = row.Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[(int)appearance.defaultTexturePreview]); }
+                else if (key == "inspectorTextSize")
                 { var field = row.Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[Mathf.Clamp((int)appearance.inspectorTextSize, 0, field.choices.Count - 1)]); }
                 else if (key == "inspectorPropertyHeight" || key == "inspectorHeaderHeight")
                 {
@@ -146,7 +148,7 @@ namespace Thry.ThryEditor
             var scroll=new ScrollView();scroll.style.flexGrow=1;root.Add(scroll);
             var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settings…"));search.AddToClassList("thry-settings-search");root.Insert(1,search);
             string[][] groups={
-                new[]{"Theme","inspectorDarkGray","inspectorMediumGray","inspectorLightGray","inspectorTextSize","inspectorPropertyHeight","inspectorHeaderHeight"},
+                new[]{"Theme","inspectorDarkGray","inspectorMediumGray","inspectorLightGray","inspectorTextSize","inspectorPropertyHeight","inspectorHeaderHeight","defaultTexturePreview"},
                 new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes","staggeringRowColors"},
                 new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming"},
                 new[]{"Avatar fixes","autoSetAnchorOverride","humanBoneAnchor","anchorOverrideObjectName"},

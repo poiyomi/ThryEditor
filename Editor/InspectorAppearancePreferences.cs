@@ -14,7 +14,8 @@ namespace Thry.ThryEditor
 
         internal static readonly string[] Fields = {
             nameof(Config.inspectorDarkGray), nameof(Config.inspectorMediumGray), nameof(Config.inspectorLightGray),
-            nameof(Config.inspectorTextSize), nameof(Config.inspectorPropertyHeight), nameof(Config.inspectorHeaderHeight)
+            nameof(Config.inspectorTextSize), nameof(Config.inspectorPropertyHeight), nameof(Config.inspectorHeaderHeight),
+            nameof(Config.defaultTexturePreview)
         };
         private readonly string path;
         private string lastWarning;
@@ -27,6 +28,7 @@ namespace Thry.ThryEditor
             public int version;
             public int inspectorDarkGray, inspectorMediumGray, inspectorLightGray;
             public InspectorTextSize inspectorTextSize;
+            public TexturePreviewMode defaultTexturePreview;
             public int inspectorPropertyHeight = 18;
             public int inspectorHeaderHeight = 22;
 
@@ -36,12 +38,14 @@ namespace Thry.ThryEditor
                 inspectorMediumGray = config.inspectorMediumGray,
                 inspectorLightGray = config.inspectorLightGray,
                 inspectorTextSize = config.inspectorTextSize,
+                defaultTexturePreview = config.defaultTexturePreview,
                 inspectorPropertyHeight = config.inspectorPropertyHeight,
                 inspectorHeaderHeight = config.inspectorHeaderHeight
             };
 
             internal void Apply(Config config)
             {
+                config.defaultTexturePreview = defaultTexturePreview == TexturePreviewMode.RGBA ? TexturePreviewMode.RGBA : TexturePreviewMode.RGB;
                 config.inspectorDarkGray = Mathf.Clamp(inspectorDarkGray, -20, 20);
                 config.inspectorMediumGray = Mathf.Clamp(inspectorMediumGray, -20, 20);
                 config.inspectorLightGray = Mathf.Clamp(inspectorLightGray, -20, 20);
