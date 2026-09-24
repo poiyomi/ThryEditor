@@ -156,6 +156,13 @@ namespace Thry.ThryEditor
             _preview.SetFloat("_ThryInspectUVRotate", Number("_UVSettingsRotate" + uv));
             _preview.SetFloat("_ThryInspectShiftBackface", Number("_UVSettingsShiftBackfaceUV"));
             _preview.SetFloat("_ThryInspectTimeSource", Number("_PoiTimeSource"));
+            _preview.SetFloat("_ThryInspectStochastic", Number(_property + "Stochastic"));
+            _preview.SetFloat("_StochasticMode", _source.HasProperty("_StochasticMode") ? Number("_StochasticMode") : 2);
+            _preview.SetFloat("_StochasticDeliotHeitzDensity", Number("_StochasticDeliotHeitzDensity"));
+            _preview.SetFloat("_StochasticHexGridDensity", Number("_StochasticHexGridDensity"));
+            _preview.SetFloat("_StochasticHexRotationStrength", Number("_StochasticHexRotationStrength"));
+            _preview.SetFloat("_StochasticHexFallOffContrast", Number("_StochasticHexFallOffContrast"));
+            _preview.SetFloat("_StochasticHexFallOffPower", Number("_StochasticHexFallOffPower"));
             _preview.SetFloat("_ThryInspectNormal", _normalMap ? 1 : 0);
             _preview.SetFloat("_ThryInspectChannel", _channel);
             _preview.SetInt("_ThryInspectCull", _source.HasProperty("_Cull") ? _source.GetInt("_Cull") : (int)CullMode.Back);

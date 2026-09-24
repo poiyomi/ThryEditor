@@ -19,7 +19,8 @@ Shader "Hidden/Thry/SceneTextureInspection"
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
-            sampler2D _ThryInspectTex;
+            Texture2D _ThryInspectTex; SamplerState sampler_ThryInspectTex;
+            #include "SceneTextureStochastic.cginc"
             float4 _ThryInspectST, _ThryInspectPan;
             float _ThryInspectUV, _ThryInspectNormal, _ThryInspectChannel;
             float4 _ThryInspectUVTiling, _ThryInspectUVOffset, _ThryInspectUVPan;
@@ -57,7 +58,12 @@ Shader "Hidden/Thry/SceneTextureInspection"
                 uv += _ThryInspectUVPan.xy * time.y;
                 if (_ThryInspectShiftBackface > .5 && !frontFace) uv.x += 1;
                 uv = uv * _ThryInspectST.xy + _ThryInspectST.zw + _ThryInspectPan.xy * time.x;
-                float4 sample = tex2D(_ThryInspectTex, uv);
+                float4 sample;
+                if (_ThryInspectStochastic != 0 && _StochasticMode == 0)
+                    sample = DeliotHeitzSampleTexture(_ThryInspectTex, sampler_ThryInspectTex, uv);
+                else if (_ThryInspectStochastic != 0 && _StochasticMode == 1)
+                    sample = HextileSampleTexture(_ThryInspectTex, sampler_ThryInspectTex, uv, false);
+                else sample = _ThryInspectTex.Sample(sampler_ThryInspectTex, uv);
                 // Match the texture-card RGB, RGBA, and individual channel previews.
                 if (_ThryInspectChannel > 4.5)
                     return _ThryInspectNormal > .5 ? float4(UnpackNormal(sample) * .5 + .5, 1) : sample;
