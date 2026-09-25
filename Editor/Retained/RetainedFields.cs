@@ -607,6 +607,8 @@ namespace Thry.ThryEditor
                     {
                         var owners = Model.Owners(property).ToArray();
                         string name = property.MaterialProperty.name;
+                        bool hasTexture = owners.Any(m => m.HasProperty(name) && m.GetTexture(name) != null);
+                        scenePreview.style.display = hasTexture ? DisplayStyle.Flex : DisplayStyle.None;
                         int activeCount = owners.Count(m => SceneTexturePreview.IsActive(m, name));
                         bool active = owners.Length > 0 && activeCount == owners.Length;
                         string reason = owners.Select(m => SceneTexturePreview.UnavailableReason(m, name)).FirstOrDefault(r => r != null);
@@ -617,7 +619,7 @@ namespace Thry.ThryEditor
                             : "Preview each selected material's texture on meshes in Scene View");
                         scenePreview.EnableInClassList("thry-scene-preview-partial", activeCount > 0 && !active);
                         scenePreview.EnableInClassList("thry-scene-preview-active", active);
-                    });
+                    }, card);
                 }
                 var gradient = attributes.FirstOrDefault(a => a.Name == "Gradient");
                 if (gradient != null) card.SetGradientAction(() => OpenGradientCreator(property, gradient, card));
@@ -632,9 +634,20 @@ namespace Thry.ThryEditor
                     TrackVisible(tiling, () => tiling.SetEnabled(Model.CanEdit(property)));
                     TrackVisible(offset, () => offset.SetEnabled(Model.CanEdit(property)));
                 }
+                var maskLevels = attributes.FirstOrDefault(a => a.Name == "ThryMaskLevels");
+                if(maskLevels != null) MaskLevels(details,property,maskLevels);
                 if (property.Options.reference_properties != null)
                     foreach (var name in property.Options.reference_properties)
-                        foreach (var reference in ScopedReferences(property, name)) details.Add(Field(reference));
+                        foreach (var reference in ScopedReferences(property, name))
+                        {
+                            var levels = maskLevels;
+                            if(levels != null && ((levels.Args.Length > 1 && name == levels.Args[1])
+                                || MaskLevelsData.Suffixes.Any(s => name == property.MaterialProperty.name + "ML" + s))) continue;
+                            details.Add(Field(reference));
+                        }
+                if (maskLevels != null)
+                    RetainedMaskLayout.Arrange(details, attributes.FirstOrDefault(a => a.Name == "ThryMaskLayout"),
+                        details.Q("mask-levels-" + property.MaterialProperty.name));
                 var textureTools = new VisualElement(); details.Add(textureTools);
                 TextureTools(textureTools, card, property, attributes);
                 TrackVisible(textureTools, () => textureTools.SetEnabled(Model.CanEdit(property)));

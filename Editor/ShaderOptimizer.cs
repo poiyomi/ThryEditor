@@ -929,6 +929,8 @@ namespace Thry.ThryEditor
                         && (!isLocking || !m.shader.IsBroken() && IsShaderUsingThryOptimizer(m.shader))) // select materials with compatible shaders for locking
                     .Distinct().ToArray();
                 
+                if(isLocking) foreach(var material in materialsToChangeLock) Thry.ThryEditor.MaskLevelsData.PrepareForLock(material);
+
                 foreach (Material m in materialsToChangeLock)
                 {
                     s_materialsChangedByLockUnlock.Add(AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(m)));

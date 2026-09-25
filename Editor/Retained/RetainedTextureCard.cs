@@ -203,7 +203,8 @@ namespace Thry.ThryEditor
                 _thumbnail.image = assigned ? PreviewSource() : null;
                 _name.text = mixed ? Text("multipleTextures", "Multiple textures") : assigned ? RetainedText.TextureCaption(texture) : Text("noTextureAssigned", "No texture assigned");
                 if (assigned) RefreshDescription();
-                else _description.text = Text("textureEmptyHint", "Drop a texture here or use the field above.");
+                else _description.text = string.Empty;
+                _description.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
                 _name.tooltip = _name.text;
                 _description.tooltip = _description.text;
                 UpdateResponsiveLayout();

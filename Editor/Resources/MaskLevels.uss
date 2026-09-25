@@ -1,0 +1,110 @@
+.poi-mask-levels { padding: 4px 0; }
+.poi-levels-row { flex-direction: row; align-items: center; margin-bottom: 6px; }
+.poi-levels-row > * { margin-right: 4px; }
+.poi-levels-previews { margin-top: 0; margin-bottom: 8px; }
+.poi-levels-image { height: 128px; background-color: var(--thry-field-background); margin: 4px 0; }
+.poi-levels-track { flex-grow: 1; min-width: 60px; height: var(--thry-control-height); }
+
+.poi-levels-number { width: 48px; min-width: 48px; }
+.poi-levels-row > Toggle { min-width: 92px; }
+.poi-levels-row > Toggle > .unity-base-field__label { min-width: 42px; }
+
+
+/* Shared full-width channel rail. */
+.poi-levels-tabs {
+    border-width: 0;
+    align-items: flex-end;
+    margin-bottom: 0;
+    padding-top: 3px;
+}
+.thry-inspector.poi-mask-levels .poi-levels-tabs > Button.poi-levels-tab {
+    --thry-button-background: var(--thry-field-background);
+    --thry-button-hover-background: var(--thry-hover-color);
+    height: var(--thry-control-height);
+    min-height: var(--thry-control-height);
+    min-width: 0;
+    flex-grow: 1;
+    flex-basis: 0;
+    margin: 0;
+    border-width: 0;
+    border-right-width: 1px;
+    border-right-color: var(--thry-panel-background);
+    border-radius: 0;
+    color: var(--thry-muted-color);
+}
+.thry-inspector.poi-mask-levels .poi-levels-tabs > Button.poi-levels-tab.thry-selected {
+    --thry-button-background: var(--thry-hover-color);
+    --thry-button-hover-background: var(--thry-hover-color);
+    border-bottom-width: 2px;
+    border-bottom-color: var(--thry-accent-color);
+    color: var(--thry-value-color);
+    -unity-font-style: bold;
+}
+
+.thry-inspector .poi-levels-track.unity-slider.unity-base-slider--horizontal .poi-levels-midpoint {
+    width: 7px;
+    height: 7px;
+    margin-top: -3.5px;
+    border-radius: 1px;
+    rotate: 45deg;
+}
+
+.poi-levels-page {
+    background-color: var(--thry-panel-background);
+    border-width: 0;
+    border-bottom-width: 1px;
+    border-color: var(--thry-border-color);
+    padding: 10px 0 0;
+    margin-bottom: 4px;
+}
+
+/* RetainedAppearance keeps these preference classes current while the window is open. */
+.poi-mask-levels.thry-property-height-18 { --thry-control-height: 18px; }
+.poi-mask-levels.thry-property-height-20 { --thry-control-height: 20px; }
+.poi-mask-levels.thry-property-height-22 { --thry-control-height: 22px; }
+
+
+.thry-inspector.poi-mask-levels .poi-levels-row > .unity-base-field,
+.thry-inspector.poi-mask-levels .poi-levels-row > Button,
+.thry-inspector.poi-mask-levels .unity-base-text-field__input,
+.thry-inspector.poi-mask-levels .unity-base-popup-field__input,
+.thry-inspector.poi-mask-levels .unity-object-field__input {
+    height: var(--thry-control-height);
+    min-height: var(--thry-control-height);
+    max-height: var(--thry-control-height);
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.thry-inspector.poi-mask-levels .poi-levels-preview-toggle {
+    width: 100px;
+    min-width: 100px;
+    flex-shrink: 0;
+    margin: 0 0 0 6px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--thry-field-background);
+    border-width: 0;
+    border-radius: 3px;
+    padding: 0 6px;
+}
+.thry-inspector.poi-mask-levels .poi-levels-preview-toggle .poi-levels-preview-caption {
+    color: var(--thry-accent-color);
+    -unity-font-style: bold;
+    margin-left: 5px;
+}
+.thry-inspector.poi-mask-levels .poi-levels-preview-toggle Image {
+    --unity-image-tint-color: var(--thry-accent-color);
+}
+.thry-inspector.poi-mask-levels .poi-levels-preview-toggle:hover {
+    background-color: var(--thry-hover-color);
+}
+.thry-inspector.poi-mask-levels .poi-levels-preview-toggle.thry-selected {
+    background-color: var(--thry-accent-color);
+}
+.thry-inspector.poi-mask-levels .poi-levels-preview-toggle.thry-selected .poi-levels-preview-caption {
+    color: var(--thry-field-background);
+}
+.thry-inspector.poi-mask-levels .poi-levels-preview-toggle.thry-selected Image {
+    --unity-image-tint-color: var(--thry-field-background);
+}

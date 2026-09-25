@@ -2586,7 +2586,7 @@
 
 /* Assigned cards use a fixed-height summary; only horizontal preview area grows. */
 .thry-texture-card .thry-texture-summary {
-    padding-bottom: 0;
+    padding-bottom: var(--thry-space-4);
     margin-bottom: var(--thry-space-2);
 }
 
@@ -2595,13 +2595,14 @@
 }
 
 .thry-texture-card-assigned .thry-texture-summary {
-    height: 68px;
-    min-height: 68px;
-    max-height: 68px;
+    height: 72px;
+    min-height: 72px;
+    max-height: 72px;
+    align-items: flex-end;
 }
 
 .thry-texture-card .thry-texture-preview {
-    align-self: flex-start;
+    align-self: auto;
 }
 
 .thry-texture-card .thry-texture-info {
@@ -2624,6 +2625,7 @@
 
 .thry-texture-card .thry-texture-channels {
     margin-top: var(--thry-space-2);
+    margin-left: var(--thry-space-2);
     flex-wrap: nowrap;
     min-width: 0;
 }

@@ -8,11 +8,19 @@ namespace Thry.ThryEditor.TexturePacker
     {
         internal static TextureImporter Write(string path, byte[] bytes, Func<string, TextureImporter> import,
             Action<string, byte[]> write = null)
+            => WriteCore(path, bytes, import, write, true);
+
+        internal static TextureImporter WriteNew(string path, byte[] bytes, Func<string, TextureImporter> import)
+            => WriteCore(path, bytes, import, null, false);
+
+        static TextureImporter WriteCore(string path, byte[] bytes, Func<string, TextureImporter> import,
+            Action<string, byte[]> write, bool replaceExisting)
         {
             if (bytes == null || bytes.Length == 0) throw new IOException("Texture encoding produced no image data.");
             string token = Guid.NewGuid().ToString("N");
             string pending = path + ".pending." + token + "~", backup = path + ".backup." + token + "~";
             bool existed = File.Exists(path), replaced = false;
+            if (existed && !replaceExisting) throw new IOException("The texture destination already exists: " + path);
             byte[] oldMeta = File.Exists(path + ".meta") ? File.ReadAllBytes(path + ".meta") : null;
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             try
