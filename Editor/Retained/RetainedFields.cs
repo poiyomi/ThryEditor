@@ -624,11 +624,13 @@ namespace Thry.ThryEditor
                 var gradient = attributes.FirstOrDefault(a => a.Name == "Gradient");
                 if (gradient != null) card.SetGradientAction(() => OpenGradientCreator(property, gradient, card));
                 details.Add(card); TrackVisible(card, card.Synchronize);
+                VisualElement transformEnd = card;
                 if (property.hasScaleOffset)
                 {
                     VisualElement tiling, offset;
                     var tilingRow = Row("Tiling", out tiling); details.Add(tilingRow); Vector(tiling, property, new[] { "X", "Y" }, 0, true);
                     var offsetRow = Row("Offset", out offset); details.Add(offsetRow); Vector(offset, property, new[] { "X", "Y" }, 2, true);
+                    transformEnd = offsetRow;
                     DecorateTransformAnimation(tilingRow, property, "tiling");
                     DecorateTransformAnimation(offsetRow, property, "offset");
                     TrackVisible(tiling, () => tiling.SetEnabled(Model.CanEdit(property)));
@@ -648,6 +650,7 @@ namespace Thry.ThryEditor
                 if (maskLevels != null)
                     RetainedMaskLayout.Arrange(details, attributes.FirstOrDefault(a => a.Name == "ThryMaskLayout"),
                         details.Q("mask-levels-" + property.MaterialProperty.name));
+                ArrangeTextureCoordinates(details, card, transformEnd, property, attributes);
                 var textureTools = new VisualElement(); details.Add(textureTools);
                 TextureTools(textureTools, card, property, attributes);
                 TrackVisible(textureTools, () => textureTools.SetEnabled(Model.CanEdit(property)));
@@ -670,6 +673,29 @@ namespace Thry.ThryEditor
                 }
             }
             Context(root, property);
+        }
+        private void ArrangeTextureCoordinates(VisualElement details, VisualElement card, VisualElement transformEnd,
+            ShaderTextureProperty property, DrawerAttribute[] attributes)
+        {
+            var bindings = attributes.FirstOrDefault(a => a.Name == "ThryMaskLayout");
+            // Use explicit mask bindings where supplied. Other textures use the shader's
+            // UV/Pan reference convention, including numbered textures and module instances.
+            string FindReference(string suffix, int slot)
+            {
+                if (bindings != null && bindings.Args.Length == 4) return bindings.Args[slot];
+                return property.Options.reference_properties?.FirstOrDefault(name =>
+                    System.Text.RegularExpressions.Regex.IsMatch(name, suffix + @"\d*(?:__\d+)?$"));
+            }
+            VisualElement FindRow(string name) => details.Children().FirstOrDefault(row => row.name == "property-" + name);
+            var uv = FindRow(FindReference("UV", 0));
+            var pan = FindRow(FindReference("Pan", 2));
+            if (uv != null) { uv.RemoveFromHierarchy(); details.Insert(details.IndexOf(card) + 1, uv); }
+            if (pan != null)
+            {
+                pan.RemoveFromHierarchy();
+                var anchor = transformEnd == card && uv != null ? uv : transformEnd;
+                details.Insert(details.IndexOf(anchor) + 1, pan);
+            }
         }
         internal void Context(VisualElement element, ShaderProperty property)
         {

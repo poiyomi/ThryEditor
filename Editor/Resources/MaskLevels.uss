@@ -1,4 +1,4 @@
-.poi-mask-levels { padding: var(--thry-space-1) 0; }
+.poi-mask-levels { padding: var(--thry-space-3) 0; }
 .poi-levels-row { flex-direction: row; align-items: center; margin: var(--thry-space-1) 0; }
 .poi-levels-row > * { margin-right: 4px; }
 .poi-levels-previews { margin-top: 0; margin-bottom: 8px; }
@@ -54,7 +54,7 @@
     border-width: 0;
     border-bottom-width: 1px;
     border-color: var(--thry-border-color);
-    padding: var(--thry-space-2) 0 0;
+    padding: var(--thry-space-2) 0 var(--thry-space-2);
     margin-bottom: 4px;
 }
 

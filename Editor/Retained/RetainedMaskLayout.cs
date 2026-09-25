@@ -27,12 +27,9 @@ namespace Thry.ThryEditor
             VisualElement Find(int slot) => details.Children().FirstOrDefault(row => row.name == "property-" + bindings.Args[slot]);
             var uv = Find(0);
             var channel = Find(1);
-            var panning = Find(2);
             var strength = Find(3);
             if (uv != null)
             {
-                uv.RemoveFromHierarchy();
-                details.Insert(1, uv);
                 var values = uv.Q(className: "thry-property-value");
                 if (channel != null && values != null)
                 {
@@ -46,11 +43,6 @@ namespace Thry.ThryEditor
                     if (label != null) { label.style.width = 58; label.style.minWidth = 58; }
                     values.Add(channel);
                 }
-            }
-            if (panning != null && levels != null)
-            {
-                panning.RemoveFromHierarchy();
-                details.Insert(details.IndexOf(levels), panning);
             }
             if (strength != null) { strength.RemoveFromHierarchy(); details.Add(strength); }
 
