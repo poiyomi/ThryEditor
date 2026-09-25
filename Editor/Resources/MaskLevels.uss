@@ -1,5 +1,5 @@
-.poi-mask-levels { padding: 4px 0; }
-.poi-levels-row { flex-direction: row; align-items: center; margin-bottom: 6px; }
+.poi-mask-levels { padding: var(--thry-space-1) 0; }
+.poi-levels-row { flex-direction: row; align-items: center; margin: var(--thry-space-1) 0; }
 .poi-levels-row > * { margin-right: 4px; }
 .poi-levels-previews { margin-top: 0; margin-bottom: 8px; }
 .poi-levels-image { height: 128px; background-color: var(--thry-field-background); margin: 4px 0; }
@@ -15,7 +15,7 @@
     border-width: 0;
     align-items: flex-end;
     margin-bottom: 0;
-    padding-top: 3px;
+    padding-top: 0;
 }
 .thry-inspector.poi-mask-levels .poi-levels-tabs > Button.poi-levels-tab {
     --thry-button-background: var(--thry-field-background);
@@ -54,7 +54,7 @@
     border-width: 0;
     border-bottom-width: 1px;
     border-color: var(--thry-border-color);
-    padding: 10px 0 0;
+    padding: var(--thry-space-2) 0 0;
     margin-bottom: 4px;
 }
 
@@ -72,6 +72,8 @@
     height: var(--thry-control-height);
     min-height: var(--thry-control-height);
     max-height: var(--thry-control-height);
+    margin-top: 0;
+    margin-bottom: 0;
     padding-top: 0;
     padding-bottom: 0;
 }
