@@ -806,7 +806,7 @@ namespace Thry.ThryEditor
         }
 
         // Mimics the normal map import warning - written by Orels1
-        static bool TextureImportWarningBox(string message) {
+        internal static bool TextureImportWarningBox(string message) {
             GUILayout.BeginVertical(new GUIStyle(EditorStyles.helpBox));
             GUILayout.Label(message, new GUIStyle(EditorStyles.label) {
                 fontSize = 10, wordWrap = true
