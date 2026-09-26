@@ -1,2 +1,6 @@
 
 .claude/
+
+# Local development tests
+/Editor/Tests/
+/Editor/Tests.meta
