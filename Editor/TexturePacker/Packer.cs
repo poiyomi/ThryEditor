@@ -256,6 +256,7 @@ namespace Thry.ThryEditor.TexturePacker
         {
             switch (SystemInfo.graphicsDeviceType)
             {
+                case UnityEngine.Rendering.GraphicsDeviceType.Metal:
                 case UnityEngine.Rendering.GraphicsDeviceType.Vulkan:
                 case UnityEngine.Rendering.GraphicsDeviceType.OpenGLCore:
                 case UnityEngine.Rendering.GraphicsDeviceType.OpenGLES2:
