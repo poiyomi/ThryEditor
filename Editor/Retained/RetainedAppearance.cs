@@ -20,9 +20,8 @@ namespace Thry.ThryEditor
         {
             if (Attached.Count == 0 || EditorApplication.timeSinceStartup < nextSharedCheck) return;
             nextSharedCheck = EditorApplication.timeSinceStartup + 1;
-            if (!Config.Instance.useSharedInspectorAppearance) { lastSharedAppearance = null; return; }
             var appearance = InspectorAppearancePreferences.Shared.Get(Config.Instance);
-            string signature = string.Join(":", appearance.inspectorDarkGray, appearance.inspectorMediumGray,
+            string signature = string.Join(":", Config.Instance.useSharedInspectorAppearance, appearance.inspectorDarkGray, appearance.inspectorMediumGray,
                 appearance.inspectorLightGray, (int)appearance.inspectorTextSize,
                 appearance.inspectorPropertyHeight, appearance.inspectorHeaderHeight, (int)appearance.defaultTexturePreview);
             if (signature == lastSharedAppearance) return;

@@ -22,9 +22,8 @@ namespace Thry.ThryEditor
                 if (s_config == null)
                 {
                     if(!LoadFromFile(ref s_config))
-                        s_config = new Config {
-                            useSharedInspectorAppearance = !File.Exists(PATH_CONFIG_FILE) && InspectorAppearancePreferences.Shared.HasProfile
-                        }.Save();
+                        s_config = new Config().Save();
+                    InspectorAppearancePreferences.Shared.SyncScope(s_config);
                 }
                 return s_config;
             }

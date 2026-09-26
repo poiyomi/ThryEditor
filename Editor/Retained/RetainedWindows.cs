@@ -108,8 +108,8 @@ namespace Thry.ThryEditor
             var root = rootVisualElement;
             var shared = root.Q<Toggle>("use-shared-inspector-appearance");
             if (shared == null) return;
-            shared.SetValueWithoutNotify(Config.Instance.useSharedInspectorAppearance);
             var appearance = InspectorAppearancePreferences.Shared.Get(Config.Instance);
+            shared.SetValueWithoutNotify(Config.Instance.useSharedInspectorAppearance);
             foreach (string key in InspectorAppearancePreferences.Fields)
             {
                 var row = root.Q(key);
@@ -170,7 +170,7 @@ namespace Thry.ThryEditor
                     shared.labelElement.style.whiteSpace = WhiteSpace.Normal;
                     shared.labelElement.style.flexShrink = 1;
                     shared.tooltip = RetainedText.Get("use_shared_inspector_appearance_help",
-                        "Share the Theme controls across projects for your user account. Turn this off to restore this project's appearance.");
+                        "Share the Theme controls across projects for your user account. This toggle applies across projects too. Turn it off to use each project's own appearance.");
                     shared.RegisterValueChangedCallback(e => ChangeAppearance(
                         () => InspectorAppearancePreferences.Shared.SetShared(Config.Instance, e.newValue), true));
                     section.Add(shared);

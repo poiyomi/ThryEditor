@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Thry.ThryEditor
 {
-    // Only Theme values belong here. Config keeps the project's original values so opting
+    // Theme values and their shared scope belong here. Config keeps the project's original values so opting
     // out of sharing restores them, including after a domain reload or editor restart.
     internal sealed class InspectorAppearancePreferences
     {
@@ -26,6 +26,7 @@ namespace Thry.ThryEditor
         private sealed class Profile
         {
             public int version;
+            public bool useSharedInspectorAppearance;
             public int inspectorDarkGray, inspectorMediumGray, inspectorLightGray;
             public InspectorTextSize inspectorTextSize;
             public TexturePreviewMode defaultTexturePreview;
@@ -33,7 +34,8 @@ namespace Thry.ThryEditor
             public int inspectorHeaderHeight = 22;
 
             internal static Profile From(Config config) => new Profile {
-                version = 1,
+                version = 2,
+                useSharedInspectorAppearance = true,
                 inspectorDarkGray = config.inspectorDarkGray,
                 inspectorMediumGray = config.inspectorMediumGray,
                 inspectorLightGray = config.inspectorLightGray,
@@ -64,14 +66,17 @@ namespace Thry.ThryEditor
             using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
             using (var reader = new StreamReader(stream))
                 profile = JsonUtility.FromJson<Profile>(reader.ReadToEnd());
-            if (profile == null || profile.version != 1)
+            if (profile == null || (profile.version != 1 && profile.version != 2))
                 throw new InvalidDataException("Unsupported inspector appearance profile.");
+            // Existing profiles were created by enabling sharing.
+            if (profile.version == 1) profile.useSharedInspectorAppearance = true;
             return profile;
         }
 
-        internal bool HasProfile
+        internal void SyncScope(Config project)
         {
-            get { return TryLoad() != null; }
+            var profile = TryLoad();
+            if (profile != null) project.useSharedInspectorAppearance = profile.useSharedInspectorAppearance;
         }
 
         private Profile TryLoad()
@@ -88,9 +93,10 @@ namespace Thry.ThryEditor
 
         internal Config Get(Config project)
         {
-            if (!project.useSharedInspectorAppearance) return project;
             var profile = TryLoad();
             if (profile == null) return project;
+            project.useSharedInspectorAppearance = profile.useSharedInspectorAppearance;
+            if (!project.useSharedInspectorAppearance) return project;
             var appearance = new Config();
             profile.Apply(appearance);
             return appearance;
@@ -98,17 +104,18 @@ namespace Thry.ThryEditor
 
         internal void SetShared(Config project, bool enabled)
         {
-            if (enabled)
-            {
-                // A project joining an existing profile must never seed over its preferences.
-                if (Load() == null) Write(Profile.From(project), onlyIfMissing: true);
-            }
+            // Keep the saved appearance when changing scope, including when sharing is off.
+            var profile = Load() ?? Profile.From(project);
+            profile.version = 2;
+            profile.useSharedInspectorAppearance = enabled;
+            Write(profile);
             project.useSharedInspectorAppearance = enabled;
         }
 
         internal void SetValue(Config project, string field, object value)
         {
             if (Array.IndexOf(Fields, field) < 0) throw new ArgumentException("Not an appearance setting.", nameof(field));
+            SyncScope(project);
             var target = project;
             if (project.useSharedInspectorAppearance)
             {
@@ -122,12 +129,13 @@ namespace Thry.ThryEditor
 
         internal void Reset(Config project)
         {
+            SyncScope(project);
             var defaults = Profile.From(new Config());
             if (project.useSharedInspectorAppearance) Write(defaults);
             else defaults.Apply(project);
         }
 
-        private void Write(Profile profile, bool onlyIfMissing = false)
+        private void Write(Profile profile)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -140,7 +148,7 @@ namespace Thry.ThryEditor
                     try { File.Move(temporary, path); return; }
                     catch (IOException) when (File.Exists(path)) { }
                 }
-                if (!onlyIfMissing) File.Replace(temporary, path, null);
+                File.Replace(temporary, path, null);
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
