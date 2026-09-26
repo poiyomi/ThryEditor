@@ -448,16 +448,17 @@ namespace Thry.ThryEditor
             }
             return _cachedRenderers = Array.Empty<Renderer>();
         }
-        internal void ShowLegacyMenu(GenericMenu source, VisualElement target)
+        internal void ShowLegacyMenu(GenericMenu source, VisualElement target, Rect? anchor = null)
         {
+            var position = anchor ?? target.worldBound;
             List<RetainedMenu.Item> choices;
             if (!TryConvertLegacyMenu(source, target, out choices))
             {
                 // Native menus remain usable when Unity changes its private storage.
-                source.DropDown(target.worldBound);
+                source.DropDown(position);
                 return;
             }
-            RetainedMenu.Open(target.worldBound, target, choices);
+            RetainedMenu.Open(position, target, choices);
         }
         private bool TryConvertLegacyMenu(GenericMenu source, VisualElement target, out List<RetainedMenu.Item> choices)
         {

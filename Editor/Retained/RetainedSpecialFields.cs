@@ -145,12 +145,9 @@ namespace Thry.ThryEditor
                                 if (Drawers.TileLabelUtility.IsUdimProperty(target.MaterialProperty.name))
                                 {
                                     button.tooltip = Drawers.TileLabelUtility.ROW_TOOLTIP;
-                                    button.RegisterCallback<PointerDownEvent>(e =>
+                                    BindProperty(button, target, menu =>
                                     {
-                                        if (e.button != 1 || !Model.CanEdit(target)) return;
-                                        // Avoid the native button's default focus action closing
-                                        // the menu immediately after it receives focus.
-                                        e.PreventDefault(); e.StopImmediatePropagation();
+                                        if (!Model.CanEdit(target)) return;
                                         var captured = Model.Owners(target).Select(m => (Material: m, Shader: m.shader)).ToArray();
                                         Func<UnityEngine.Object[]> owners = () => {
                                             if (button.panel == null || !RetainedMaterialModel.HasValidTargets(Model.Editor)) return Array.Empty<UnityEngine.Object>();
@@ -158,17 +155,15 @@ namespace Thry.ThryEditor
                                             return button.panel == null || !Model.CanEdit(target) ? Array.Empty<UnityEngine.Object>() : Model.Owners(target)
                                                 .Where(m => captured.Any(entry => entry.Material == m && entry.Shader == m.shader)).Cast<UnityEngine.Object>().ToArray();
                                         };
-                                        RetainedMenu.Open(button.worldBound, button, new[]
-                                        {
-                                            new RetainedMenu.Item { Text = "Rename tile", Action = () => {
-                                                var current = owners(); if (current.Length == 0) return;
-                                                var window = Resources.FindObjectsOfTypeAll<EditorWindow>().FirstOrDefault(w => w.rootVisualElement.panel == button.panel);
-                                                Drawers.TileLabelUtility.TileLabelRenamePopup.Show(current, Drawers.TileLabelUtility.CanonicalPropertyName(target.MaterialProperty.name), defaultLabel,
-                                                    (window == null ? Vector2.zero : window.position.position) + button.worldBound.position, owners);
-                                            } },
-                                            new RetainedMenu.Item { Text = "Reset label", Action = () => Drawers.TileLabelUtility.ApplyTagToTargets(owners(), Drawers.TileLabelUtility.CanonicalPropertyName(target.MaterialProperty.name), "") }
+                                        menu.AddSeparator("");
+                                        menu.AddItem(new GUIContent("Rename tile"), false, () => {
+                                            var current = owners(); if (current.Length == 0) return;
+                                            var window = Resources.FindObjectsOfTypeAll<EditorWindow>().FirstOrDefault(w => w.rootVisualElement.panel == button.panel);
+                                            Drawers.TileLabelUtility.TileLabelRenamePopup.Show(current, Drawers.TileLabelUtility.CanonicalPropertyName(target.MaterialProperty.name), defaultLabel,
+                                                (window == null ? Vector2.zero : window.position.position) + button.worldBound.position, owners);
                                         });
-                                    }, TrickleDown.TrickleDown);
+                                        menu.AddItem(new GUIContent("Reset label"), false, () => Drawers.TileLabelUtility.ApplyTagToTargets(owners(), Drawers.TileLabelUtility.CanonicalPropertyName(target.MaterialProperty.name), ""));
+                                    });
                                 }
                                 multi.Add(button); }
                             else if(attribute.Args[0]=="1"||attribute.Args[0].Equals("true",StringComparison.OrdinalIgnoreCase))

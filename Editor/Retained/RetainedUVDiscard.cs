@@ -11,6 +11,7 @@ namespace Thry.ThryEditor
     internal sealed class RetainedUVDiscard : VisualElement
     {
         readonly RetainedMaterialModel model;
+        readonly RetainedFields fields;
         readonly ShaderProperty[] tiles;
         readonly Button[] cells = new Button[16];
         readonly Label[] captions = new Label[16], states = new Label[16];
@@ -30,7 +31,7 @@ namespace Thry.ThryEditor
         }
         internal RetainedUVDiscard(RetainedMaterialModel model, RetainedFields fields, ShaderGroup group, Action<VisualElement, ShaderPart> addOriginal)
         {
-            this.model = model;
+            this.model = model; this.fields = fields;
             string prefix = Prefix(group);
             name = "uv-discard-" + prefix;
             tiles = Enumerable.Range(0, 16).Select(i => model.Shader.PropertyDictionary[prefix + i / 4 + "_" + i % 4]).ToArray();
@@ -63,10 +64,7 @@ namespace Thry.ThryEditor
                     captions[index] = new Label(); captions[index].AddToClassList("thry-uv-caption"); cell.Add(captions[index]);
                     states[index] = new Label(); states[index].AddToClassList("thry-uv-state"); cell.Add(states[index]);
                     foreach (var label in cell.Children()) label.pickingMode = PickingMode.Ignore;
-                    cell.RegisterCallback<PointerDownEvent>(e => {
-                        if (e.button != 1) return;
-                        e.PreventDefault(); e.StopImmediatePropagation(); ShowMenu(cell, property, coordinate.text);
-                    }, TrickleDown.TrickleDown);
+                    fields.BindProperty(cell, property, menu => AddTileActions(menu, cell, property, coordinate.text));
                     cells[index] = cell; row.Add(cell);
                 }
             }
@@ -79,10 +77,9 @@ namespace Thry.ThryEditor
             model.Number(property, property.MaterialProperty.hasMixedValue || property.MaterialProperty.GetNumber() <= .5f ? 1 : 0);
             Synchronize();
         }
-        void ShowMenu(Button cell, ShaderProperty property, string coordinate)
+        void AddTileActions(GenericMenu menu, Button cell, ShaderProperty property, string coordinate)
         {
             model.Refresh();
-            var menu = property.RetainedContextMenu();
             var captured = model.Owners(property).Select(m => (Material: m, Shader: m.shader)).ToArray();
             Func<UnityEngine.Object[]> owners = () => {
                 if (cell.panel == null || !RetainedMaterialModel.HasValidTargets(model.Editor)) return Array.Empty<UnityEngine.Object>();
@@ -101,7 +98,6 @@ namespace Thry.ThryEditor
                 });
                 menu.AddItem(new GUIContent("Reset tile name"), false, () => TileLabelUtility.ApplyTagToTargets(owners(), TileLabelUtility.CanonicalPropertyName(property.MaterialProperty.name), ""));
             }
-            this.GetFirstAncestorOfType<MaterialInspectorView>()?.ShowLegacyMenu(menu, cell);
         }
         void Synchronize()
         {

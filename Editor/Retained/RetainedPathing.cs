@@ -491,9 +491,9 @@ namespace Thry.ThryEditor
             root.tooltip = "Click for property options and Animated / Renamed marking. This float4 contains all four paths.";
             root.RegisterCallback<PointerDownEvent>(e => {
                 if (e.button != 0) return;
-                e.PreventDefault(); e.StopImmediatePropagation(); ShowPropertyMenu(root, property);
+                e.PreventDefault(); e.StopImmediatePropagation(); ShowPropertyMenu(root, property, e.position);
             }, TrickleDown.TrickleDown);
-            DecorateAnimation(root, property, false); Context(root, property);
+            DecorateAnimation(root, property, false); BindProperty(root, property);
             DecoratePreset(root, property);
             ChangedPropertyIndicator(row, row.Q<Label>(className: "thry-property-label"), property);
             return root;
@@ -503,7 +503,7 @@ namespace Thry.ThryEditor
         {
             var root=new VisualElement { name="pathing-component-"+property.MaterialProperty.name+"-"+index, userData=property };
             root.AddToClassList("thry-property"); root.AddToClassList("pathing-component");
-            DecorateMultiMaterialProperty(root,property); Context(root,property);
+            DecorateMultiMaterialProperty(root,property); BindProperty(root,property);
             // A real FloatField label is Unity's native drag zone. Keep it visible
             // instead of putting a separate pointer handler over the numeric input.
             Vector(root,property,new[]{" "},index);

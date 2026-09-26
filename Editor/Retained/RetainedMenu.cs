@@ -28,6 +28,33 @@ namespace Thry.ThryEditor
         string _typed = "";
         double _typedAt;
 
+        sealed class ContextHandler { internal Action<Vector2> Open; }
+        static readonly System.Runtime.CompilerServices.ConditionalWeakTable<VisualElement, ContextHandler> ContextHandlers
+            = new System.Runtime.CompilerServices.ConditionalWeakTable<VisualElement, ContextHandler>();
+
+        // Resolve ownership before native inputs consume the gesture or change focus.
+        // Nested controls register here too, so their parent cannot steal the click.
+        internal static void RegisterContext(VisualElement element, Action<Vector2> open)
+        {
+            if (ContextHandlers.TryGetValue(element, out var existing)) { existing.Open = open; return; }
+            var handler = new ContextHandler { Open = open };
+            ContextHandlers.Add(element, handler);
+            element.RegisterCallback<PointerDownEvent>(e => {
+                if (e.button != 1) return;
+                for (var owner = e.target as VisualElement; owner != null; owner = owner.parent)
+                {
+                    if (!ContextHandlers.TryGetValue(owner, out _)) continue;
+                    if (owner != element) return;
+                    e.PreventDefault(); e.StopImmediatePropagation();
+                    handler.Open(e.position);
+                    return;
+                }
+            }, TrickleDown.TrickleDown);
+        }
+
+        internal static void OpenContext(Vector2 position, VisualElement target, IEnumerable<Item> items)
+            => Open(new Rect(position, Vector2.zero), target, items);
+
         internal static void Open(Rect anchor, VisualElement target, IEnumerable<Item> items)
         {
             if (target.panel == null) return;

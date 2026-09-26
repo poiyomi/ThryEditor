@@ -165,7 +165,7 @@ namespace Thry.ThryEditor
                 foreach (var reference in _fields.ScopedReferences(group, id))
                 {
                     var holder = new VisualElement { userData = reference }; holder.AddToClassList("thry-header-reference");
-                    _fields.Toggle(holder, reference); _fields.Context(holder, reference); header.Add(holder);
+                    _fields.Toggle(holder, reference); _fields.BindProperty(holder, reference); header.Add(holder);
                     headerReferences.Add(new KeyValuePair<VisualElement, ShaderProperty>(holder, reference));
                 }
             var titleArea = new VisualElement { tooltip = group.TooltipText }; titleArea.AddToClassList("thry-section-title-area"); header.Add(titleArea);

@@ -24,7 +24,7 @@ namespace Thry.ThryEditor
                 var menu = new UnityEditor.GenericMenu();
                 menu.AddItem(new GUIContent(RetainedText.Get(part.MyShaderUI, "find_controller", "Find controlling property") + ": " + RetainedMaterialBody.SectionCaption(dependency)), false, () => view.SearchProperty(dependency));
                 e.PreventDefault(); e.StopImmediatePropagation();
-                view.ShowLegacyMenu(menu, target);
+                view.ShowLegacyMenu(menu, target, new Rect(e.position, Vector2.zero));
             }, TrickleDown.TrickleDown);
             // Listen on the enabled inspector so disabled descendants can still explain
             // themselves. Resolve at hover time to reflect changes without polling.

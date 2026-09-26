@@ -41,6 +41,24 @@ namespace Thry.ThryEditor
             });
         }
 
+        internal void DecorateGroupAnimation(VisualElement caption, ShaderProperty[] properties)
+        {
+            var indicator = AnimationIndicator(properties[0], "-group");
+            caption.Add(indicator);
+            TrackVisible(caption, () => {
+                bool plain = properties.Any(property => property.IsAnimatable && property.HasPlainAnimatedOwners);
+                bool renamed = properties.Any(property => property.IsAnimatable && property.HasRenamedAnimatedOwners);
+                indicator.style.display = plain || renamed ? DisplayStyle.Flex : DisplayStyle.None;
+                indicator.text = plain && renamed ? "<color=#" + ColorUtility.ToHtmlStringRGBA(Styles.AnimatedColor)
+                    + ">A</color>/<color=#" + ColorUtility.ToHtmlStringRGBA(Styles.AnimatedRenamedColor) + ">RA</color>"
+                    : renamed ? "RA" : "A";
+                indicator.style.width = plain && renamed ? 32 : 18;
+                indicator.style.color = renamed ? Styles.AnimatedRenamedColor : Styles.AnimatedColor;
+                indicator.tooltip = string.Join("\n", properties.Where(property => property.IsAnimated)
+                    .Select(property => property.Content.text + ": " + property.AnimatedOwnersTooltip));
+            });
+        }
+
         private void DecorateTransformAnimation(VisualElement row, ShaderTextureProperty property, string transform)
         {
             var caption = row.Q<Label>(className: "thry-property-label");

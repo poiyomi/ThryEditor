@@ -27,7 +27,7 @@ namespace Thry.ThryEditor
             for(int i=0;i<properties.Length;i++)
                 if(!Model.Shader.PropertyDictionary.TryGetValue(i==5 && attribute.Args.Length>1 ? attribute.Args[1] : MaskLevelsData.Name(texture.MaterialProperty.name,i),out properties[i]))return;
             int channels=15; if(attribute.Args.Length>0)int.TryParse(attribute.Args[0],out channels);
-            var levels=new RetainedMaskLevels(Model,texture,properties,channels,ShowPropertyMenu);
+            var levels=new RetainedMaskLevels(Model,texture,properties,channels,this);
             parent.Add(levels); TrackVisible(levels,levels.Synchronize);
         }
     }
@@ -38,7 +38,7 @@ namespace Thry.ThryEditor
         readonly ShaderProperty[] properties;
         readonly int activeChannels;
         bool LegacyInvert => properties[5].MaterialProperty.type != MaterialProperty.PropType.Vector;
-        readonly Action<VisualElement,ShaderProperty> propertyMenu;
+        readonly RetainedFields fields;
         readonly MaskLevelsPreview preview=new MaskLevelsPreview();
         readonly Vector4[] values=new Vector4[9];
         readonly bool[,] mixed=new bool[9,4];
@@ -55,11 +55,10 @@ namespace Thry.ThryEditor
         Texture lastTexture; uint lastVersion;
         int Current { get { for(int c=0;c<4;c++)if(channel==c || (channel<0 && (activeChannels&(1<<c))!=0))return c;return 0; } }
         bool Applies(int c,int selected) => (activeChannels&(1<<c))!=0 && (selected<0||selected==c);
-        public RetainedMaskLevels(RetainedMaterialModel model,ShaderProperty texture,ShaderProperty[] properties,int activeChannels,Action<VisualElement,ShaderProperty> propertyMenu)
+        public RetainedMaskLevels(RetainedMaterialModel model,ShaderProperty texture,ShaderProperty[] properties,int activeChannels,RetainedFields fields)
         {
-            this.model=model;textureProperty=texture;this.properties=properties;this.activeChannels=activeChannels;this.propertyMenu=propertyMenu;
+            this.model=model;textureProperty=texture;this.properties=properties;this.activeChannels=activeChannels;this.fields=fields;
             name="mask-levels-"+texture.MaterialProperty.name;
-            AddToClassList("thry-property"); // Its menus belong to these controls, not the parent texture.
             AddToClassList("thry-inspector");AddToClassList("poi-mask-levels");
             styleSheets.Add(Resources.Load<StyleSheet>("MaskLevels"));RetainedAppearance.Install(this);
             Array.Copy(MaskLevelsData.Defaults,values,9);
@@ -90,13 +89,12 @@ namespace Thry.ThryEditor
             toolbar.Add(previewButton);
             var page=new VisualElement();page.AddToClassList("poi-levels-page");Add(page);
             previews=Row(page);previews.AddToClassList("poi-levels-previews");before=Image(previews,"Original");after=Image(previews,"Adjusted");previews.style.display=DisplayStyle.None;
-            var inputRow=Row(page);inputRow.Add(new Label("Input"){style={width=62}});
+            var inputRow=PropertyRow(page,"Input",new[]{properties[0],properties[2],properties[1]},new[]{"Black point","Midpoint","White point"},()=>ResetRow(true));
             input=new MaskLevelsTrack(()=>new[]{values[0][Current],Display(1,Current),values[1][Current]},SetInput,()=>Undo.IncrementCurrentGroup());inputRow.Add(input);
-            Menu(input,null,()=>ResetRow(true));
             for(int i=0;i<3;i++)Number(inputRow,i);
-            var outputRow=Row(page);outputRow.Add(new Label("Output"){style={width=62}});
+            var outputRow=PropertyRow(page,"Output",new[]{properties[3],properties[4]},new[]{"Output minimum","Output maximum"},()=>ResetRow(false));
             output=new MaskLevelsTrack(()=>new[]{values[3][Current],values[4][Current]},(i,v)=>Edit(i+3,v),()=>Undo.IncrementCurrentGroup());outputRow.Add(output);
-            Menu(output,null,()=>ResetRow(false));Number(outputRow,3);Number(outputRow,4);
+            Number(outputRow,3);Number(outputRow,4);
             var options=Row(page);
             bakeButton=new Button(Bake){text="Bake",name="mask-bake"};options.Add(bakeButton);
             var optionsSpacer=new VisualElement();optionsSpacer.style.flexGrow=1;options.Add(optionsSpacer);
@@ -106,16 +104,40 @@ namespace Thry.ThryEditor
             RegisterCallback<DetachFromPanelEvent>(e=>{if(e.target==this){preview.Dispose();initialized=false;}});
             Synchronize();
         }
+        VisualElement PropertyRow(VisualElement parent, string title, ShaderProperty[] rowProperties, string[] captions, Action reset)
+        {
+            var row = Row(parent); row.name = "mask-levels-" + title.ToLowerInvariant();
+            var caption = new VisualElement(); caption.style.width = 62; caption.style.flexShrink = 0;
+            caption.Add(new Label(title)); row.Add(caption);
+            fields.BindPropertyGroup(row, rowProperties, captions, menu => {
+                menu.AddSeparator("");
+                var label = new GUIContent("Reset active channels");
+                if (rowProperties.Any(model.CanEdit)) menu.AddItem(label, false, () => reset());
+                else menu.AddDisabledItem(label);
+            });
+            fields.DecorateGroupAnimation(caption, rowProperties);
+            return row;
+        }
         static VisualElement Row(VisualElement parent){var row=new VisualElement();row.AddToClassList("poi-levels-row");parent.Add(row);return row;}
         static Image Image(VisualElement parent,string label){var box=new VisualElement();box.style.flexGrow=1;box.style.flexBasis=0;parent.Add(box);box.Add(new Label(label));var image=new Image{scaleMode=ScaleMode.ScaleToFit};image.AddToClassList("poi-levels-image");box.Add(image);return image;}
         void Menu(VisualElement control,ShaderProperty property,Action reset)
         {
-            control.AddManipulator(new ContextualMenuManipulator(e=>{
-                e.menu.AppendAction("Reset",a=>reset(),a=>CanEdit()?DropdownMenuAction.Status.Normal:DropdownMenuAction.Status.Disabled);
-                if(property!=null)e.menu.AppendAction("Property Options…",a=>propertyMenu(control,property));
-                e.StopPropagation();
+            if (property != null)
+            {
+                fields.BindProperty(control, property, menu => {
+                    menu.AddSeparator("");
+                    string label = channel < 0 ? "Reset active channels" : "Reset channel " + "RGBA"[channel];
+                    if (model.CanEdit(property)) menu.AddItem(new GUIContent(label), false, () => reset());
+                    else menu.AddDisabledItem(new GUIContent(label));
+                });
+                return;
+            }
+            // Channel tabs reset all adjustments for that channel.
+            RetainedMenu.RegisterContext(control, position => RetainedMenu.OpenContext(position, control, new[] {
+                new RetainedMenu.Item { Text = "Reset", Action = CanEdit() ? reset : (Action)null }
             }));
         }
+
         bool CanEdit()=>properties.Take(7).Any(model.CanEdit);
         void Bake()
         {

@@ -146,6 +146,7 @@ namespace Thry.ThryEditor
                 return root;
             }
             Track(root, () => property.RefreshRetainedProjection(Model.Renderers));
+            BindProperty(root, property);
             DecorateMultiMaterialProperty(root, property);
             DecorateAnimation(root, property, inline);
             DecoratePreset(root, property);
@@ -182,7 +183,6 @@ namespace Thry.ThryEditor
             if (!inline) ChangedPropertyIndicator(row, label, property);
             if (inline) row.AddToClassList("thry-inline");
             root.Add(row);
-            Context(root, property);
             if (!inline && property.Options.reference_property != null)
             {
                 foreach (var reference in ScopedReferences(property, property.Options.reference_property))
@@ -236,6 +236,7 @@ namespace Thry.ThryEditor
             var limits = property.MaterialProperty.rangeLimits;
             float low = PowerValue(limits.x, 1 / power), high = PowerValue(limits.y, 1 / power);
             var slider = new Slider(low, high) { name = "power-slider-" + property.MaterialProperty.name };
+            BindProperty(slider, property);
             var number = new FloatField(); input.style.flexDirection = FlexDirection.Row;
             slider.style.flexGrow = 1; number.style.width = 52; number.style.flexGrow = 0;
             input.Add(slider); input.Add(number);
@@ -255,6 +256,7 @@ namespace Thry.ThryEditor
         }
         internal void Bind<T>(BaseField<T> field, ShaderProperty property, Func<MaterialProperty,T> read, Action<MaterialProperty,T> write)
         {
+            BindProperty(field, property);
             field.AddToClassList("thry-input"); field.name = "value-" + property.MaterialProperty.name;
             TrackVisible(field, () => { SynchronizeValue(field, read(property.MaterialProperty), property.MaterialProperty.hasMixedValue); });
             field.RegisterValueChangedCallback(e => Model.EditSingleProperty(property, p => write(p, e.newValue)));
@@ -362,6 +364,7 @@ namespace Thry.ThryEditor
         internal void Vector(VisualElement parent, ShaderProperty property, string[] labels, int start = 0, bool texture = false, bool link = false)
         {
             var vector = new VisualElement(); vector.AddToClassList("thry-components"); parent.Add(vector);
+            BindProperty(vector, property);
             bool linked = false;
             var linkBaselines = new Dictionary<Material, Vector4>();
             Toggle linkToggle = null;
@@ -459,6 +462,7 @@ namespace Thry.ThryEditor
                 names = names.Select(n => n == "UV X Axis" ? "X axis" : n == "UV Y Axis" ? "Y axis" : n).ToArray();
             names = names.Select(n => Model.Shader.Locale.Get(n,n)).ToArray();
             var field = new DropdownField(names.ToList(), 0); field.AddToClassList("thry-input"); field.name = "value-" + property.MaterialProperty.name;
+            BindProperty(field, property);
             _view.UseInspectorMenu(field, property.Options.on_value_actions?.Length > 0);
             TrackVisible(field, () => { int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber()); SynchronizeValue(field, selected < 0 ? "—" : names[selected], property.MaterialProperty.hasMixedValue); });
             field.RegisterValueChangedCallback(e => { int index = Array.IndexOf(names, e.newValue); if(index >= 0) Model.Number(property, values[index]); }); parent.Add(field);
@@ -672,7 +676,6 @@ namespace Thry.ThryEditor
                     value.RegisterCallback<GeometryChangedEvent>(e => value.EnableInClassList("thry-texture-value-compact", e.newRect.width < 320));
                 }
             }
-            Context(root, property);
         }
         private void ArrangeTextureCoordinates(VisualElement details, VisualElement card, VisualElement transformEnd,
             ShaderTextureProperty property, DrawerAttribute[] attributes)
@@ -697,38 +700,53 @@ namespace Thry.ThryEditor
                 details.Insert(details.IndexOf(anchor) + 1, pan);
             }
         }
-        internal void Context(VisualElement element, ShaderProperty property)
+        // Property identity and actions are part of binding, including custom widgets.
+        // Extensions append widget-specific actions without replacing the standard menu.
+        internal void BindProperty(VisualElement element, ShaderProperty property, Action<GenericMenu> extendMenu = null)
         {
-            element.RegisterCallback<PointerDownEvent>(e => {
-                if (e.button != 1) return;
-                var target = e.target as VisualElement;
-                // Inline references and expanded texture settings are nested properties.
-                // Let the closest property's own handler receive the gesture.
-                for (var owner = target; owner != null; owner = owner.parent)
-                {
-                    if (!owner.ClassListContains("thry-property")) continue;
-                    if (owner != element) return;
-                    break;
-                }
-                // UV tile buttons have their own rename menu; their row label still
-                // receives the normal material-property menu.
-                if (Drawers.TileLabelUtility.IsUdimProperty(property.MaterialProperty.name))
-                    for (var child = target; child != null && child != element; child = child.parent)
-                        if (child is Button && child.parent != null && child.parent.ClassListContains("thry-components")) return;
-                // Handle the gesture before native text/color/object fields focus or
-                // consume it. Their default focus action otherwise closes the new menu.
-                e.PreventDefault(); e.StopImmediatePropagation();
-                ShowPropertyMenu(element, property);
-            }, TrickleDown.TrickleDown);
+            element.userData = property;
+            RetainedMenu.RegisterContext(element, position => ShowPropertyMenu(element, property, position, extendMenu));
         }
-        private void ShowPropertyMenu(VisualElement element, ShaderProperty property)
+
+        internal void BindPropertyGroup(VisualElement element, ShaderProperty[] properties, string[] captions, Action<GenericMenu> extendMenu = null)
+        {
+            element.userData = properties;
+            RetainedMenu.RegisterContext(element, position => {
+                Model.Shader.ActivateRetained();
+                var menu = new GenericMenu();
+                var animatable = properties.Where(property => property.IsAnimatable).ToArray();
+                if (animatable.Length > 0 && !Model.Shader.IsLockedMaterial)
+                {
+                    bool animated = animatable.All(property => property.IsAnimated);
+                    bool renamed = animatable.All(property => property.IsAnimated && property.IsRenaming);
+                    menu.AddItem(new GUIContent("Animated (when locked)"), animated, () => {
+                        foreach (var property in animatable) property.SetAnimated(!animated, false);
+                    });
+                    menu.AddItem(new GUIContent("Renamed (when locked)"), renamed, () => {
+                        foreach (var property in animatable) property.SetAnimated(true, !renamed);
+                    });
+                    menu.AddSeparator("");
+                }
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    var property = properties[i];
+                    menu.AddItem(new GUIContent(captions[i] + "…"), false,
+                        () => ShowPropertyMenu(element, property, position));
+                }
+                extendMenu?.Invoke(menu);
+                _view.ShowLegacyMenu(menu, element, new Rect(position, Vector2.zero));
+            });
+        }
+
+        private void ShowPropertyMenu(VisualElement element, ShaderProperty property, Vector2 position, Action<GenericMenu> extendMenu = null)
         {
             Model.Shader.ActivateRetained();
             var menu = property.RetainedContextMenu();
             RetainedPropertyClipboard.AddMenu(menu, Model, property);
             menu.AddSeparator("");
             menu.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "favorite", "Favorite")), _view.IsFavorite(property), () => _view.ToggleFavorite(property));
-            _view.ShowLegacyMenu(menu, element);
+            extendMenu?.Invoke(menu);
+            _view.ShowLegacyMenu(menu, element, new Rect(position, Vector2.zero));
         }
         private void TextureAssetDisplay(ObjectField field, ShaderTextureProperty property)
         {
