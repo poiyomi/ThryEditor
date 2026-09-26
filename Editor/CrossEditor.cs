@@ -404,7 +404,7 @@ namespace Thry.ThryEditor
             if (tree.End.HasValue) yield return tree.End.Value;
         }
 
-        private void CreateShaderEditor()
+        private void CreateShaderEditor(bool collectProperties = true)
         {
             PruneInvalidTargets();
             if (_targets.Count == 0) return;
@@ -412,7 +412,9 @@ namespace Thry.ThryEditor
 
             _shaderEditor = new ShaderEditor(){ IsCrossEditor = true };
             _materialEditor = Editor.CreateEditor(_targets.ToArray()) as MaterialEditor;
-            _materialProperties = CollectProperties(_shaderEditor, _targets.ToArray());
+            if (collectProperties) _materialProperties = CollectProperties(_shaderEditor, _targets.ToArray());
+            _targetShaders.Clear();
+            foreach (var material in _targets) _targetShaders[material] = material.shader;
 
             // This array is now the snapshot everything draws from, so baseline the dirty counts against it.
             RecordTargetDirtyCounts();

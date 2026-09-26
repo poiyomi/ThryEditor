@@ -42,9 +42,11 @@ namespace Thry.ThryEditor
             scroll.RegisterCallback<DragUpdatedEvent>(e => { if (DragAndDrop.objectReferences.OfType<Material>().Any()) DragAndDrop.visualMode = DragAndDropVisualMode.Copy; });
             scroll.RegisterCallback<DragPerformEvent>(e => { var added = DragAndDrop.objectReferences.OfType<Material>().ToArray(); if (added.Length == 0) return; DragAndDrop.AcceptDrag(); UpdateTargets(added, true); e.StopPropagation(); });
             if (_targets.Count == 0) return;
-            CreateShaderEditor();
+            CreateShaderEditor(collectProperties: false);
             if (_materialEditor == null || _shaderEditor == null) return;
-            var view = new MaterialInspectorView(_materialEditor, () => { }, shaderOverride: _shaderEditor, propertyProvider: () => _materialProperties);
+            // Use the inspector's live value provider. The legacy snapshot does not
+            // refresh after per-material edits, Undo or changes in another inspector.
+            var view = new MaterialInspectorView(_materialEditor, () => { }, shaderOverride: _shaderEditor);
             scroll.Add(view);
             view.schedule.Execute(() =>
             {
@@ -54,15 +56,6 @@ namespace Thry.ThryEditor
                 {
                     foreach (var material in _targets) _targetShaders[material] = material.shader;
                     UpdateTargets(); return;
-                }
-                if (_isStale && focusedWindow == this)
-                {
-                    for (int i = 0; i < _materialProperties.Length; i++)
-                    {
-                        var property = _materialProperties[i];
-                        _materialProperties[i] = MaterialEditor.GetMaterialProperty(property.targets, property.name);
-                    }
-                    _isStale = false; RecordTargetDirtyCounts();
                 }
             }).Every(250);
         }
