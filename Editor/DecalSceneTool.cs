@@ -398,13 +398,6 @@ namespace Thry.ThryEditor
         Vector3 _pivotNormal;
         Vector3 _pivotUp;
 
-        static float TriangleArea3D(Vector3 a, Vector3 b, Vector3 c)
-        {
-            var v1 = a - c;
-            var v2 = b - c;
-            return Vector3.Cross(v1, v2).magnitude / 2;
-        }
-
         void GetPivot()
         {
             _pivotPoint = Vector3.zero;
@@ -448,28 +441,28 @@ namespace Thry.ThryEditor
             float minDistance = float.MaxValue;
             for(int i=0; i<_worldTriangles.Length;i++)
             {
+                // Möller–Trumbore, both facings. Plane(a, b, c) normalizes the cross product, which Unity turns
+                // into zero for triangles under about 5 mm², so dense meshes had many triangles that could not be hit.
                 Vector3[] triangle = _worldTriangles[i];
-                // raycast to triangle
-                Plane plane = new Plane(triangle[0], triangle[1], triangle[2]);
-                float distance;
-                if(plane.Raycast(ray, out distance))
+                Vector3 edge1 = triangle[1] - triangle[0];
+                Vector3 edge2 = triangle[2] - triangle[0];
+                Vector3 p = Vector3.Cross(ray.direction, edge2);
+                float determinant = Vector3.Dot(edge1, p);
+                if(Mathf.Abs(determinant) < 1e-12f) continue;
+                Vector3 fromCorner = ray.origin - triangle[0];
+                float u = Vector3.Dot(fromCorner, p) / determinant;
+                if(u < 0 || u > 1) continue;
+                Vector3 q = Vector3.Cross(fromCorner, edge1);
+                float v = Vector3.Dot(ray.direction, q) / determinant;
+                if(v < 0 || u + v > 1) continue;
+                float distance = Vector3.Dot(edge2, q) / determinant;
+                if(distance > 0 && distance < minDistance)
                 {
-                    Vector3 hitPoint = ray.GetPoint(distance);
-                    // check if hitPoint is inside triangle using 3D areas
-                    float a = TriangleArea3D(triangle[0], triangle[1], triangle[2]);
-                    if(a == 0) continue;
-                    float a1 = TriangleArea3D(triangle[1], triangle[2], hitPoint) / a;
-                    float a2 = TriangleArea3D(triangle[2], triangle[0], hitPoint) / a;
-                    float a3 = TriangleArea3D(triangle[0], triangle[1], hitPoint) / a;
-                    if(a1 + a2 + a3 > 1.001f) continue;
-                    if(distance < minDistance)
-                    {
-                        minDistance = distance;
-                        // point inside the triangle - find uv by interpolation
-                        Vector2[] uvTriangle = _uvTriangles[i];
-                        uv = uvTriangle[0] * a1 + uvTriangle[1] * a2 + uvTriangle[2] * a3;
-                        uv = uv - centerOffset;
-                    }
+                    minDistance = distance;
+                    // point inside the triangle - find uv by interpolation
+                    Vector2[] uvTriangle = _uvTriangles[i];
+                    uv = uvTriangle[0] * (1 - u - v) + uvTriangle[1] * u + uvTriangle[2] * v;
+                    uv = uv - centerOffset;
                 }
             }
             return minDistance != float.MaxValue;
