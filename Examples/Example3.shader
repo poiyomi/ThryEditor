@@ -394,13 +394,15 @@ Shader "Thry/Example 3"
 					[ThryStencilCalculator]
 					[ThryRichLabel(10)] _StencilCheckResult("<i>Simulated in the editor. The GPU performs its own stencil test.</i>", Float) = 0
 					[HideInInspector] s_end_stencil_grid("Calculator", Float) = 0
-					[HideInInspector] s_start_stencil_summary("Summary--{tooltip:Shows the stencil test and the operation selected by its outcome.,persistent_expand:true,default_expand:false}", Float) = 0
+					[HideInInspector] s_start_stencil_summary("Summary--{persistent_expand:true,default_expand:false}", Float) = 0
 					[ThryStencilSummary]
 					[ToggleUI(true)] _StencilIsOccluded("Simulate ZFail", Float) = 0
 					[Helpbox(1, 0, 5)] _StencilCheckFailed("The pixel's stencil check would have failed--{condition_showS:(_StencilCheckResult==0)}", Int) = 0
 					[Helpbox(1, 0, 4)] _StencilCheckPassed("The pixel's stencil check would have passed--{condition_showS:(_StencilCheckResult==1)}", Int) = 0
+					[ThryButton] stencil_debug_overlay("{text:Open the Stencil Debug Overlay,hover:Draws the stencil buffer over the Scene view so the values above can be checked against it,action:{type:OPEN_EDITOR,data:Thry.ThryEditor.StencilDebugOverlay}}", Float) = 0
 					[HideInInspector] s_end_stencil_summary("Summary", Float) = 0
 					[HideInInspector] m_end_stencil_calculator("Stencil Calculator", Float) = 0
+					[ThryButton] button_target_example("{text:Open the Button Target Example,hover:Shows which properties a window is handed by the args of the button that opened it,action:{type:OPEN_EDITOR,data:Thry.ThryEditor.ThryButtonTargetExample},args:[_StencilRef,_StencilReadMask,_StencilWriteMask]}", Float) = 0
 					[HideInInspector] m_end_StencilPassOptions("Stencil", Float) = 0
 
 					[HideInInspector] m_start_debugOptions("Debug", Float) = 0
