@@ -1,3 +1,7 @@
+# [2.74.3]
+## Changes
+- Fixed an issue that caused `_BumpMap` and similar slots to no longer show a warning if the texture wasn't set as a Normal Map.
+
 # [2.74.2]
 ## Changes
 - Added **Include Textures** to Global Links. Disable it before adding other materials to keep their AO maps and other textures, tiling, offset and texture animation tags local while synchronizing the section's other settings. The option applies to the whole link; existing links remain enabled.
