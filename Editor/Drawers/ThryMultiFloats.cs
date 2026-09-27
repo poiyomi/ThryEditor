@@ -8,6 +8,7 @@ namespace Thry.ThryEditor.Drawers
         string[] _otherProperties;
         MaterialProperty[] _otherMaterialProps;
         bool _displayAsToggles;
+        bool _warnedMissingProperty;
 
         public ThryMultiFloatsDrawer(string displayAsToggles, string p1, string p2, string p3, string p4, string p5, string p6, string p7) : this(displayAsToggles, new string[] { p1, p2, p3, p4, p5, p6, p7 }) { }
         public ThryMultiFloatsDrawer(string displayAsToggles, string p1, string p2, string p3, string p4, string p5, string p6) : this(displayAsToggles, new string[] { p1, p2, p3, p4, p5, p6 }) { }
@@ -36,7 +37,11 @@ namespace Thry.ThryEditor.Drawers
             {
                 if (!ShaderEditor.Active.PropertyDictionary.TryGetValue(_otherProperties[i], out var sProp))
                 {
-                    // TODO: log error?
+                    if (!_warnedMissingProperty)
+                    {
+                        Debug.LogWarningFormat("MultiFloats on {0}: property {1} not found in shader", prop.name, _otherProperties[i]);
+                        _warnedMissingProperty = true;
+                    }
                     _otherMaterialProps[i] = null;
 
                     continue;

@@ -251,11 +251,12 @@ namespace Thry.ThryEditor.ShaderTranslations
                 string materialFolderPath = Path.GetDirectoryName(materialPath);
                 string materialName = Path.GetFileNameWithoutExtension(materialPath);
 
-                //TODO: Sanitize path
-                string newMaterialPath = $"{materialFolderPath}/{translator.Name}/{materialName}_translated.mat";
+                string folderName = Regex.Replace(translator.Name ?? "", @"[<>:""/\\|?*\x00-\x1F]", "").Trim().TrimEnd('.');
+                if(string.IsNullOrEmpty(folderName)) folderName = "Translated";
+                string newMaterialPath = $"{materialFolderPath}/{folderName}/{materialName}_translated.mat";
 
-                if(!AssetDatabase.IsValidFolder($"{materialFolderPath}/{translator.Name}"))
-                    AssetDatabase.CreateFolder(materialFolderPath, translator.Name);
+                if(!AssetDatabase.IsValidFolder($"{materialFolderPath}/{folderName}"))
+                    AssetDatabase.CreateFolder(materialFolderPath, folderName);
 
                 if(!AssetDatabase.CopyAsset(materialPath, newMaterialPath))
                     throw new Exception($"Failed to duplicate material: <b>{materialPath}</b> -> <b>{newMaterialPath}</b>");

@@ -671,7 +671,6 @@ namespace Thry
             if (_didRegisterCallbacks) return;
             _didRegisterCallbacks = true;
             s_editorsWithCallbacks.Add(this);
-            //TODO: Handle these in Unity <2022.2
             Undo.undoRedoEvent += UndoRedoEvent;
         }
 
@@ -680,11 +679,9 @@ namespace Thry
             if (_didRegisterCallbacks == false) return;
             _didRegisterCallbacks = false;
             s_editorsWithCallbacks.Remove(this);
-            //TODO: Handle these in Unity <2022.2
             Undo.undoRedoEvent -= UndoRedoEvent;
         }
         
-        //TODO: Handle these in Unity <2022.2
         private bool HasUndoTargets()
         {
             if (!_didRegisterCallbacks || _doReloadNextDraw || Editor == null || ShaderParts == null || Materials == null || Materials.Length == 0
