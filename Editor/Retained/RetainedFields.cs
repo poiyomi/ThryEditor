@@ -131,7 +131,12 @@ namespace Thry.ThryEditor
                 var body = row.GetFirstAncestorOfType<RetainedMaterialBody>(); if(body == null) return;
                 float width = Mathf.Max(40,body.worldBound.x + Mathf.Min(240,body.contentRect.width * .38f) - row.worldBound.x);
                 var currentLabel = row.Q(className: "thry-property-label");
-                if(currentLabel != null && Mathf.Abs(currentLabel.resolvedStyle.width-width)>.5f) currentLabel.style.width=width;
+                if(currentLabel == null) return;
+                // The texture square and picker share the label column, so a texture
+                // caption may extend past it before the value column's asset name does.
+                if(row.ClassListContains("thry-texture-heading-row"))
+                { if(Mathf.Abs(currentLabel.resolvedStyle.minWidth.value-width)>.5f) currentLabel.style.minWidth=width; }
+                else if(Mathf.Abs(currentLabel.resolvedStyle.width-width)>.5f) currentLabel.style.width=width;
             });
             return row;
         }
@@ -485,17 +490,17 @@ namespace Thry.ThryEditor
             row.AddToClassList("thry-texture-heading-row");
             value.AddToClassList("thry-texture-value");
             var caption = row.Q<Label>(); caption.RemoveFromHierarchy();
-            // The label is the only hoverable part of a texture row, so it also has to carry the
-            // tooltip that a plain property row shows on its own label.
             var foldout = new Button();
             foldout.AddToClassList("thry-property-label"); foldout.AddToClassList("thry-texture-label"); row.Insert(0,foldout);
             var foldIcon = new Image { scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             foldIcon.AddToClassList("thry-header-icon"); foldIcon.AddToClassList("thry-texture-caret"); foldout.Add(foldIcon);
-            var foldCaption = new Label(RetainedText.PropertyCaption(property)) { pickingMode = PickingMode.Ignore };
+            // The caption shows its full text on hover only when it is clipped. The label's
+            // own hover text is the shader's help and the user's note, not the visible caption.
+            var foldCaption = new Label(RetainedText.PropertyCaption(property));
             foldCaption.AddToClassList("thry-texture-caption"); foldout.Add(foldCaption);
             TrackVisible(foldCaption, () => { foldCaption.text = RetainedText.PropertyCaption(property);
             foldout.EnableInClassList("thry-readonly-texture-foldout", !Model.CanEdit(property));
-            foldout.tooltip = RetainedMaterialBody.Hover(foldCaption.text, property.TooltipText, property.Note, "Expand or collapse texture settings"); });
+            foldout.tooltip = RetainedMaterialBody.Hover(property.TooltipText, property.Note); });
             ChangedPropertyIndicator(row, foldCaption, property);
             var dimension = property.MaterialProperty.textureDimension;
             // Use the asset type for native picker filtering; assignment is still dimension-checked below.
@@ -509,7 +514,9 @@ namespace Thry.ThryEditor
                 if (texture != null && dimension != UnityEngine.Rendering.TextureDimension.Any && texture.dimension != dimension)
                 { objectField.SetValueWithoutNotify(property.MaterialProperty.textureValue); e.StopImmediatePropagation(); return; }
                 Model.Edit(property, p => { p.textureValue = texture; Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(p, texture); updateArrayReferences?.Invoke(p, texture as Texture2DArray, 0); });
-            }); value.Add(objectField);
+            });
+            // As in Unity's material inspector, the texture square and its picker come before the label.
+            foldout.Insert(foldout.IndexOf(foldCaption), objectField);
             TrackVisible(objectField, () => objectField.SetEnabled(Model.CanEdit(property)));
             if (cube)
             {
@@ -534,7 +541,8 @@ namespace Thry.ThryEditor
                     e.PreventDefault(); e.StopImmediatePropagation();
                 }, TrickleDown.TrickleDown);
             }
-            TextureAssetDisplay(objectField, property);
+            var assetDetails = new VisualElement(); assetDetails.AddToClassList("thry-texture-meta"); value.Add(assetDetails);
+            TextureAssetDisplay(objectField, property, assetDetails);
             if (attributes.Any(a => a.Name == "Curve")) value.Add(CurveCreatorButton(property, root));
             NormalMapImportWarning(root, property);
             // Keep import warnings directly below the texture assignment row.
@@ -578,6 +586,9 @@ namespace Thry.ThryEditor
                     e.StopImmediatePropagation();
                 }, TrickleDown.TrickleDown);
             }
+            // Unity accepts a texture dropped anywhere on the row, not only on the small square.
+            RetainedTextureCard.InstallDropTarget(row, objectField, objectField, dimension,
+                () => objectField.enabledInHierarchy && Model.CanEdit(property), array != null);
             var details = new VisualElement(); details.AddToClassList("thry-texture-details"); root.Add(details);
             string foldoutKey = "texture-details-" + property.MaterialProperty.name;
             if (!property.showFoldoutProperties) property.showFoldoutProperties = RetainedUiState.Get(property.MyShader.name, foldoutKey);
@@ -670,12 +681,13 @@ namespace Thry.ThryEditor
                 {
                     value.AddToClassList("thry-texture-has-reference");
                     var inlineReference = Field(reference, true);
-                    inlineReference.AddToClassList("thry-texture-reference"); value.Add(inlineReference);
-                    // Preserve the adjacent strength/control even in narrow inspectors;
-                    // secondary asset metadata gives up its space before the control does.
-                    value.RegisterCallback<GeometryChangedEvent>(e => value.EnableInClassList("thry-texture-value-compact", e.newRect.width < 320));
+                    inlineReference.AddToClassList("thry-texture-reference"); value.Insert(value.IndexOf(assetDetails), inlineReference);
                 }
             }
+            // Preserve the adjacent strength/control even in narrow inspectors;
+            // secondary asset metadata gives up its space before the control does.
+            value.RegisterCallback<GeometryChangedEvent>(e => value.EnableInClassList("thry-texture-value-compact",
+                e.newRect.width < (value.ClassListContains("thry-texture-has-reference") ? 320 : 150)));
         }
         private void ArrangeTextureCoordinates(VisualElement details, VisualElement card, VisualElement transformEnd,
             ShaderTextureProperty property, DrawerAttribute[] attributes)
@@ -748,18 +760,35 @@ namespace Thry.ThryEditor
             extendMenu?.Invoke(menu);
             _view.ShowLegacyMenu(menu, element, new Rect(position, Vector2.zero));
         }
-        private void TextureAssetDisplay(ObjectField field, ShaderTextureProperty property)
+        private void TextureAssetDisplay(ObjectField field, ShaderTextureProperty property, VisualElement details)
         {
             TextureAssetDisplay(field, () => property.MaterialProperty.textureValue, () => property.MaterialProperty.hasMixedValue,
-                () => Model.CanEdit(property), () => Model.Edit(property, p => { p.textureValue = null; Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(p, null); }));
+                () => Model.CanEdit(property), () => Model.Edit(property, p => { p.textureValue = null; Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(p, null); }), details);
         }
 
-        internal void TextureAssetDisplay(ObjectField field, Func<Texture> getTexture, Func<bool> isMixed, Func<bool> canEdit, Action clearTexture)
+        /// <summary>
+        /// Shows a texture's thumbnail, estimated size and clear action in its field. With details, the field is
+        /// instead a small texture square followed by its picker, and the name, size and clear action go in details.
+        /// </summary>
+        internal void TextureAssetDisplay(ObjectField field, Func<Texture> getTexture, Func<bool> isMixed, Func<bool> canEdit, Action clearTexture, VisualElement details = null)
         {
+            bool square = details != null;
             Action clearValue = () => { if (field.enabledInHierarchy && canEdit()) clearTexture(); };
-            field.AddToClassList("thry-texture-asset");
+            field.AddToClassList(square ? "thry-texture-slot" : "thry-texture-asset");
             var display = field.Q(className: "unity-object-field-display");
             var selector = field.Q(className: "unity-object-field__selector");
+            if (square)
+            {
+                // The square keeps the field's own ping, picker, drop and Delete handling.
+                // Those clicks must not also toggle a disclosure that contains the field.
+                field.RegisterCallback<MouseDownEvent>(e => { if (e.button == 0) e.StopPropagation(); });
+                field.RegisterCallback<MouseUpEvent>(e => { if (e.button == 0) e.StopPropagation(); });
+                field.RegisterCallback<PointerDownEvent>(e => { if (e.button == 0) e.StopPropagation(); });
+                field.RegisterCallback<PointerUpEvent>(e => { if (e.button == 0) e.StopPropagation(); });
+                field.RegisterCallback<ClickEvent>(e => e.StopPropagation());
+                field.RegisterCallback<NavigationSubmitEvent>(e => e.StopPropagation());
+                selector.tooltip = "Select a texture";
+            }
             display.RegisterCallback<MouseDownEvent>(e => {
                 if (e.target is VisualElement target && (target == selector || selector.Contains(target))) return;
                 if (e.button != 0 || getTexture() != null || isMixed()
@@ -775,9 +804,15 @@ namespace Thry.ThryEditor
             }, TrickleDown.TrickleDown);
             var nativeIcon = display.Q<Image>();
             var assetName = display.Q<Label>();
-            var size = new Label { name = "texture-asset-size" }; size.AddToClassList("thry-asset-size"); display.Add(size);
+            var metadata = square ? details : display;
+            if (square)
+            {
+                assetName = new Label { name = "texture-asset-name" }; assetName.AddToClassList("thry-texture-asset-name"); details.Add(assetName);
+                assetName.RegisterCallback<ClickEvent>(e => { var texture = getTexture(); if (texture != null && !isMixed()) EditorGUIUtility.PingObject(texture); });
+            }
+            var size = new Label { name = "texture-asset-size" }; size.AddToClassList("thry-asset-size"); metadata.Add(size);
             var clear = new Button(clearValue) { name = "clear-texture-asset", tooltip = "Clear texture" };
-            clear.AddToClassList("thry-asset-clear"); display.Add(clear);
+            clear.AddToClassList("thry-asset-clear"); metadata.Add(clear);
             var clearIcon = new Image { image = Resources.Load<Texture2D>("ThryToolbar/texture-clear"), scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             clearIcon.AddToClassList("thry-texture-clear-icon"); clear.Add(clearIcon);
             clear.RegisterCallback<PointerDownEvent>(e => e.StopPropagation());
@@ -790,19 +825,38 @@ namespace Thry.ThryEditor
             var preview = new Image { name = "texture-asset-thumbnail", scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             tile.Add(preview);
             var mixedIcon = RetainedTextureCard.CreateMixedIcon(); tile.Add(mixedIcon);
+            VisualElement add = null;
+            if (square)
+            {
+                // Clicking an empty square opens the picker; a plus appears on hover to show that.
+                add = new VisualElement { name = "texture-slot-add", pickingMode = PickingMode.Ignore };
+                add.AddToClassList("thry-texture-slot-add"); tile.Add(add);
+                add.generateVisualContent += context =>
+                {
+                    var center = add.contentRect.center; float arm = Mathf.Round(add.contentRect.height * .22f);
+                    var painter = context.painter2D;
+                    painter.strokeColor = add.resolvedStyle.color; painter.lineWidth = 1.5f;
+                    painter.BeginPath();
+                    painter.MoveTo(center - new Vector2(arm, 0)); painter.LineTo(center + new Vector2(arm, 0));
+                    painter.MoveTo(center - new Vector2(0, arm)); painter.LineTo(center + new Vector2(0, arm));
+                    painter.Stroke();
+                };
+            }
             var normalPreview = new RetainedTexturePreview();
             bool normalMap = false;
             Action releaseNormalPreview = () => { preview.image = null; normalPreview.Dispose(); };
             field.RegisterCallback<DetachFromPanelEvent>(_ => releaseNormalPreview());
             // Keep Unity's native picker beside the thumbnail, with metadata and
             // the separate clear action at the trailing edge of the field.
-            display.Insert(1, selector);
+            // A square already has the picker right after it.
+            if (!square) display.Insert(1, selector);
             TrackVisible(field, () => {
                 var texture = getTexture();
                 bool mixed = isMixed();
                 bool assigned = texture != null && !mixed;
-                tile.style.display = assigned || mixed ? DisplayStyle.Flex : DisplayStyle.None;
+                tile.style.display = square || assigned || mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 mixedIcon.style.display = mixed ? DisplayStyle.Flex : DisplayStyle.None;
+                if (add != null) add.style.display = texture == null && !mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 clear.style.display = texture != null || mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 clear.SetEnabled(canEdit());
                 if (assigned) size.style.display = StyleKeyword.Null;
@@ -828,7 +882,9 @@ namespace Thry.ThryEditor
                 // between its None label and a custom picker prompt.
                 if (mixed) assetName.text = RetainedText.Get(Model.Shader,"multiple_textures","Multiple textures");
                 else if (assigned) assetName.text = RetainedText.TextureCaption(texture);
+                else if (square) assetName.text = "";
                 assetName.tooltip = assigned ? AssetDatabase.GetAssetPath(texture) : "Click to choose a texture, or drag one here";
+                if (square) display.tooltip = mixed ? assetName.text : assigned || string.IsNullOrEmpty(field.tooltip) ? assetName.tooltip : field.tooltip;
                 field.EnableInClassList("thry-asset-unassigned", !assigned);
             });
         }

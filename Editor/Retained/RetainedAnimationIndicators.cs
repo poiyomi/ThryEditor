@@ -95,7 +95,7 @@ namespace Thry.ThryEditor
                     originalColor = caption.style.color;
                     originalPadding = labelContainer.style.paddingLeft;
                     indicator = AnimationIndicator(property);
-                    if (texture) labelContainer.Insert(1, indicator);
+                    if (texture) labelContainer.Insert(labelContainer.IndexOf(caption), indicator);
                     else
                     {
                         indicator.style.position = Position.Absolute;

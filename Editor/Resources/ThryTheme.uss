@@ -1840,7 +1840,8 @@
     padding: 0;
 }
 
-.thry-texture-asset .thry-asset-clear {
+.thry-texture-asset .thry-asset-clear,
+.thry-texture-meta > .thry-asset-clear {
     width: 18px;
     min-width: 18px;
     height: 18px;
@@ -2004,22 +2005,136 @@
     --unity-image-tint-color: #606060;
 }
 
-/* Texture assignment and its inline strength/reference share one value row. */
+/* Like Unity's material inspector, texture rows lead with a small texture square and
+   its picker. The field keeps its native ping, picker, drop and Delete behavior. */
+.thry-texture-label > .thry-texture-slot {
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin: 0 var(--thry-space-3) 0 0;
+}
+
+.thry-inspector .thry-material-controls .thry-texture-slot > .unity-object-field__input {
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+}
+
+.thry-inspector .thry-material-controls .thry-texture-slot .unity-object-field-display {
+    flex-grow: 0;
+    flex-shrink: 0;
+    width: var(--thry-control-height);
+    min-width: var(--thry-control-height);
+    height: var(--thry-control-height);
+    background-color: var(--thry-field-background);
+    border-width: var(--thry-border-width);
+    border-color: var(--thry-control-border-color);
+    border-radius: var(--thry-radius-control);
+    overflow: hidden;
+}
+
+.thry-inspector .thry-material-controls .thry-texture-slot .unity-object-field-display:hover,
+.thry-inspector .thry-material-controls .thry-texture-slot .unity-object-field-display:focus,
+.thry-inspector .thry-material-controls .thry-texture-slot .unity-object-field-display--accept-drop,
+.thry-inspector .thry-material-controls .thry-texture-slot.thry-texture-drag .unity-object-field-display {
+    border-color: var(--thry-focus-color);
+}
+
+.thry-texture-slot .unity-object-field-display__icon,
+.thry-texture-slot .unity-object-field-display__label {
+    display: none;
+}
+
+.thry-texture-slot .thry-asset-tile {
+    flex-grow: 1;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    background-color: transparent;
+    border-right-width: 0;
+}
+
+.thry-texture-slot .thry-asset-tile > .unity-image {
+    flex-grow: 1;
+    width: auto;
+    height: auto;
+}
+
+.thry-inspector .thry-material-controls .thry-texture-slot .unity-object-field__selector {
+    width: 12px;
+    min-width: 12px;
+    height: var(--thry-control-height);
+    min-height: 0;
+    margin: 0 0 0 var(--thry-space-1);
+    background-color: transparent;
+    border-radius: 0;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--thry-value-color);
+}
+
+.thry-texture-slot-add {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    color: var(--thry-muted-color);
+    opacity: 0;
+}
+
+.thry-texture-slot .unity-object-field-display:enabled:hover .thry-texture-slot-add {
+    opacity: 1;
+}
+
+/* A locked texture's square is already dimmed with its foldout. */
+.thry-inspector .thry-material-controls .thry-readonly-texture-foldout .unity-disabled {
+    opacity: 1;
+}
+
+/* The shared label column is only a minimum here: a long or squeezed caption
+   extends into the value column, whose asset name gives up its space first. */
+.thry-texture-heading-row > .thry-texture-label {
+    width: auto;
+    flex-shrink: 1;
+    max-width: 70%;
+}
+
+/* The value column holds the inline strength/reference, or the asset's name, then its size. */
 .thry-texture-value {
     flex-direction: row;
+    flex-basis: 0;
     align-items: center;
     min-width: 0;
 }
 
-.thry-texture-value > .thry-texture-asset {
+.thry-texture-meta {
+    flex-direction: row;
+    align-items: center;
     flex-grow: 1;
     flex-shrink: 1;
-    flex-basis: 0;
     min-width: 0;
 }
 
-.thry-texture-has-reference > .thry-texture-asset {
-    min-width: 76px;
+.thry-texture-has-reference > .thry-texture-meta {
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.thry-texture-asset-name {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--thry-value-color);
+    font-size: var(--thry-font-size);
+    -unity-text-align: middle-left;
+}
+
+.thry-texture-has-reference .thry-texture-asset-name {
+    display: none;
 }
 
 .thry-texture-value > .thry-texture-reference {
@@ -2027,7 +2142,6 @@
     flex-shrink: 1;
     flex-basis: 0;
     min-width: 92px;
-    margin-left: var(--thry-space-6);
 }
 
 .thry-texture-reference > .thry-property-row {
@@ -2052,10 +2166,6 @@
     margin-right: 0;
     padding: 0;
     overflow: hidden;
-}
-
-.thry-texture-value-compact .unity-object-field-display__label {
-    margin-left: var(--thry-space-3);
 }
 
 .thry-texture-value-compact .thry-texture-reference .unity-base-slider .unity-base-text-field {

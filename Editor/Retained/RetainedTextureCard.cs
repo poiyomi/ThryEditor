@@ -14,7 +14,6 @@ namespace Thry.ThryEditor
         readonly RetainedMaterialModel _model;
         readonly ShaderTextureProperty _property;
         readonly ObjectField _assignment;
-        readonly bool _convertArray;
         readonly Image _thumbnail;
         readonly VisualElement _mixedIcon;
         readonly Label _placeholder, _name, _description, _aspectHint;
@@ -38,7 +37,7 @@ namespace Thry.ThryEditor
 
         internal RetainedTextureCard(RetainedMaterialModel model, ShaderTextureProperty property, ObjectField assignment, bool convertArray)
         {
-            _model = model; _property = property; _assignment = assignment; _convertArray = convertArray;
+            _model = model; _property = property; _assignment = assignment;
             name = "texture-card-" + property.MaterialProperty.name;
             AddToClassList("thry-texture-card");
             var summary = _summary = new VisualElement(); summary.AddToClassList("thry-texture-summary"); Add(summary);
@@ -56,7 +55,7 @@ namespace Thry.ThryEditor
             _placeholder = new Label { pickingMode = PickingMode.Ignore }; _placeholder.AddToClassList("thry-texture-placeholder"); frame.Add(_placeholder);
             frame.RegisterCallback<PointerUpEvent>(e => { if (e.button == 0) { SelectAsset(); e.StopPropagation(); } });
             frame.RegisterCallback<NavigationSubmitEvent>(e => { SelectAsset(); e.StopPropagation(); });
-            InstallDropTarget(frame);
+            InstallDropTarget(frame, frame, assignment, property.MaterialProperty.textureDimension, () => CanAssign, convertArray);
             _clear = ActionButton(() => Assign(null));
             _clear.name = "clear-texture"; _clear.tooltip = Text("clearTexture", "Clear texture");
             _clear.AddToClassList("thry-texture-clear");
@@ -334,47 +333,50 @@ namespace Thry.ThryEditor
         void Assign(Texture texture)
         {
             if (!CanAssign || (texture != null && !IsCompatible(texture))) return;
-            // Mixed selections must commit even when the first material already has this texture.
-            using (var change = ChangeEvent<UnityEngine.Object>.GetPooled(_assignment.value, texture))
-            {
-                _assignment.showMixedValue = false;
-                _assignment.SetValueWithoutNotify(texture);
-                change.target = _assignment; _assignment.SendEvent(change);
-            }
+            Commit(_assignment, texture);
         }
 
-        bool IsFrameConversion()
+        static void Commit(ObjectField assignment, Texture texture)
         {
-            var paths = DragAndDrop.paths;
-            if (!_convertArray || paths.Length == 0 || DragAndDrop.objectReferences.OfType<Texture2DArray>().Any()) return false;
-            return CanConvertFrames(paths);
+            // Mixed selections must commit even when the first material already has this texture.
+            using (var change = ChangeEvent<UnityEngine.Object>.GetPooled(assignment.value, texture))
+            {
+                assignment.showMixedValue = false;
+                assignment.SetValueWithoutNotify(texture);
+                change.target = assignment; assignment.SendEvent(change);
+            }
         }
 
         internal static bool CanConvertFrames(string[] paths) => paths != null && paths.Length > 0
             && ((paths.Length == 1 && paths[0].EndsWith(".gif", StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(paths[0]))
                 || paths.All(p => AssetDatabase.LoadAssetAtPath<Texture2D>(p) != null));
 
-        void InstallDropTarget(VisualElement target)
+        /// <summary>Accepts texture drops anywhere on the target and commits them through the assignment field.</summary>
+        internal static void InstallDropTarget(VisualElement target, VisualElement highlight, ObjectField assignment,
+            TextureDimension dimension, Func<bool> canAssign, bool convertArray)
         {
+            Func<Texture, bool> compatible = texture => texture != null && texture.dimension == dimension;
+            Func<bool> frameConversion = () => convertArray && DragAndDrop.paths.Length > 0
+                && !DragAndDrop.objectReferences.OfType<Texture2DArray>().Any() && CanConvertFrames(DragAndDrop.paths);
             target.RegisterCallback<DragUpdatedEvent>(e =>
             {
-                bool valid = CanAssign && (DragAndDrop.objectReferences.OfType<Texture>().Any(IsCompatible) || IsFrameConversion());
+                bool valid = canAssign() && (DragAndDrop.objectReferences.OfType<Texture>().Any(compatible) || frameConversion());
                 DragAndDrop.visualMode = valid ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Rejected;
-                target.EnableInClassList("thry-texture-drag", valid); e.StopPropagation();
+                highlight.EnableInClassList("thry-texture-drag", valid); e.StopPropagation();
             });
-            target.RegisterCallback<DragLeaveEvent>(e => target.RemoveFromClassList("thry-texture-drag"));
-            target.RegisterCallback<DragExitedEvent>(e => target.RemoveFromClassList("thry-texture-drag"));
+            target.RegisterCallback<DragLeaveEvent>(e => highlight.RemoveFromClassList("thry-texture-drag"));
+            target.RegisterCallback<DragExitedEvent>(e => highlight.RemoveFromClassList("thry-texture-drag"));
             target.RegisterCallback<DragPerformEvent>(e =>
             {
-                target.RemoveFromClassList("thry-texture-drag");
-                if (!CanAssign) return;
-                var texture = DragAndDrop.objectReferences.OfType<Texture>().FirstOrDefault(IsCompatible);
-                if (texture != null) { DragAndDrop.AcceptDrag(); Assign(texture); }
-                else if (IsFrameConversion())
+                highlight.RemoveFromClassList("thry-texture-drag");
+                if (!canAssign()) return;
+                var texture = DragAndDrop.objectReferences.OfType<Texture>().FirstOrDefault(compatible);
+                if (texture != null) { DragAndDrop.AcceptDrag(); Commit(assignment, texture); }
+                else if (frameConversion())
                 {
                     // Keep the established array conversion and frame/FPS update callbacks on the field.
-                    using (var forwarded = DragPerformEvent.GetPooled(new Event { type = EventType.DragPerform, mousePosition = _assignment.worldBound.center }))
-                    { forwarded.target = _assignment; _assignment.SendEvent(forwarded); }
+                    using (var forwarded = DragPerformEvent.GetPooled(new Event { type = EventType.DragPerform, mousePosition = assignment.worldBound.center }))
+                    { forwarded.target = assignment; assignment.SendEvent(forwarded); }
                 }
                 e.StopPropagation();
             });
