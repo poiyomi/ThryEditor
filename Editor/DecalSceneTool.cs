@@ -16,6 +16,7 @@ namespace Thry.ThryEditor
         private Renderer _renderer;
         private int _uvIndex;
         private Mesh _mesh;
+        private bool _ownsMesh;
         private Vector2[][] _uvTriangles;
         private Vector3[][] _worldTriangles;
         private Vector3[][] _worldNormals;
@@ -67,7 +68,7 @@ namespace Thry.ThryEditor
             try { tool.Init(); }
             finally
             {
-                if (renderer is SkinnedMeshRenderer && tool._mesh != null) Object.DestroyImmediate(tool._mesh);
+                if (tool._ownsMesh && tool._mesh != null) Object.DestroyImmediate(tool._mesh);
                 tool._mesh = null;
             }
             return tool;
@@ -484,6 +485,13 @@ namespace Thry.ThryEditor
 
         void GetMesh()
         {
+            // Poi Mesh Tools may write this UV channel; the original mesh would not have it or would have different UVs.
+            if (MeshToolsBridge.WritesUV(_renderer, _uvIndex))
+            {
+                _mesh = MeshToolsBridge.Bake(_renderer);
+                _ownsMesh = _mesh != null;
+                if (_mesh != null) return;
+            }
             if(_renderer is MeshRenderer)
             {
                 _mesh = _renderer.GetComponent<MeshFilter>().sharedMesh;
@@ -491,6 +499,7 @@ namespace Thry.ThryEditor
             else if(_renderer is SkinnedMeshRenderer)
             {
                 _mesh = new Mesh();
+                _ownsMesh = true;
                 (_renderer as SkinnedMeshRenderer).BakeMesh(_mesh);
             }
         }

@@ -43,7 +43,8 @@ namespace Thry.ThryEditor
                 if (mesh == null) return "Select a mesh using this material to use scene tools.";
                 int uv = (int)Model.Shader.PropertyDictionary[args[1]].MaterialProperty.GetNumber();
                 if (uv < 0 || uv > 3) return "Scene tools require mesh UV0–UV3; procedural coordinates are not supported.";
-                if (!mesh.HasVertexAttribute((VertexAttribute)((int)VertexAttribute.TexCoord0 + uv))) return "The selected mesh does not contain this UV channel.";
+                if (!mesh.HasVertexAttribute((VertexAttribute)((int)VertexAttribute.TexCoord0 + uv)) && !MeshToolsBridge.WritesUV(renderer, uv))
+                    return "The selected mesh does not contain this UV channel.";
                 return null;
             };
             Action<bool> stop = cancel =>
