@@ -38,6 +38,10 @@ namespace Thry.ThryEditor
         ToolbarSearchField _browserSearch;
         ScrollView _browserList;
         Label _browserEmpty, _browserSummary;
+        ScrollView _browserChangesList;
+        VisualElement _browserChanges;
+        Button _browserChangesToggle;
+        bool _browserChangesOpen;
         Button _browserApply;
         IVisualElementScheduledItem _browserWatch;
         string _browserStateSignature;
@@ -110,7 +114,7 @@ namespace Thry.ThryEditor
             var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
             root.AddToClassList("thry-dialog"); root.AddToClassList("thry-preset-browser");
             RetainedWindow.Shortcuts(root, Close, ApplyStaged, true);
-            minSize = new Vector2(280, 300);
+            minSize = new Vector2(520, 300);
             if (!_browserSized)
             {
                 // Resizing while CreateGUI runs discards the new tree, so size it next frame.
@@ -119,7 +123,7 @@ namespace Thry.ThryEditor
                 {
                     var current = position;
                     var center = current.x != 0 || current.y != 0 ? current.center : EditorGUIUtility.GetMainWindowPosition().center;
-                    position = new Rect(center.x - 160, center.y - 220, 320, 440);
+                    position = new Rect(center.x - 310, center.y - 220, 620, 440);
                 });
             }
             if (mainStruct == null || shaderEditor == null)
@@ -133,12 +137,22 @@ namespace Thry.ThryEditor
             heading.Add(BrowserLabel(title, "thry-title"));
             heading.Add(BrowserLabel(_browserTargets.Length == 1 ? _browserTargets[0].name
                 : _browserTargets.Length + " " + PresetText("materials", "materials"), "thry-preset-muted"));
+            _browserChangesOpen = RetainedUiState.Get("presets", "/changes", true);
+            _browserChangesToggle = new Button(() =>
+            {
+                _browserChangesOpen = !_browserChangesOpen;
+                RetainedUiState.Set("presets", "/changes", _browserChangesOpen);
+                _browserStateSignature = null; UpdatePreview();
+            }) { name = "preset-changes-toggle", text = PresetText("preset_changes", "Changes"), tooltip = PresetText("preset_changes_hint", "Show what the picked presets change") };
+            _browserChangesToggle.AddToClassList("thry-preset-changes-toggle"); heading.Add(_browserChangesToggle);
 
+            var body = new VisualElement(); body.AddToClassList("thry-preset-browser-body"); root.Add(body);
+            var library = new VisualElement(); library.AddToClassList("thry-preset-browser-library"); body.Add(library);
             _browserSearch = RetainedWindow.Search(PresetText("search_presets", "Search presets…")); _browserSearch.name = "preset-search";
-            _browserSearch.AddToClassList("thry-preset-browser-search"); root.Add(_browserSearch);
+            _browserSearch.AddToClassList("thry-preset-browser-search"); library.Add(_browserSearch);
 
             _browserList = new ScrollView(ScrollViewMode.Vertical) { name = "preset-library-list" };
-            _browserList.AddToClassList("thry-preset-browser-list"); root.Add(_browserList);
+            _browserList.AddToClassList("thry-preset-browser-list"); library.Add(_browserList);
             _browserFolders.Clear();
             var tree = new BrowserFolder { Children = _browserList.contentContainer, Expanded = true };
             foreach (var entry in _browserEntries)
@@ -155,6 +169,12 @@ namespace Thry.ThryEditor
             }
             BuildBrowserFolder(tree);
             _browserEmpty = BrowserLabel("", "thry-preset-empty"); _browserEmpty.name = "preset-empty"; _browserList.Add(_browserEmpty);
+
+            // The second column shows what the picked presets change.
+            _browserChanges = new VisualElement { name = "preset-changes" }; _browserChanges.AddToClassList("thry-preset-changes"); body.Add(_browserChanges);
+            _browserChanges.Add(BrowserLabel(PresetText("preset_changes", "Changes"), "thry-preset-changes-title"));
+            _browserChangesList = new ScrollView(ScrollViewMode.Vertical) { name = "preset-changes-list" };
+            _browserChangesList.AddToClassList("thry-preset-changes-list"); _browserChanges.Add(_browserChangesList);
 
             var footer = new VisualElement(); footer.AddToClassList("thry-preset-browser-footer"); root.Add(footer);
             _browserSummary = BrowserLabel("", "thry-preset-summary"); _browserSummary.name = "preset-summary"; footer.Add(_browserSummary);
@@ -243,8 +263,8 @@ namespace Thry.ThryEditor
 
         string BrowserStateSignature()
         {
-            Func<Material, string> key = m => m == null ? "missing" : m.GetObjectId() + ":" + m.shader?.GetObjectId();
-            return BrowserTargetsAvailable() + "|" + string.Join(";", (_browserTargets ?? Array.Empty<Material>()).Select(key))
+            Func<Material, string> key = m => m == null ? "missing" : m.GetObjectId() + ":" + EditorUtility.GetDirtyCount(m) + ":" + m.shader?.GetObjectId();
+            return BrowserTargetsAvailable() + "|" + _browserChangesOpen + "|" + string.Join(";", (_browserTargets ?? Array.Empty<Material>()).Select(key))
                 + "|" + string.Join(";", tickedPresets.Select(key));
         }
 
@@ -268,14 +288,20 @@ namespace Thry.ThryEditor
                 entry.Row.EnableInClassList("thry-preset-row-selected", selected);
                 entry.Row.SetEnabled(entry.Material != null && available);
             }
-            // Presets apply in the order they were picked, so the summary lists them that way.
-            var picked = tickedPresets.Select(m => _browserEntries.FirstOrDefault(e => e.Material == m)?.Name ?? m.name).ToList();
-            _browserSummary.text = !available ? PresetText("preset_targets_unavailable", "Reopen Presets for an unlocked material.")
-                : picked.Count == 0 ? PresetText("preset_pick_hint", "Double-click to apply")
-                : string.Join(" + ", picked);
-            _browserSummary.EnableInClassList("thry-preset-summary-active", available && picked.Count > 0);
-            _browserApply.text = picked.Count > 1 ? string.Format(PresetText("apply_preset_count", "Apply {0}"), picked.Count) : PresetText("apply", "Apply");
-            _browserApply.SetEnabled(CanApplyBrowser());
+            // Presets apply in the order they were picked, so the footer lists them that way.
+            _browserSummary.text = string.Join(" + ", tickedPresets.Select(m => _browserEntries.FirstOrDefault(e => e.Material == m)?.Name ?? m.name));
+            _browserApply.text = tickedPresets.Count > 1 ? string.Format(PresetText("apply_preset_count", "Apply {0}"), tickedPresets.Count) : PresetText("apply", "Apply");
+            bool valid = CanApplyBrowser();
+            _browserApply.SetEnabled(valid);
+
+            _browserChangesToggle.EnableInClassList("thry-preset-changes-toggle-on", _browserChangesOpen);
+            _browserChanges.style.display = _browserChangesOpen ? DisplayStyle.Flex : DisplayStyle.None;
+            _browserChangesList.Clear();
+            if (!_browserChangesOpen) return;
+            if (!valid) { _browserChangesList.Add(BrowserLabel(PresetText("preset_changes_empty", "Pick a preset to see what it changes."), "thry-preset-change-row")); return; }
+            var changes = Presets.PreviewChanges(shaderEditor, _browserTargets, tickedPresets, CurrentBrowserParent());
+            if (changes.Count == 0) _browserChangesList.Add(BrowserLabel(PresetText("preset_no_changes", "Nothing changes on this material."), "thry-preset-change-row"));
+            foreach (var change in changes) _browserChangesList.Add(BrowserLabel(change, "thry-preset-change-row"));
         }
     }
 }
