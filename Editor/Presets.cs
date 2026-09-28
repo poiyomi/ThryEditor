@@ -856,64 +856,6 @@ namespace Thry.ThryEditor
             }
         }
 
-        internal static List<string> PreviewChanges(ShaderEditor editor, Material[] originals, IList<Material> presets, ShaderPart parent = null)
-        {
-            var changes = new List<string>();
-            foreach (var original in originals)
-            {
-                var preview = new Material(original);
-                try
-                {
-                    var affected = new HashSet<ShaderProperty>();
-                    foreach (var preset in presets)
-                    {
-                        var properties = new HashSet<ShaderProperty>();
-                        CollectPresetProperties(editor, preset, parent, properties);
-                        var source = new Material(preset);
-                        try
-                        {
-                            MaterialHelper.SwapShaderPreservingSettings(source, editor.Shader);
-                            foreach (var property in properties)
-                            {
-                                var name = property.MaterialProperty?.name;
-                                if (name == null || !preview.HasProperty(name)) continue;
-                                var destination = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { preview }, name);
-                                if (GetPropertyMode(preset, property) != PropertyMode.AnimationOnly)
-                                    MaterialHelper.CopyValue(source, destination);
-                                if (property.IsAnimatable) ShaderOptimizer.CopyAnimatedTag(source, destination);
-                                affected.Add(property);
-                            }
-                        }
-                        finally { UnityEngine.Object.DestroyImmediate(source); }
-                    }
-                    foreach (var property in affected.OrderBy(p => p.ShaderPropertyIndex))
-                    {
-                        string name = property.MaterialProperty.name;
-                        var before = MaterialHelper.GetValue(original, name); var after = MaterialHelper.GetValue(preview, name);
-                        bool transform = property.MaterialProperty.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Texture
-                            && (original.GetTextureScale(name) != preview.GetTextureScale(name) || original.GetTextureOffset(name) != preview.GetTextureOffset(name));
-                        string caption = RetainedMaterialBody.SectionCaption(property).TrimEnd('*');
-                        string prefix = originals.Length > 1 ? original.name + " / " : "";
-                        if (!Equals(before, after) || transform)
-                            changes.Add(prefix + caption + ": " + PreviewValue(before) + " → " + PreviewValue(after)
-                                + (transform ? " (tiling / offset)" : ""));
-                        string beforeAnimation = ShaderOptimizer.GetAnimatedTag(original, name);
-                        string afterAnimation = ShaderOptimizer.GetAnimatedTag(preview, name);
-                        if (beforeAnimation != afterAnimation)
-                            changes.Add(prefix + caption + " / Animation: " + AnimationCaption(beforeAnimation) + " → " + AnimationCaption(afterAnimation));
-                    }
-                }
-                finally { UnityEngine.Object.DestroyImmediate(preview); }
-            }
-            return changes;
-        }
-        static string AnimationCaption(string tag) => tag == "2" ? "RA" : tag == "1" ? "A" : "Off";
-        static string PreviewValue(object value)
-        {
-            var asset = value as UnityEngine.Object;
-            return asset != null ? asset.name : value == null ? RetainedText.Get("none", "None") : value.ToString();
-        }
-
         public static void ApplyFullList(ShaderEditor shaderEditor, Material[] originals, List<Material> presets, ShaderPart parent = null)
         {
             for (int i = 0; i < shaderEditor.Materials.Length && i < originals.Length; i++)
@@ -1414,7 +1356,6 @@ namespace Thry.ThryEditor
             if(beforePreset!=null)foreach(var material in beforePreset)DestroyImmediate(material);
         }
         bool _retainedStaging;
-        VisualElement _preview;
         void ApplyStaged()
         {
             if (_save || !CanApplyBrowser()) return;
