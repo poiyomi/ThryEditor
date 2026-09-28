@@ -19,8 +19,8 @@ namespace Thry.ThryEditor.Drawers
         //the reason for weird string thing here is that you cant have bools as params for drawers
         public ThryToggleDrawer(string keywordLeft)
         {
-            if (keywordLeft == "true") left = true;
-            else if (keywordLeft == "false") left = false;
+            if (keywordLeft.Equals("true", StringComparison.OrdinalIgnoreCase)) left = true;
+            else if (keywordLeft.Equals("false", StringComparison.OrdinalIgnoreCase)) left = false;
             else keyword = keywordLeft;
             hasKeyword = keyword != null;
         }
@@ -28,7 +28,7 @@ namespace Thry.ThryEditor.Drawers
         public ThryToggleDrawer(string keyword, string left)
         {
             this.keyword = keyword;
-            this.left = left == "true";
+            this.left = left.Equals("true", StringComparison.OrdinalIgnoreCase);
             hasKeyword = keyword != null;
         }
 

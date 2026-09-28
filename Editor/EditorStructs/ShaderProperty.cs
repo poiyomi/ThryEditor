@@ -682,7 +682,8 @@ namespace Thry.ThryEditor
                     }
                     else
                     {
-                        if (attribute.Args.Length == 0 || attribute.Args[0] == "true" || attribute.Args[0] == "false") continue;
+                        if (attribute.Args.Length == 0 || attribute.Args[0].Equals("true", StringComparison.OrdinalIgnoreCase)
+                            || attribute.Args[0].Equals("false", StringComparison.OrdinalIgnoreCase)) continue;
                         keyword = attribute.Args[0];
                         enabled = Math.Abs(material.GetNumber(MaterialProperty)) > .001f;
                     }

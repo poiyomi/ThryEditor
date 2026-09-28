@@ -30,7 +30,8 @@ namespace Thry.ThryEditor
                         || source.StartsWith("ThryToggleUI(", StringComparison.Ordinal))
                     {
                         var attribute = new DrawerAttribute(source);
-                        if (attribute.Args.Length > 0 && attribute.Args[0] != "true" && attribute.Args[0] != "false")
+                        if (attribute.Args.Length > 0 && !attribute.Args[0].Equals("true", StringComparison.OrdinalIgnoreCase)
+                            && !attribute.Args[0].Equals("false", StringComparison.OrdinalIgnoreCase))
                         { Keyword = attribute.Args[0]; IsAnimatable = false; }
                     }
                     if (source == "TextureKeyword" || source.StartsWith("TextureKeyword(", StringComparison.Ordinal))
