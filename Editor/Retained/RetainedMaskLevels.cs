@@ -37,7 +37,7 @@ namespace Thry.ThryEditor
         readonly ShaderProperty textureProperty;
         readonly ShaderProperty[] properties;
         readonly int activeChannels;
-        bool LegacyInvert => properties[5].MaterialProperty.type != MaterialProperty.PropType.Vector;
+        bool LegacyInvert => properties[5].MaterialProperty.GetPropertyType() != UnityEngine.Rendering.ShaderPropertyType.Vector;
         readonly RetainedFields fields;
         readonly MaskLevelsPreview preview=new MaskLevelsPreview();
         readonly Vector4[] values=new Vector4[9];

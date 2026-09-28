@@ -75,7 +75,7 @@ namespace Thry.ThryEditor
                 return RetainedText.Get(shader, "animation_unavailable", "Animation editing is unavailable in this Unity version. Stop animation preview to edit the material.");
             if (part.MaterialProperty != null)
             {
-                if ((part.MaterialProperty.flags & UnityEditor.MaterialProperty.PropFlags.NonModifiableTextureData) != 0)
+                if ((part.MaterialProperty.GetPropertyFlags() & UnityEngine.Rendering.ShaderPropertyFlags.NonModifiableTextureData) != 0)
                     return RetainedText.Get(shader, "texture_shader_owned", "This texture is supplied by the shader and cannot be reassigned.");
                 if (!part.IsExemptFromLockedDisabling && part.MaterialProperty.targets.OfType<Material>()
                     .Any(material => material != null && shader.Materials.Contains(material) && material.HasProperty(part.MaterialProperty.name) && material.IsLocked()

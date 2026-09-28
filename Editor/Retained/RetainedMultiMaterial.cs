@@ -42,11 +42,11 @@ namespace Thry.ThryEditor
         internal static object Value(Material material, MaterialProperty property)
         {
             if (property.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Int) return material.GetInteger(property.name);
-            switch (property.type)
+            switch (property.GetPropertyType())
             {
-                case MaterialProperty.PropType.Color: return material.GetColor(property.name);
-                case MaterialProperty.PropType.Vector: return material.GetVector(property.name);
-                case MaterialProperty.PropType.Texture:
+                case UnityEngine.Rendering.ShaderPropertyType.Color: return material.GetColor(property.name);
+                case UnityEngine.Rendering.ShaderPropertyType.Vector: return material.GetVector(property.name);
+                case UnityEngine.Rendering.ShaderPropertyType.Texture:
                     return new TextureValue { Texture = material.GetTexture(property.name), Scale = material.GetTextureScale(property.name), Offset = material.GetTextureOffset(property.name) };
                 default: return material.GetFloat(property.name);
             }

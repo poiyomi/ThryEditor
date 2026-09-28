@@ -309,7 +309,7 @@ namespace Thry.ThryEditor
                 Occurrence = occurrence;
                 _type = (int)property.GetPropertyType();
                 _dimension = property.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Texture ? (int)property.textureDimension : 0;
-                _editFlags = (int)(property.flags & MaterialProperty.PropFlags.NonModifiableTextureData);
+                _editFlags = (int)(property.GetPropertyFlags() & UnityEngine.Rendering.ShaderPropertyFlags.NonModifiableTextureData);
                 _range = property.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Range ? property.rangeLimits : Vector2.zero;
             }
 

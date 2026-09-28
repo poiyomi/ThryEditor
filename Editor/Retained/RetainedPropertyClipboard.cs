@@ -31,7 +31,7 @@ namespace Thry.ThryEditor
             }
             if (p.GetPropertyType() == ShaderPropertyType.Texture)
             {
-                if ((p.flags & MaterialProperty.PropFlags.NoScaleOffset) == 0)
+                if ((p.GetPropertyFlags() & ShaderPropertyFlags.NoScaleOffset) == 0)
                 {
                     if (!p.hasMixedValue)
                         menu.AddItem(new GUIContent("Copy Tiling and Offset"), false,
@@ -105,7 +105,7 @@ namespace Thry.ThryEditor
             string text = (EditorGUIUtility.systemCopyBuffer ?? "").Trim();
             if (transform)
             {
-                if (p.GetPropertyType() != ShaderPropertyType.Texture || (p.flags & MaterialProperty.PropFlags.NoScaleOffset) != 0
+                if (p.GetPropertyType() != ShaderPropertyType.Texture || (p.GetPropertyFlags() & ShaderPropertyFlags.NoScaleOffset) != 0
                     || !Components(text, "Vector4", out var st)) return false;
                 apply = target => target.textureScaleAndOffset = st;
                 return true;

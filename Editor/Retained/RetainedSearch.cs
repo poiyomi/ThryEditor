@@ -200,11 +200,11 @@ namespace Thry.ThryEditor
         }
         static string PropertyType(ShaderProperty property)
         {
-            switch (property.MaterialProperty.type)
+            switch (property.MaterialProperty.GetPropertyType())
             {
-                case MaterialProperty.PropType.Texture: return "texture";
-                case MaterialProperty.PropType.Color: return "color";
-                case MaterialProperty.PropType.Vector: return "vector";
+                case UnityEngine.Rendering.ShaderPropertyType.Texture: return "texture";
+                case UnityEngine.Rendering.ShaderPropertyType.Color: return "color";
+                case UnityEngine.Rendering.ShaderPropertyType.Vector: return "vector";
                 default:
                     // Match the native field renderer's toggle metadata, rather than
                     // treating every numeric value currently equal to 0 or 1 as a toggle.

@@ -257,7 +257,7 @@ namespace Thry.ThryEditor
             if (Shader.IsInAnimationMode && Renderers.Length > 0 && !RetainedAnimation.IsSupported) return false;
             if (part.MaterialProperty != null)
             {
-                if ((part.MaterialProperty.flags & MaterialProperty.PropFlags.NonModifiableTextureData) != 0) return false;
+                if ((part.MaterialProperty.GetPropertyFlags() & UnityEngine.Rendering.ShaderPropertyFlags.NonModifiableTextureData) != 0) return false;
                 bool hasOwner = false;
                 foreach (var target in part.MaterialProperty.targets)
                 {

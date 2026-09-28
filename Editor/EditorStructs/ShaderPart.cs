@@ -1231,7 +1231,7 @@ namespace Thry.ThryEditor
         static void ResetSingleProperty(ShaderPart shaderPart)
         {
             MaterialProperty prop = shaderPart.MaterialProperty;
-            if (prop == null || (prop.flags & PropFlags.NonModifiableTextureData) != 0) return;
+            if (prop == null || (prop.GetPropertyFlags() & ShaderPropertyFlags.NonModifiableTextureData) != 0) return;
             var owners = shaderPart.PropertyContextTargets();
             if (owners.Length == 0) return;
             Undo.RegisterCompleteObjectUndo(owners, "Reset " + shaderPart.Content.text);

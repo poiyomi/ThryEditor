@@ -15,7 +15,7 @@ namespace Thry.ThryEditor
                 ? RetainedMultiMaterial.DisplayValue(RetainedMultiMaterial.Value(targets[0], property.MaterialProperty))
                 : string.Join("\n", targets.Select(m => RetainedMultiMaterial.MaterialName(m) + ": " + RetainedMultiMaterial.DisplayValue(RetainedMultiMaterial.Value(m, property.MaterialProperty))));
             string defaults = RetainedMultiMaterial.DisplayValue(property.PropertyDefaultValue);
-            if (property.MaterialProperty.type == MaterialProperty.PropType.Texture) defaults += " · tiling (1, 1) · offset (0, 0)";
+            if (property.MaterialProperty.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Texture) defaults += " · tiling (1, 1) · offset (0, 0)";
             return RetainedText.Get(shader, "current", "Current") + ": " + current + "\n"
                 + RetainedText.Get(shader, "default", "Default") + ": " + defaults;
         }

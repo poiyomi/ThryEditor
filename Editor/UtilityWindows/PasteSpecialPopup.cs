@@ -105,7 +105,7 @@ namespace Thry.ThryEditor
                 else if(ShaderPart.MaterialProperty!=null)
                 {
                     var property=ShaderPart.MaterialProperty;
-                    string value=property.type==MaterialProperty.PropType.Texture?property.textureValue?.name??"None":property.type==MaterialProperty.PropType.Vector?property.vectorValue.ToString():property.type==MaterialProperty.PropType.Color?property.colorValue.ToString():property.GetNumber().ToString();
+                    string value=property.GetPropertyType()==ShaderPropertyType.Texture?property.textureValue?.name??"None":property.GetPropertyType()==ShaderPropertyType.Vector?property.vectorValue.ToString():property.GetPropertyType()==ShaderPropertyType.Color?property.colorValue.ToString():property.GetNumber().ToString();
                     root.Add(new Label(value));
                 }
                 return root;

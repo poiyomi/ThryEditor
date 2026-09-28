@@ -112,7 +112,7 @@ namespace Thry.ThryEditor
                     if (material == null || !material.HasProperty(property.name)
                         || _initialValues.Any(v => v.Material == material && v.Name == property.name)) continue;
                     var value = new PositioningValue { Material = material, Shader = material.shader, Name = property.name,
-                        Vector = property.type == MaterialProperty.PropType.Vector };
+                        Vector = property.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Vector };
                     value.Value = value.Read(); _initialValues.Add(value);
                 }
             }

@@ -890,7 +890,7 @@ namespace Thry.ThryEditor
                     {
                         string name = property.MaterialProperty.name;
                         var before = MaterialHelper.GetValue(original, name); var after = MaterialHelper.GetValue(preview, name);
-                        bool transform = property.MaterialProperty.type == MaterialProperty.PropType.Texture
+                        bool transform = property.MaterialProperty.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Texture
                             && (original.GetTextureScale(name) != preview.GetTextureScale(name) || original.GetTextureOffset(name) != preview.GetTextureOffset(name));
                         string caption = RetainedMaterialBody.SectionCaption(property).TrimEnd('*');
                         string prefix = originals.Length > 1 ? original.name + " / " : "";

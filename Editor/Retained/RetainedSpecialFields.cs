@@ -11,7 +11,7 @@ namespace Thry.ThryEditor
     {
         private static int ReadBitValue(Material material, ShaderProperty property)
         {
-            if (property.MaterialProperty.type == MaterialProperty.PropType.Int) return material.GetInteger(property.MaterialProperty.name);
+            if (property.MaterialProperty.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Int) return material.GetInteger(property.MaterialProperty.name);
             return (int)material.GetFloat(property.MaterialProperty.name);
         }
         partial void SpecialFields(VisualElement parent, ShaderProperty property, DrawerAttribute[] attributes, ref bool handled)
