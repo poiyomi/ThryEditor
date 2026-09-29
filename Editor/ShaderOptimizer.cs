@@ -890,6 +890,10 @@ namespace Thry.ThryEditor
         // reconciled across every material sharing them once, rather than per material.
         private static readonly HashSet<string> s_cacheEntriesTouchedThisBatch = new HashSet<string>();
 
+        // The //ifex conditions on RenderQueue found in each shader, by asset path. Kept for one batch only:
+        // the asset dependency hash cannot see edits to included files, so across batches the list could be stale.
+        private static readonly Dictionary<string, string[]> s_renderQueueConditionsThisBatch = new Dictionary<string, string[]>();
+
         private static readonly List<Material> s_materialsToVerifyLock = new List<Material>();
 
         // Presets use ConsumeLockUnlockMaterialChange to suppress it's per-material logging
@@ -908,6 +912,7 @@ namespace Thry.ThryEditor
             s_applyStructsLater.Clear();
             s_lockedShaderNamesThisBatch.Clear();
             s_cacheEntriesTouchedThisBatch.Clear();
+            s_renderQueueConditionsThisBatch.Clear();
             s_materialsToVerifyLock.Clear();
             
             // First the shaders are created. compiling is suppressed with start asset editing.
@@ -1270,6 +1275,17 @@ namespace Thry.ThryEditor
                 stringBuilder.Append('|').Append(m.GetTag("GrabPass" + grabPass, false, string.Empty));
             }
 
+            // //ifex can test the render queue, which is not a property (Poiyomi drops its ShadowCaster pass
+            // above 3000). Only the results go in, so queues on the same side of every threshold still share
+            // a shader. Shaders without such a condition keep their old hashes.
+            string[] renderQueueConditions = GetRenderQueueConditions(AssetDatabase.GetAssetPath(m.shader));
+            if (renderQueueConditions.Length > 0)
+            {
+                stringBuilder.Append("|rq:");
+                foreach (string condition in renderQueueConditions)
+                    stringBuilder.Append(DefineableCondition.Parse(condition, m).Test() ? '1' : '0');
+            }
+
             // Properties are passed in rather than fetched here: the caller already has them, and on a
             // shader this size a second GetMaterialProperties call means allocating several thousand
             // MaterialProperty objects again for every material being locked.
@@ -1346,6 +1362,45 @@ namespace Thry.ThryEditor
             byte[] bytes = Encoding.UTF8.GetBytes(stringBuilder.ToString());
             using (var sha = new MD5CryptoServiceProvider())
                 return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLower();
+        }
+
+        static string[] GetRenderQueueConditions(string shaderPath)
+        {
+            if (s_renderQueueConditionsThisBatch.TryGetValue(shaderPath, out string[] cached)) return cached;
+
+            SortedSet<string> conditions = new SortedSet<string>(StringComparer.Ordinal);
+            CollectRenderQueueConditions(shaderPath, conditions, new HashSet<string>());
+            string[] result = conditions.ToArray();
+            s_renderQueueConditionsThisBatch[shaderPath] = result;
+            return result;
+        }
+
+        // Reads the files Lock reads: the shader and every include it inlines. Conditions count whether or
+        // not their block is reachable. An extra one can only split the cache, a missed one merges shaders
+        // that differ.
+        static void CollectRenderQueueConditions(string filePath, SortedSet<string> conditions, HashSet<string> visited)
+        {
+            if (!visited.Add(filePath) || !File.Exists(filePath)) return;
+
+            foreach (string line in File.ReadLines(filePath))
+            {
+                string lineParsed = line.TrimStart();
+                if (lineParsed.StartsWith("//ifex", StringComparison.Ordinal))
+                {
+                    // The same text Lock parses. DefineableCondition matches RenderQueue in any case.
+                    string condition = lineParsed.Substring(6);
+                    if (condition.IndexOf("RenderQueue", StringComparison.OrdinalIgnoreCase) >= 0)
+                        conditions.Add(condition);
+                }
+                else if (lineParsed.StartsWith("#include", StringComparison.Ordinal))
+                {
+                    int firstQuotation = lineParsed.IndexOf('\"');
+                    int lastQuotation = firstQuotation < 0 ? -1 : lineParsed.IndexOf('\"', firstQuotation + 1);
+                    if (lastQuotation < 0) continue;
+                    string includeFullpath = GetInlinedIncludePath(lineParsed.Substring(firstQuotation + 1, lastQuotation - firstQuotation - 1), filePath);
+                    if (includeFullpath != null) CollectRenderQueueConditions(includeFullpath, conditions, visited);
+                }
+            }
         }
 #endregion
 #region Locking
@@ -2272,14 +2327,9 @@ namespace Thry.ThryEditor
                     string includeFilename = lineParsed.Substring(firstQuotation+1, lastQuotation-firstQuotation-1);
 
                     // Skip default includes - keep them as #include statements
-                    if (DefaultUnityShaderIncludes.Contains(includeFilename) == false)
+                    string includeFullpath = GetInlinedIncludePath(includeFilename, filePath);
+                    if (includeFullpath != null)
                     {
-                        string includeFullpath = includeFilename;
-                        if (includeFilename.StartsWith("Assets/", StringComparison.Ordinal) == false && includeFilename.StartsWith("Packages/", StringComparison.Ordinal) == false) // not absolute
-                            includeFullpath = GetFullPath(includeFilename, Path.GetDirectoryName(filePath));
-                        // Convert Unity asset path to absolute filesystem path for Packages/
-                        if (includeFullpath.StartsWith("Packages/", StringComparison.Ordinal))
-                            includeFullpath = Path.GetFullPath(includeFullpath);
                         // Inline the include contents instead of keeping the #include
                         string[] inlinedLines = GetInlinedIncludeLines(includeFullpath, macros, material, stripTextures, filesParsed);
                         if (inlinedLines == null)
@@ -2336,6 +2386,20 @@ namespace Thry.ThryEditor
                 relativePath = relativePath.Remove(0, "../".Length);
             }
             return basePath + '/' + relativePath;
+        }
+
+        // The file an #include "X" is inlined from, or null for Unity's own includes, which stay #include lines.
+        static string GetInlinedIncludePath(string includeFilename, string includingFilePath)
+        {
+            if (DefaultUnityShaderIncludes.Contains(includeFilename)) return null;
+
+            string includeFullpath = includeFilename;
+            if (includeFilename.StartsWith("Assets/", StringComparison.Ordinal) == false && includeFilename.StartsWith("Packages/", StringComparison.Ordinal) == false) // not absolute
+                includeFullpath = GetFullPath(includeFilename, Path.GetDirectoryName(includingFilePath));
+            // Convert Unity asset path to absolute filesystem path for Packages/
+            if (includeFullpath.StartsWith("Packages/", StringComparison.Ordinal))
+                includeFullpath = Path.GetFullPath(includeFullpath);
+            return includeFullpath;
         }
 
         // Helper to read and process include file contents for inlining
@@ -2440,13 +2504,9 @@ namespace Thry.ThryEditor
                     int lastQuotation = lineParsed.IndexOf('\"', firstQuotation + 1);
                     string includeFilename = lineParsed.Substring(firstQuotation + 1, lastQuotation - firstQuotation - 1);
 
-                    if (DefaultUnityShaderIncludes.Contains(includeFilename) == false)
+                    string includeFullpath = GetInlinedIncludePath(includeFilename, filePath);
+                    if (includeFullpath != null)
                     {
-                        string includeFullpath = includeFilename;
-                        if (includeFilename.StartsWith("Assets/", StringComparison.Ordinal) == false && includeFilename.StartsWith("Packages/", StringComparison.Ordinal) == false)
-                            includeFullpath = GetFullPath(includeFilename, Path.GetDirectoryName(filePath));
-                        if (includeFullpath.StartsWith("Packages/", StringComparison.Ordinal))
-                            includeFullpath = Path.GetFullPath(includeFullpath);
                         string[] nestedLines = GetInlinedIncludeLines(includeFullpath, macros, material, stripTextures, alreadyProcessed);
                         if (nestedLines == null)
                             return null;
