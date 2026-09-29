@@ -1410,6 +1410,16 @@ namespace Thry.ThryEditor
         static readonly FieldInfo s_propertyHandlers = s_handlerType?.GetField("s_PropertyHandlers", BindingFlags.NonPublic | BindingFlags.Static);
         static readonly MethodInfo s_invalidatePropertyCache = s_handlerType?.GetMethod("InvalidatePropertyCache", BindingFlags.NonPublic | BindingFlags.Static);
 
+        // The start of Unity's handler key, "<id>_<property>", for the shader. Unity 6.5 uses the EntityId there.
+        static string HandlerKeyPrefix(Shader shader)
+        {
+#if UNITY_6000_5_OR_NEWER
+            return shader.GetEntityId().ToString() + "_";
+#else
+            return shader.GetInstanceID().ToString(CultureInfo.InvariantCulture) + "_";
+#endif
+        }
+
         /// <summary>
         /// Gives a shader made from <paramref name="source"/>, such as a locked shader, the original's handlers for the
         /// properties it has with the same name and attributes. A locked Poiyomi shader keeps about 1300 of them, and
@@ -1431,7 +1441,7 @@ namespace Thry.ThryEditor
                 string lastKey = (string)s_getPropertyString.Invoke(null, args);
                 // Already shared, or already built by Unity.
                 if (handlers.Contains(lastKey)) return;
-                string prefix = target.GetInstanceID().ToString(CultureInfo.InvariantCulture) + "_";
+                string prefix = HandlerKeyPrefix(target);
                 bool directKeys = lastKey == prefix + lastName;
 
                 Dictionary<string, int> sourceIndex = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -1502,9 +1512,9 @@ namespace Thry.ThryEditor
                     info.PropertyHandlers = sourceHandlers;
                 }
 
-                // Unity's key is "<instance id>_<property>". Built here directly when that still holds, since calling
+                // Unity's key is "<id>_<property>". Built here directly when that still holds, since calling
                 // GetPropertyString by reflection for every property takes most of the time.
-                string prefix = target.GetInstanceID().ToString(CultureInfo.InvariantCulture) + "_";
+                string prefix = HandlerKeyPrefix(target);
                 bool directKeys = lastKey == prefix + info.PropertyNames[count - 1];
                 for (int i = 0; i < count; i++)
                 {
@@ -1646,8 +1656,13 @@ namespace Thry.ThryEditor
         {
             SerializedProperty shaderProperty = new SerializedObject(material).FindProperty("m_Shader");
             if (shaderProperty == null) return false;
+#if UNITY_6000_5_OR_NEWER
+            EntityId id = shaderProperty.objectReferenceEntityIdValue;
+            return id == EntityId.None || string.IsNullOrEmpty(AssetDatabase.GetAssetPath(id));
+#else
             int id = shaderProperty.objectReferenceInstanceIDValue;
             return id == 0 || string.IsNullOrEmpty(AssetDatabase.GetAssetPath(id));
+#endif
         }
 
         static readonly PropertyInfo s_rawRenderQueue = typeof(Material).GetProperty("rawRenderQueue", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -1693,7 +1708,8 @@ namespace Thry.ThryEditor
             int count = source.GetPropertyCount();
             for (int i = 0; i < count; i++)
             {
-                if (!ShaderUtil.IsShaderPropertyNonModifiableTexureProperty(source, i)) continue;
+                if (source.GetPropertyType(i) != ShaderPropertyType.Texture
+                    || (source.GetPropertyFlags(i) & ShaderPropertyFlags.NonModifiableTextureData) == 0) continue;
                 string name = source.GetPropertyName(i);
                 if (material.GetTexture(name) != null) continue;
                 if (importer == null) importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(source)) as ShaderImporter;
