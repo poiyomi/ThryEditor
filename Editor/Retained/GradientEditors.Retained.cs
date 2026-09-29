@@ -115,7 +115,7 @@ namespace Thry.ThryEditor
                         var surface = new VisualElement { name = "gradient-creation-surface" };
                         // Unity owns the stop handles, color/opacity editing and preset
                         // library. Keep these inside the same window as output settings.
-                        var stops = new IMGUIContainer(() => DrawNativeGradient(GradientEditorGUI, _gradientEditor,
+                        var stops = new IMGUIContainer(() => GradientKeyColors.OnGUI(_gradientEditor,
                             GUILayoutUtility.GetRect(0, 10000, 130, 130))) { name = "gradient-stop-editor" };
                         stops.style.height = 130; stops.style.flexShrink = 0; surface.Add(stops);
                         var library = new Foldout { text = RetainedText.Get("presets", "Presets"), name = "gradient-presets", value = false };
@@ -133,7 +133,7 @@ namespace Thry.ThryEditor
                     _gradientEditor = null; _gradientLibary = null;
                 }
             }
-            var field = new GradientField { value = _gradient };
+            var field = new ThryGradientField { value = _gradient };
             field.AddToClassList("thry-gradient-preview");
             field.tooltip = RetainedText.Get("gradient_edit_hint", "Click to edit gradient colors and opacity.");
             field.RegisterValueChangedCallback(e => _gradient = e.newValue);
@@ -156,7 +156,7 @@ namespace Thry.ThryEditor
             root.AddToClassList("thry-dialog"); root.AddToClassList("thry-gradient-editor");
             minSize = new Vector2(320, _show_texture_options ? 310 : 180);
             var title = new Label(RetainedText.Get("gradient", "Gradient")); title.AddToClassList("thry-title"); root.Add(title);
-            var field = new GradientField { value = _data.Gradient }; field.AddToClassList("thry-gradient-preview"); root.Add(field);
+            var field = new ThryGradientField { value = _data.Gradient }; field.AddToClassList("thry-gradient-preview"); root.Add(field);
             field.RegisterValueChangedCallback(e => { _data.Gradient = e.newValue; UpdateGradientPreviewTexture(); });
             if (_show_texture_options)
             {

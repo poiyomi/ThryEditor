@@ -29,6 +29,12 @@ namespace Thry.ThryEditor
         private InspectorPopup _enumPopup;
         private GUIContent[] _enumNames;
         private int[] _enumValues;
+        private static readonly Type s_propertyHandlerType = typeof(MaterialEditor).Assembly.GetType("UnityEditor.MaterialPropertyHandler");
+        private static readonly System.Reflection.MethodInfo s_getPropertyHandler = s_propertyHandlerType?.GetMethod("GetHandler",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic, null, new[] { typeof(Shader), typeof(string) }, null);
+        private static readonly System.Reflection.FieldInfo s_decoratorDrawers = s_propertyHandlerType?.GetField("m_DecoratorDrawers",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+        private int _unityDecorators = -1;
 
         bool _needsDrawerInitlization = true;
         bool _isAnimatedStateResolved = false;
@@ -774,7 +780,44 @@ namespace Thry.ThryEditor
                 position = EditorGUI.PrefixLabel(position, label);
                 label = GUIContent.none;
             }
+            // [PerRendererData] colors stay Unity's: they are shown disabled.
+            if (type == ShaderPropertyType.Color && _drawer == null && (_customDecorators == null || _customDecorators.Count == 0)
+                && !Config.Instance.useUnityColorPicker && (MaterialProperty.GetPropertyFlags() & ShaderPropertyFlags.PerRendererData) == 0
+                && !HasUnityDecorators(position))
+            {
+                // Unity's color field opens a picker without a hex field for HDR colors.
+                if (position.height > EditorGUIUtility.singleLineHeight) position.yMin = position.yMax - EditorGUIUtility.singleLineHeight;
+                // Like MaterialEditor.ShaderProperty: the animated and recording tint, and the keyframe context menu.
+                MyMaterialEditor.BeginAnimatedCheck(position, MaterialProperty);
+                try
+                {
+                    EditorGUI.BeginChangeCheck();
+                    bool mixed = EditorGUI.showMixedValue;
+                    EditorGUI.showMixedValue = MaterialProperty.hasMixedValue;
+                    Color value = ThryColorGUI.Field(position, label, MaterialProperty.colorValue, ThryColorFormat.ForProperty(MaterialProperty.GetPropertyFlags(), false));
+                    EditorGUI.showMixedValue = mixed;
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        MyMaterialEditor.RegisterPropertyChangeUndo(label.text);
+                        MaterialProperty.colorValue = value;
+                    }
+                }
+                finally { MyMaterialEditor.EndAnimatedCheck(); }
+                return;
+            }
             MyMaterialEditor.ShaderProperty(position, MaterialProperty, label);
+        }
+
+        // Unity decorators such as [Space] and [Header] draw inside the rect only through MaterialEditor.ShaderProperty.
+        private bool HasUnityDecorators(Rect position)
+        {
+            if (s_getPropertyHandler == null || s_decoratorDrawers == null) return position.height > EditorGUIUtility.singleLineHeight + 1;
+            if (_unityDecorators < 0)
+            {
+                var handler = MyShader == null ? null : s_getPropertyHandler.Invoke(null, new object[] { MyShader, MaterialProperty.name });
+                _unityDecorators = handler != null && s_decoratorDrawers.GetValue(handler) is System.Collections.ICollection drawers && drawers.Count > 0 ? 1 : 0;
+            }
+            return _unityDecorators == 1;
         }
 
         protected virtual void DrawDefault() { }

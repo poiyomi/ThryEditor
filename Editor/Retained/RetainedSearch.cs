@@ -362,6 +362,9 @@ namespace Thry.ThryEditor
         {
             var focused = panel?.focusController?.focusedElement as VisualElement;
             if (focused != null && _results.Contains(focused)) return true;
+            // The inspector loses focus to the color picker window, so its row is tracked separately.
+            var picking = RetainedColorPicker.ActiveField;
+            if (picking != null && picking.panel == panel && _results.Contains(picking)) return true;
             // Dropdown focus temporarily lives in a sibling overlay.
             return panel?.visualTree.Q("thry-dropdown-menu") != null;
         }

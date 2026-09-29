@@ -41,6 +41,7 @@ namespace Thry.ThryEditor
         public bool showColorspaceWarnings = true;
         public bool allowCustomLockingRenaming = false;
         public bool autoMarkPropertiesAnimated = true;
+        public bool useUnityColorPicker = false;
         public bool showStarNextToNonDefaultProperties = true;
         public bool showAnimatedDotOnHeaders = true;
         public bool showNotes = true;

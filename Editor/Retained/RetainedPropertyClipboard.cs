@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -25,8 +26,8 @@ namespace Thry.ThryEditor
             if (p.GetPropertyType() == ShaderPropertyType.Color)
             {
                 if (!p.hasMixedValue)
-                    menu.AddItem(new GUIContent("Copy Color as Hex (RGBA)"), false,
-                        () => EditorGUIUtility.systemCopyBuffer = "#" + ColorUtility.ToHtmlStringRGBA(property.MaterialProperty.colorValue));
+                    menu.AddItem(new GUIContent("Copy Color as Hex (RGBA)"), false, () => EditorGUIUtility.systemCopyBuffer = "#"
+                        + ThryColorMath.ToHex(ThryColorMath.Preview(property.MaterialProperty.colorValue, RetainedColorPicker.Format(property.MaterialProperty)), true));
                 else menu.AddDisabledItem(new GUIContent("Copy Color as Hex (RGBA)"));
             }
             if (p.GetPropertyType() == ShaderPropertyType.Texture)
@@ -55,7 +56,9 @@ namespace Thry.ThryEditor
                 menu.AddItem(new GUIContent(label), false, () =>
                 {
                     // Revalidate both the clipboard and editability when an open menu is used.
-                    if (TryRead(property.MaterialProperty, transform, out var apply)) model.Edit(property, apply);
+                    // Hex keeps each owner's own alpha and intensity, so it is applied per owner.
+                    if (TryRead(property.MaterialProperty, transform, out var apply))
+                        model.Edit(property, apply, !transform && property.MaterialProperty.GetPropertyType() == ShaderPropertyType.Color && IsHex(ClipboardText));
                 });
             else menu.AddDisabledItem(new GUIContent(label));
         }
@@ -81,6 +84,10 @@ namespace Thry.ThryEditor
         static string Format(string prefix, Vector4 value) => prefix + "(" + value.x.ToString("R", Invariant) + ", "
             + value.y.ToString("R", Invariant) + ", " + value.z.ToString("R", Invariant) + ", " + value.w.ToString("R", Invariant) + ")";
 
+        static string ClipboardText => (EditorGUIUtility.systemCopyBuffer ?? "").Trim();
+
+        static bool IsHex(string text) => ThryColorMath.IsPastedHex(text);
+
         static bool Number(string text, out float value) => float.TryParse(text, NumberStyles.Float, Invariant, out value)
             && !float.IsNaN(value) && !float.IsInfinity(value);
 
@@ -102,7 +109,7 @@ namespace Thry.ThryEditor
         {
             apply = null;
             if (p == null) return false;
-            string text = (EditorGUIUtility.systemCopyBuffer ?? "").Trim();
+            string text = ClipboardText;
             if (transform)
             {
                 if (p.GetPropertyType() != ShaderPropertyType.Texture || (p.GetPropertyFlags() & ShaderPropertyFlags.NoScaleOffset) != 0
@@ -123,10 +130,20 @@ namespace Thry.ThryEditor
                     apply = target => target.intValue = integer;
                     break;
                 case ShaderPropertyType.Color:
-                    Color color;
-                    if (Components(text, "RGBA", out var rgba) || Components(text, "Color", out rgba)) color = rgba;
-                    else if (!text.StartsWith("#", StringComparison.Ordinal) || !ColorUtility.TryParseHtmlString(text, out color)) return false;
-                    apply = target => target.colorValue = color;
+                    if (Components(text, "RGBA", out var rgba) || Components(text, "Color", out rgba))
+                    {
+                        Color color = rgba;
+                        apply = target => target.colorValue = color;
+                        break;
+                    }
+                    if (!IsHex(text)) return false;
+                    // Hex is the displayed color, as the picker shows it: linear [HDR] data is encoded, intensity is kept.
+                    var format = RetainedColorPicker.Format(p);
+                    apply = target =>
+                    {
+                        var state = new ThryColorState(target.colorValue, format);
+                        if (state.SetHex(text) && state.Changed) target.colorValue = state.Raw;
+                    };
                     break;
                 case ShaderPropertyType.Vector:
                     if (!Components(text, "Vector4", out var vector)) return false;

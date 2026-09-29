@@ -92,13 +92,15 @@ namespace Thry.ThryEditor.TexturePacker
             }
             else if (source.InputType == InputType.Color)
             {
-                var field = new ColorField(RetainedText.Get("studio_color", "Color")) { value = source.Color };
-                field.RegisterValueChangedCallback(e => { source.Color = e.newValue; source.UpdateColorTexture(); QueuePack(); });
+                var field = new ThryColorField(RetainedText.Get("studio_color", "Color")) { value = source.Color };
+                Action<Color> write = color => { source.Color = color; source.UpdateColorTexture(); QueuePack(); };
+                field.RegisterValueChangedCallback(e => write(e.newValue));
+                RetainedColorPicker.Attach(field, write);
                 root.Add(field);
             }
             else
             {
-                var field = new GradientField(RetainedText.Get("studio_gradient", "Gradient")) { value = source.Gradient ?? new Gradient() };
+                var field = new ThryGradientField(RetainedText.Get("studio_gradient", "Gradient")) { value = source.Gradient ?? new Gradient() };
                 Action update = () =>
                 {
                     if (source.GradientTexture != null) DestroyImmediate(source.GradientTexture);

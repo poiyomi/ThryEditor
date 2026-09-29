@@ -218,7 +218,8 @@ namespace Thry.ThryEditor
             foreach (Material material in s_buffer) s_tracked.Remove(material);
 
             // Never swap in the middle of a drag or while text is being typed.
-            if (GUIUtility.hotControl != 0 || EditorGUIUtility.editingTextField || AnimationMode.InAnimationMode()) return;
+            if (GUIUtility.hotControl != 0 || EditorGUIUtility.editingTextField || AnimationMode.InAnimationMode()
+                || RetainedColorPicker.GestureActive) return;
 
             bool generatedThisFrame = false;
             foreach (KeyValuePair<Material, TrackedMaterial> pair in s_tracked)

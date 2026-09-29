@@ -136,6 +136,7 @@ namespace Thry.ThryEditor
             EditorGUILayout.Space();
             Toggle(nameof(Config.autoMarkPropertiesAnimated));
             Toggle(nameof(Config.allowCustomLockingRenaming));
+            Toggle(nameof(Config.useUnityColorPicker));
             GUIGradients();
             Toggle(nameof(Config.showNotes));
 

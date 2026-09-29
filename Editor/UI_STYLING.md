@@ -48,6 +48,7 @@ The first block is the shape, sizing, spacing, and typography source for the ret
 | `--thry-type-*`, `--thry-font-size` | Titles, headings, field labels, small text, captions |
 | `--thry-space-*` | Shared positive padding and margin steps |
 | `--thry-ramp-*` | Custom ramp height, stroke thickness, handle radius, and paint colors |
+| `--thry-color-wheel-ring`, `--thry-color-wheel-gap`, `--thry-color-wheel-marker` | Color picker hue ring thickness, gap between the ring and the triangle's disc, and triangle marker radius (unitless) |
 
 Button, subheader, and small-panel radii inherit the control radius by default. Each can be overridden independently. Spacing tokens keep the existing pixel values as their names so the migration is easy to audit; changing a value affects its uses throughout the stylesheet. Geometry needed for joined edges, asset aspect ratios, tiny icons, virtualization, and native control internals remains explicit rather than being forced onto one universal size.
 
@@ -58,6 +59,8 @@ The palette below these settings retains the original neutral dark/light colors.
 ## Coverage
 
 The material inspector, search, popup menus, settings and other retained companion windows, texture studio, stencil, pathing, special controls, and multi-material controls all load the shared stylesheet. Fixed settings-search spacing, cross-editor padding, texture slice/face controls, vector-length number fields, search placeholders, and ramp height now use USS instead of overriding it in C#. The custom search icon reads its stroke color from the stylesheet. The ramp reads its own custom drawing properties from USS.
+
+The color picker is a retained companion window with the shared theme. Its wheel reads ring, gap, marker, disc, outline, and focus values from USS; slider tracks read their focus color; the new and original swatches, dropdowns, and buttons use the shared tokens and control states.
 
 Load `ThryTheme.uss` once on each standalone inspector or window root. Child controls inherit the theme; do not attach additional copies or component wrapper sheets.
 

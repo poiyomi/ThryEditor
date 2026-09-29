@@ -30,6 +30,10 @@
     --thry-ramp-handle-radius: 4;
     --thry-ramp-line-color: rgb(122.4, 173.4, 214.2);
     --thry-ramp-handle-color: #cccccc;
+    /* Unitless values are read by the color picker's wheel drawing code. */
+    --thry-color-wheel-ring: 18;
+    --thry-color-wheel-gap: 1;
+    --thry-color-wheel-marker: 5;
     --thry-type-micro: 9px;
     --thry-type-caption: 10px;
     --thry-type-small: 11px;
@@ -760,7 +764,7 @@
 .thry-material-controls .unity-base-text-field__input,
 .thry-material-controls .unity-base-popup-field__input,
 .thry-material-controls .unity-object-field__input,
-.thry-material-controls .unity-color-field__input {
+.thry-material-controls .thry-color-field__input {
     height: var(--thry-control-height);
     min-height: var(--thry-control-height);
     max-height: var(--thry-control-height);
@@ -769,6 +773,116 @@
     padding-top: 0;
     padding-bottom: 0;
     align-self: center;
+}
+
+/* Thry color field: a row of the swatch and the eyedropper button. */
+.thry-color-field {
+    min-width: 0;
+}
+
+.thry-color-field__input {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    min-height: var(--thry-control-height);
+    align-items: stretch;
+}
+
+/* The swatch paints the color as it renders; C# sets background-color. Mixed values fall back to
+   the field surface with a centered dash. */
+.thry-color-field__swatch {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 8px;
+    overflow: hidden;
+    border-width: var(--thry-border-width);
+    border-color: var(--thry-control-border-color);
+    border-radius: var(--thry-radius-control);
+    background-color: var(--thry-field-background);
+}
+
+.thry-color-field--mixed .thry-color-field__swatch {
+    background-color: var(--thry-field-background);
+}
+
+/* Focus sits on the field (composite root) or its input; either way the swatch shows it. */
+.thry-color-field:focus > .thry-color-field__input > .thry-color-field__swatch,
+.thry-color-field__input:focus > .thry-color-field__swatch {
+    border-color: var(--thry-focus-color);
+}
+
+/* Alpha bar along the bottom edge: black track, white fill (width = alpha, set from C#). */
+.thry-color-field .thry-color-field__alpha {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background-color: rgb(0, 0, 0);
+}
+
+.thry-color-field .thry-color-field__alpha-fill {
+    height: 100%;
+    background-color: rgb(255, 255, 255);
+}
+
+/* HDR intensity badge ("+2.0"), right-aligned inside the swatch. Its color is black or white,
+   chosen in C# from the swatch's luminance. */
+.thry-color-field .thry-color-field__intensity {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    margin: 0;
+    padding: 0 3px;
+    font-size: var(--thry-type-caption);
+    -unity-text-align: middle-right;
+}
+
+.thry-color-field .thry-color-field__mixed {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 0;
+    color: var(--thry-muted-color);
+    -unity-text-align: middle-center;
+}
+
+/* Eyedropper: a transparent thry-icon-button beside the swatch. Two classes beat
+   `.thry-icon-button` (~302-309) and `.thry-window Button` (~1313-1317), whose width, height,
+   border and toolbar min-height would otherwise make color rows taller in windows. */
+.thry-color-field .thry-color-field__eyedropper {
+    width: 18px;
+    min-width: 18px;
+    height: auto;
+    min-height: 0;
+    margin: 0 0 0 var(--thry-space-2);
+    padding: 0;
+    border-width: 0;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.thry-color-field .thry-color-field__eyedropper > Image {
+    width: 14px;
+    height: 14px;
+    --unity-image-tint-color: var(--thry-muted-color);
+}
+
+.thry-color-field .thry-color-field__eyedropper:hover > Image,
+.thry-color-field .thry-color-field__eyedropper:focus > Image {
+    --unity-image-tint-color: var(--thry-value-color);
+}
+
+/* Disabled rows keep painting their color (the row's .unity-disabled opacity dims it) but
+   cannot pick from the screen. */
+.thry-color-field .thry-color-field__eyedropper:disabled {
+    display: none;
 }
 
 .thry-material-controls .thry-property-value > .unity-toggle > .unity-toggle__input {
@@ -3042,6 +3156,315 @@
     min-width: 0;
 }
 
+/* Color picker: Coolorus-style ring and triangle, then the hex and sliders. Overrides of window
+   Button and input heights repeat the element type to outrank the .thry-window defaults. */
+.thry-window.thry-color-picker {
+    padding: var(--thry-space-8);
+    font-size: var(--thry-font-size);
+}
+
+.thry-color-picker__wheel-area {
+    flex-shrink: 0;
+    align-items: center;
+    margin-bottom: var(--thry-space-6);
+}
+
+.thry-color-wheel {
+    /* Bind inherited theme variables locally for CustomStyleResolvedEvent. */
+    --color-wheel-ring: var(--thry-color-wheel-ring);
+    --color-wheel-gap: var(--thry-color-wheel-gap);
+    --color-wheel-marker: var(--thry-color-wheel-marker);
+    --color-wheel-disc: var(--thry-input-background);
+    --color-wheel-outline: var(--thry-control-border-color);
+    --color-wheel-focus: var(--thry-focus-color);
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.thry-color-picker__swatches {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 50px;
+    height: 36px;
+}
+
+.thry-color-picker__new {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 36px;
+    height: 36px;
+}
+
+/* Beside the new color, overlapping its edge and a little above its center. */
+.thry-color-picker__original {
+    position: absolute;
+    left: 32px;
+    top: 5px;
+    width: 18px;
+    height: 18px;
+}
+
+.thry-color-preview--mixed {
+    background-color: var(--thry-field-background);
+    border-width: var(--thry-border-width);
+    border-color: var(--thry-control-border-color);
+    border-radius: 9px;
+    align-items: center;
+    justify-content: center;
+}
+
+.thry-color-preview__mixed {
+    margin: 0;
+    padding: 0;
+    font-size: var(--thry-type-caption);
+    color: var(--thry-muted-color);
+    -unity-text-align: middle-center;
+}
+
+.thry-color-picker Button.thry-color-picker__eyedropper {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    min-height: 0;
+    margin: 0;
+    padding: var(--thry-space-2);
+    align-items: center;
+    justify-content: center;
+}
+
+.thry-color-picker .thry-color-picker__eyedropper Image {
+    width: 16px;
+    height: 16px;
+    --unity-image-tint-color: var(--thry-muted-color);
+}
+
+.thry-color-picker .thry-color-picker__eyedropper:hover Image {
+    --unity-image-tint-color: var(--thry-value-color);
+}
+
+.thry-color-picker__glyph {
+    width: 14px;
+    height: 14px;
+    color: var(--thry-muted-color);
+}
+
+.thry-color-picker__shape:hover > .thry-color-picker__glyph,
+.thry-color-picker__shape.thry-selected > .thry-color-picker__glyph {
+    color: var(--thry-value-color);
+}
+
+.thry-color-picker__intensity {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.thry-color-picker__intensity > .thry-color-slider {
+    flex-grow: 1;
+}
+
+/* Below the wheel the layout follows Unity's picker: the units switch and color space right-aligned above
+   the sliders, then intensity, the hex code and the swatches. */
+.thry-color-picker__controls {
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    flex-shrink: 0;
+    margin-bottom: var(--thry-space-4);
+}
+
+.thry-color-picker .thry-color-picker__dropdown {
+    width: 72px;
+    min-width: 0;
+    margin: 0;
+}
+
+/* Two-part switches (triangle/square, 0-255/0-1): joined buttons, the active one selected. */
+.thry-color-picker__segments {
+    flex-direction: row;
+}
+
+.thry-color-picker__shapes {
+    margin: 0 auto 0 0;
+}
+
+.thry-color-picker__units {
+    margin: 0 var(--thry-space-6) 0 0;
+}
+
+.thry-color-picker Button.thry-color-picker__segment {
+    min-height: 0;
+    height: 20px;
+    margin: 0;
+    padding: 0 var(--thry-space-6);
+    font-size: var(--thry-type-small);
+    border-radius: 0;
+}
+
+.thry-color-picker Button.thry-color-picker__segment--first {
+    border-top-left-radius: var(--thry-radius-button);
+    border-bottom-left-radius: var(--thry-radius-button);
+}
+
+.thry-color-picker Button.thry-color-picker__segment--last {
+    border-top-right-radius: var(--thry-radius-button);
+    border-bottom-right-radius: var(--thry-radius-button);
+}
+
+.thry-color-picker Button.thry-color-picker__shape {
+    width: 26px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.thry-color-picker__hex-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: var(--thry-space-2);
+    margin-bottom: var(--thry-space-4);
+}
+
+.thry-color-picker .thry-color-picker__hex {
+    flex-shrink: 1;
+    min-width: 64px;
+    width: 84px;
+    margin: 0 0 0 auto;
+}
+
+.thry-color-picker .thry-color-picker__hex .unity-base-text-field__input {
+    flex-direction: row;
+    min-height: var(--thry-control-height);
+    padding: 0 var(--thry-space-4);
+}
+
+/* The fixed '#' before the hex digits, inside the box. */
+.thry-color-picker__hash {
+    margin: 0 var(--thry-space-1) 0 0;
+    padding: 0;
+    color: var(--thry-muted-color);
+    -unity-text-align: middle-left;
+}
+
+.thry-color-slider__caption > .thry-color-picker__glyph {
+    width: 12px;
+    height: 12px;
+    margin: 0;
+}
+
+/* The window height is fitted to its content, so nothing below the root stretches or shrinks. */
+.thry-color-picker > * {
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+/* Every slider row, whatever group it is in, is its 20px bar plus the same gap, so the rows are evenly spaced
+   at any inspector density. */
+.thry-color-slider {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 20px;
+    margin-bottom: var(--thry-space-2);
+}
+
+.thry-color-slider__caption {
+    width: 14px;
+    min-width: 14px;
+    margin: 0;
+    padding: 0;
+    color: var(--thry-muted-color);
+    font-size: var(--thry-type-small);
+    -unity-text-align: middle-left;
+}
+
+/* The track draws a plain gradient bar and a thin handle that stands 2px proud of it. */
+.thry-color-slider__track {
+    flex-grow: 1;
+    height: 20px;
+    --color-slider-focus: var(--thry-focus-color);
+}
+
+.thry-color-picker .thry-color-slider__number {
+    width: 46px;
+    min-width: 46px;
+    flex-shrink: 0;
+    margin: 0 0 0 var(--thry-space-4);
+}
+
+.thry-color-picker .thry-color-slider__number .unity-base-text-field__input {
+    min-height: 20px;
+    height: 20px;
+    padding: 0 var(--thry-space-4);
+    -unity-text-align: middle-right;
+}
+
+/* Unity's swatch library at the bottom, with Unity's grid of small flush cells and the add button. */
+.thry-color-picker__swatch-section {
+    margin-top: var(--thry-space-2);
+}
+
+.thry-color-picker__swatch-header {
+    flex-direction: row;
+    align-items: center;
+    min-height: 20px;
+    margin-bottom: var(--thry-space-2);
+}
+
+.thry-color-picker__swatch-header > Label {
+    margin: 0;
+    padding: 0;
+    color: var(--thry-caption-color);
+}
+
+.thry-color-picker Button.thry-color-picker__library-menu {
+    width: 20px;
+    height: 20px;
+    min-height: 0;
+    margin: 0 0 0 auto;
+    padding: 0;
+    -unity-text-align: middle-center;
+    -unity-font-style: bold;
+}
+
+.thry-color-picker__swatch-scroll {
+    max-height: 92px;
+}
+
+.thry-color-swatches {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.thry-color-swatches__cell {
+    width: 14px;
+    height: 14px;
+    margin: 0 1px 1px 0;
+    border-width: var(--thry-border-width);
+    border-color: var(--thry-control-border-color);
+}
+
+.thry-color-swatches__cell:hover {
+    border-color: var(--thry-value-color);
+}
+
+.thry-color-picker Button.thry-color-swatches__add {
+    width: 14px;
+    height: 14px;
+    min-height: 0;
+    margin: 0 1px 1px 0;
+    padding: 0;
+    border-width: var(--thry-border-width);
+    border-radius: 0;
+    font-size: var(--thry-type-small);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
 .thry-light.thry-window .unity-object-field__input, .thry-light.thry-dialog .unity-toggle__checkmark {
     background-color: #e4e4e4;
     border-color: #aaaaaa;
@@ -4124,11 +4547,11 @@
     font-size: var(--thry-type-small);
 }
 
-.pathing-cell .unity-color-field__eyedropper {
+.pathing-cell .thry-color-field__eyedropper {
     display: none;
 }
 
-.pathing-cell .unity-color-field__input {
+.pathing-cell .thry-color-field__input {
     margin: 0;
 }
 

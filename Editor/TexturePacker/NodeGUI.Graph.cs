@@ -25,7 +25,21 @@ namespace Thry.ThryEditor.TexturePacker
         void RestoreStudioGraph()
         {
             if (_config == null) return;
-            CreateGUI();
+            // A color picker taking back its own edits only changed source values. Rebuilding would close the
+            // gradient popup its key color was picked from.
+            if (ColorPickerUndoGroup.Reverting && _graph != null)
+            {
+                foreach (var source in _config.Sources)
+                {
+                    if (source == null || source.InputType == InputType.Texture) continue;
+                    source.DisposeGeneratedTextures();
+                    source.UpdateColorTexture();
+                    source.UpdateGradientTexture(_config.FileOutput.Resolution);
+                }
+                _graph.RefreshSourceFields();
+                RefreshGraphSourceSettings();
+            }
+            else CreateGUI();
             QueuePack();
         }
 
@@ -587,13 +601,15 @@ namespace Thry.ThryEditor.TexturePacker
                     }
                     else if (_fieldType == InputType.Color)
                     {
-                        var field = new ColorField { value = source.Color };
-                        field.RegisterValueChangedCallback(e => { Undo.RecordObject(_owner, "Change source color"); source.Color = e.newValue; source.UpdateColorTexture(); _owner.RefreshGraphSourceSettings(); _owner.QueuePack(); });
+                        var field = new ThryColorField { value = source.Color };
+                        Action<Color> write = color => { Undo.RecordObject(_owner, "Change source color"); source.Color = color; source.UpdateColorTexture(); _owner.RefreshGraphSourceSettings(); _owner.QueuePack(); };
+                        field.RegisterValueChangedCallback(e => write(e.newValue));
+                        RetainedColorPicker.Attach(field, write);
                         _fieldRoot.Add(field);
                     }
                     else
                     {
-                        var field = new GradientField { value = source.Gradient ?? new Gradient() };
+                        var field = new ThryGradientField { value = source.Gradient ?? new Gradient() };
                         field.RegisterValueChangedCallback(e => {
                             Undo.RecordObject(_owner, "Change source gradient"); source.Gradient = e.newValue;
                             source.DisposeGeneratedTextures(); source.UpdateGradientTexture(_owner._config.FileOutput.Resolution); _owner.RefreshGraphSourceSettings(); _owner.QueuePack();
@@ -607,9 +623,10 @@ namespace Thry.ThryEditor.TexturePacker
                     var source = _owner._config.Sources[_index];
                     if (_fieldType != source.InputType) BuildField();
                     _fieldRoot.Q<ObjectField>()?.SetValueWithoutNotify(source.ImageTexture);
-                    _fieldRoot.Q<ColorField>()?.SetValueWithoutNotify(source.Color);
+                    _fieldRoot.Q<ThryColorField>()?.SetValueWithoutNotify(source.Color);
                     _fieldRoot.Q<GradientField>()?.SetValueWithoutNotify(source.Gradient ?? new Gradient());
-                    var clear = _fieldRoot.Q<Button>(); if (clear != null) clear.SetEnabled(source.ImageTexture != null || source.MissingImageReference);
+                    // By name: a color source's field has its own eyedropper button.
+                    var clear = _fieldRoot.Q<Button>("graph-clear-source-" + _index); if (clear != null) clear.SetEnabled(source.ImageTexture != null || source.MissingImageReference);
                     EnableInClassList("thry-studio-source-missing", source.MissingImageReference);
                     _empty.text = source.MissingImageReference ? RetainedText.Get("studio_missing_texture", "Missing texture") : RetainedText.Get("studio_drop_texture", "Drop texture");
                 }

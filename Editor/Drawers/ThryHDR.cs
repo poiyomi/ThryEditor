@@ -1,3 +1,4 @@
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
 
@@ -15,7 +16,7 @@ namespace Thry.ThryEditor.Drawers
             bool previousMixedValue = EditorGUI.showMixedValue;
             EditorGUI.showMixedValue = prop.hasMixedValue;
             EditorGUI.BeginChangeCheck();
-            Color value = EditorGUI.ColorField(position, label, prop.colorValue, true, true, true);
+            Color value = ThryColorGUI.Field(position, label, prop.colorValue, ThryColorFormat.ForProperty(prop.GetPropertyFlags(), thryHdr: true));
             if (EditorGUI.EndChangeCheck())
                 prop.colorValue = value;
             EditorGUI.showMixedValue = previousMixedValue;

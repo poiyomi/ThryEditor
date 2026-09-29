@@ -40,7 +40,6 @@ namespace Thry.ThryEditor
         private MaterialProperty _prop;
 
         private object _gradient_editor;
-        private MethodInfo _ongui;
         private MethodInfo _gradient_editor_init;
 
         private object _preset_libary_editor;
@@ -80,8 +79,6 @@ namespace Thry.ThryEditor
             Type gradient_editor_type = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.GradientEditor");
             _gradient_editor = Activator.CreateInstance(gradient_editor_type);
             _gradient_editor_init = gradient_editor_type.GetMethod("Init");
-
-            _ongui = gradient_editor_type.GetMethod("OnGUI");
         }
 
         public void OnDestroy()
@@ -210,7 +207,7 @@ namespace Thry.ThryEditor
             Rect gradientLibraryRect = new Rect(0, gradientEditorHeight + distBetween, position.width, presetLibraryHeight);
 
             EditorGUI.BeginChangeCheck();
-            _ongui.Invoke(_gradient_editor, new object[] { gradientEditorRect });
+            GradientKeyColors.OnGUI(_gradient_editor, gradientEditorRect, UpdateGradientPreviewTexture);
             if (EditorGUI.EndChangeCheck())
                 UpdateGradientPreviewTexture();
 

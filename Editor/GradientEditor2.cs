@@ -75,7 +75,7 @@ namespace Thry.ThryEditor
         }
 
         static MethodInfo s_presetLibraryOnGUIMethodInfo = null;
-        static MethodInfo PresetLibraryOnGUI 
+        internal static MethodInfo PresetLibraryOnGUI
         {
             get
             {
@@ -104,6 +104,21 @@ namespace Thry.ThryEditor
             var gradientEditorInit = gradientEditorType.GetMethod("Init");
 
             gradientEditorInit.Invoke(gradientEditor, new object[] { gradient, 0, true, ColorSpace.Linear });
+        }
+
+        /// <summary>Saves a preset library editor's state to EditorPrefs and unloads its libraries, as Unity's gradient picker does on close.</summary>
+        internal static void ReleaseGradientLibrary(object library)
+        {
+            if (library == null) return;
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            try
+            {
+                var state = library.GetType().GetField("m_State", flags)?.GetValue(library);
+                state?.GetType().GetMethod("TransferEditorPrefsState", flags)?.Invoke(state, new object[] { false });
+                library.GetType().GetMethod("UnloadUsedLibraries", flags, null, Type.EmptyTypes, null)?.Invoke(library, null);
+            }
+            catch (TargetInvocationException) { }
+            catch (ArgumentException) { }
         }
 
         public static object GetGradientLibary(Action<int, object> presetSelectedCallback)
@@ -143,7 +158,7 @@ namespace Thry.ThryEditor
             Rect gradientRect = new Rect(mainUIRect.x, mainUIRect.y, mainUIRect.width, mainUIRect.height * 0.6f);
             Rect presetRect = new Rect(mainUIRect.x, gradientRect.yMax + 10, mainUIRect.width, mainUIRect.height * 0.4f - 10);
 
-            GradientEditorGUI.Invoke(_gradientEditor, new object[] { gradientRect });
+            GradientKeyColors.OnGUI(_gradientEditor, gradientRect);
             PresetLibraryOnGUI.Invoke(_gradientLibary, new object[] { presetRect, _gradient });
 
             Rect settingsRect = new Rect(20, position.height - settingsHeight, position.width - 40, settingsHeight);

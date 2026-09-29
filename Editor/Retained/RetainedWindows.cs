@@ -150,7 +150,7 @@ namespace Thry.ThryEditor
             string[][] groups={
                 new[]{"Theme","inspectorDarkGray","inspectorMediumGray","inspectorLightGray","inspectorTextSize","inspectorPropertyHeight","inspectorHeaderHeight","defaultTexturePreview"},
                 new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes","staggeringRowColors"},
-                new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming"},
+                new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming","useUnityColorPicker"},
                 new[]{"Avatar fixes","autoSetAnchorOverride","humanBoneAnchor","anchorOverrideObjectName"},
                 new[]{"Textures & gradients","default_texture_type","texturePackerCompressionWithAlphaOverwrite","texturePackerCompressionNoAlphaOverwrite","gradientEditorCompressionOverwrite","gradient_name"},
                 new[]{"Texture packing","inlinePackerChrunchCompression","inlinePackerSaveLocation","inlinePackerSaveLocationCustom"},

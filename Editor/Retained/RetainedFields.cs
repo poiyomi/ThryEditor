@@ -207,10 +207,9 @@ namespace Thry.ThryEditor
             {
                 case UnityEngine.Rendering.ShaderPropertyType.Color:
                     // ThryHDR changes only the picker, not the property's color-space flags or stored value.
-                    var color = new ColorField { hdr = property.MaterialProperty.GetPropertyFlags().HasFlag(UnityEngine.Rendering.ShaderPropertyFlags.HDR)
-                        || attributes.Any(a => a.Name == "ThryHDR"), showAlpha = true, showEyeDropper = true };
+                    var color = new ThryColorField { Format = Helpers.ThryColorFormat.ForProperty(property.MaterialProperty.GetPropertyFlags(), attributes.Any(a => a.Name == "ThryHDR")) };
                     Bind(color, property, p => p.colorValue, (p,v) => p.colorValue = v);
-                    RetainedColorPicker.Attach(color); input.Add(color); break;
+                    RetainedColorPicker.Attach(color, property, Model); input.Add(color); break;
                 case UnityEngine.Rendering.ShaderPropertyType.Vector:
                     var vector = attributes.FirstOrDefault(a => a.Name == "VectorLabel" || a.Name == "Vector2" || a.Name == "Vector3" || a.Name == "Vector31");
                     string[] labels = vector?.Name == "VectorLabel" ? vector.Args.Where(a => !a.Equals("link", StringComparison.OrdinalIgnoreCase)).ToArray() :
