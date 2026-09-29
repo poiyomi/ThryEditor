@@ -1431,7 +1431,7 @@ namespace Thry.ThryEditor
                 string lastKey = (string)s_getPropertyString.Invoke(null, args);
                 // Already shared, or already built by Unity.
                 if (handlers.Contains(lastKey)) return;
-                string prefix = target.GetInstanceID().ToString(CultureInfo.InvariantCulture) + "_";
+                string prefix = target.GetObjectId().ToString(CultureInfo.InvariantCulture) + "_";
                 bool directKeys = lastKey == prefix + lastName;
 
                 Dictionary<string, int> sourceIndex = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -1504,7 +1504,7 @@ namespace Thry.ThryEditor
 
                 // Unity's key is "<instance id>_<property>". Built here directly when that still holds, since calling
                 // GetPropertyString by reflection for every property takes most of the time.
-                string prefix = target.GetInstanceID().ToString(CultureInfo.InvariantCulture) + "_";
+                string prefix = target.GetObjectId().ToString(CultureInfo.InvariantCulture) + "_";
                 bool directKeys = lastKey == prefix + info.PropertyNames[count - 1];
                 for (int i = 0; i < count; i++)
                 {
@@ -1646,8 +1646,13 @@ namespace Thry.ThryEditor
         {
             SerializedProperty shaderProperty = new SerializedObject(material).FindProperty("m_Shader");
             if (shaderProperty == null) return false;
+#if UNITY_6000_5_OR_NEWER
+            EntityId id = shaderProperty.objectReferenceEntityIdValue;
+            return id == EntityId.None || string.IsNullOrEmpty(AssetDatabase.GetAssetPath(id));
+#else
             int id = shaderProperty.objectReferenceInstanceIDValue;
             return id == 0 || string.IsNullOrEmpty(AssetDatabase.GetAssetPath(id));
+#endif
         }
 
         static readonly PropertyInfo s_rawRenderQueue = typeof(Material).GetProperty("rawRenderQueue", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
