@@ -1410,6 +1410,68 @@ namespace Thry.ThryEditor
         static readonly FieldInfo s_propertyHandlers = s_handlerType?.GetField("s_PropertyHandlers", BindingFlags.NonPublic | BindingFlags.Static);
         static readonly MethodInfo s_invalidatePropertyCache = s_handlerType?.GetMethod("InvalidatePropertyCache", BindingFlags.NonPublic | BindingFlags.Static);
 
+        /// <summary>
+        /// Gives a shader made from <paramref name="source"/>, such as a locked shader, the original's handlers for the
+        /// properties it has with the same name and attributes. A locked Poiyomi shader keeps about 1300 of them, and
+        /// building their handlers takes about half a second on the first material that uses it, which during an upload
+        /// is VRChat's material analysis. Handlers are made per property on demand, so a property several locked shaders
+        /// share is only parsed once.
+        /// </summary>
+        internal static void ShareDrawerHandlersByName(Shader source, Shader target)
+        {
+            if (source == null || target == null || source == target) return;
+            if (s_getHandler == null || s_getPropertyString == null || s_propertyHandlers == null) return;
+            int count = target.GetPropertyCount();
+            if (count == 0 || !(s_propertyHandlers.GetValue(null) is System.Collections.IDictionary handlers)) return;
+
+            try
+            {
+                string lastName = target.GetPropertyName(count - 1);
+                object[] args = { target, lastName };
+                string lastKey = (string)s_getPropertyString.Invoke(null, args);
+                // Already shared, or already built by Unity.
+                if (handlers.Contains(lastKey)) return;
+                string prefix = target.GetInstanceID().ToString(CultureInfo.InvariantCulture) + "_";
+                bool directKeys = lastKey == prefix + lastName;
+
+                Dictionary<string, int> sourceIndex = new Dictionary<string, int>(StringComparer.Ordinal);
+                int sourceCount = source.GetPropertyCount();
+                for (int i = 0; i < sourceCount; i++)
+                {
+                    string name = source.GetPropertyName(i);
+                    if (!sourceIndex.ContainsKey(name)) sourceIndex[name] = i;
+                }
+
+                for (int i = 0; i < count; i++)
+                {
+                    string name = target.GetPropertyName(i);
+                    if (!sourceIndex.TryGetValue(name, out int s)) continue;
+                    string[] sourceAttributes = source.GetPropertyAttributes(s);
+                    string[] targetAttributes = target.GetPropertyAttributes(i);
+                    if (sourceAttributes.Length != targetAttributes.Length) continue;
+                    bool same = true;
+                    for (int a = 0; a < sourceAttributes.Length && same; a++) same = sourceAttributes[a] == targetAttributes[a];
+                    if (!same) continue;
+
+                    args[0] = source;
+                    args[1] = name;
+                    object handler = s_getHandler.Invoke(null, args);
+                    string key = prefix + name;
+                    if (!directKeys)
+                    {
+                        args[0] = target;
+                        key = (string)s_getPropertyString.Invoke(null, args);
+                    }
+                    handlers[key] = handler;
+                }
+            }
+            catch (Exception e)
+            {
+                // Only costs the time it was meant to save.
+                ThryLogger.LogDetail("SectionLock", $"Could not share property drawers with {target.name}: {e.Message}");
+            }
+        }
+
         static void ShareDrawerHandlers(Shader source, SourceInfo info, Shader target)
         {
             if (s_getHandler == null || s_getPropertyString == null || s_propertyHandlers == null) return;

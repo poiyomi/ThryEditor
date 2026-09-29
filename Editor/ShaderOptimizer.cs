@@ -1873,8 +1873,20 @@ namespace Thry.ThryEditor
         static MethodInfo ApplyMaterialPropertyDrawersFromNativePatchMethodInfo = typeof(ShaderOptimizer).GetMethod(nameof(ApplyMaterialPropertyDrawersFromNativePatch), BindingFlags.Public | BindingFlags.Static);
 
 
+        // Unity's own switch for skipping property drawers when a material's shader changes. The detour only exists on
+        // Windows, and without either, every swap to a new shader runs all of Poiyomi's drawers (about 0.4 s a material).
+        static readonly PropertyInfo s_disableApplyMaterialPropertyDrawers = typeof(MaterialEditor).Assembly.GetType("UnityEditor.EditorMaterialUtility")
+            ?.GetProperty("disableApplyMaterialPropertyDrawers", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        static int s_drawersDisabledDepth;
+        static bool s_drawersDisabledBefore;
+
         public static void DetourApplyMaterialPropertyDrawers()
         {
+            if (s_drawersDisabledDepth++ == 0 && s_disableApplyMaterialPropertyDrawers != null)
+            {
+                s_drawersDisabledBefore = (bool)s_disableApplyMaterialPropertyDrawers.GetValue(null);
+                s_disableApplyMaterialPropertyDrawers.SetValue(null, true);
+            }
         // Unity 2022 Crashes on apple silicon when detouring ApplyMaterialPropertyDrawers
             Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersOriginalMethodInfo, ApplyMaterialPropertyDrawersPatchMethodInfo);
             Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo, ApplyMaterialPropertyDrawersFromNativePatchMethodInfo);
@@ -1884,6 +1896,8 @@ namespace Thry.ThryEditor
         {
             Helper.RestoreDetour(ApplyMaterialPropertyDrawersOriginalMethodInfo);
             Helper.RestoreDetour(ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo);
+            if (s_drawersDisabledDepth > 0 && --s_drawersDisabledDepth == 0)
+                s_disableApplyMaterialPropertyDrawers?.SetValue(null, s_drawersDisabledBefore);
         }
 
         private static bool LockApplyShader(ApplyStruct applyStruct)
@@ -1952,10 +1966,19 @@ namespace Thry.ThryEditor
                 ThryLogger.LogErr("Generated shader " + newShaderName + " could not be found. Did you delete the file?");
                 return false;
             }
+            // The locked shader's properties are the original's, so it can reuse their drawer handlers instead of
+            // Unity parsing them again on first use.
+            SectionLock.ShareDrawerHandlersByName(shader, newShader);
             // Detour ApplyMaterialPropertyDrawers to prevent it from running, for performance reasons
             DetourApplyMaterialPropertyDrawers();
-            material.shader = newShader;
-            RestoreApplyMaterialPropertyDrawers();
+            try
+            {
+                material.shader = newShader;
+            }
+            finally
+            {
+                RestoreApplyMaterialPropertyDrawers();
+            }
             material.SetOverrideTag("RenderType", renderType);
             material.renderQueue = renderQueue;
             MaterialHelper.ApplyOverrideTags(material, preservedTags);
@@ -2876,13 +2899,19 @@ namespace Thry.ThryEditor
             Dictionary<string, string> preservedTags = MaterialHelper.GetOwnOverrideTags(material, MaterialHelper.TagsPreservedAcrossShaderSwap);
             string unlockedMaterialGUID = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(material));
             DetourApplyMaterialPropertyDrawers();
-            if (ShaderEditor.Active != null)
+            try
             {
-                ShaderEditor.Active.SetShader(originalShader);
-                ShaderEditor.Active.Reload();
+                if (ShaderEditor.Active != null)
+                {
+                    ShaderEditor.Active.SetShader(originalShader);
+                    ShaderEditor.Active.Reload();
+                }
+                material.shader = originalShader;
             }
-            material.shader = originalShader;
-            RestoreApplyMaterialPropertyDrawers();
+            finally
+            {
+                RestoreApplyMaterialPropertyDrawers();
+            }
             material.SetOverrideTag("RenderType", renderType);
             material.renderQueue = renderQueue;
             MaterialHelper.ApplyOverrideTags(material, preservedTags);
