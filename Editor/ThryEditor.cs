@@ -818,7 +818,13 @@ namespace Thry
 
         public void UpdatePropertyReferences()
         {
-            Properties = MaterialEditor.GetMaterialProperties(Materials);
+            // A selection mixing shaders is laid out from every shader's declarations, and each part indexes that
+            // merged list. Unity's bulk read only knows the first material's shader, so re-read each entry against
+            // its own owners instead, or parts would pick up the wrong properties.
+            if (IsCrossEditor && Properties != null)
+                Properties = Properties.Select(p => MaterialEditor.GetMaterialProperty(p.targets, p.name)).ToArray();
+            else
+                Properties = MaterialEditor.GetMaterialProperties(Materials);
         }
 
         public override void AssignNewShaderToMaterial(Material material, Shader oldShader, Shader newShader)

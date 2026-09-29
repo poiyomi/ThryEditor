@@ -34,6 +34,8 @@ namespace Thry.ThryEditor
         bool _browserFiltering;
         Material[] _browserTargets;
         Shader _browserShader;
+        // Each target's shader when the browser opened. A selection can mix Poiyomi variants.
+        Shader[] _browserTargetShaders;
         bool _browserAssetsDirty, _browserSized;
         ToolbarSearchField _browserSearch;
         ScrollView _browserList;
@@ -52,6 +54,7 @@ namespace Thry.ThryEditor
             _browserEntries.Clear();
             _browserTargets = shaderEditor.Materials.ToArray();
             _browserShader = shaderEditor.Shader;
+            _browserTargetShaders = _browserTargets.Select(m => m != null ? SectionLock.GetSourceShader(m.shader) : null).ToArray();
             for (int i = 0; i < names.Count && i < guids.Count; i++)
             {
                 string path = names[i] ?? "";
@@ -72,7 +75,7 @@ namespace Thry.ThryEditor
             return shaderEditor != null && _browserTargets != null && _browserTargets.Length > 0
                 && shaderEditor.Materials != null && shaderEditor.Materials.SequenceEqual(_browserTargets)
                 && shaderEditor.Shader == _browserShader
-                && _browserTargets.All(m => m != null && SectionLock.GetSourceShader(m.shader) == _browserShader && !m.IsLocked())
+                && _browserTargets.Select((m, i) => m != null && SectionLock.GetSourceShader(m.shader) == _browserTargetShaders[i] && !m.IsLocked()).All(ok => ok)
                 && (_parent == null || CurrentBrowserParent() != null);
         }
 

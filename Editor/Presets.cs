@@ -870,21 +870,30 @@ namespace Thry.ThryEditor
                         var properties = new HashSet<ShaderProperty>();
                         CollectPresetProperties(editor, preset, parent, properties);
                         var source = new Material(preset);
+                        // Like applying, a material on another shader reads what the editor's shader lacks through its own.
+                        var ownShader = SectionLock.GetSourceShader(original.shader);
+                        var ownSource = ownShader != null && ownShader != editor.Shader ? new Material(preset) : null;
                         try
                         {
                             MaterialHelper.SwapShaderPreservingSettings(source, editor.Shader);
+                            if (ownSource != null) MaterialHelper.SwapShaderPreservingSettings(ownSource, ownShader);
                             foreach (var property in properties)
                             {
                                 var name = property.MaterialProperty?.name;
                                 if (name == null || !preview.HasProperty(name)) continue;
+                                var from = ownSource == null || source.HasProperty(name) ? source : ownSource;
                                 var destination = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { preview }, name);
                                 if (GetPropertyMode(preset, property) != PropertyMode.AnimationOnly)
-                                    MaterialHelper.CopyValue(source, destination);
-                                if (property.IsAnimatable) ShaderOptimizer.CopyAnimatedTag(source, destination);
+                                    MaterialHelper.CopyValue(from, destination);
+                                if (property.IsAnimatable) ShaderOptimizer.CopyAnimatedTag(from, destination);
                                 affected.Add(property);
                             }
                         }
-                        finally { UnityEngine.Object.DestroyImmediate(source); }
+                        finally
+                        {
+                            UnityEngine.Object.DestroyImmediate(source);
+                            if (ownSource != null) UnityEngine.Object.DestroyImmediate(ownSource);
+                        }
                     }
                     foreach (var property in affected.OrderBy(p => p.ShaderPropertyIndex))
                     {
@@ -945,7 +954,8 @@ namespace Thry.ThryEditor
                 // target instead of the values it recorded. Swap through the helper that carries both across.
                 MaterialHelper.SwapShaderPreservingSettings(source, shaderEditor.Shader);
                 // If values were meant to be copied straight from the preset, read them from the clone instead.
-                if (copyFrom == preset) copyFrom = source;
+                bool fromPreset = copyFrom == preset;
+                if (fromPreset) copyFrom = source;
 
                 var animationOnly = AnimationOnlyProperties(shaderEditor, preset);
 
@@ -971,6 +981,8 @@ namespace Thry.ThryEditor
                     else ApplyPresetRecursive(preset, copyFrom, parent as ShaderGroup, animationOnly);
                 }
 
+                if (fromPreset) CopyFromOtherSelectedShaders(shaderEditor, preset, source, parent, animationOnly);
+
                 if (animationOnly.Count > 0)
                 {
                     var affected = new HashSet<ShaderProperty>();
@@ -992,6 +1004,34 @@ namespace Thry.ThryEditor
             finally { UnityEngine.Object.DestroyImmediate(source); }
         }
         
+        // The preset is read through the first material's shader, which leaves out what only the other shaders in a
+        // mixed selection declare: Two Pass's second pass, Grab Pass's refraction, or Pro's rendering mode when a
+        // variant comes first. Read those through a shader that declares them.
+        static void CopyFromOtherSelectedShaders(ShaderEditor shaderEditor, Material preset, Material primary, ShaderPart parent, HashSet<string> animationOnly)
+        {
+            Shader[] others = shaderEditor.Materials.Where(m => m != null).Select(m => SectionLock.GetSourceShader(m.shader))
+                .Where(s => s != null && s != shaderEditor.Shader).Distinct().ToArray();
+            if (others.Length == 0) return;
+            var affected = new HashSet<ShaderProperty>();
+            CollectPresetProperties(shaderEditor, preset, parent, affected);
+            var missing = affected.Where(p => p.MaterialProperty != null && !primary.HasProperty(p.MaterialProperty.name)).ToList();
+            foreach (Shader shader in others)
+            {
+                if (missing.Count == 0) return;
+                Material source = new Material(preset);
+                try
+                {
+                    MaterialHelper.SwapShaderPreservingSettings(source, shader);
+                    foreach (ShaderProperty property in missing.Where(p => source.HasProperty(p.MaterialProperty.name)).ToList())
+                    {
+                        property.CopyFrom(source, applyDrawers: false, deepCopy: false, copyReferenceProperties: false, skipPropertyNames: animationOnly);
+                        missing.Remove(property);
+                    }
+                }
+                finally { UnityEngine.Object.DestroyImmediate(source); }
+            }
+        }
+
         static void ApplyPresetRecursive(Material preset, Material copyFrom, ShaderGroup parent, HashSet<string> animationOnly)
         {
             foreach (ShaderPart part in parent.Children)
