@@ -378,7 +378,7 @@ namespace Thry
                 tempEditor.RenamedPropertySuffix = ShaderOptimizer.GetRenamedPropertySuffix(material);
                 tempEditor.HasCustomRenameSuffix = ShaderOptimizer.HasCustomRenameSuffix(material);
                 Active = tempEditor;
-                tempEditor.SetShader(material.shader);
+                tempEditor.SetShader(SectionLock.GetSourceShader(material.shader));
                 tempEditor.CollectAllProperties();
 
                 if (tempEditor.InShaderPresetsProperty != null) tempEditor.ShaderRenderingPreset = modeValue;
@@ -588,7 +588,8 @@ namespace Thry
             Materials = Editor.targets.OfType<Material>()
                 .Where(m => m != null && (!IsCrossEditor || ShaderHelper.IsShaderUsingThryEditor(m))).ToArray();
 
-            SetShader(Materials[0].shader, LastShader);
+            // A material on a section shader is edited as its original: same properties, importer and UI state.
+            SetShader(SectionLock.GetSourceShader(Materials[0].shader), LastShader);
 
             RenamedPropertySuffix = ShaderOptimizer.GetRenamedPropertySuffix(Materials[0]);
             HasCustomRenameSuffix = ShaderOptimizer.HasCustomRenameSuffix(Materials[0]);
@@ -699,14 +700,14 @@ namespace Thry
             {
                 var sourceEditor = Editor;
                 var sourceTargets = Editor.targets;
-                var sourceShaders = Materials.Select(material => material.shader).ToArray();
+                var sourceShaders = Materials.Select(material => SectionLock.GetSourceShader(material.shader)).ToArray();
                 var sourceParts = ShaderParts;
                 EditorApplication.delayCall += () =>
                 {
                     // The inspector may close, be reused, or lose a secondary
                     // material between Undo and this delayed native-value refresh.
                     if (!HasUndoTargets() || Editor != sourceEditor || !Editor.targets.SequenceEqual(sourceTargets)
-                        || !ReferenceEquals(ShaderParts, sourceParts) || !Materials.Select(material => material.shader).SequenceEqual(sourceShaders)) return;
+                        || !ReferenceEquals(ShaderParts, sourceParts) || !Materials.Select(material => SectionLock.GetSourceShader(material.shader)).SequenceEqual(sourceShaders)) return;
                     bool repaint = false;
                     foreach(ShaderPart part in ShaderParts)
                     {
@@ -822,6 +823,9 @@ namespace Thry
 
         public override void AssignNewShaderToMaterial(Material material, Shader oldShader, Shader newShader)
         {
+            // Leaving a section shader is leaving its original.
+            oldShader = SectionLock.GetSourceShader(oldShader);
+
             // Give external tooling a chance to veto the swap before anything is mutated. base.AssignNewShaderToMaterial
             // is what actually assigns the shader, so returning here leaves the material on its current shader entirely.
             if (OnBeforeAssignNewShader != null)
@@ -858,6 +862,7 @@ namespace Thry
             base.AssignNewShaderToMaterial(material, oldShader, newShader);
             material.renderQueue = previousQueue;
             MaterialHelper.ApplyOverrideTags(material, previousTags);
+            material.SetOverrideTag(SectionLock.TAG_SECTION_SOURCE, string.Empty);
             SuggestedTranslationDefinition = ShaderTranslator.CheckForExistingTranslationFile(oldShader, newShader);
             FixKeywords(new Material[] { material });
             _doReloadNextDraw = true;
@@ -875,7 +880,7 @@ namespace Thry
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] props)
         {
             //Init
-            bool reloadUI = _isFirstOnGUICall || (_doReloadNextDraw && Event.current.type == EventType.Layout) || (materialEditor.target as Material).shader != Shader;
+            bool reloadUI = _isFirstOnGUICall || (_doReloadNextDraw && Event.current.type == EventType.Layout) || SectionLock.GetSourceShader((materialEditor.target as Material).shader) != Shader;
             if (reloadUI) 
             {
                 InitEditorData(materialEditor);
@@ -1156,6 +1161,19 @@ namespace Thry
             if (GUILib.ButtonWithCursor(iconRect, ToolbarIcons.Camera, "Save a screenshot of the material settings to your desktop."))
                 InspectorCapture.CaptureActiveInspector(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
 
+            // Strip disabled sections while editing: full color while on, dimmed while off, as in the retained toolbar.
+            GUIStyle sectionLockIcon = ToolbarIcons.SectionLock;
+            if (sectionLockIcon != null && SectionLockService.AppliesTo(Shader))
+            {
+                iconRect.x += 25;
+                bool on = SectionLockService.Enabled;
+                Color color = GUI.color;
+                if (!on) GUI.color = new Color(color.r, color.g, color.b, color.a * 0.4f);
+                bool clicked = GUILib.ButtonWithCursor(iconRect, sectionLockIcon, SectionLockService.ToolbarTooltip);
+                GUI.color = color;
+                if (clicked) SectionLockService.SetEnabled(!on);
+            }
+
             // Buttons added by packages built on this UI. Drawn last so the built-ins keep their
             // positions. The icon is resolved here rather than at registration time.
             foreach (var extra in TopBarButtons.All)
@@ -1404,12 +1422,12 @@ namespace Thry
                     return;
                 }
 
-                if (!string.IsNullOrEmpty(data.shader) && data.shader != Materials[0].shader.name) ThryLogger.LogWarn("MaterialTextSerializer", $"Pasting from shader '{data.shader}' onto '{Materials[0].shader.name}'. Properties that don't exist on the target shader will be skipped.");
+                if (!string.IsNullOrEmpty(data.shader) && data.shader != Shader.name) ThryLogger.LogWarn("MaterialTextSerializer", $"Pasting from shader '{data.shader}' onto '{Shader.name}'. Properties that don't exist on the target shader will be skipped.");
 
                 int undoGroup = Undo.GetCurrentGroup();
                 Undo.RecordObjects(Materials, "Paste from Text");
 
-                var scratch = new Material(Materials[0].shader);
+                var scratch = new Material(Shader);
                 int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch);
 
                 foreach (var part in ShaderParts) part.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures);
@@ -1556,8 +1574,9 @@ namespace Thry
         public static void FixKeywords(IEnumerable<Material> materialsToFix)
         {
             // Process Shaders
-            IEnumerable<Material> uniqueShadersMaterials = materialsToFix.GroupBy(m => m.shader).Select(g => g.First());
-            IEnumerable<Shader> shadersWithThryEditor = uniqueShadersMaterials.Where(m => ShaderHelper.IsShaderUsingThryEditor(m)).Select(m => m.shader);
+            // Section shaders share their original's properties, so they share its keyword map too.
+            IEnumerable<Material> uniqueShadersMaterials = materialsToFix.GroupBy(m => SectionLock.GetSourceShader(m.shader)).Select(g => g.First());
+            IEnumerable<Shader> shadersWithThryEditor = uniqueShadersMaterials.Where(m => ShaderHelper.IsShaderUsingThryEditor(m)).Select(m => SectionLock.GetSourceShader(m.shader));
 
             // Clear cache every time if in developer mode, so that changes aren't missed
             if(Config.Instance.enableDeveloperMode)
@@ -1575,7 +1594,7 @@ namespace Thry
                     PropertyKeywordsByShader[s] = ShaderHelper.GetPropertyKeywordsForShader(s);
             }
             // Find Materials
-            IEnumerable<Material> materials = materialsToFix.Where(m => PropertyKeywordsByShader.ContainsKey(m.shader));
+            IEnumerable<Material> materials = materialsToFix.Where(m => PropertyKeywordsByShader.ContainsKey(SectionLock.GetSourceShader(m.shader)));
             f = 0;
             count = materials.Count();
 
@@ -1586,7 +1605,8 @@ namespace Thry
 
                 List<string> keywordsInMaterial = m.shaderKeywords.ToList();
 
-                foreach((string prop, List<string> keywords) in PropertyKeywordsByShader[m.shader])
+                Shader source = SectionLock.GetSourceShader(m.shader);
+                foreach((string prop, List<string> keywords) in PropertyKeywordsByShader[source])
                 {
                     switch(keywords.Count)
                     {
@@ -1597,8 +1617,8 @@ namespace Thry
                             keywordsInMaterial.Remove(keyword);
 
                             // If the prop is float (toggle), GetFloat works; if it's texture, use has texture
-                            int propIndex = m.shader.FindPropertyIndex(prop);
-                            if (propIndex >= 0 && m.shader.GetPropertyType(propIndex) == ShaderPropertyType.Texture)
+                            int propIndex = source.FindPropertyIndex(prop);
+                            if (propIndex >= 0 && source.GetPropertyType(propIndex) == ShaderPropertyType.Texture)
                             {
                                 bool hasTexture = m.GetTexture(prop) != null;
                                 if (hasTexture) m.EnableKeyword(keyword); else m.DisableKeyword(keyword);

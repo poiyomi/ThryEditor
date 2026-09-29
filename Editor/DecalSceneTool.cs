@@ -33,7 +33,8 @@ namespace Thry.ThryEditor
             internal string Name;
             internal bool Vector;
             internal Vector4 Value;
-            internal bool Available => Material != null && Material.shader == Shader && Material.HasProperty(Name);
+            // Checked on every scene GUI event; the direct compare skips the name lookup when not section locked.
+            internal bool Available => Material != null && (Material.shader == Shader || SectionLock.GetSourceShader(Material) == Shader) && Material.HasProperty(Name);
             internal Vector4 Read() => Vector ? Material.GetVector(Name) : new Vector4(Material.GetFloat(Name), 0, 0, 0);
             internal void Write(Vector4 value)
             {
@@ -111,7 +112,7 @@ namespace Thry.ThryEditor
                 {
                     if (material == null || !material.HasProperty(property.name)
                         || _initialValues.Any(v => v.Material == material && v.Name == property.name)) continue;
-                    var value = new PositioningValue { Material = material, Shader = material.shader, Name = property.name,
+                    var value = new PositioningValue { Material = material, Shader = SectionLock.GetSourceShader(material), Name = property.name,
                         Vector = property.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Vector };
                     value.Value = value.Read(); _initialValues.Add(value);
                 }

@@ -483,7 +483,7 @@ namespace Thry.ThryEditor
                 ThryLogger.LogDetail("ShaderHeader", $"Resetting '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
                 int undoGroup = Undo.GetCurrentGroup();
 
-                var defaults = new Material(materials[0].shader);
+                var defaults = new Material(SectionLock.GetSourceShader(materials[0].shader) ?? materials[0].shader);
                 try { property.CopyFrom(defaults, true); }
                 finally { Object.DestroyImmediate(defaults); }
                 IEnumerable<Material> linked_materials = MaterialLinker.GetLinked(property.MaterialProperty);
@@ -580,12 +580,13 @@ namespace Thry.ThryEditor
                     return;
                 }
 
-                if (!string.IsNullOrEmpty(data.shader) && data.shader != materials[0].shader.name) ThryLogger.LogWarn("ShaderHeader", $"Pasting from shader '{data.shader}' onto '{materials[0].shader.name}'. Properties that don't exist on the target shader will be skipped.");
+                Shader shader = SectionLock.GetSourceShader(materials[0].shader) ?? materials[0].shader;
+                if (!string.IsNullOrEmpty(data.shader) && data.shader != shader.name) ThryLogger.LogWarn("ShaderHeader", $"Pasting from shader '{data.shader}' onto '{shader.name}'. Properties that don't exist on the target shader will be skipped.");
 
                 int undoGroup = Undo.GetCurrentGroup();
                 Undo.RecordObjects(materials, $"Paste from Text {property.Content.text}");
 
-                var scratch = new Material(materials[0].shader);
+                var scratch = new Material(shader);
                 int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch);
 
                 property.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures);

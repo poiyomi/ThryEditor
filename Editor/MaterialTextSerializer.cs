@@ -61,7 +61,7 @@ namespace Thry.ThryEditor
 
             var labels = CollectTileLabels(material, list);
             ExpandUdimSiblings(material, list);
-            return Build(material.shader.name, list, labels);
+            return Build(ShaderName(material), list, labels);
         }
 
         public static string Serialize(ShaderPart part, Material material)
@@ -72,7 +72,14 @@ namespace Thry.ThryEditor
             CollectFromPart(part, material, list, new HashSet<string>());
             var labels = CollectTileLabels(material, list);
             ExpandUdimSiblings(material, list);
-            return Build(material.shader.name, list, labels);
+            return Build(ShaderName(material), list, labels);
+        }
+
+        // The original's name while the material is section-locked.
+        static string ShaderName(Material material)
+        {
+            if (material.shader == null) return null;
+            return (SectionLock.GetSourceShader(material.shader) ?? material.shader).name;
         }
 
         // A UV Tile Discard row serializes only its visible column-0 prop; pull in the three hidden

@@ -37,7 +37,7 @@ namespace Thry.ThryEditor
                     Material parent = null;
                     parent = material.parent;
                     int dirty = EditorUtility.GetDirtyCount(material);
-                    var shader = material.shader;
+                    var shader = SectionLock.GetSourceShader(material.shader);
                     int shaderDirty = shader == null ? 0 : EditorUtility.GetDirtyCount(shader);
                     string name = material.name;
                     if (!_entries.TryGetValue(material, out var entry) || entry.Dirty != dirty

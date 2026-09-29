@@ -148,12 +148,12 @@ namespace Thry.ThryEditor
                                     BindProperty(button, target, menu =>
                                     {
                                         if (!Model.CanEdit(target)) return;
-                                        var captured = Model.Owners(target).Select(m => (Material: m, Shader: m.shader)).ToArray();
+                                        var captured = Model.Owners(target).Select(m => (Material: m, Shader: SectionLock.GetSourceShader(m.shader))).ToArray();
                                         Func<UnityEngine.Object[]> owners = () => {
                                             if (button.panel == null || !RetainedMaterialModel.HasValidTargets(Model.Editor)) return Array.Empty<UnityEngine.Object>();
                                             Model.Refresh();
                                             return button.panel == null || !Model.CanEdit(target) ? Array.Empty<UnityEngine.Object>() : Model.Owners(target)
-                                                .Where(m => captured.Any(entry => entry.Material == m && entry.Shader == m.shader)).Cast<UnityEngine.Object>().ToArray();
+                                                .Where(m => captured.Any(entry => entry.Material == m && entry.Shader == SectionLock.GetSourceShader(m.shader))).Cast<UnityEngine.Object>().ToArray();
                                         };
                                         menu.AddSeparator("");
                                         menu.AddItem(new GUIContent("Rename tile"), false, () => {
@@ -176,7 +176,7 @@ namespace Thry.ThryEditor
                         parent.parent.Q<Label>(className:"thry-property-label").style.marginTop = 3;
                         if(attribute.Name=="ByteSlider") { var range=property.MaterialProperty.rangeLimits;var slider=new SliderInt((int)range.x,(int)range.y) {showInputField=true}; Bind(slider,property,p=>(int)p.GetNumber(),(p,v)=>p.SetNumber(v)); parent.Add(slider); }
                         var bits=new Foldout {text="Bits",value=false,name="byte-bits-"+property.MaterialProperty.name};bits.AddToClassList("thry-bit-options");parent.Add(bits);
-                        RetainedUiState.Bind(bits, property.MyShader.name, bits.name);
+                        RetainedUiState.Bind(bits, SectionLock.GetSourceShader(property.MyShader).name, bits.name);
                         var bitrow=new VisualElement();bitrow.AddToClassList("thry-bit-row");bits.Add(bitrow);
                         for(int bit=7;bit>=0;bit--) { int mask=1<<bit; var toggle=new Toggle(bit.ToString()) {name="byte-bit-"+bit,tooltip="Bit "+bit+" · value "+mask};toggle.AddToClassList("thry-bit-cell");
                             Track(toggle,()=>{toggle.SetValueWithoutNotify((Mathf.Clamp((int)property.MaterialProperty.GetNumber(),0,255)&mask)!=0);toggle.showMixedValue=property.MaterialProperty.targets.OfType<Material>().Select(m=>(Mathf.Clamp(ReadBitValue(m,property),0,255)&mask)!=0).Distinct().Skip(1).Any();});

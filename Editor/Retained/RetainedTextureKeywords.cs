@@ -32,14 +32,16 @@ namespace Thry.ThryEditor
                     string name = property.MaterialProperty.name;
                     foreach (var material in property.MaterialProperty.targets.OfType<Material>().Where(m => m != null && shader.Materials.Contains(m)))
                     {
+                        // A section shader has its original's declarations; share that cache entry.
+                        var source = SectionLock.GetSourceShader(material.shader) ?? material.shader;
                         Dictionary<string,string[]> properties;
-                        if (!metadata.TryGetValue(material.shader,out properties)) metadata[material.shader] = properties = new Dictionary<string,string[]>();
+                        if (!metadata.TryGetValue(source,out properties)) metadata[source] = properties = new Dictionary<string,string[]>();
                         string[] keywords;
                         if (!properties.TryGetValue(name,out keywords))
                         {
-                            int index = material.shader.FindPropertyIndex(name);
-                            keywords = index < 0 || material.shader.GetPropertyType(index) != ShaderPropertyType.Texture ? Array.Empty<string>() :
-                                RetainedShaderDeclarations.Get(material.shader, index).TextureKeywords;
+                            int index = source.FindPropertyIndex(name);
+                            keywords = index < 0 || source.GetPropertyType(index) != ShaderPropertyType.Texture ? Array.Empty<string>() :
+                                RetainedShaderDeclarations.Get(source, index).TextureKeywords;
                             properties[name] = keywords;
                         }
                         List<Binding> bindings;
@@ -58,7 +60,7 @@ namespace Thry.ThryEditor
                 foreach (var binding in bindings)
                 {
                     bool desired = material.GetTexture(binding.Property) != null;
-                    if (material.IsKeywordEnabled(binding.Keyword) == desired) continue;
+                    if (Helpers.MaterialHelper.IsKeywordOn(material, binding.Keyword) == desired) continue;
                     if (desired) material.EnableKeyword(binding.Keyword); else material.DisableKeyword(binding.Keyword);
                 }
             }

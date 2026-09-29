@@ -23,7 +23,8 @@ namespace Thry.ThryEditor
         {
             if (material == null || material.shader == null || material.renderQueue > 2500
                 || GraphicsSettings.currentRenderPipeline != null) return false;
-            var shader = material.shader;
+            // A section-locked material is read from its original file, like any unlocked material.
+            var shader = SectionLock.GetSourceShader(material.shader) ?? material.shader;
             if (!Cache.TryGetValue(shader, out bool hasGrab))
             {
                 string path = AssetDatabase.GetAssetPath(shader);

@@ -201,6 +201,23 @@ namespace Thry.ThryEditor
             return button;
         }
 
+        // The strip-disabled-sections switch: full color while on, dimmed while off. Only touched when the state, the
+        // shader or the language changes.
+        private string _sectionLockToolState;
+        private void UpdateSectionLockTool()
+        {
+            var tool = _tools.Q<Button>("thry-tool-section-lock");
+            if (tool == null || _shader == null) return;
+            bool applies = SectionLockService.AppliesTo(_shader.Shader);
+            bool on = SectionLockService.Enabled;
+            string state = applies + "|" + on + "|" + Config.Instance.locale;
+            if (state == _sectionLockToolState) return;
+            _sectionLockToolState = state;
+            tool.style.display = applies ? DisplayStyle.Flex : DisplayStyle.None;
+            tool.EnableInClassList("thry-off", !on);
+            tool.tooltip = SectionLockService.ToolbarTooltip;
+        }
+
         private void AddCollapseTool()
         {
             var collapse = AddTool("Collapse all", null, () => _shader.CollapseCategories());
@@ -520,7 +537,7 @@ namespace Thry.ThryEditor
         private static string DisplayShaderName(Material material)
         {
             if (material == null) return "";
-            var shader = material.IsLocked() ? ShaderOptimizer.GetOriginalShader(material, false) : material.shader;
+            var shader = material.IsLocked() ? ShaderOptimizer.GetOriginalShader(material, false) : SectionLock.GetSourceShader(material.shader);
             return shader != null ? shader.name : material.GetTag(ShaderOptimizer.TAG_ORIGINAL_SHADER, false, "");
         }
 
@@ -609,6 +626,15 @@ namespace Thry.ThryEditor
                     var button = extra;
                     AddTool(button.Tooltip, button.Icon()?.normal.background, () => button.OnClick());
                 }
+                var sectionLock = AddTool("Section lock", ToolbarIcons.SectionLock?.normal.background, () =>
+                {
+                    SectionLockService.SetEnabled(!SectionLockService.Enabled);
+                    UpdateSectionLockTool();
+                });
+                sectionLock.name = "thry-tool-section-lock";
+                // Clicking would focus it, and the focus outline reads as an on state.
+                sectionLock.focusable = false;
+                _sectionLockToolState = null;
                 var screenshot = AddTool("Screenshot", ToolbarIcons.Camera?.normal.background, () =>
                     InspectorCapture.CaptureActiveInspector(Environment.GetFolderPath(Environment.SpecialFolder.Desktop)));
                 screenshot.name = "thry-tool-screenshot";
@@ -621,6 +647,7 @@ namespace Thry.ThryEditor
                 _builtTools = true;
             }
             _tools.Q<Button>("thry-tool-edit-shader-sections")?.EnableInClassList("thry-selected", editing);
+            UpdateSectionLockTool();
             var languageTool = _tools.Q<Button>("thry-tool-language");
             languageTool?.SetEnabled(_shader.Locale != null && _shader.Locale.LanguageNames.Length > 1);
             if (languageTool != null && _shader.Locale != null)

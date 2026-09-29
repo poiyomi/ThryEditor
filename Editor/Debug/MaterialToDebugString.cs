@@ -83,8 +83,9 @@ namespace Thry.ThryEditor
         {
             var editor = Editor.CreateEditor(material) as MaterialEditor;
             var shaderGui = editor.customShaderGUI as ShaderEditor;
-            shaderGui.SetShader(material.shader);
-            shaderGui.FakePartialInitilizationForLocaleGathering(material.shader);
+            Shader shader = SectionLock.GetSourceShader(material.shader) ?? material.shader;
+            shaderGui.SetShader(shader);
+            shaderGui.FakePartialInitilizationForLocaleGathering(shader);
             
             return ConvertMaterialToDebugString(shaderGui, onlyNonDefaultProperties);
         }
@@ -92,13 +93,14 @@ namespace Thry.ThryEditor
         public static string ConvertMaterialToDebugString(ShaderEditor thryEditor, bool onlyNonDefaultProperties)
         {
             var material = thryEditor.Materials[0];
+            Shader shader = SectionLock.GetSourceShader(material.shader) ?? material.shader;
             var info = new MaterialDebugInfo
             {
                 metaInfo =
                 {
                     unityVersion = Application.unityVersion,
-                    shaderName = material.shader.name,
-                    shaderGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(material.shader)),
+                    shaderName = shader.name,
+                    shaderGuid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(shader)),
                     materialName = material.name,
                 }
             };

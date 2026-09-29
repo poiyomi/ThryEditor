@@ -121,7 +121,7 @@ namespace Thry.ThryEditor
                 var parentVersions = new Dictionary<Material, int>();
                 foreach (var material in selection)
                 {
-                    var ownerShader = material.shader;
+                    var ownerShader = Identity(material);
                     if (ownerShader == null) { cache.Owners.Remove(material); cache.PropertyOwners.Clear(); cache.ClearComparisons(); continue; }
                     if (seenShaders.Add(ownerShader)) ValidateShader(cache, ownerShader);
                     int dirty = EditorUtility.GetDirtyCount(material);
@@ -161,6 +161,12 @@ namespace Thry.ThryEditor
         private static Material Parent(Material material)
         {
             return material.parent;
+        }
+
+        // A section shader has its original's properties but no importer, so defaults come from the original.
+        private static Shader Identity(Material material)
+        {
+            return SectionLock.GetSourceShader(material.shader) ?? material.shader;
         }
 
         private static bool SnapshotsMatch(Cache cache, ShaderEditor shader)
@@ -281,7 +287,11 @@ namespace Thry.ThryEditor
                     var value = new DefaultValue { Type = shader.GetPropertyType(i) };
                     switch (value.Type)
                     {
-                        case ShaderPropertyType.Texture: value.Texture = importer?.GetDefaultTexture(name) ?? defaults.GetTexture(name); break;
+                        case ShaderPropertyType.Texture:
+                            // The section lock copies the importer's non-modifiable textures onto the material; they are its default.
+                            value.Texture = ((shader.GetPropertyFlags(i) & ShaderPropertyFlags.NonModifiableTextureData) != 0
+                                ? importer?.GetNonModifiableTexture(name) : importer?.GetDefaultTexture(name)) ?? defaults.GetTexture(name);
+                            break;
                         case ShaderPropertyType.Vector: value.Vector = defaults.GetVector(name); break;
                         case ShaderPropertyType.Color: value.Vector = defaults.GetColor(name); break;
                         case ShaderPropertyType.Int: value.Integer = defaults.GetInteger(name); break;
@@ -343,7 +353,7 @@ namespace Thry.ThryEditor
         private static bool ReadValue(ShaderProperty property, Material material, HashSet<Texture> dependencies = null)
         {
             string name = property.MaterialProperty.name;
-            if (!Defaults(property, material.shader).TryGetValue(name, out var value)) return false;
+            if (!Defaults(property, Identity(material)).TryGetValue(name, out var value)) return false;
             var snapshot = Snapshot(property);
             switch (value.Type)
             {

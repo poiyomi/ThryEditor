@@ -80,12 +80,12 @@ namespace Thry.ThryEditor
         void AddTileActions(GenericMenu menu, Button cell, ShaderProperty property, string coordinate)
         {
             model.Refresh();
-            var captured = model.Owners(property).Select(m => (Material: m, Shader: m.shader)).ToArray();
+            var captured = model.Owners(property).Select(m => (Material: m, Shader: SectionLock.GetSourceShader(m.shader))).ToArray();
             Func<UnityEngine.Object[]> owners = () => {
                 if (cell.panel == null || !RetainedMaterialModel.HasValidTargets(model.Editor)) return Array.Empty<UnityEngine.Object>();
                 model.Refresh();
                 return !model.CanEdit(property) ? Array.Empty<UnityEngine.Object>() : model.Owners(property)
-                    .Where(m => captured.Any(c => c.Material == m && c.Shader == m.shader)).Cast<UnityEngine.Object>().ToArray();
+                    .Where(m => captured.Any(c => c.Material == m && c.Shader == SectionLock.GetSourceShader(m.shader))).Cast<UnityEngine.Object>().ToArray();
             };
             menu.AddSeparator("");
             if (model.CanEdit(property))

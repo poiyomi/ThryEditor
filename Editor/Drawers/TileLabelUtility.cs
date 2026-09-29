@@ -232,7 +232,7 @@ namespace Thry.ThryEditor.Drawers
             {
                 var win = CreateInstance<TileLabelRenamePopup>();
                 win._targets = targets == null ? new Object[0] : targets.ToArray();
-                win._targetShaders = win._targets.Select(t => (t as Material)?.shader).ToArray();
+                win._targetShaders = win._targets.Select(t => SectionLock.GetSourceShader((t as Material)?.shader)).ToArray();
                 win._currentTargets = currentTargets;
                 win._canonicalPropertyName = canonicalPropertyName;
                 Material firstMat = (targets != null && targets.Length > 0) ? targets[0] as Material : null;
@@ -249,7 +249,7 @@ namespace Thry.ThryEditor.Drawers
                 var current = _currentTargets == null ? _targets : _currentTargets();
                 if (current == null || _targets == null) return new Object[0];
                 return _targets.Where((target, index) => target is Material material && material != null
-                    && _targetShaders != null && index < _targetShaders.Length && material.shader == _targetShaders[index]
+                    && _targetShaders != null && index < _targetShaders.Length && SectionLock.GetSourceShader(material.shader) == _targetShaders[index]
                     && current.Contains(target)).ToArray();
             }
 

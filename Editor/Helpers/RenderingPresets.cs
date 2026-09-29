@@ -164,6 +164,7 @@ namespace Thry.ThryEditor.Helpers
         static string GetParkedValueTag(Shader shader)
         {
             if (shader == null) return TAG_PREFIX_PARKED_VALUE;
+            shader = SectionLock.GetSourceShader(shader) ?? shader;
 
             char[] name = shader.name.ToCharArray();
             for (int i = 0; i < name.Length; i++)

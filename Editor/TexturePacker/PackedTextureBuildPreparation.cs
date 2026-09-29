@@ -36,7 +36,8 @@ namespace Thry.ThryEditor.TexturePacker
             var pending = new List<PackedTextureBuildItem>();
             foreach (var material in materials.Where(material => material != null).Distinct())
             {
-                var shader = material.shader;
+                // A section-locked material counts as being on its original.
+                var shader = SectionLock.GetSourceShader(material.shader);
                 if (shader == null) continue;
                 if (ShaderOptimizer.IsShaderLocked(shader))
                 {

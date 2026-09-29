@@ -487,7 +487,8 @@ namespace Thry.ThryEditor
             if(shaderEditor.IsCrossEditor)
             {
                 this.MyMaterialEditor = shaderEditor.GetMaterialEditor(prop.targets);
-                this.MyShader = (prop.targets[0] as Material).shader;
+                Shader shader = (prop.targets[0] as Material).shader;
+                this.MyShader = SectionLock.GetSourceShader(shader) ?? shader;
                 this.ShaderPropertyIndex = MyShader.FindPropertyIndex(prop.name);
             }else
             {
@@ -1237,7 +1238,8 @@ namespace Thry.ThryEditor
             Undo.RegisterCompleteObjectUndo(owners, "Reset " + shaderPart.Content.text);
             foreach (var material in owners)
             {
-                Shader shader = material.shader;
+                // A section shader has the same defaults but no importer to hold the default textures.
+                Shader shader = SectionLock.GetSourceShader(material.shader) ?? material.shader;
                 int index = shader.FindPropertyIndex(prop.name);
                 if (index < 0) continue;
                 if (material.IsPropertyLockedByAncestor(prop.name)) continue;

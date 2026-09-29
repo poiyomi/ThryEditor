@@ -611,8 +611,8 @@ namespace Thry.ThryEditor
             ShaderProperty projection = this is ShaderTextureProperty texture
                 ? new ShaderTextureProperty(MyShaderUI, value, _content.text, XOffset, _optionsRaw, texture.hasScaleOffset, false, ThryPropertyIndex)
                 : new ShaderProperty(MyShaderUI, value, _content.text, XOffset, _optionsRaw, false, ThryPropertyIndex);
-            projection.MyShader = targets[0].shader;
-            projection.ShaderPropertyIndex = targets[0].shader.FindPropertyIndex(value.name);
+            projection.MyShader = SectionLock.GetSourceShader(targets[0].shader) ?? targets[0].shader;
+            projection.ShaderPropertyIndex = projection.MyShader.FindPropertyIndex(value.name);
             projection.MyMaterialEditor = MyShaderUI.GetMaterialEditor(targets);
             projection.ThryPropertyIndex = -1;
             projection.SetParent(owner);
@@ -620,7 +620,8 @@ namespace Thry.ThryEditor
             projection.AdditionalDefaultCheckProperties = AdditionalDefaultCheckProperties;
             projection._retainedProjectionSource = this;
             projection._retainedProjectionOwners = targets;
-            projection._retainedProjectionShaders = targets.Select(m => m.shader).ToArray();
+            // Originals, so a section-lock swap doesn't invalidate the projection.
+            projection._retainedProjectionShaders = targets.Select(m => SectionLock.GetSourceShader(m.shader)).ToArray();
             projection._retainedProjectionVersions = targets.Select(EditorUtility.GetDirtyCount).ToArray();
             projection._retainedProjectionRevision = MyShaderUI.RetainedRevision;
             projection.EnsureOptionsInitialized();
@@ -636,7 +637,7 @@ namespace Thry.ThryEditor
             for (int i = 0; i < _retainedProjectionOwners.Length; i++)
             {
                 var material = _retainedProjectionOwners[i];
-                if (material == null || material.shader != _retainedProjectionShaders[i] || !MyShaderUI.Materials.Contains(material)
+                if (material == null || SectionLock.GetSourceShader(material.shader) != _retainedProjectionShaders[i] || !MyShaderUI.Materials.Contains(material)
                     || !_retainedProjectionSource.MaterialProperty.targets.Contains(material)) return false;
                 int dirty = EditorUtility.GetDirtyCount(material);
                 changed |= _retainedProjectionVersions[i] != dirty;
@@ -663,12 +664,13 @@ namespace Thry.ThryEditor
             { _retainedKeywordDeclarations.Clear(); _retainedKeywordRevision = MyShaderUI.RetainedRevision; }
             foreach (var material in affectedMaterials)
             {
-                if (!_retainedKeywordDeclarations.TryGetValue(material.shader, out var attributes))
+                Shader shader = SectionLock.GetSourceShader(material.shader) ?? material.shader;
+                if (!_retainedKeywordDeclarations.TryGetValue(shader, out var attributes))
                 {
-                    int index = material.shader.FindPropertyIndex(MaterialProperty.name);
-                    attributes = index < 0 ? Array.Empty<DrawerAttribute>() : material.shader.GetPropertyAttributes(index)
+                    int index = shader.FindPropertyIndex(MaterialProperty.name);
+                    attributes = index < 0 ? Array.Empty<DrawerAttribute>() : shader.GetPropertyAttributes(index)
                         .Select(a => new DrawerAttribute(a)).Where(a => a.Name == "TextureKeyword" || a.Name == "ThryToggle" || a.Name == "ThryToggleUI").ToArray();
-                    _retainedKeywordDeclarations.Add(material.shader, attributes);
+                    _retainedKeywordDeclarations.Add(shader, attributes);
                 }
                 foreach (var attribute in attributes)
                 {

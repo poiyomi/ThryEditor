@@ -492,7 +492,7 @@ namespace Thry.ThryEditor
         private void ResetSection(Material[] materials)
         {
             int undoGroup = Undo.GetCurrentGroup();
-            var defaults = new Material(materials[0].shader);
+            var defaults = new Material(SectionLock.GetSourceShader(materials[0].shader) ?? materials[0].shader);
             try
             {
                 CopyFrom(defaults, true);

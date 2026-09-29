@@ -30,7 +30,7 @@ namespace Thry.ThryEditor
             foreach (var material in _model.Owners(_property))
             {
                 var value = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { material }, _property.MaterialProperty.name);
-                _originals[material] = (material.shader, texture ? value.textureScaleAndOffset : value.vectorValue);
+                _originals[material] = (SectionLock.GetSourceShader(material.shader), texture ? value.textureScaleAndOffset : value.vectorValue);
             }
             _active = _originals.Count > 0;
         }
@@ -43,7 +43,7 @@ namespace Thry.ThryEditor
             _model.Edit(_property, property =>
             {
                 var owner = property.targets.OfType<Material>().FirstOrDefault();
-                if (owner == null || !_originals.TryGetValue(owner, out var original) || owner.shader != original.Shader) return;
+                if (owner == null || !_originals.TryGetValue(owner, out var original) || SectionLock.GetSourceShader(owner.shader) != original.Shader) return;
                 var value = _texture ? property.textureScaleAndOffset : property.vectorValue;
                 for (int axis = 0; axis < 4; axis++) if ((_mask & (1 << axis)) != 0) value[axis] = original.Value[axis];
                 if (_texture) property.textureScaleAndOffset = value; else property.vectorValue = value;

@@ -33,7 +33,11 @@ namespace Thry.ThryEditor
                 var field = new ObjectField { objectType = typeof(Material), allowSceneObjects = false, value = material }; field.style.flexGrow = 1; row.Add(field);
                 field.RegisterValueChangedCallback(e => { var next = e.newValue as Material; if (next != material && _materialList.Contains(next)) return; _materialList[index] = next; UpdateTargets(); });
                 row.Add(new Button(() => { _materialList.RemoveAt(index); UpdateTargets(); }) { text = "Remove" });
-                if (material != null && !compatible) materials.Add(new HelpBox((material.shader != null ? material.shader.name : "Missing shader") + " does not use Thry.", HelpBoxMessageType.Info));
+                if (material != null && !compatible)
+                {
+                    var shader = SectionLock.GetSourceShader(material.shader);
+                    materials.Add(new HelpBox((shader != null ? shader.name : "Missing shader") + " does not use Thry.", HelpBoxMessageType.Info));
+                }
             }
             var actions = new VisualElement(); actions.AddToClassList("thry-components"); materials.Add(actions);
             actions.Add(new Button(() => { _materialList.Add(null); UpdateTargets(); }) { text = "Add material" });
@@ -51,7 +55,9 @@ namespace Thry.ThryEditor
             view.schedule.Execute(() =>
             {
                 if (_targets.Any(m => m == null || m.shader == null)) { UpdateTargets(); return; }
-                bool shadersChanged = _targets.Any(m => !_targetShaders.ContainsKey(m) || _targetShaders[m] != m.shader);
+                // A section-lock swap keeps the original shader and is not a change.
+                bool shadersChanged = _targets.Any(m => !_targetShaders.ContainsKey(m)
+                    || SectionLock.GetSourceShader(_targetShaders[m]) != SectionLock.GetSourceShader(m.shader));
                 if (shadersChanged)
                 {
                     foreach (var material in _targets) _targetShaders[material] = material.shader;

@@ -149,7 +149,7 @@ namespace Thry.ThryEditor.ShaderTranslations
 
             // Filter translations based on all our listed material shaders then pick translations in which source shader
             // matches any of our current materials shaders and target shader matches our selected shader in the dropdown
-            var selectedMaterialShaders = materials.Where(mat => mat != null).Select(mat => mat.shader.name).Distinct();
+            var selectedMaterialShaders = materials.Where(mat => mat != null).Select(mat => (SectionLock.GetSourceShader(mat.shader) ?? mat.shader).name).Distinct();
             translations = ShaderTranslator.TranslationDefinitions.Where(trans =>
             {
                 if(trans.MatchTargetShaderBasedOnRegex)
@@ -285,7 +285,7 @@ namespace Thry.ThryEditor.ShaderTranslations
         void TranslateMaterial(Material mat, Shader newShader, ShaderTranslator translator)
         {
             var shaderEditor = new ShaderEditor();
-            shaderEditor.SetShader(newShader, mat.shader);
+            shaderEditor.SetShader(newShader, SectionLock.GetSourceShader(mat.shader) ?? mat.shader);
 
             int renderQueue = mat.renderQueue;
             // Like the Render Queue, the material's own override tags don't survive the shader assignment below.

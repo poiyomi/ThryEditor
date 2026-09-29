@@ -23,7 +23,7 @@ namespace Thry.ThryEditor
         static string Key(ShaderEditor shader)
         {
             var material = shader.Materials[0];
-            var original = material.IsLocked() ? ShaderOptimizer.GetOriginalShader(material, false) : material.shader;
+            var original = material.IsLocked() ? ShaderOptimizer.GetOriginalShader(material, false) : SectionLock.GetSourceShader(material.shader);
             return "Thry.Search." + Application.dataPath + "." + (original != null ? original.name : material.shader.name);
         }
         static State Read(ShaderEditor shader)

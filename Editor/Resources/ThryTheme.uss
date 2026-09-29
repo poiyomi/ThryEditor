@@ -5242,6 +5242,15 @@
     border-color: var(--thry-focus-color);
 }
 
+/* A switch shows its icon in full color while on and dimmed while off. */
+.thry-inspector .thry-tools > .thry-icon-button.thry-off > Image {
+    opacity: 0.4;
+}
+
+.thry-inspector .thry-tools > .thry-icon-button.thry-off:hover > Image {
+    opacity: 0.7;
+}
+
 .thry-inspector .thry-tools > .thry-icon-button:hover {
     color: var(--thry-value-color);
 }

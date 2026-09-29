@@ -65,6 +65,8 @@ namespace Thry.ThryEditor
         private void UpdateTargets()
         {
             PruneInvalidTargets();
+            // A material that lost its section shader gets its original back instead of being left out as broken.
+            foreach (Material m in _materialList) SectionLock.RepairIfBroken(m);
             _incompatibleMaterials = new HashSet<Material>(
                 _materialList.Where(t => t != null && t.shader != null && !t.shader.IsBroken() && !ShaderHelper.IsShaderUsingThryEditor(t)));
             _disabledMaterials.IntersectWith(_materialList);
@@ -173,12 +175,13 @@ namespace Thry.ThryEditor
                 bool didShadersChange = EditorGUI.EndChangeCheck();
                 foreach (Material m in _materialList)
                 {
+                    // A section-lock swap keeps the original shader and is not a change.
                     if (m == null || // Material is null
-                        _targetShaders.ContainsKey(m) && _targetShaders[m] == m.shader) // Shader hasn't changed
+                        _targetShaders.ContainsKey(m) && SectionLock.GetSourceShader(_targetShaders[m]) == SectionLock.GetSourceShader(m.shader)) // Shader hasn't changed
                         continue;
 
                     didShadersChange = true;
-                    _targetShaders[m] = m.shader;
+                    _targetShaders[m] = SourceShader(m);
                 }
 
                 if (didShadersChange) UpdateTargets();
@@ -268,7 +271,7 @@ namespace Thry.ThryEditor
 
             GUI.backgroundColor = prevColor;
             if (isIncompatible)
-                EditorGUILayout.HelpBox($"'{current.shader.name}' is not compatible with the Cross Shader Editor.", MessageType.None);
+                EditorGUILayout.HelpBox($"'{SourceShader(current).name}' is not compatible with the Cross Shader Editor.", MessageType.None);
         }
 
         private void DrawShaderEditor()
@@ -364,7 +367,7 @@ namespace Thry.ThryEditor
                     || type == ShaderEditor.ThryPropertyType.section_end || type == ShaderEditor.ThryPropertyType.subsection_end;
                 if (closes)
                 {
-                    if (stack.Count <= 1) throw new InvalidOperationException("Unmatched inspector group end in " + material.shader.name + ": " + properties[i].name);
+                    if (stack.Count <= 1) throw new InvalidOperationException("Unmatched inspector group end in " + SourceShader(material).name + ": " + properties[i].name);
                     stack.Pop().End = occurrences[i];
                     continue;
                 }
@@ -414,18 +417,21 @@ namespace Thry.ThryEditor
             _materialEditor = Editor.CreateEditor(_targets.ToArray()) as MaterialEditor;
             if (collectProperties) _materialProperties = CollectProperties(_shaderEditor, _targets.ToArray());
             _targetShaders.Clear();
-            foreach (var material in _targets) _targetShaders[material] = material.shader;
+            foreach (var material in _targets) _targetShaders[material] = SourceShader(material);
 
             // This array is now the snapshot everything draws from, so baseline the dirty counts against it.
             RecordTargetDirtyCounts();
         }
 
+        // The shader a target is edited as: the original for one on a section shader.
+        private static Shader SourceShader(Material material) => SectionLock.GetSourceShader(material.shader) ?? material.shader;
+
         // Shared by the cross-shader window and retained inspectors with mixed shader targets.
         // Callers own target validation and decide when this declaration snapshot needs rebuilding.
         internal static MaterialProperty[] CollectProperties(ShaderEditor shaderEditor, Material[] targets)
         {
-            // group targets by shader, take one material per shader
-            IEnumerable<Material> materialsToSearchProperties = targets.GroupBy(t => t.shader).Select(g => g.First());
+            // group targets by shader, take one material per shader. A section shader has its original's properties.
+            IEnumerable<Material> materialsToSearchProperties = targets.GroupBy(SourceShader).Select(g => g.First());
             // get properties for each shader, keeping declaration order rather than leaning on the
             // enumeration order of a set, since the merge below is order sensitive
             var merged = new PropertyTree();
@@ -434,7 +440,7 @@ namespace Thry.ThryEditor
             {
                 PropertyOccurrence[] occurrences = GetPropertyOccurrences(material);
                 MergePropertyTrees(merged, ReadPropertyTree(shaderEditor, material, occurrences));
-                shaderProperties[material.shader] = new HashSet<PropertyOccurrence>(occurrences);
+                shaderProperties[SourceShader(material)] = new HashSet<PropertyOccurrence>(occurrences);
             }
             var propertiesOrdered = FlattenPropertyTree(merged).ToList();
             // For each property get all materials, whos shader has this property. A material only counts
@@ -442,7 +448,7 @@ namespace Thry.ThryEditor
             Dictionary<PropertyOccurrence, Material[]> propertyMaterials = new Dictionary<PropertyOccurrence, Material[]>();
             foreach (PropertyOccurrence property in propertiesOrdered)
             {
-                propertyMaterials[property] = targets.Where(t => shaderProperties[t.shader].Contains(property)).ToArray();
+                propertyMaterials[property] = targets.Where(t => shaderProperties[SourceShader(t)].Contains(property)).ToArray();
             }
             // Get MaterialProperties of all materials. Repeated declarations resolve to the same
             // underlying property, exactly as they do in the normal inspector.

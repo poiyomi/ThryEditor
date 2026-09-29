@@ -30,7 +30,8 @@ namespace Thry.ThryEditor
                     row.AddToClassList("thry-multi-material-incompatible");
                     name.tooltip = "Incompatible shader — excluded from edits.\n" + name.tooltip;
                 }
-                var shader = new Label(material.shader != null ? material.shader.name : "Missing shader"); shader.AddToClassList("thry-multi-shader-name"); row.Add(shader);
+                var source = SectionLock.GetSourceShader(material.shader);
+                var shader = new Label(source != null ? source.name : "Missing shader"); shader.AddToClassList("thry-multi-shader-name"); row.Add(shader);
             }
             return root;
         }

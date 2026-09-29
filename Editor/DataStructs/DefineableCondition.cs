@@ -20,8 +20,16 @@ namespace Thry.ThryEditor
 
             public Material Material => _forceUseMaterialInsteadOfEditor ? _material : ShaderEditor.Active?.Materials[0];
 
+            // Set when evaluating for SectionLock, which only removes sections that are switched off.
+            public bool SectionsOnly { get; private set; }
+
             static MaterialRenference _defaultMaterialRenference = new MaterialRenference(null);
             public static MaterialRenference Default => _defaultMaterialRenference;
+
+            public MaterialRenference(Material useThisMaterialInsteadOfOpenEditor, bool sectionsOnly) : this(useThisMaterialInsteadOfOpenEditor)
+            {
+                SectionsOnly = sectionsOnly;
+            }
 
             public MaterialRenference(Material useThisMaterialInsteadOfOpenEditor)
             {
@@ -109,6 +117,22 @@ namespace Thry.ThryEditor
                 }
             }
             public bool IsConstant => _isConstant;
+
+            /// <summary>
+            /// SectionLock only follows section switches. A slider, color, vector or texture is a value, not a
+            /// switch, and its code has to stay in so dragging it never needs a new shader.
+            /// </summary>
+            public bool IsIgnoredBySectionLock
+            {
+                get
+                {
+                    if (_type != DataType.MATERIAL_PROPERTY || _materialReference == null || !_materialReference.SectionsOnly) return false;
+                    MaterialProperty prop = _materialReference.GetMaterialProperty(_key);
+                    if (prop == null) return false;
+                    ShaderPropertyType type = prop.GetPropertyType();
+                    return type != ShaderPropertyType.Float && type != ShaderPropertyType.Int;
+                }
+            }
 
             public ComparisonData(string data, MaterialRenference materialRenference)
             {
@@ -206,6 +230,7 @@ namespace Thry.ThryEditor
             public override bool Test()
             {
                 if (_isConstant) return _constant;
+                if (_left.IsIgnoredBySectionLock || _right.IsIgnoredBySectionLock) return false;
                 return Evaluate();
             }
 
@@ -442,6 +467,9 @@ namespace Thry.ThryEditor
         protected abstract bool IsConstant { get; }
         public abstract bool Test();
 
+        /// <summary>True when the condition reads nothing from the material, like the '0==0' blocks.</summary>
+        public bool IsConstantCondition => IsConstant;
+
         private static DefineableCondition ParseForThryParser(string s)
         {
             return ParseInternal(s, MaterialRenference.Default);
@@ -450,6 +478,15 @@ namespace Thry.ThryEditor
         public static DefineableCondition Parse(string s, Material useThisMaterialInsteadOfOpenEditor = null)
         {
             return ParseInternal(s, new MaterialRenference(useThisMaterialInsteadOfOpenEditor));
+        }
+
+        /// <summary>
+        /// Parses an //ifex condition for SectionLock. Comparisons on sliders, colors, vectors and textures
+        /// never count as met, so only section switches, enums, animated tags and the render queue remove code.
+        /// </summary>
+        public static DefineableCondition ParseForSectionLock(string s, Material material)
+        {
+            return ParseInternal(s, new MaterialRenference(material, sectionsOnly: true));
         }
 
         protected static DefineableCondition ParseInternal(string s, MaterialRenference materialRenference, int start = 0, int end = -1)

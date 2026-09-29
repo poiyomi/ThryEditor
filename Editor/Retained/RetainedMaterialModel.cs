@@ -73,7 +73,7 @@ namespace Thry
             _retainedValueProvider = valueProvider;
             _retainedValueRevision = valueProvider?.ValueRevision ?? -1;
             // Providers may discover a secondary material's shader change and request a rebuild.
-            bool rebuild = _isFirstOnGUICall || _doReloadNextDraw || Shader != ((Material)editor.target).shader;
+            bool rebuild = _isFirstOnGUICall || _doReloadNextDraw || Shader != SectionLock.GetSourceShader(((Material)editor.target).shader);
             if (valuesChanged || rebuild) materialPropertyDictionary = null;
             if (rebuild)
             {

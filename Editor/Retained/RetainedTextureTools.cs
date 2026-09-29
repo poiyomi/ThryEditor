@@ -50,7 +50,7 @@ namespace Thry.ThryEditor
             if (targets.Length == 0 || owner.panel == null || !Model.CanEdit(property)) return;
             string id = property.MaterialProperty.name;
             Func<string> signature = () => string.Join("|", targets.Select(m => m == null ? "missing" :
-                m.GetObjectId() + ":" + m.shader.GetObjectId() + ":" + (m.GetTexture(id) == null ? 0 : m.GetTexture(id).GetObjectId())
+                m.GetObjectId() + ":" + SectionLock.GetSourceShader(m.shader).GetObjectId() + ":" + (m.GetTexture(id) == null ? 0 : m.GetTexture(id).GetObjectId())
                 + ":" + m.GetTag(id + "_curve", false, "")));
             string initial = signature();
             Func<bool> canApply = () => owner.panel != null && Model.Editor != null && Model.Editor.target != null
@@ -182,7 +182,7 @@ namespace Thry.ThryEditor.Drawers
                 if(labels[i]==null)continue;var input=channels[i];VisualElement value;
                 var sourceRow=RetainedFields.Row("",out value);sourceRow.AddToClassList("thry-packer-source-row");root.Add(sourceRow);
                 var detail=new Foldout {text=labels[i]+" channel options",value=false,name="packer-options-"+i};detail.AddToClassList("thry-packer-channel-options");root.Add(detail);
-                RetainedUiState.Bind(detail, fields.Model.Shader.Materials[0].shader.name, property.MaterialProperty.name + ".packer-channel-" + i);
+                RetainedUiState.Bind(detail, SectionLock.GetSourceShader(fields.Model.Shader.Materials[0].shader).name, property.MaterialProperty.name + ".packer-channel-" + i);
                 // The assignment's caption is the disclosure control. The options still
                 // occupy the full inspector grid below it when expanded.
                 sourceRow.Q<Label>(className:"thry-property-label").RemoveFromHierarchy();

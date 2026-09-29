@@ -921,6 +921,10 @@ namespace Thry.ThryEditor
             {
                 bool isLocking = lockState == 1;
 
+                // A section-locked material looks unlocked, but its shader only exists in memory. The full lock
+                // has to start from the original shader. A variant's shader is its parent's.
+                if (isLocking) SectionLock.RevertAll(materials.Where(m => m != null).Select(m => m.GetRoot()).Distinct());
+
                 // Get cleaned material list
                 Material[] materialsToChangeLock = materials.Where(m => m != null)
                     .Select(m => m.GetRoot()) // Material variants can't have their shader changed
@@ -3434,6 +3438,11 @@ namespace Thry.ThryEditor
             // The material is using a broken shader, test tags to tell if it was locked
             if (material.shader.IsBroken())
             {
+                // Lost its section shader, which bakes nothing. SectionLock.RepairIfBroken puts the original back.
+                // A material that was really locked also has the users tag, whatever the section tag says.
+                if (!string.IsNullOrEmpty(material.GetTag(SectionLock.TAG_SECTION_SOURCE, false, string.Empty))
+                    && string.IsNullOrEmpty(material.GetTag(TAG_ALL_MATERIALS_GUIDS_USING_THIS_LOCKED_SHADER, false, string.Empty))) return false;
+
                 Shader originalShader = GetOriginalShader(material, false);
                 // The original shader was not found (or somehow returned the internal error shader), check if
                 // the material has the locked GUIDs tag

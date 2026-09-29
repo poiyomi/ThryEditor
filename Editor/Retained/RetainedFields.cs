@@ -318,7 +318,7 @@ namespace Thry.ThryEditor
                     _model.EditSingleProperty(_property,p=>
                     {
                         var material=p.targets.OfType<Material>().FirstOrDefault();
-                        if(material!=null && _originals.TryGetValue(material,out var original) && material.shader==original.Shader)
+                        if(material!=null && _originals.TryGetValue(material,out var original) && SectionLock.GetSourceShader(material.shader)==original.Shader)
                             _write(p,original.Value);
                     },true);
                 }
@@ -329,7 +329,7 @@ namespace Thry.ThryEditor
                 foreach(var material in _property.MaterialProperty.targets.OfType<Material>().Where(m=>m!=null && _model.Shader.Materials.Contains(m)))
                 {
                     var property=MaterialEditor.GetMaterialProperty(new UnityEngine.Object[]{material},_property.MaterialProperty.name);
-                    _originals[material]=(material.shader,_read(property));
+                    _originals[material]=(SectionLock.GetSourceShader(material.shader),_read(property));
                 }
                 _dragging=true; _field.StartDragging();
             }
@@ -376,7 +376,7 @@ namespace Thry.ThryEditor
             if (link)
             {
                 string key = "vector-link:" + property.MaterialProperty.name + ":" + start + ":" + labels.Length + ":" + texture;
-                linked = RetainedUiState.Get(property.MyShader.name, key);
+                linked = RetainedUiState.Get(SectionLock.GetSourceShader(property.MyShader).name, key);
                 linkToggle = new Toggle { name = "vector-link-" + property.MaterialProperty.name, value = linked, focusable = true, tabIndex = 0 };
                 linkToggle.AddToClassList("thry-vector-link");
                 var icon = new Image { scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
@@ -392,7 +392,7 @@ namespace Thry.ThryEditor
                 linkToggle.RegisterValueChangedCallback(e =>
                 {
                     linked = e.newValue; linkBaselines.Clear();
-                    RetainedUiState.Set(property.MyShader.name, key, linked); synchronizeLink();
+                    RetainedUiState.Set(SectionLock.GetSourceShader(property.MyShader).name, key, linked); synchronizeLink();
                 });
                 synchronizeLink();
                 TrackVisible(linkToggle, () => { linkToggle.SetEnabled(Model.CanEdit(property)); icon.tintColor = EditorGUIUtility.isProSkin ? Color.white : new Color(.35f, .35f, .35f); });
@@ -591,7 +591,7 @@ namespace Thry.ThryEditor
                 () => objectField.enabledInHierarchy && Model.CanEdit(property), array != null);
             var details = new VisualElement(); details.AddToClassList("thry-texture-details"); root.Add(details);
             string foldoutKey = "texture-details-" + property.MaterialProperty.name;
-            if (!property.showFoldoutProperties) property.showFoldoutProperties = RetainedUiState.Get(property.MyShader.name, foldoutKey);
+            if (!property.showFoldoutProperties) property.showFoldoutProperties = RetainedUiState.Get(SectionLock.GetSourceShader(property.MyShader).name, foldoutKey);
             bool built = false;
             var expandedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-down");
             var collapsedCaret = Resources.Load<Texture2D>("ThryToolbar/header-caret-right");
@@ -672,7 +672,7 @@ namespace Thry.ThryEditor
             };
             foldout.clicked += () => {
                 property.showFoldoutProperties = !property.showFoldoutProperties;
-                RetainedUiState.Set(property.MyShader.name, foldoutKey, property.showFoldoutProperties); expand();
+                RetainedUiState.Set(SectionLock.GetSourceShader(property.MyShader).name, foldoutKey, property.showFoldoutProperties); expand();
             };
             Track(root, expand);
             if (property.Options.reference_property != null)

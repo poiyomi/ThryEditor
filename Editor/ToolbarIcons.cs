@@ -14,6 +14,7 @@ namespace Thry.ThryEditor
         public static GUIStyle Camera => Get("camera");
         public static GUIStyle Edit => Get("pencil");
         public static GUIStyle Modules => Get("puzzle");
+        public static GUIStyle SectionLock => Get("lightning");
 
         // Resolve during OnGUI so GUIStyles and imported textures are available.
         private static GUIStyle Get(string name)

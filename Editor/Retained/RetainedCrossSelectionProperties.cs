@@ -141,18 +141,22 @@ namespace Thry.ThryEditor
 
         internal void InvalidateValues() => _readRequired = true;
 
+        // Materials on section shaders count as their original shader, which has the same properties. Otherwise
+        // every section-lock swap would look like a shader change and rebuild the inspector.
+        static Shader Identity(Material material) => SectionLock.GetSourceShader(material.shader);
+
         internal MaterialProperty[] Read()
         {
             if (!RetainedMaterialModel.HasValidTargets(_editor)) return Array.Empty<MaterialProperty>();
             var targets = _editor.targets.Cast<Material>().ToArray();
             bool changed = targets.Length != _targets.Length;
             for (int i = 0; !changed && i < targets.Length; i++)
-                changed = targets[i] != _targets[i] || targets[i].shader != _shaders[i];
+                changed = targets[i] != _targets[i] || Identity(targets[i]) != _shaders[i];
             if (!changed) changed = _schemas.Any(entry => !entry.Value.Equals(RetainedShaderSchema.Read(entry.Key)));
             if (changed)
             {
                 _targets = targets;
-                _shaders = targets.Select(m => m.shader).ToArray();
+                _shaders = targets.Select(Identity).ToArray();
                 _dependencies = targets.Select(target => new MaterialDependencies()).ToArray();
                 _dirtyTargets = new bool[targets.Length];
                 _properties = null; _homogeneousProperties = null; _singleTargetValues = null; _groups.Clear(); _sources.Clear();
@@ -161,12 +165,12 @@ namespace Thry.ThryEditor
                 // Unsupported materials stay visible in the selection list, but never enter a
                 // native property request for this inspector's shader controls.
                 var compatible = targets.Where(m => ShaderHelper.IsShaderUsingThryEditor(m)).ToArray();
-                if (compatible.Length != targets.Length || compatible.Select(m => m.shader).Distinct().Skip(1).Any())
+                if (compatible.Length != targets.Length || compatible.Select(Identity).Distinct().Skip(1).Any())
                 {
                     _properties = compatible.Length == 0 ? Array.Empty<MaterialProperty>() : CrossEditor.CollectProperties(_shader, compatible);
                     BuildCount++;
                     var sources = new Dictionary<Shader, SourceGroup>();
-                    foreach (var shaderTargets in compatible.GroupBy(m => m.shader))
+                    foreach (var shaderTargets in compatible.GroupBy(Identity))
                     {
                         var source = new SourceGroup { Targets = shaderTargets.Cast<UnityEngine.Object>().ToArray(),
                             TargetIndices = shaderTargets.Select(m => Array.IndexOf(_targets, m)).ToArray() };
@@ -180,7 +184,7 @@ namespace Thry.ThryEditor
                         string key = string.Join(",", owners.Select(o => o.GetObjectId()));
                         if (!groups.TryGetValue(key, out var group))
                         {
-                            var ownerSources = owners.Cast<Material>().Select(m => sources[m.shader]).Distinct().ToArray();
+                            var ownerSources = owners.Cast<Material>().Select(m => sources[Identity(m)]).Distinct().ToArray();
                             group = new TargetGroup { Targets = owners, Sources = ownerSources };
                             if (ownerSources.Length == 1 && ownerSources[0].Targets.SequenceEqual(owners)) group.HomogeneousSource = ownerSources[0];
                             groups.Add(key, group); _groups.Add(group);
@@ -273,7 +277,7 @@ namespace Thry.ThryEditor
             if (property == null || property.applyPropertyCallback != null || AnimationMode.InAnimationMode()
                 || (_properties == null && _homogeneousProperties == null)) return false;
             for (int i = 0; i < _targets.Length; i++)
-                if (_targets[i] == null || _targets[i].shader != _shaders[i] || !_dependencies[i].Matches(_targets[i])) return false;
+                if (_targets[i] == null || Identity(_targets[i]) != _shaders[i] || !_dependencies[i].Matches(_targets[i])) return false;
             return true;
         }
 

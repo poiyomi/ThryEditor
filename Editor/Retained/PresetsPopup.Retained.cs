@@ -72,7 +72,7 @@ namespace Thry.ThryEditor
             return shaderEditor != null && _browserTargets != null && _browserTargets.Length > 0
                 && shaderEditor.Materials != null && shaderEditor.Materials.SequenceEqual(_browserTargets)
                 && shaderEditor.Shader == _browserShader
-                && _browserTargets.All(m => m != null && m.shader == _browserShader && !m.IsLocked())
+                && _browserTargets.All(m => m != null && SectionLock.GetSourceShader(m.shader) == _browserShader && !m.IsLocked())
                 && (_parent == null || CurrentBrowserParent() != null);
         }
 
@@ -263,7 +263,7 @@ namespace Thry.ThryEditor
 
         string BrowserStateSignature()
         {
-            Func<Material, string> key = m => m == null ? "missing" : m.GetObjectId() + ":" + EditorUtility.GetDirtyCount(m) + ":" + m.shader?.GetObjectId();
+            Func<Material, string> key = m => m == null ? "missing" : m.GetObjectId() + ":" + EditorUtility.GetDirtyCount(m) + ":" + SectionLock.GetSourceShader(m.shader).GetObjectId();
             return BrowserTargetsAvailable() + "|" + _browserChangesOpen + "|" + string.Join(";", (_browserTargets ?? Array.Empty<Material>()).Select(key))
                 + "|" + string.Join(";", tickedPresets.Select(key));
         }

@@ -73,6 +73,7 @@ namespace Thry.ThryEditor
         public bool forceAsyncCompilationPreview = true;
         public bool fixKeywordsWhenLocking = true;
         public bool saveAfterLockUnlock = true;
+        public bool sectionLockWhileEditing = false;
 
         // Size ceiling for Assets/_LockedShaderCache. Once exceeded, locked shaders that no material
         // references any more are deleted least-recently-used first. 0 disables trimming.

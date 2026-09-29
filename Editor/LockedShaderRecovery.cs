@@ -64,15 +64,26 @@ namespace Thry.ThryEditor
         #region Recovery
 
         // <summary>
-        /// Unlocks every orphaned material in the given set. Returns how many were put back.
+        /// Unlocks every orphaned material in the given set, and puts the original shader back on any that lost
+        /// their section shader. Returns how many were put back.
         /// Materials whose original shader is also missing are reported rather than touched - there is
         /// nothing to put them back to, and guessing would be worse than saying so.
         /// </summary>
         public static int Recover(IEnumerable<Material> materials, bool showProgress = false)
         {
+            // A material saved while on a section shader lost its shader without ever being locked. It only needs
+            // the original back. Repairing the root also fixes its variants, whose shader can't be set directly.
+            int repaired = 0;
+            List<Material> remaining = new List<Material>();
+            foreach (Material m in materials)
+            {
+                if (SectionLock.RepairIfBroken(m.GetRoot())) repaired++;
+                else remaining.Add(m);
+            }
+
             List<Material> recoverable;
             List<Material> unrecoverable;
-            Partition(materials, out recoverable, out unrecoverable);
+            Partition(remaining, out recoverable, out unrecoverable);
 
             foreach (Material m in unrecoverable)
             {
@@ -81,14 +92,14 @@ namespace Thry.ThryEditor
                     + "Install the required shaders and the material should recover on its own.");
             }
 
-            if (recoverable.Count == 0) return 0;
+            if (recoverable.Count == 0) return repaired;
 
             ThryLogger.Log($"{recoverable.Count} locked material{(recoverable.Count == 1 ? "" : "s")} had no shader - "
                 + $"most likely {LockedShaderCache.CacheRoot} was not carried across. Unlock it so they render normally again; "
                 + "lock them when you are ready and the cache will be rebuilt.");
             
             ShaderOptimizer.UnlockMaterials(recoverable, showProgress ? ShaderOptimizer.ProgressBar.Uncancellable : ShaderOptimizer.ProgressBar.None);
-            return recoverable.Count;
+            return repaired + recoverable.Count;
         }
 
         // Scans every material in the project. Only worth doing when something suggests a problem.
@@ -191,7 +202,7 @@ namespace Thry.ThryEditor
             EditorUtility.DisplayDialog("Recover Locked Materials",
                 recovered == 0
                     ? "No locked materials are missing their shader."
-                    : $"Unlocked {recovered} material{(recovered == 1 ? "" : "s")} whose locked shader was missing.\n\n"
+                    : $"Put the original shader back on {recovered} material{(recovered == 1 ? "" : "s")} whose shader was missing.\n\n"
                       + "They render normally again and can be locked whenever you are ready.",
                 "OK");
         }

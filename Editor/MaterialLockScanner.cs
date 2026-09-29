@@ -168,6 +168,10 @@ namespace Thry.ThryEditor
                     Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
                     if (m == null) continue;
 
+                    // Saved while on a section shader, so its file lost the shader. Putting the original back is
+                    // all it needs. Done on the root, since a variant's shader can't be set.
+                    SectionLock.RepairIfBroken(m.GetRoot());
+
                     MaterialLockEntry entry = Classify(m, path);
                     if (entry != null) entries.Add(entry);
                 }
@@ -201,6 +205,18 @@ namespace Thry.ThryEditor
 
             if (m.shader.IsBroken())
             {
+                // Lost its section shader and could not be repaired. It was never locked, so it counts as unlocked
+                // on the shader it was made from, which locking puts back first.
+                string sectionSource = m.GetTag(SectionLock.TAG_SECTION_SOURCE, false, string.Empty);
+                if (!string.IsNullOrEmpty(sectionSource))
+                {
+                    Shader source = ResolveShaderByGuid(sectionSource);
+                    if (source == null || !ShaderOptimizer.IsShaderUsingThryOptimizer(source)) return null;
+                    entry.State = MaterialLockState.Unlocked;
+                    entry.Shader = source;
+                    return entry;
+                }
+
                 Shader original = ResolveOriginalShader(m, out entry.RecordedShaderName);
 
                 // The original shader tag sometimes points at an unrelated Unity shader, so a resolved
@@ -217,17 +233,22 @@ namespace Thry.ThryEditor
                 return entry;
             }
 
-            if (ShaderOptimizer.IsShaderLocked(m.shader))
+            // A section-locked material is unlocked on its original. Null when that original was deleted, which
+            // leaves nothing to lock or unlock it to.
+            Shader shader = SectionLock.GetSourceShader(m.shader);
+            if (shader == null) return null;
+
+            if (ShaderOptimizer.IsShaderLocked(shader))
             {
                 entry.State = MaterialLockState.Locked;
                 entry.Shader = ResolveOriginalShader(m, out entry.RecordedShaderName);
                 return entry;
             }
 
-            if (ShaderOptimizer.IsShaderUsingThryOptimizer(m.shader))
+            if (ShaderOptimizer.IsShaderUsingThryOptimizer(shader))
             {
                 entry.State = MaterialLockState.Unlocked;
-                entry.Shader = m.shader;
+                entry.Shader = shader;
                 return entry;
             }
 
@@ -247,18 +268,8 @@ namespace Thry.ThryEditor
         {
             recordedName = m.GetTag(ShaderOptimizer.TAG_ORIGINAL_SHADER, false, string.Empty);
 
-            string guid = m.GetTag(ShaderOptimizer.TAG_ORIGINAL_SHADER_GUID, false, string.Empty);
-            if (!string.IsNullOrEmpty(guid))
-            {
-                Shader byGuid;
-                if (!s_shaderByGuid.TryGetValue(guid, out byGuid))
-                {
-                    string shaderPath = AssetDatabase.GUIDToAssetPath(guid);
-                    byGuid = string.IsNullOrEmpty(shaderPath) ? null : AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
-                    s_shaderByGuid[guid] = byGuid;
-                }
-                if (byGuid != null) return byGuid;
-            }
+            Shader byGuid = ResolveShaderByGuid(m.GetTag(ShaderOptimizer.TAG_ORIGINAL_SHADER_GUID, false, string.Empty));
+            if (byGuid != null) return byGuid;
 
             if (string.IsNullOrEmpty(recordedName)) return null;
 
@@ -269,6 +280,20 @@ namespace Thry.ThryEditor
                 s_shaderByName[recordedName] = byName;
             }
             return byName;
+        }
+
+        static Shader ResolveShaderByGuid(string guid)
+        {
+            if (string.IsNullOrEmpty(guid)) return null;
+
+            Shader byGuid;
+            if (!s_shaderByGuid.TryGetValue(guid, out byGuid))
+            {
+                string shaderPath = AssetDatabase.GUIDToAssetPath(guid);
+                byGuid = string.IsNullOrEmpty(shaderPath) ? null : AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
+                s_shaderByGuid[guid] = byGuid;
+            }
+            return byGuid;
         }
 
         /// <summary>

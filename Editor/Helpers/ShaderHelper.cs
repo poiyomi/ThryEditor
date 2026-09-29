@@ -14,6 +14,7 @@ namespace Thry.ThryEditor.Helpers
         public static string[] GetDrawer(MaterialProperty property)
         {
             Shader shader = ((Material)property.targets[0]).shader;
+            shader = SectionLock.GetSourceShader(shader) ?? shader;
 
             if (!shader_property_drawers.ContainsKey(shader))
                 LoadShaderPropertyDrawers(shader);
@@ -26,7 +27,8 @@ namespace Thry.ThryEditor.Helpers
 
         public static void LoadShaderPropertyDrawers(Shader shader)
         {
-            string path = AssetDatabase.GetAssetPath(shader);
+            // A section shader has no file. Its Properties block is the original's.
+            string path = AssetDatabase.GetAssetPath(SectionLock.GetSourceShader(shader) ?? shader);
             string code = FileHelper.ReadFileIntoString(path);
             code = Helper.GetStringBetweenBracketsAndAfterId(code, "Properties", new char[] { '{', '}' });
             MatchCollection matchCollection = Regex.Matches(code, @"\[.*\].*(?=\()");

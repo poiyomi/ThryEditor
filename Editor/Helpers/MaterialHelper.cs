@@ -71,11 +71,22 @@ namespace Thry.ThryEditor.Helpers
             material.shader = newShader;
             material.renderQueue = previousQueue;
             ApplyOverrideTags(material, previousTags);
+            // The material has left any section shader it was on.
+            material.SetOverrideTag(SectionLock.TAG_SECTION_SOURCE, string.Empty);
+        }
+
+        /// <summary>
+        /// Whether the keyword is on for the material. Material.IsKeywordEnabled only knows the keywords the current
+        /// shader declares, and a section shader declares none of the material's own.
+        /// </summary>
+        public static bool IsKeywordOn(Material material, string keyword)
+        {
+            return material.IsKeywordEnabled(keyword) || Array.IndexOf(material.shaderKeywords, keyword) >= 0;
         }
 
         public static void ToggleKeyword(Material material, string keyword, bool turn_on)
         {
-            bool is_on = material.IsKeywordEnabled(keyword);
+            bool is_on = IsKeywordOn(material, keyword);
             if (is_on && !turn_on)
                 material.DisableKeyword(keyword);
             else if (!is_on && turn_on)
