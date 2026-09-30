@@ -405,7 +405,8 @@ namespace Thry.ThryEditor
             _pivotPoint = Vector3.zero;
             _pivotNormal = Vector3.zero;
 
-            Vector2 uv = _propPosition.vectorValue;
+            // The shader rotates and scales around position + side offset center, the same point Raycast places.
+            Vector2 uv = (Vector2)_propPosition.vectorValue + CenterOffset();
             Vector2 uvUp = uv + Vector2.up * 0.0001f;
             // uv position to world position using renderer mesh
             for(int i=0; i<_worldTriangles.Length;i++)
@@ -434,11 +435,16 @@ namespace Thry.ThryEditor
             }
         }
 
-        bool RaycastToClosestUV(Ray ray, ref Vector2 uv)
+        Vector2 CenterOffset()
         {
             Vector4 scaleOffset = _propOffset.vectorValue;
             scaleOffset = new Vector4(-scaleOffset.x, scaleOffset.y, -scaleOffset.z, scaleOffset.w);
-            Vector2 centerOffset = new Vector2((scaleOffset.x + scaleOffset.y)/2, (scaleOffset.z + scaleOffset.w)/2);
+            return new Vector2((scaleOffset.x + scaleOffset.y)/2, (scaleOffset.z + scaleOffset.w)/2);
+        }
+
+        bool RaycastToClosestUV(Ray ray, ref Vector2 uv)
+        {
+            Vector2 centerOffset = CenterOffset();
 
             float minDistance = float.MaxValue;
             for(int i=0; i<_worldTriangles.Length;i++)
