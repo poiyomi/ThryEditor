@@ -48,6 +48,7 @@ namespace Thry.ThryEditor
                 if (EditorGUI.EndChangeCheck() && newIndex != selectedIndex && newIndex < s_renderQueueValues.Length)
                 {
                     queue = s_renderQueueValues[newIndex];
+                    Undo.RecordObjects(MyShaderUI.Materials, "Change Render Queue");
                     foreach (Material m in MyShaderUI.Materials)
                         m.renderQueue = queue;
                 }
@@ -57,6 +58,7 @@ namespace Thry.ThryEditor
                 queue = EditorGUI.IntField(intRect, queue);
                 if (EditorGUI.EndChangeCheck())
                 {
+                    Undo.RecordObjects(MyShaderUI.Materials, "Change Render Queue");
                     foreach (Material m in MyShaderUI.Materials)
                         m.renderQueue = queue;
                 }
@@ -124,6 +126,7 @@ namespace Thry.ThryEditor
             EditorGUI.indentLevel = oldIndent;
             if (EditorGUI.EndChangeCheck())
             {
+                Undo.RecordObjects(MyShaderUI.Materials, "Change VRChat Fallback Shader");
                 foreach (Material m in MyShaderUI.Materials)
                 {
                     m.SetOverrideTag("VRCFallback", s_vRCFallbackOptionsValues[selected]);
@@ -192,6 +195,7 @@ namespace Thry.ThryEditor
             bool enabled = EditorGUI.Toggle(r, new GUIContent("Enable GPU Instancing"), MyShaderUI.Materials[0].enableInstancing);
             if (EditorGUI.EndChangeCheck())
             {
+                Undo.RecordObjects(MyShaderUI.Materials, "Change GPU Instancing");
                 foreach (Material m in MyShaderUI.Materials)
                     m.enableInstancing = enabled;
             }
@@ -271,6 +275,7 @@ namespace Thry.ThryEditor
 
             // Apply flags. But only the part that this tool modifies (RealtimeEmissive, BakedEmissive, None)
             bool applyFlags = EditorGUI.EndChangeCheck();
+            if (applyFlags) Undo.RecordObjects(MyShaderUI.Materials, "Change Global Illumination");
             foreach (Material mat in MyShaderUI.Materials)
             {
                 mat.globalIlluminationFlags = applyFlags ? giFlags : mat.globalIlluminationFlags;
