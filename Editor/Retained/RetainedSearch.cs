@@ -384,7 +384,7 @@ namespace Thry.ThryEditor
         {
             var words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (words.Length == 0) return;
-            // Rich-text tags are matched first and kept as they are, so a word like "size" doesn't highlight inside <size=13>.
+            // Tags match first and are kept, so words never highlight inside them.
             string pattern = "(" + RichTextTag + ")|" + string.Join("|", words.OrderByDescending(w => w.Length).Select(System.Text.RegularExpressions.Regex.Escape));
             foreach (var label in wrapper.Query<Label>(className: "thry-property-label").ToList())
             {
@@ -539,7 +539,6 @@ namespace Thry.ThryEditor
             return true;
         }
         const string RichTextTag = @"</?[A-Za-z][^<>]*>";
-        // Captions can carry rich-text tags such as <size=13><b>, which aren't visible text and shouldn't match.
         static string Clean(string text) => System.Text.RegularExpressions.Regex.Replace(text ?? "", RichTextTag, "").Trim().TrimEnd('*').Split('|')[0];
         static bool HasChanged(ShaderProperty property, ShaderEditor shader, HashSet<ShaderProperty> visited = null)
         {

@@ -41,8 +41,7 @@ namespace Thry.ThryEditor.Drawers
             public RetainedChannelState[] inputs;
             public string session;
         }
-        // JsonUtility stores object references as instance IDs, which point at unrelated
-        // objects after a restart. States from another editor session resolve by GUID only.
+        // Instance IDs in the saved JSON are stale after a restart.
         static string RetainedPreviewSession
         {
             get

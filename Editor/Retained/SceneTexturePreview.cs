@@ -61,7 +61,7 @@ namespace Thry.ThryEditor
             return material.HasProperty(uv) ? Mathf.RoundToInt(material.GetFloat(uv)) : 0;
         }
 
-        // Module instances put their index after the suffix: _FlipbookMask1 uses _FlipbookMaskUV1 and _FlipbookMaskPan1.
+        // _FlipbookMask1 uses _FlipbookMaskUV1, not _FlipbookMask1UV.
         static string Related(Material material, string property, string suffix)
         {
             string name = property + suffix;
@@ -275,8 +275,7 @@ namespace Thry.ThryEditor
             foreach (var renderer in Renderers)
             {
                 if (renderer == null) continue;
-                // This runs every Scene view frame over the whole scene, and most renderers don't use a previewed
-                // material, so that is checked first and without allocating a material array.
+                // Hot path: check materials first, without allocating.
                 renderer.GetSharedMaterials(SharedMaterials);
                 bool previewed = false;
                 foreach (var material in SharedMaterials)

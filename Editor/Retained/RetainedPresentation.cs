@@ -76,7 +76,6 @@ namespace Thry.ThryEditor
                             label.style.marginTop = Mathf.Max(0, property.Options.margin_top);
                             label.style.marginBottom = Mathf.Max(0, property.Options.margin_bottom);
                         }
-                        // Shaders use this for "click for more info" links, like the Helpbox above
                         if (property.Options.onClick != null)
                         {
                             label.focusable = true;

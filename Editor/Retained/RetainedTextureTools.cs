@@ -255,8 +255,7 @@ namespace Thry.ThryEditor.Drawers
                         remapInput.AddToClassList("thry-components");
                     }
                     var remap = new FloatField(component % 2 == 0 ? Text("packer_remap_min", "Min") : Text("packer_remap_max", "Max")) {
-                        // Every change packs a preview that Undo keeps alive, so commit on Enter,
-                        // focus loss or the end of a label drag instead of every step.
+                        // Delayed: each change packs a preview that Undo keeps alive.
                         name = "packer-remap-" + remapKeys[component] + "-" + channelIndex, isDelayed = true,
                         tooltip = Text("packer_remap_" + remapKeys[component] + "_hint", remapHints[component])
                     };
@@ -283,7 +282,7 @@ namespace Thry.ThryEditor.Drawers
                 fields.Model.Shader.ActivateRetained();
                 if (!fields.Model.CanEdit(property)) return;
                 var studio = TexturePacker.NodeGUI.Open(RetainedStudioConfig());
-                // The studio packs right before it saves, so this holds the configuration of the saved texture.
+                // Set by the pack that runs right before each save.
                 TexturePacker.TexturePackerConfig studioConfig = null;
                 studio.OnChange += (packed, config) => studioConfig = config;
                 // Preview stays in the studio; only a saved asset is assigned to the material.
@@ -298,8 +297,7 @@ namespace Thry.ThryEditor.Drawers
                         if (material == null) return;
                         Undo.RegisterCompleteObjectUndo(material, "Save texture channels");
                         p.textureValue = texture;
-                        // The channel inputs must describe the assigned texture, or the next inline edit repacks
-                        // from the old inputs and silently replaces the studio result.
+                        // Inputs must match the texture, or the next inline edit repacks over it.
                         if (inputs != null)
                         {
                             for (int i = 0; i < inputs.Length; i++) SaveRetainedChannel(material, i, inputs[i]);
@@ -320,11 +318,9 @@ namespace Thry.ThryEditor.Drawers
             return root;
         }
 
-        // Never equals an input signature, so the channel inputs show as not matching the saved texture.
+        // Never matches an input signature.
         const string StudioOnlyInputs = "texture-studio";
 
-        // Reads the studio's routing back into the channel inputs. Returns null when the studio uses something the
-        // inputs can't hold: several sources on one channel, combine modes, adjustments, filters, color or gradient sources.
         InlinePackerChannelConfig[] RetainedInputsFromStudio(TexturePacker.TexturePackerConfig config)
         {
             if (config?.Sources == null || config.Targets == null || config.Targets.Length != 4 || config.Connections == null) return null;
@@ -354,7 +350,7 @@ namespace Thry.ThryEditor.Drawers
                 outputs[output] = CopyChannel(input);
             }
             if (!_firstTextureIsRGB) return outputs;
-            // One RGB input fills the first three outputs from its R, G and B channels, and the second input fills alpha.
+            // RGB mode: one input feeds RGB, the second feeds alpha.
             for (int output = 0; output < 3; output++)
             {
                 var channel = outputs[output];

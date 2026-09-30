@@ -23,7 +23,6 @@ namespace Thry.ThryEditor
     internal sealed partial class RetainedFields
     {
         // ThryMaskLevels(channels), (channels, invert) or (channels, optionalChannels, toggle).
-        // Optional channels only have levels while the toggle property is on. At least one channel stays required.
         void MaskLevels(VisualElement parent, ShaderProperty texture, DrawerAttribute attribute)
         {
             var properties = new ShaderProperty[MaskLevelsData.Suffixes.Length];
@@ -65,15 +64,13 @@ namespace Thry.ThryEditor
         bool Applies(int c,int selected) => (shownChannels&(1<<c))!=0 && (selected<0||selected==c);
         static int Count(int channels) => Enumerable.Range(0,4).Count(c=>(channels&(1<<c))!=0);
         bool TabShown(int c) => c<0 ? Count(shownChannels)>1 : (shownChannels&(1<<c))!=0;
-        // Levels on an optional channel have no effect while its toggle is off, so they are neither shown nor baked.
         int ChannelsFor(Material material) => channelToggle==null || material.GetFloat(channelToggle.MaterialProperty.name)>0 ? activeChannels : activeChannels&~optionalChannels;
         public RetainedMaskLevels(RetainedMaterialModel model,ShaderProperty texture,ShaderProperty[] properties,int activeChannels,RetainedFields fields,int optionalChannels=0,ShaderProperty channelToggle=null)
         {
             this.model=model;textureProperty=texture;this.properties=properties;this.activeChannels=activeChannels;this.fields=fields;
             this.optionalChannels=optionalChannels;this.channelToggle=channelToggle;shownChannels=activeChannels;
             name="mask-levels-"+texture.MaterialProperty.name;
-            // Not a theme root of its own: the inspector root carries the skin, gray and height classes, and
-            // a nested root would re-declare the dark palette inside the light skin.
+            // Not a theme root; a nested one breaks the light skin.
             AddToClassList("poi-mask-levels");
             styleSheets.Add(Resources.Load<StyleSheet>("MaskLevels"));
             Array.Copy(MaskLevelsData.Defaults,values,9);

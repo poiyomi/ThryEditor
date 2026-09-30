@@ -142,7 +142,7 @@ namespace Thry.ThryEditor
         }
         internal VisualElement Field(ShaderProperty property, bool inline = false)
         {
-            // Must run before the material property or its attributes are read, since those are what it rejects
+            // Must run before the property or its attributes are read.
             if (!CanRenderProperty(property))
             {
                 var hidden = new VisualElement { name = "property-" + property?.MaterialProperty?.name, userData = property };

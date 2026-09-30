@@ -105,7 +105,7 @@ namespace Thry.ThryEditor
             }
         }
 
-        // Color slots are marked [sRGBWarning(true)]; everything else is mask data.
+        // Color slots are marked [sRGBWarning(true)].
         static bool ExpectsSrgb(Shader shader, string property)
         {
             int index = shader.FindPropertyIndex(property);
@@ -135,8 +135,6 @@ namespace Thry.ThryEditor
                 bool decodeSrgb = decoded != original && originalImporter.sRGBTexture && QualitySettings.activeColorSpace == ColorSpace.Linear;
                 // HDR sources need an HDR output even when untouched channels carry the range.
                 bool hdr = original.graphicsFormat.ToString().Contains("SFloat") || original.graphicsFormat.ToString().Contains("UFloat");
-                // An sRGB color texture stays sRGB. Its adjusted colors are linear here, so they are encoded back to
-                // sRGB, which keeps dark tones precise and leaves untouched colors as they were.
                 bool keepSrgb = colorSlot && !hdr && originalImporter.sRGBTexture;
                 bool encodeSrgb = keepSrgb && QualitySettings.activeColorSpace == ColorSpace.Linear;
                 var image = Render(decoded, recipe.stages, decodeSrgb, hdr, encodeSrgb);
@@ -159,7 +157,6 @@ namespace Thry.ThryEditor
                         importer.alphaIsTransparency = false;
                         importer.alphaSource = TextureImporterAlphaSource.FromInput;
                         importer.npotScale = TextureImporterNPOTScale.None;
-                        // The bake reads the full-resolution file, so keep the source's Max Size cap.
                         importer.maxTextureSize = Mathf.Min(sourceImporter.maxTextureSize, Mathf.Clamp(Mathf.NextPowerOfTwo(Mathf.Max(image.width, image.height)), 32, 16384));
                         importer.filterMode = sourceImporter.filterMode;
                         importer.wrapModeU = sourceImporter.wrapModeU;
@@ -187,7 +184,6 @@ namespace Thry.ThryEditor
                             importer.compressionQuality = sourceImporter.compressionQuality;
                             importer.crunchedCompression = !hdr && sourceImporter.crunchedCompression;
                         }
-                        // Keep per-platform overrides, such as a smaller size or another format for Android.
                         foreach (string platformName in OverridePlatforms)
                         {
                             var platformSettings = sourceImporter.GetPlatformTextureSettings(platformName);
@@ -265,7 +261,7 @@ namespace Thry.ThryEditor
             }
         }
 
-        // Float linear RGBA to 8-bit sRGB RGB. Alpha is not color and stays linear.
+        // Alpha stays linear.
         static Texture2D EncodeSrgb(Texture2D linear)
         {
             var encoded = new Texture2D(linear.width, linear.height, TextureFormat.RGBA32, false, true);

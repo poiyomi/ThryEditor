@@ -67,7 +67,7 @@ namespace Thry.ThryEditor
             menu._scroll.contentContainer.Focus();
             menu.schedule.Execute(() => { if (!menu._closed && menu._selected >= 0) menu._scroll.ScrollTo(menu._rows[menu._selected]); });
         }
-        // Mirrors --thry-menu-item-height in ThryTheme.uss, which follows the same appearance RetainedAppearance applies.
+        // Mirrors --thry-menu-item-height in ThryTheme.uss.
         static int RowHeight => Mathf.Clamp(InspectorAppearancePreferences.Shared.Get(Config.Instance).inspectorPropertyHeight, 18, 22) + 4;
         static bool Enabled(Item item) => !item.Separator && (item.Action != null || item.Children != null);
         internal static Item[] BuildHierarchy(IEnumerable<Item> source)

@@ -99,8 +99,7 @@ namespace Thry.ThryEditor
                     weightedMode = ((key.weightedMode & WeightedMode.In) != 0 ? WeightedMode.Out : WeightedMode.None)
                         | ((key.weightedMode & WeightedMode.Out) != 0 ? WeightedMode.In : WeightedMode.None)
                 };
-                // A stepped segment holds its left key's value. Mirrored it has to hold the new right key's value,
-                // which a curve can't express, so step to that value just after the left key and hold it from there.
+                // A mirrored step must hold the right key's value; fake it with an extra key.
                 if (i < original.Length - 1 && (float.IsInfinity(key.outTangent) || float.IsInfinity(original[i + 1].inTangent))
                     && mirrored.time - keys[keys.Count - 1].time > Separation * 2)
                 {

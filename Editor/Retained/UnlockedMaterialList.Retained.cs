@@ -42,7 +42,7 @@ namespace Thry.ThryEditor
             RefreshRetainedList();
         }
 
-        // Polled from Update, because asset changes bump the database version without queuing any work.
+        // Polled from Update; asset changes queue no refresh.
         void UpdateRetainedNotice()
         {
             if (_retainedNotice == null) return;

@@ -207,7 +207,6 @@ namespace Thry.ThryEditor
                 bool isVideo = data == group.Options.button_video;
                 var resource = HeaderAction(resourceIcons[i], data.hover, () =>
                 {
-                    // Like the IMGUI header, tutorials play in the editor's video window rather than a browser.
                     if (isVideo) { if (!string.IsNullOrEmpty(data.action?.data)) VideoPlayerWindow.OpenUrl(data.action.data, data.text ?? "Video Tutorial"); }
                     else data.action?.Perform(Model.Shader.Materials);
                 });
