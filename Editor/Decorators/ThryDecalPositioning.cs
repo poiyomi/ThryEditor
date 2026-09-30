@@ -23,17 +23,34 @@ namespace Thry.ThryEditor.Decorators
             _scalePropertyName = scaleProp;
         }
 
-        void CreateSceneTool()
+        bool CreateSceneTool()
         {
             DiscardSceneTool();
-            _sceneTool = DecalSceneTool.Create(
-                Selection.activeTransform.GetComponent<Renderer>(),
-                ShaderEditor.Active.Materials[0],
-                (int)ShaderEditor.Active.PropertyDictionary[_uvIndexPropertyName].MaterialProperty.GetNumber(),
-                ShaderEditor.Active.PropertyDictionary[_positionPropertyName].MaterialProperty,
-                ShaderEditor.Active.PropertyDictionary[_rotationPropertyName].MaterialProperty,
-                ShaderEditor.Active.PropertyDictionary[_scalePropertyName].MaterialProperty,
-                ShaderEditor.Active.PropertyDictionary[_offsetPropertyName].MaterialProperty);
+            try
+            {
+                _sceneTool = DecalSceneTool.Create(
+                    SelectedRenderer(),
+                    ShaderEditor.Active.Materials[0],
+                    (int)ShaderEditor.Active.PropertyDictionary[_uvIndexPropertyName].MaterialProperty.GetNumber(),
+                    ShaderEditor.Active.PropertyDictionary[_positionPropertyName].MaterialProperty,
+                    ShaderEditor.Active.PropertyDictionary[_rotationPropertyName].MaterialProperty,
+                    ShaderEditor.Active.PropertyDictionary[_scalePropertyName].MaterialProperty,
+                    ShaderEditor.Active.PropertyDictionary[_offsetPropertyName].MaterialProperty);
+                return true;
+            }
+            catch (System.InvalidOperationException e)
+            {
+                EditorWindow.focusedWindow?.ShowNotification(new GUIContent(e.Message));
+                return false;
+            }
+        }
+
+        // Only a mesh renderer that draws this material has UVs the tool can place the decal on.
+        static Renderer SelectedRenderer()
+        {
+            var renderer = Selection.activeTransform != null ? Selection.activeTransform.GetComponent<Renderer>() : null;
+            if (!(renderer is MeshRenderer || renderer is SkinnedMeshRenderer)) return null;
+            return System.Array.IndexOf(renderer.sharedMaterials, ShaderEditor.Active.Materials[0]) >= 0 ? renderer : null;
         }
 
         void DiscardSceneTool(bool discardChanges = false)
@@ -62,7 +79,7 @@ namespace Thry.ThryEditor.Decorators
                         EditorApplication.delayCall += () => { if (material != null) DecalBakeBridge.Bake(material, _texturePropertyName); };
                     }
             }
-            bool isInScene = Selection.activeTransform != null && Selection.activeTransform.GetComponent<Renderer>() != null;
+            bool isInScene = SelectedRenderer() != null;
             if (isInScene)
             {
                 position.width /= 2;
@@ -90,9 +107,8 @@ namespace Thry.ThryEditor.Decorators
                 {
                     DiscardSceneTool(true);
                 }
-                else
+                else if (CreateSceneTool())
                 {
-                    CreateSceneTool();
                     _sceneTool.StartRaycastMode();
                 }
             }
@@ -108,9 +124,8 @@ namespace Thry.ThryEditor.Decorators
                 {
                     DiscardSceneTool();
                 }
-                else
+                else if (CreateSceneTool())
                 {
-                    CreateSceneTool();
                     _sceneTool.StartHandleMode();
                 }
             }

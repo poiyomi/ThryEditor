@@ -158,6 +158,7 @@ namespace Thry.ThryEditor
 
         void Init()
         {
+            if (_uvIndex < 0 || _uvIndex > 3) throw new System.InvalidOperationException("Scene tools require mesh UV0–UV3; procedural coordinates are not supported.");
             GetMesh();
 
             if (_mesh == null) throw new System.InvalidOperationException("The renderer has no mesh for decal positioning.");
@@ -523,9 +524,10 @@ namespace Thry.ThryEditor
             }
             if(_renderer is MeshRenderer)
             {
-                _mesh = _renderer.GetComponent<MeshFilter>().sharedMesh;
+                var filter = _renderer.GetComponent<MeshFilter>();
+                _mesh = filter != null ? filter.sharedMesh : null;
             }
-            else if(_renderer is SkinnedMeshRenderer)
+            else if(_renderer is SkinnedMeshRenderer skinned && skinned.sharedMesh != null)
             {
                 _mesh = new Mesh();
                 _ownsMesh = true;
