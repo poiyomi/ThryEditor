@@ -31,6 +31,15 @@ Shader "Hidden/Thry/SceneTextureInspection"
                 return (_ThryInspectTimeSource == 1 && _VRChatTimeNetworkMs != 0)
                     ? ((_VRChatTimeNetworkMs << 6) >> 6) * float4(.00005, .001, .002, .003) : _Time;
             }
+            // Same conversion as the texture card so the decoded normal displays as n * .5 + .5.
+            float3 InspectionNormal(float4 texel)
+            {
+                float3 c = UnpackNormal(texel) * .5 + .5;
+                #ifndef UNITY_COLORSPACE_GAMMA
+                c = GammaToLinearSpace(c);
+                #endif
+                return c;
+            }
             struct Input
             {
                 float4 vertex : POSITION;
@@ -66,12 +75,12 @@ Shader "Hidden/Thry/SceneTextureInspection"
                 else sample = _ThryInspectTex.Sample(sampler_ThryInspectTex, uv);
                 // Match the texture-card RGB, RGBA, and individual channel previews.
                 if (_ThryInspectChannel > 4.5)
-                    return _ThryInspectNormal > .5 ? float4(UnpackNormal(sample) * .5 + .5, 1) : sample;
+                    return _ThryInspectNormal > .5 ? float4(InspectionNormal(sample), 1) : sample;
                 if (_ThryInspectChannel > 3.5) return float4(sample.aaa, 1);
                 if (_ThryInspectChannel > 2.5) return float4(0, 0, sample.b, 1);
                 if (_ThryInspectChannel > 1.5) return float4(0, sample.g, 0, 1);
                 if (_ThryInspectChannel > .5) return float4(sample.r, 0, 0, 1);
-                return float4(_ThryInspectNormal > .5 ? UnpackNormal(sample) * .5 + .5 : sample.rgb, 1);
+                return float4(_ThryInspectNormal > .5 ? InspectionNormal(sample) : sample.rgb, 1);
             }
             ENDCG
         }
