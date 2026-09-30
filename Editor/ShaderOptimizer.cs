@@ -2257,7 +2257,7 @@ namespace Thry.ThryEditor
                 }
                 else if (lineParsed.StartsWith("/*", StringComparison.OrdinalIgnoreCase))
                 {
-                    isCommentedOut = true;
+                    isCommentedOut = !BlockCommentClosesOnLine(lineParsed);
                     continue;
                 }
                 if (isCommentedOut) continue;
@@ -2419,6 +2419,13 @@ namespace Thry.ThryEditor
             return true;
         }
 
+        // A line starting with "/*" only comments out the lines after it if the comment is still open at its end.
+        static bool BlockCommentClosesOnLine(string line)
+        {
+            int close = line.LastIndexOf("*/", StringComparison.Ordinal);
+            return close >= 2 && line.LastIndexOf("/*", StringComparison.Ordinal) < close;
+        }
+
         // error CS1501: No overload for method 'Path.GetFullPath' takes 2 arguments
         // Thanks Unity
         // Could be made more efficent with stringbuilder
@@ -2538,7 +2545,7 @@ namespace Thry.ThryEditor
                 }
                 else if (lineParsed.StartsWith("/*", StringComparison.OrdinalIgnoreCase))
                 {
-                    isCommentedOut = true;
+                    isCommentedOut = !BlockCommentClosesOnLine(lineParsed);
                     continue;
                 }
                 if (isCommentedOut) continue;
