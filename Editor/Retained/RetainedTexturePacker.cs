@@ -39,6 +39,18 @@ namespace Thry.ThryEditor.Drawers
             public string originGuid;
             public long originLocalId;
             public RetainedChannelState[] inputs;
+            public string session;
+        }
+        // JsonUtility stores object references as instance IDs, which point at unrelated
+        // objects after a restart. States from another editor session resolve by GUID only.
+        static string RetainedPreviewSession
+        {
+            get
+            {
+                string session = SessionState.GetString("ThryRetainedPreviewSession", "");
+                if (string.IsNullOrEmpty(session)) SessionState.SetString("ThryRetainedPreviewSession", session = Guid.NewGuid().ToString("N"));
+                return session;
+            }
         }
         [Serializable] sealed class RetainedChannelState
         {
@@ -57,6 +69,11 @@ namespace Thry.ThryEditor.Drawers
             try { state = JsonUtility.FromJson<RetainedPreviewState>(json); }
             catch (ArgumentException) { return null; }
             if (state?.inputs == null || state.inputs.Length != 4 || state.inputs.Any(input => input == null)) return null;
+            if (state.session != RetainedPreviewSession)
+            {
+                state.texture = null; state.origin = null;
+                foreach (var input in state.inputs) if (input.source != null) input.source.ImageTexture = null;
+            }
             var current = material.GetTexture(_retainedProperty.MaterialProperty.name);
             if (current != null && (AssetDatabase.Contains(current) || (state.texture != current && state.previewName != current.name))) return null;
             return state;
@@ -115,7 +132,7 @@ namespace Thry.ThryEditor.Drawers
             material.SetOverrideTag(PreviewStateTag, JsonUtility.ToJson(new RetainedPreviewState
             {
                 texture = texture, previewName = texture.name, previewOnly = true, origin = origin,
-                originGuid = originGuid, originLocalId = originLocalId,
+                originGuid = originGuid, originLocalId = originLocalId, session = RetainedPreviewSession,
                 inputs = inputs.Select(CopyChannel).Select(input => new RetainedChannelState { source = input.Source, channel = input.Channel,
                     invert = input.Invert, fallback = input.Fallback, remapping = input.Remapping }).ToArray()
             }));
