@@ -90,8 +90,8 @@ namespace Thry.ThryEditor.Drawers
                         propertyX -= 30;
                         foreach (string pName in DrawingData.CurrentTextureProperty.Options.reference_properties)
                         {
-                            ShaderProperty property = ShaderEditor.Active.PropertyDictionary[pName];
-                            if (property != null)
+                            // Locked shaders leave out properties of disabled features
+                            if (ShaderEditor.Active.PropertyDictionary.TryGetValue(pName, out ShaderProperty property) && property != null)
                             {
                                 r = GUILayoutUtility.GetRect(propertyWidth, editor.GetPropertyHeight(property.MaterialProperty, property.Content.text) + 3);
                                 r.x = propertyX;
