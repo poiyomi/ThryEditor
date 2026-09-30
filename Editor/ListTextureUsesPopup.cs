@@ -14,6 +14,7 @@ namespace Thry.ThryEditor
         private List<(Material material, string propertyName)> _textureUses;
         private Material _selectedMaterial;
         private string _selectedPropertyName;
+        private IVisualElementScheduledItem _searchHandOff;
 
         public static void ShowWindow(Texture texture, List<(Material material, string propertyName)> textureUses)
         {
@@ -21,70 +22,6 @@ namespace Thry.ThryEditor
             window._texture = texture;
             window._textureUses = textureUses;
             window.CreateGUI();
-        }
-
-        private void OnGUI()
-        {
-            if (rootVisualElement.childCount > 0) return;
-            if (_texture == null)
-            {
-                GUILayout.Label("No texture selected", EditorStyles.boldLabel);
-                return;
-            }
-            GUILayout.Label(_texture, GUILayout.Width(100), GUILayout.Height(100));
-            if (Event.current.type == EventType.MouseDown && GUILayoutUtility.GetLastRect().Contains(Event.current.mousePosition))
-            {
-                EditorGUIUtility.PingObject(_texture);
-            }
-            if(Event.current.type == EventType.DragPerform)
-            {
-                if(DragAndDrop.objectReferences.Length == 1 && DragAndDrop.objectReferences[0] is Texture)
-                {
-                    DragAndDrop.AcceptDrag();
-                    _texture = DragAndDrop.objectReferences[0] as Texture;
-                    FindReferencesAndOpenEditor(_texture);
-                }
-            }
-            // Make drag accept mouse icon
-            if (Event.current.type == EventType.DragPerform || Event.current.type == EventType.DragUpdated)
-            {
-                DragAndDrop.visualMode = DragAndDropVisualMode.Generic;
-            }
-            
-            GUILayout.Space(10);
-            GUILayout.Label("Texture Uses:", EditorStyles.boldLabel);
-            if(_textureUses.Count == 0)
-            {
-                GUILayout.Label("No uses found");
-            }
-            else
-            {
-                float width = EditorGUIUtility.currentViewWidth / 2;
-                foreach((Material material, string propertyName) in _textureUses)
-                {
-                    GUILayout.BeginHorizontal();
-                    // Material preview
-                    
-                    if(GUILayout.Button(material.name, GUILayout.Width(width)))
-                    {
-                        EditorGUIUtility.PingObject(material);
-                    }
-                    if(GUILayout.Button(propertyName, GUILayout.Width(width)))
-                    {
-                        _selectedMaterial = material;
-                        _selectedPropertyName = propertyName;
-                        Selection.activeObject = material;
-                    }
-                    GUILayout.EndHorizontal();
-                }
-            }
-
-            if(ShaderEditor.Active?.Materials[0] == _selectedMaterial && _selectedPropertyName != null)
-            {
-                ShaderEditor.Active?.SetSearchTerm(_selectedPropertyName);
-                _selectedMaterial = null;
-                _selectedPropertyName = null;
-            }
         }
 
         public void CreateGUI()
@@ -102,7 +39,8 @@ namespace Thry.ThryEditor
                 var property = new Button(() => { _selectedMaterial = use.material; _selectedPropertyName = use.propertyName; Selection.activeObject = use.material; }) { text = ObjectNames.NicifyVariableName(use.propertyName.TrimStart('_')) }; property.style.flexGrow = 1; row.Add(property);
                 search.RegisterValueChangedCallback(e => row.style.display = (use.material.name + use.propertyName).IndexOf(e.newValue, StringComparison.OrdinalIgnoreCase) >= 0 ? DisplayStyle.Flex : DisplayStyle.None);
             }
-            root.schedule.Execute(() =>
+            // CreateGUI runs again for every new texture; Clear does not cancel scheduled items, so register the hand-off once.
+            if (_searchHandOff == null) _searchHandOff = root.schedule.Execute(() =>
             {
                 if (ShaderEditor.Active == null || _selectedMaterial == null || ShaderEditor.Active.Materials[0] != _selectedMaterial) return;
                 ShaderEditor.Active.SetSearchTerm(_selectedPropertyName); _selectedMaterial = null; _selectedPropertyName = null;
