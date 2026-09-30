@@ -907,8 +907,8 @@ namespace Thry.ThryEditor
                         var ownSource = ownShader != null && ownShader != editor.Shader ? new Material(preset) : null;
                         try
                         {
-                            MaterialHelper.SwapShaderPreservingSettings(source, editor.Shader);
-                            if (ownSource != null) MaterialHelper.SwapShaderPreservingSettings(ownSource, ownShader);
+                            SwapCloneShader(source, editor.Shader);
+                            if (ownSource != null) SwapCloneShader(ownSource, ownShader);
                             foreach (var property in properties)
                             {
                                 var name = property.MaterialProperty?.name;
@@ -948,6 +948,16 @@ namespace Thry.ThryEditor
             }
             return changes;
         }
+
+        // Assigning a shader runs every property drawer, which is slow on Poiyomi. Preset clones are only read from,
+        // and drawers only set keywords that the copy derives from values anyway, so they are skipped.
+        static void SwapCloneShader(Material clone, Shader shader)
+        {
+            ShaderOptimizer.DetourApplyMaterialPropertyDrawers();
+            try { MaterialHelper.SwapShaderPreservingSettings(clone, shader); }
+            finally { ShaderOptimizer.RestoreApplyMaterialPropertyDrawers(); }
+        }
+
         static string AnimationCaption(string tag) => tag == "2" ? "RA" : tag == "1" ? "A" : "Off";
         static string PreviewValue(object value)
         {
@@ -984,7 +994,7 @@ namespace Thry.ThryEditor
                 // Assigning a shader resets the render queue to the shader's default and drops the material's own
                 // override tags, so a preset storing a Render Queue or VRC Fallback would hand those defaults to the
                 // target instead of the values it recorded. Swap through the helper that carries both across.
-                MaterialHelper.SwapShaderPreservingSettings(source, shaderEditor.Shader);
+                SwapCloneShader(source, shaderEditor.Shader);
                 // If values were meant to be copied straight from the preset, read them from the clone instead.
                 bool fromPreset = copyFrom == preset;
                 if (fromPreset) copyFrom = source;
@@ -1053,7 +1063,7 @@ namespace Thry.ThryEditor
                 Material source = new Material(preset);
                 try
                 {
-                    MaterialHelper.SwapShaderPreservingSettings(source, shader);
+                    SwapCloneShader(source, shader);
                     foreach (ShaderProperty property in missing.Where(p => source.HasProperty(p.MaterialProperty.name)).ToList())
                     {
                         property.CopyFrom(source, applyDrawers: false, deepCopy: false, copyReferenceProperties: false, skipPropertyNames: animationOnly);
