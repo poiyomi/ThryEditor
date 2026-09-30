@@ -112,7 +112,6 @@ namespace Thry.ThryEditor
 
         void BuildPresetBrowser()
         {
-            _retainedStaging = true;
             _browserWatch?.Pause();
             var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
             root.AddToClassList("thry-dialog"); root.AddToClassList("thry-preset-browser");
@@ -129,7 +128,7 @@ namespace Thry.ThryEditor
                     position = new Rect(center.x - 310, center.y - 220, 620, 440);
                 });
             }
-            if (mainStruct == null || shaderEditor == null)
+            if (shaderEditor == null)
             {
                 root.Add(BrowserLabel(PresetText("preset_reopen", "Reopen Presets from the material inspector."), "thry-preset-muted"));
                 root.Add(new Button(Close) { text = PresetText("close", "Close") }); return;

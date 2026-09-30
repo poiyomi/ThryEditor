@@ -1320,103 +1320,7 @@ namespace Thry.ThryEditor
 
     public partial class PresetsPopupGUI : EditorWindow
     {
-        class PresetStruct
-        {
-            Dictionary<string,PresetStruct> dict;
-            public List<PresetStruct> structure;
-            string name;
-            string fullName;
-            string guid;
-            bool hasPreset;
-            bool isOpen = false;
-            bool isOn;
-            public PresetStruct(string name)
-            {
-                this.name = name;
-                dict = new Dictionary<string, PresetStruct>();
-                structure = new List<PresetStruct>();
-            }
-
-            public PresetStruct GetSubStruct(string name)
-            {
-                name = name.Trim();
-                if (dict.ContainsKey(name) == false)
-                {
-                    dict.Add(name, new PresetStruct(name));
-                    structure.Add(dict[name]);
-                }
-                return dict[name];
-            }
-            public void AddPresetStruct(bool b, string name, string fullName, string guid)
-            {
-                PresetStruct s = new PresetStruct(name);
-                s.hasPreset = b;
-                s.fullName = fullName;
-                s.guid = guid;
-                if(!dict.ContainsKey(fullName))
-                {
-                    dict.Add(fullName, s);
-                }else
-                {
-                    PresetStruct dupl = dict[fullName];
-                    if(dupl.fullName.EndsWith(dupl.name))
-                        dupl.name = dupl.name + $" ({dupl.guid})";
-                    s.name = s.name + $" ({guid})";
-                }
-                structure.Add(s);
-            }
-            public void StructGUI(PresetsPopupGUI popupGUI)
-            {
-                if(hasPreset)
-                {
-                    EditorGUI.BeginChangeCheck();
-                    isOn = EditorGUILayout.ToggleLeft(name, isOn);
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        popupGUI.TogglePreset(Presets.GetPresetMaterial(guid), isOn);
-                    }
-                }
-                if(structure.Count > 0)
-                {
-                    Rect r = GUILayoutUtility.GetRect(new GUIContent(), Styles.flatHeader);
-                    r.x = GUILib.IndentToPixels(EditorGUI.indentLevel);
-                    r.width -= r.x;
-                    GUI.Box(r, name, Styles.flatHeader);
-                    if (Event.current.type == EventType.Repaint)
-                    {
-                        var toggleRect = new Rect(r.x + 4f, r.y + 2f, 13f, 13f);
-                        EditorStyles.foldout.Draw(toggleRect, false, false, isOpen, false);
-                    }
-                    if (Event.current.type == EventType.MouseDown && GUILayoutUtility.GetLastRect().Contains(Event.current.mousePosition))
-                    {
-                        isOpen = !isOpen;
-                        ShaderEditor.Input.Use();
-                    }
-                    if (isOpen)
-                    {
-                        using (new GUILib.IndentScope(1))
-                        {
-                            foreach (PresetStruct struc in structure)
-                            {
-                                struc.StructGUI(popupGUI);
-                            }
-                        }
-                    }
-                }
-                
-            }
-
-            public void Reset()
-            {
-                isOn = false;
-                foreach (PresetStruct struc in structure)
-                    struc.Reset();
-            }
-        }
-
-        Material[] beforePreset;
         List<Material> tickedPresets = new List<Material>();
-        PresetStruct mainStruct;
         ShaderEditor shaderEditor;
         string _collection;
         ShaderPart _parent;
@@ -1425,21 +1329,7 @@ namespace Thry.ThryEditor
             this.shaderEditor = shaderEditor;
             this._collection = collection;
             _parent = collection == "_full_" ? null : shaderEditor.CurrentProperty;
-            ShaderOptimizer.DetourApplyMaterialPropertyDrawers();
-            try { this.beforePreset = shaderEditor.Materials.Select(m => new Material(m)).ToArray(); }
-            finally { ShaderOptimizer.RestoreApplyMaterialPropertyDrawers(); }
-            mainStruct = new PresetStruct("");
             InitializeBrowser(names, guids);
-            for (int i = 0; i < names.Count; i++)
-            {
-                string[] path = names[i].Split('/');
-                PresetStruct addUnder = mainStruct;
-                for (int j=0;j<path.Length - 1; j++)
-                {
-                    addUnder = addUnder.GetSubStruct(path[j]);
-                }
-                addUnder.AddPresetStruct(Presets.DoesPresetExist(this._collection, names[i]), path[path.Length-1], names[i], guids[i]);
-            }
         }
 
         void TogglePreset(Material m, bool on)
@@ -1447,50 +1337,14 @@ namespace Thry.ThryEditor
             if (m == null) return;
             if (tickedPresets.Contains(m) && !on) tickedPresets.Remove(m);
             if (!tickedPresets.Contains(m) && on) tickedPresets.Add(m);
-            if (_retainedStaging) { UpdatePreview(); return; }
-            Presets.ApplyFullList(shaderEditor, beforePreset, tickedPresets, _parent);
-            shaderEditor.Repaint();
+            UpdatePreview();
         }
 
-        Vector2 scroll;
         bool _save;
-        void OnGUI()
-        {
-            if(rootVisualElement.childCount>0)return;
-            if (mainStruct == null) { this.Close(); return; }
-
-            GUILayout.BeginHorizontal();
-            scroll = GUILayout.BeginScrollView(scroll, GUILayout.Height(position.height - 55));
-
-            GUILayoutUtility.GetRect(10, 5);
-            TopStructGUI();
-
-            GUILayout.EndScrollView();
-            GUILayout.EndHorizontal();
-
-            if (GUI.Button(new Rect(5, this.position.height - 35, this.position.width / 2 - 5, 30), "Apply"))
-            {
-                _save = true;
-                this.Close();
-            }
-                
-            if (GUI.Button(new Rect(this.position.width / 2, this.position.height - 35, this.position.width / 2 - 5, 30), "Discard"))
-            {
-                Revert();
-            }
-        }
         private void OnDestroy()
         {
             _browserWatch?.Pause();
-            if (!_save && shaderEditor != null
-                && !_retainedStaging
-                )
-            {
-                Revert();
-            }
-            if(beforePreset!=null)foreach(var material in beforePreset)DestroyImmediate(material);
         }
-        bool _retainedStaging;
         void ApplyStaged()
         {
             if (_save || !CanApplyBrowser()) return;
@@ -1511,29 +1365,6 @@ namespace Thry.ThryEditor
         public void CreateGUI()
         {
             BuildPresetBrowser();
-        }
-
-        void TopStructGUI()
-        {
-            foreach (PresetStruct struc in mainStruct.structure)
-            {
-                struc.StructGUI(this);
-            }
-        }
-
-        void Revert()
-        {
-            EditorUtility.DisplayProgressBar("Reverting", "Reverting", 0);
-            for (int i = 0; i < shaderEditor.Materials.Length; i++)
-            {
-                EditorUtility.DisplayProgressBar("Reverting", "Reverting", (float)i / shaderEditor.Materials.Length);
-                shaderEditor.Materials[i].CopyPropertiesFromMaterial(beforePreset[i]);
-                MaterialEditor.ApplyMaterialPropertyDrawers(shaderEditor.Materials[i]);
-            }
-            EditorUtility.ClearProgressBar();
-            mainStruct.Reset();
-            tickedPresets.Clear();
-            shaderEditor.Reload(true);
         }
     }
 }
