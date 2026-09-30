@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
@@ -22,8 +23,11 @@ namespace Thry.ThryEditor.Drawers
         internal static GUIStyle PopupStyle;
         private readonly InspectorPopup _popup = new InspectorPopup();
 
+        // Unity builds a new drawer for every shader it draws, and scanning every loaded type each time is slow
+        private static readonly Dictionary<string, Type> s_enumTypes = new Dictionary<string, Type>();
+
         // internal Unity AssemblyHelper can't be accessed
-        private Type[] TypesFromAssembly(Assembly a)
+        private static Type[] TypesFromAssembly(Assembly a)
         {
             if (a == null)
                 return new Type[0];
@@ -36,15 +40,20 @@ namespace Thry.ThryEditor.Drawers
                 return new Type[0];
             }
         }
+        private static Type FindEnumType(string enumName)
+        {
+            if (s_enumTypes.TryGetValue(enumName, out Type cached)) return cached;
+            var enumType = AppDomain.CurrentDomain.GetAssemblies().SelectMany(TypesFromAssembly)
+                .FirstOrDefault(x => x.IsEnum && (x.Name == enumName || x.FullName == enumName));
+            if (enumType != null) s_enumTypes[enumName] = enumType;
+            return enumType;
+        }
+
         public ThryWideEnumDrawer(string enumName, int j)
         {
-            var types = AppDomain.CurrentDomain.GetAssemblies().SelectMany(
-                x => TypesFromAssembly(x)).ToArray();
             try
             {
-                var enumType = types.FirstOrDefault(
-                    x => x.IsEnum && (x.Name == enumName || x.FullName == enumName)
-                );
+                var enumType = FindEnumType(enumName);
                 var enumNames = Enum.GetNames(enumType);
                 names = new GUIContent[enumNames.Length];
                 for (int i = 0; i < enumNames.Length; ++i)
