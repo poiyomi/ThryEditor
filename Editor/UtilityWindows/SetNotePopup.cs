@@ -24,9 +24,18 @@ namespace Thry.ThryEditor
 
         void UpdateNoteAndClose()
         {
-            ShaderPart.Note = TextFieldContent;
+            if(ShaderPart != null)
+                ShaderPart.Note = TextFieldContent;
             Close();
         }
+
+        void OnGUI()
+        {
+            // The target part doesn't survive a domain reload
+            if(ShaderPart == null)
+                Close();
+        }
+
         public void CreateGUI()
         {
             minSize=new Vector2(320,150);rootVisualElement.Clear();RetainedWindow.Style(rootVisualElement);rootVisualElement.AddToClassList("thry-dialog");
