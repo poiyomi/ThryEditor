@@ -1,6 +1,7 @@
 using System.Text;
 using System.Diagnostics;
 using Debug = UnityEngine.Debug;
+using LogType = UnityEngine.LogType;
 
 namespace Thry.ThryEditor.Helpers
 {
@@ -53,7 +54,7 @@ namespace Thry.ThryEditor.Helpers
 
         public static void LogErr(string prefix, string message)
         {
-            Print(prefix, "#ff0000", message);
+            Print(prefix, "#ff0000", message, LogType.Error);
         }
 
         public static void LogWarn(string message)
@@ -63,10 +64,10 @@ namespace Thry.ThryEditor.Helpers
 
         public static void LogWarn(string prefix, string message)
         {
-            Print(prefix, "#ff7800", message);
+            Print(prefix, "#ff7800", message, LogType.Warning);
         }
 
-        private static void Print(string prefix, string color, string message)
+        private static void Print(string prefix, string color, string message, LogType type = LogType.Log)
         {
             StringBuilder sb = new StringBuilder((message?.Length ?? 0) + 48);
             sb.Append("[<color=");
@@ -80,7 +81,10 @@ namespace Thry.ThryEditor.Helpers
                 sb.Append('\n');
                 sb.Append(new StackTrace().ToString());
             }
-            Debug.Log(sb.ToString());
+            // Errors and warnings need their real severity so the Console filters and Error Pause pick them up
+            if (type == LogType.Error) Debug.LogError(sb.ToString());
+            else if (type == LogType.Warning) Debug.LogWarning(sb.ToString());
+            else Debug.Log(sb.ToString());
         }
 
     }
