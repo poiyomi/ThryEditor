@@ -245,6 +245,8 @@ namespace Thry.ThryEditor.Drawers
             _current._previousTexture = _prop.textureValue;
             _current._isInit = true;
 
+            // Init runs for every material this drawer shows; subscribe once.
+            Undo.undoRedoEvent -= OnUndoRedo;
             Undo.undoRedoEvent += OnUndoRedo;
         }
 
@@ -252,7 +254,9 @@ namespace Thry.ThryEditor.Drawers
         {
             if (undoRedoInfo.undoName == "Thry Packer Texture Change " + _prop.name)
             {
-                _current._isInit = false;
+                // One drawer serves every material with this shader, and the undone change may belong to any of them.
+                // Each one reloads its tags the next time it is drawn.
+                foreach (ThryRGBAPackerData data in materialPackerData.Values) data._isInit = false;
                 _current._overwriteShowInline = 2;
                 Undo.undoRedoEvent -= OnUndoRedo;
             }
@@ -395,37 +399,43 @@ namespace Thry.ThryEditor.Drawers
         void OpenFullTexturePacker()
         {
             NodeGUI packer = NodeGUI.Open(GetConfig());
-            packer.OnChange += FullTexturePackerOnChange;
-            packer.OnSave += FullTexturePackerOnSave;
+            // The inspector may show another material with this shader by the time the packer reports back,
+            // so keep writing to the material it was opened from.
+            MaterialProperty prop = _prop;
+            ThryRGBAPackerData data = _current;
+            packer.OnChange += (tex, config) => FullTexturePackerOnChange(prop, data, tex, config);
+            packer.OnSave += tex => FullTexturePackerOnSave(prop, data, tex);
         }
 
-        void FullTexturePackerOnSave(Texture2D tex)
+        void FullTexturePackerOnSave(MaterialProperty prop, ThryRGBAPackerData data, Texture2D tex)
         {
-            _current._packedTexture = tex;
-            _prop.textureValue = _current._packedTexture;
-            _current._hasTextureChanged = false;
+            if (prop.targets.Any(t => t == null)) return;
+            data._packedTexture = tex;
+            prop.textureValue = data._packedTexture;
+            data._hasTextureChanged = false;
         }
 
-        void FullTexturePackerOnChange(Texture2D tex, TexturePackerConfig config)
+        void FullTexturePackerOnChange(MaterialProperty prop, ThryRGBAPackerData data, Texture2D tex, TexturePackerConfig config)
         {
+            if (prop.targets.Any(t => t == null)) return;
             if (_firstTextureIsRGB)
             {
                 // The second slot is the alpha source, so its invert and fallback live on the A output.
-                SyncFromFullTexturePacker(_current._input_r, config, 0, 0);
-                SyncFromFullTexturePacker(_current._input_g, config, 1, 3);
+                SyncFromFullTexturePacker(data._input_r, config, 0, 0);
+                SyncFromFullTexturePacker(data._input_g, config, 1, 3);
             }
             else
             {
-                SyncFromFullTexturePacker(_current._input_r, config, 0, 0);
-                SyncFromFullTexturePacker(_current._input_g, config, 1, 1);
-                SyncFromFullTexturePacker(_current._input_b, config, 2, 2);
-                SyncFromFullTexturePacker(_current._input_a, config, 3, 3);
+                SyncFromFullTexturePacker(data._input_r, config, 0, 0);
+                SyncFromFullTexturePacker(data._input_g, config, 1, 1);
+                SyncFromFullTexturePacker(data._input_b, config, 2, 2);
+                SyncFromFullTexturePacker(data._input_a, config, 3, 3);
             }
 
-            _current._packedTexture = tex;
-            _prop.textureValue = _current._packedTexture;
-            _current._hasTextureChanged = true;
-            _current._hasConfigChanged = true;
+            data._packedTexture = tex;
+            prop.textureValue = data._packedTexture;
+            data._hasTextureChanged = true;
+            data._hasConfigChanged = true;
         }
 
         static void SyncFromFullTexturePacker(InlinePackerChannelConfig input, TexturePackerConfig config, int sourceIndex, int targetIndex)
