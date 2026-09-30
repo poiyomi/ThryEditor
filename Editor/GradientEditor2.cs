@@ -188,6 +188,9 @@ namespace Thry.ThryEditor
 
         private void OnDestroy()
         {
+            // Like Unity's gradient picker: remember the chosen library and scroll, and read the libraries from disk next time.
+            ReleaseGradientLibrary(_gradientLibary);
+            _gradientLibary = null;
             // The retained dialog stages edits until Apply; Cancel, Escape and the
             // window close control must not manufacture a texture or change a material.
             if (_retainedWasBuilt) return;
