@@ -245,10 +245,10 @@ namespace Thry.ThryEditor
 
             Ray ray = HandleUtility.GUIPointToWorldRay(Event.current.mousePosition);
 
-            Vector2 uv = _propPosition.vectorValue;
+            Vector2 uv = GetVector(_propPosition);
             if(RaycastToClosestUV(ray, ref uv))
             {
-                _propPosition.vectorValue = uv;
+                SetVector(_propPosition, uv);
             }
 
             if(Event.current.type == EventType.MouseDown && Event.current.button == 0)
@@ -309,7 +309,7 @@ namespace Thry.ThryEditor
             Vector3 up = _pivotUp;
             if (Tools.pivotRotation == PivotRotation.Local)
             {
-                up = Quaternion.AngleAxis(-_propRotation.floatValue, gizmoNormal) * up;
+                up = Quaternion.AngleAxis(-GetFloat(_propRotation), gizmoNormal) * up;
             }
 
             Quaternion rotation = Quaternion.LookRotation(gizmoNormal, up);
@@ -321,7 +321,7 @@ namespace Thry.ThryEditor
                 Ray ray = new Ray(moved - gizmoNormal * 0.1f, gizmoNormal);
                 if(RaycastToClosestUV(ray, ref uv))
                 {
-                    _propPosition.vectorValue = uv;
+                    SetVector(_propPosition, uv);
                 }
             }
         }
@@ -335,14 +335,14 @@ namespace Thry.ThryEditor
                 gizmoNormal = -_pivotNormal;
             }
             Quaternion rotation = Quaternion.LookRotation(gizmoNormal, _pivotUp);
-            rotation *= Quaternion.Euler(0, 0, -_propRotation.floatValue);
+            rotation *= Quaternion.Euler(0, 0, -GetFloat(_propRotation));
 
             Quaternion moved = Handles.RotationHandle(rotation, _pivotPoint);
             if(moved != rotation)
             {
                 Quaternion delta = Quaternion.Inverse(rotation) * moved;
                 float deltaAngle = delta.eulerAngles.z;
-                SetClampedRotation(_propRotation, _propRotation.floatValue - deltaAngle);
+                SetClampedRotation(_propRotation, GetFloat(_propRotation) - deltaAngle);
             }
         }
 
@@ -356,11 +356,11 @@ namespace Thry.ThryEditor
                 gizmoNormal = -_pivotNormal;
             }
             Quaternion rotation = Quaternion.LookRotation(gizmoNormal, _pivotUp);
-            rotation *= Quaternion.Euler(0, 0, -_propRotation.floatValue);
+            rotation *= Quaternion.Euler(0, 0, -GetFloat(_propRotation));
 
             if(Event.current.type == EventType.MouseDown && Event.current.button == 0)
             {
-                _initalScale = _propScale.vectorValue;
+                _initalScale = GetVector(_propScale);
             }
 
             Vector3 moved = Handles.ScaleHandle(Vector3.one, _pivotPoint, rotation, HandleUtility.GetHandleSize(_pivotPoint));
@@ -369,7 +369,7 @@ namespace Thry.ThryEditor
                 Vector4 scale = _initalScale;
                 scale.x *= moved.x;
                 scale.y *= moved.y;
-                _propScale.vectorValue = scale;
+                SetVector(_propScale, scale);
             }
         }
 
@@ -382,11 +382,11 @@ namespace Thry.ThryEditor
                 _pivotNormal = -_pivotNormal;
             }
             Quaternion rotation = Quaternion.LookRotation(_pivotNormal, _pivotUp);
-            rotation *= Quaternion.Euler(0, 0, -_propRotation.floatValue);
+            rotation *= Quaternion.Euler(0, 0, -GetFloat(_propRotation));
 
             if(Event.current.type == EventType.MouseDown && Event.current.button == 0)
             {
-                _initalOffset = _propOffset.vectorValue;
+                _initalOffset = GetVector(_propOffset);
             }
 
             float size = HandleUtility.GetHandleSize(_pivotPoint);
@@ -397,11 +397,11 @@ namespace Thry.ThryEditor
             if(left != 1 || right != 1 || down != 1 || up != 1)
             {
                 Vector4 offset = _initalOffset;
-                offset.x -= (left - 1) * _propScale.vectorValue.x * 0.25f;
-                offset.y += (right - 1) * _propScale.vectorValue.x * 0.25f;
-                offset.z -= (down - 1) * _propScale.vectorValue.y * 0.25f;
-                offset.w += (up - 1) * _propScale.vectorValue.y * 0.25f;
-                _propOffset.vectorValue = offset;
+                offset.x -= (left - 1) * GetVector(_propScale).x * 0.25f;
+                offset.y += (right - 1) * GetVector(_propScale).x * 0.25f;
+                offset.z -= (down - 1) * GetVector(_propScale).y * 0.25f;
+                offset.w += (up - 1) * GetVector(_propScale).y * 0.25f;
+                SetVector(_propOffset, offset);
             }
         }
 
@@ -428,7 +428,7 @@ namespace Thry.ThryEditor
         bool FindPivot()
         {
             // The shader rotates and scales around position + side offset center, the same point Raycast places.
-            Vector2 uv = (Vector2)_propPosition.vectorValue + CenterOffset();
+            Vector2 uv = (Vector2)GetVector(_propPosition) + CenterOffset();
             Vector2 uvUp = uv + Vector2.up * 0.0001f;
             // uv position to world position using renderer mesh
             for(int i=0; i<_worldTriangles.Length;i++)
@@ -460,7 +460,7 @@ namespace Thry.ThryEditor
 
         Vector2 CenterOffset()
         {
-            Vector4 scaleOffset = _propOffset.vectorValue;
+            Vector4 scaleOffset = GetVector(_propOffset);
             scaleOffset = new Vector4(-scaleOffset.x, scaleOffset.y, -scaleOffset.z, scaleOffset.w);
             return new Vector2((scaleOffset.x + scaleOffset.y)/2, (scaleOffset.z + scaleOffset.w)/2);
         }
@@ -510,7 +510,40 @@ namespace Thry.ThryEditor
         {
             Vector2 limits = property.rangeLimits;
             value = Helper.Mod(value - limits.x, limits.y - limits.x) + limits.x;
-            property.floatValue = value;
+            SetFloat(property, value);
+        }
+
+        // MaterialProperty setters record an undo step for every drag, which would stay behind after Deactivate turns
+        // the session into one step, or none when cancelled. Recording into an animation and renderer property
+        // blocks still go through the property, which handles them.
+        static bool UsesProperty(MaterialProperty property) => property.applyPropertyCallback != null || AnimationMode.InAnimationMode();
+
+        static Vector4 GetVector(MaterialProperty property) => UsesProperty(property) ? property.vectorValue : ((Material)property.targets[0]).GetVector(property.name);
+
+        static float GetFloat(MaterialProperty property) => UsesProperty(property) ? property.floatValue : ((Material)property.targets[0]).GetFloat(property.name);
+
+        static void SetVector(MaterialProperty property, Vector4 value)
+        {
+            if (UsesProperty(property)) { property.vectorValue = value; return; }
+            if (property.targets.OfType<Material>().All(m => m.GetVector(property.name) == value)) return;
+            foreach (var material in property.targets.OfType<Material>())
+            {
+                material.SetVector(property.name, value);
+                EditorUtility.SetDirty(material);
+            }
+            SceneView.RepaintAll();
+        }
+
+        static void SetFloat(MaterialProperty property, float value)
+        {
+            if (UsesProperty(property)) { property.floatValue = value; return; }
+            if (property.targets.OfType<Material>().All(m => m.GetFloat(property.name) == value)) return;
+            foreach (var material in property.targets.OfType<Material>())
+            {
+                material.SetFloat(property.name, value);
+                EditorUtility.SetDirty(material);
+            }
+            SceneView.RepaintAll();
         }
 
         void GetMesh()
