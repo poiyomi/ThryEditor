@@ -770,6 +770,19 @@ namespace Thry.ThryEditor
 
             private Material PrimaryMaterial => _materials != null && _materials.Length > 0 ? _materials[0] : null;
 
+            // Actions here can reload the inspector, which rebuilds its parts; the replaced group keeps the values it
+            // had when it was built. Capture from the group the inspector shows now while it still shows these materials.
+            private ShaderGroup Section
+            {
+                get
+                {
+                    ShaderEditor editor = ShaderEditor.Active;
+                    if (editor == null || editor.Materials == null || editor.ShaderParts == null || !editor.Materials.SequenceEqual(_materials)) return _section;
+                    return editor.ShaderParts.OfType<ShaderGroup>()
+                        .FirstOrDefault(g => g.MaterialProperty != null && g.MaterialProperty.name == _sectionPropertyName) ?? _section;
+                }
+            }
+
             public void Init(ShaderGroup section)
             {
                 _section = section;
@@ -823,7 +836,7 @@ namespace Thry.ThryEditor
                 if (_currentLink != null)
                 {
                     var textures = new UnityEngine.UIElements.Toggle("Include Textures") { value = _currentLink.includeTextures, tooltip = TexturePolicyTooltip };
-                    textures.RegisterValueChangedCallback(e => { SetIncludeTextures(_currentLink, e.newValue, _section); CreateGUI(); });
+                    textures.RegisterValueChangedCallback(e => { SetIncludeTextures(_currentLink, e.newValue, Section); CreateGUI(); });
                     root.Add(textures);
                 }
                 var list=new UnityEngine.UIElements.ScrollView();list.style.flexGrow=1;root.Add(list);
@@ -840,7 +853,7 @@ namespace Thry.ThryEditor
                 root.Add(new UnityEngine.UIElements.Button(()=>{
                     if(string.IsNullOrWhiteSpace(_newLinkName))return;
                     if(_availableLinks.Any(l=>l.name==_newLinkName)){EditorUtility.DisplayDialog("Duplicate Name","A link with this name already exists.","OK");return;}
-                    Unsubscribe(_materials,_sectionPropertyName);CreateLink(_newLinkName,_sectionPropertyName,_section,_materials,_newIncludeTextures);_newLinkName="";CreateGUI();
+                    Unsubscribe(_materials,_sectionPropertyName);CreateLink(_newLinkName,_sectionPropertyName,Section,_materials,_newIncludeTextures);_newLinkName="";CreateGUI();
                 }){text="Create link"});root.Add(new UnityEngine.UIElements.Button(Close){text="Done"});
             }
             private void SelectLink(GlobalLink link)
@@ -886,7 +899,7 @@ namespace Thry.ThryEditor
                         else if (choice == 2)
                         {
                             Subscribe(link, single, applyLinkToMaterial: false);
-                            OverwriteLinkFromSection(link, _section);
+                            OverwriteLinkFromSection(link, Section);
                         }
                         else
                         {
@@ -899,7 +912,7 @@ namespace Thry.ThryEditor
                 {
                     // Link is empty (shouldn't normally happen since CreateLink captures, but guard anyway)
                     Subscribe(link, _materials, applyLinkToMaterial: false);
-                    OverwriteLinkFromSection(link, _section);
+                    OverwriteLinkFromSection(link, Section);
                 }
 
                 RefreshState();
