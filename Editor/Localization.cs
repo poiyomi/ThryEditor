@@ -629,6 +629,9 @@ namespace Thry.ThryEditor
             void UpdateMissing(Localization locale)
             {
                 _missingKeys.Clear();
+                // New locale files have no languages yet, and removing one can leave the selection past the end.
+                if (locale.Languages.Length == 0) return;
+                _selectedLanguageIndex = Mathf.Clamp(_selectedLanguageIndex, 0, locale.Languages.Length - 1);
                 foreach (string key in locale._localizedStrings.Keys)
                 {
                     if (ShouldIgnoreKey(key)) continue;
@@ -737,6 +740,7 @@ namespace Thry.ThryEditor
                     serializedObject.ApplyModifiedProperties();
                     return;
                 }
+                if (_selectedLanguageIndex >= locale.Languages.Length) UpdateMissing(locale);
 
                 EditorGUILayout.Space(20);
                 EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
