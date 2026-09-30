@@ -30,8 +30,8 @@ namespace Thry.ThryEditor
     /// Section shaders only exist in memory. Importing a shader file makes Unity re-parse every loaded shader,
     /// which costs close to a second on its own, while ShaderUtil.CreateShaderAsset takes under a tenth of that.
     /// Materials are never saved with a section shader: SectionLockSaveGuard puts the original back while a
-    /// material is written, so the .mat on disk keeps pointing at the original shader. Builds, uploads and play mode
-    /// revert every section-locked material first.
+    /// material is written, so the .mat on disk keeps pointing at the original shader. Player and scene bundle builds,
+    /// VRChat and ChilloutVR uploads and play mode revert every section-locked material first.
     /// </summary>
     public static class SectionLock
     {

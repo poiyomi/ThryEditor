@@ -9,6 +9,7 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 #if VRC_SDK_VRCSDK3
 using VRC.SDKBase.Editor.BuildPipeline;
@@ -402,13 +403,21 @@ namespace Thry.ThryEditor
     /// Builds must only see original shaders: section shaders are not assets, and tools that copy materials early in
     /// a build (NDMF, VRCFury) would carry them into the copies. Runs before anything else.
     /// </summary>
-    public class SectionLockBuildGuard : IPreprocessBuildWithReport, IPostprocessBuildWithReport
+    public class SectionLockBuildGuard : IPreprocessBuildWithReport, IProcessSceneWithReport, IPostprocessBuildWithReport
     {
         public int callbackOrder => int.MinValue;
 
         public void OnPreprocessBuild(BuildReport report)
         {
             // Update also pauses while BuildPipeline.isBuildingPlayer; this only covers the gap around it.
+            SectionLockService.Suspend(SectionLockService.BuildSafetySeconds);
+            SectionLock.RevertAllLoaded();
+        }
+
+        public void OnProcessScene(Scene scene, BuildReport report)
+        {
+            // Scene asset bundles don't run OnPreprocessBuild
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             SectionLockService.Suspend(SectionLockService.BuildSafetySeconds);
             SectionLock.RevertAllLoaded();
         }
