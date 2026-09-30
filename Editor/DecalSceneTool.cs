@@ -290,7 +290,7 @@ namespace Thry.ThryEditor
 
         void PositionMode(SceneView sceneView)
         {
-            GetPivot();
+            if (!GetPivot(sceneView)) return;
             Vector3 gizmoNormal = _pivotNormal;
             if(Vector3.Dot(sceneView.camera.transform.forward, _pivotNormal) < 0)
             {
@@ -319,7 +319,7 @@ namespace Thry.ThryEditor
 
         void RotationMode(SceneView sceneView)
         {
-            GetPivot();
+            if (!GetPivot(sceneView)) return;
             Vector3 gizmoNormal = _pivotNormal;
             if(Vector3.Dot(sceneView.camera.transform.forward, _pivotNormal) < 0)
             {
@@ -340,7 +340,7 @@ namespace Thry.ThryEditor
         Vector3 _initalScale;
         void ScaleMode(SceneView sceneView)
         {
-            GetPivot();
+            if (!GetPivot(sceneView)) return;
             Vector3 gizmoNormal = _pivotNormal;
             if(Vector3.Dot(sceneView.camera.transform.forward, _pivotNormal) < 0)
             {
@@ -367,7 +367,7 @@ namespace Thry.ThryEditor
         Vector4 _initalOffset;
         void OffsetMode(SceneView sceneView)
         {
-            GetPivot();
+            if (!GetPivot(sceneView, true)) return;
             if(Vector3.Dot(sceneView.camera.transform.forward, _pivotNormal) < 0)
             {
                 _pivotNormal = -_pivotNormal;
@@ -399,12 +399,25 @@ namespace Thry.ThryEditor
         Vector3 _pivotPoint;
         Vector3 _pivotNormal;
         Vector3 _pivotUp;
+        bool _pivotMissing;
+        bool _pivotFound;
 
-        void GetPivot()
+        // False when the decal center lies outside every UV triangle, e.g. in a gap between UV islands.
+        // The handles are hidden then, since there is no surface point to draw them on.
+        bool GetPivot(SceneView sceneView, bool keepWhileDragging = false)
         {
-            _pivotPoint = Vector3.zero;
-            _pivotNormal = Vector3.zero;
+            bool found = FindPivot();
+            // An Edges drag moves the center with it. Keep the last point while it crosses a UV gap so the drag isn't cut off.
+            if (!found && keepWhileDragging && GUIUtility.hotControl != 0 && _pivotFound) return true;
+            if (!found && !_pivotMissing) sceneView.ShowNotification(new GUIContent("The decal isn't on this mesh's UVs. Use Raycast to place it."));
+            _pivotMissing = !found;
+            _pivotFound = found;
+            return found;
+        }
 
+        // Leaves the last pivot in place when nothing is found.
+        bool FindPivot()
+        {
             // The shader rotates and scales around position + side offset center, the same point Raycast places.
             Vector2 uv = (Vector2)_propPosition.vectorValue + CenterOffset();
             Vector2 uvUp = uv + Vector2.up * 0.0001f;
@@ -431,8 +444,9 @@ namespace Thry.ThryEditor
                 _pivotPoint = triVertices[0] * a1 + triVertices[1] * a2 + triVertices[2] * a3;
                 _pivotNormal = triNormals[0] * a1 + triNormals[1] * a2 + triNormals[2] * a3;
                 _pivotUp = (triVertices[0] * a1Up + triVertices[1] * a2Up + triVertices[2] * a3Up - _pivotPoint).normalized;
-                return;
+                return true;
             }
+            return false;
         }
 
         Vector2 CenterOffset()
