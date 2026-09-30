@@ -824,6 +824,9 @@ namespace Thry.ThryEditor
 
         static void CollectPresetPropertiesRecursive(ShaderEditor shaderEditor, Material preset, ShaderGroup parent, HashSet<ShaderProperty> into)
         {
+            foreach (ShaderProperty reference in ReferenceProperties(parent))
+                if (IsPreset(preset, reference))
+                    CollectPartProperties(shaderEditor, reference, copyReferenceProperties: false, into, preset);
             foreach (ShaderPart part in parent.Children)
             {
                 if (part is ShaderGroup)
@@ -1071,6 +1074,9 @@ namespace Thry.ThryEditor
 
         static void ApplyPresetRecursive(Material preset, Material copyFrom, ShaderGroup parent, HashSet<string> animationOnly)
         {
+            foreach (ShaderProperty reference in ReferenceProperties(parent))
+                if (GetPropertyMode(preset, reference) == PropertyMode.ValueAndAnimation)
+                    reference.CopyFrom(copyFrom, applyDrawers: false, deepCopy: false, copyReferenceProperties: false, skipPropertyNames: animationOnly);
             foreach (ShaderPart part in parent.Children)
             {
                 if(part is ShaderGroup)
@@ -1083,6 +1089,19 @@ namespace Thry.ThryEditor
                     part.CopyFrom(copyFrom, applyDrawers: false, skipPropertyNames: animationOnly);
                 }
             }
+        }
+
+        // Hidden reference toggles are not among a group's children.
+        static IEnumerable<ShaderProperty> ReferenceProperties(ShaderGroup group)
+        {
+            var dictionary = group.MyShaderUI?.PropertyDictionary;
+            if (dictionary == null) yield break;
+            var names = new List<string>();
+            if (!string.IsNullOrWhiteSpace(group.Options.reference_property)) names.Add(group.Options.reference_property);
+            if (group.Options.reference_properties != null) names.AddRange(group.Options.reference_properties);
+            foreach (string name in names.Distinct())
+                if (dictionary.TryGetValue(name, out ShaderProperty reference) && !group.Children.Contains(reference))
+                    yield return reference;
         }
 
         static void PropagateLinkedMaterials(ShaderEditor shaderEditor, Material preset, ShaderPart parent)
