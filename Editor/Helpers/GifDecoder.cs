@@ -247,6 +247,7 @@ namespace Thry.ThryEditor.Helpers
 			int[] interlaceStarts = { 0, 4, 2, 1 };
 			int[] interlaceSteps = { 8, 8, 4, 2 };
 
+			// Truncated image data leaves the rest of the frame as it was on the canvas
 			int srcIdx = 0;
 			if (interlaced)
 			{
@@ -256,8 +257,10 @@ namespace Thry.ThryEditor.Helpers
 					{
 						for (int x = 0; x < width; x++)
 						{
+							if (srcIdx >= indices.Length)
+								return;
 							int idx = indices[srcIdx++];
-							if (idx != transparentIndex)
+							if (idx != transparentIndex && idx < colorTable.Length)
 							{
 								int canvasX = left + x;
 								int canvasY = top + y;
@@ -274,8 +277,10 @@ namespace Thry.ThryEditor.Helpers
 				{
 					for (int x = 0; x < width; x++)
 					{
+						if (srcIdx >= indices.Length)
+							return;
 						int idx = indices[srcIdx++];
-						if (idx != transparentIndex)
+						if (idx != transparentIndex && idx < colorTable.Length)
 						{
 							int canvasX = left + x;
 							int canvasY = top + y;
