@@ -203,7 +203,17 @@ namespace Thry.ThryEditor
             for (int i = 0; i < resources.Length; i++)
             {
                 var data = resources[i];
-                if (data != null) header.Add(HeaderAction(resourceIcons[i], data.hover, () => data.action?.Perform(Model.Shader.Materials)));
+                if (data == null) continue;
+                bool isVideo = data == group.Options.button_video;
+                var resource = HeaderAction(resourceIcons[i], data.hover, () =>
+                {
+                    // Like the IMGUI header, tutorials play in the editor's video window rather than a browser.
+                    if (isVideo) { if (!string.IsNullOrEmpty(data.action?.data)) VideoPlayerWindow.OpenUrl(data.action.data, data.text ?? "Video Tutorial"); }
+                    else data.action?.Perform(Model.Shader.Materials);
+                });
+                header.Add(resource);
+                if (data.condition_show != null)
+                    _fields.TrackVisible(resource, () => resource.style.display = data.condition_show.Test() ? DisplayStyle.Flex : DisplayStyle.None, header);
             }
             if (group is ShaderHeader && Presets.DoesSectionHavePresets(group.MaterialProperty.name))
             {
