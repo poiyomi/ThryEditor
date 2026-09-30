@@ -229,7 +229,7 @@ void CS_Kernel(uint3 id : SV_DispatchThreadID)
 	[branch]
 	if(Kernel_Grayscale)
 	{
-		color = float4(dot(color.rgb, float3(0.2126, 0.7152, 0.0722)), 0, 0, color.a);
+		// Grayscale only feeds the filter; unchecked channels keep their original values.
 		[branch]
 		if(Kernel_TwoPass)
 		{
