@@ -269,7 +269,10 @@ namespace Thry.ThryEditor.Helpers
         static void SelectionImagesToTextureArray()
         {
             string[] paths = Selection.assetGUIDs.Select(g => AssetDatabase.GUIDToAssetPath(g)).ToArray();
-            PathsToTexture2DArray(paths);
+            // Only the menu selects the result; a drop onto a material's flipbook slot keeps the material selected
+            Texture2DArray texture2DArray = PathsToTexture2DArray(paths);
+            if (texture2DArray != null)
+                Selection.activeObject = texture2DArray;
         }
 
         [MenuItem("Assets/Thry/Flipbooks/Images 2 TextureArray", true)]
@@ -306,7 +309,6 @@ namespace Thry.ThryEditor.Helpers
                     return null;
                 }
                 Array.Sort(textures, (UnityEngine.Object one, UnityEngine.Object two) => one.name.CompareTo(two.name));
-                Selection.objects = textures;
 
                 string assetPath = AssetDatabase.GetAssetPath(textures[0]);
                 assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath.Remove(assetPath.LastIndexOf('/')) + "/Texture2DArray.asset");
@@ -345,8 +347,6 @@ namespace Thry.ThryEditor.Helpers
 
                 AssetDatabase.CreateAsset(texture2DArray, assetPath);
                 AssetDatabase.SaveAssets();
-
-                Selection.activeObject = texture2DArray;
                 return texture2DArray;
             }
         }
