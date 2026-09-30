@@ -266,7 +266,9 @@ namespace Thry.ThryEditor.Helpers
                             Tooltip = EditorLocale.editor.Get("stencil_row_existing_buffer_tooltip"),
                             HasMixedValue = updated.BufferValueIsMixed
                         };
+                        EditorGUI.BeginChangeCheck();
                         currentY = DrawBitRow(ref updated.BufferValue, row, layout, rowLabelStyle);
+                        updated.BufferValueChanged = EditorGUI.EndChangeCheck();
                         layout.RowIndex++;
                         break;
                     }
@@ -283,7 +285,9 @@ namespace Thry.ThryEditor.Helpers
                             Tooltip = EditorLocale.editor.Get("stencil_row_reference_tooltip"),
                             HasMixedValue = updated.StencilRefIsMixed
                         };
+                        EditorGUI.BeginChangeCheck();
                         currentY = DrawBitRow(ref updated.StencilRef, row, layout, rowLabelStyle);
+                        updated.StencilRefChanged = EditorGUI.EndChangeCheck();
                         layout.RowIndex++;
                         break;
                     }
@@ -303,7 +307,9 @@ namespace Thry.ThryEditor.Helpers
                             Tooltip = EditorLocale.editor.Get("stencil_row_readmask_tooltip"),
                             HasMixedValue = updated.StencilReadMaskIsMixed
                         };
+                        EditorGUI.BeginChangeCheck();
                         currentY = DrawBitRow(ref updated.StencilReadMask, row, layout, rowLabelStyle);
+                        updated.StencilReadMaskChanged = EditorGUI.EndChangeCheck();
                         layout.RowIndex++;
                         break;
                     }
@@ -367,7 +373,9 @@ namespace Thry.ThryEditor.Helpers
                             Tooltip = EditorLocale.editor.Get("stencil_row_reference_tooltip"),
                             HasMixedValue = updated.StencilRefIsMixed
                         };
+                        EditorGUI.BeginChangeCheck();
                         currentY = DrawBitRow(ref updated.StencilRef, row, layout, rowLabelStyle);
+                        updated.StencilRefChanged = EditorGUI.EndChangeCheck();
                         layout.RowIndex++;
                         break;
                     }
@@ -386,7 +394,9 @@ namespace Thry.ThryEditor.Helpers
                             Tooltip = EditorLocale.editor.Get("stencil_row_writemask_tooltip"),
                             HasMixedValue = updated.StencilWriteMaskIsMixed
                         };
+                        EditorGUI.BeginChangeCheck();
                         currentY = DrawBitRow(ref updated.StencilWriteMask, row, layout, rowLabelStyle);
+                        updated.StencilWriteMaskChanged = EditorGUI.EndChangeCheck();
                         layout.RowIndex++;
                         break;
                     }

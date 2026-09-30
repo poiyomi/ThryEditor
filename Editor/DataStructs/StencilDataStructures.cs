@@ -111,6 +111,9 @@ namespace Thry.ThryEditor.DataStructs
         public bool StencilRefIsMixed;
         public bool StencilReadMaskIsMixed;
         public bool BufferValueIsMixed;
+        public bool StencilRefChanged;
+        public bool StencilReadMaskChanged;
+        public bool BufferValueChanged;
     }
 
     public struct WriteMaskValues
@@ -119,6 +122,8 @@ namespace Thry.ThryEditor.DataStructs
         public int StencilWriteMask;
         public bool StencilRefIsMixed;
         public bool StencilWriteMaskIsMixed;
+        public bool StencilRefChanged;
+        public bool StencilWriteMaskChanged;
     }
 
     public struct BitRow

@@ -22,6 +22,11 @@ namespace Thry.ThryEditor.Helpers
             public void SaveIfDifferent(int newValue)
             {
                 if (newValue == Value) return;
+                Save(newValue);
+            }
+
+            public void Save(int newValue)
+            {
                 StencilPropertyHelper.SaveValueToProperty(_propertyName, newValue);
             }
         }
@@ -68,20 +73,14 @@ namespace Thry.ThryEditor.Helpers
         public bool FailOpIsMixed => _failOp.IsMixed;
         public bool ZFailOpIsMixed => _zFailOp.IsMixed;
 
-        public void SaveStencilValues(int stencilRef, int stencilReadMask, int stencilWriteMask)
-        {
-            _stencilRef.SaveIfDifferent(stencilRef);
-            _readMask.SaveIfDifferent(stencilReadMask);
-            _writeMask.SaveIfDifferent(stencilWriteMask);
-        }
-
-        public void SaveStencilOperations(CompareFunction compareFunction, StencilOp passOp, StencilOp failOp, StencilOp zFailOp)
-        {
-            _compareFunction.SaveIfDifferent((int)compareFunction);
-            _passOp.SaveIfDifferent((int)passOp);
-            _failOp.SaveIfDifferent((int)failOp);
-            _zFailOp.SaveIfDifferent((int)zFailOp);
-        }
+        public void SetBufferValue(int value) => _bufferValue.Save(value);
+        public void SetStencilRef(int value) => _stencilRef.Save(value);
+        public void SetStencilReadMask(int value) => _readMask.Save(value);
+        public void SetStencilWriteMask(int value) => _writeMask.Save(value);
+        public void SetStencilCompareFunction(CompareFunction value) => _compareFunction.Save((int)value);
+        public void SetStencilPassOp(StencilOp value) => _passOp.Save((int)value);
+        public void SetStencilFailOp(StencilOp value) => _failOp.Save((int)value);
+        public void SetStencilZFailOp(StencilOp value) => _zFailOp.Save((int)value);
 
         // Recomputes the stencil test from the current property values. Pure — writes nothing.
         public bool ComputeCheckResult()
@@ -110,10 +109,6 @@ namespace Thry.ThryEditor.Helpers
         // Written by the host toggle's own drawer, so this side only reads it.
         public bool IsOccluded => _isOccluded.Value == 1;
 
-        public int BufferValue
-        {
-            get => _bufferValue.Value;
-            set => _bufferValue.SaveIfDifferent(value);
-        }
+        public int BufferValue => _bufferValue.Value;
     }
 }

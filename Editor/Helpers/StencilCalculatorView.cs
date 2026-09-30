@@ -127,7 +127,7 @@ namespace Thry.ThryEditor.Helpers
                             BufferValueIsMixed = _model.BufferValueIsMixed
                         };
                         updatedRead = StencilBitVisualizerHelper.DrawReadMaskBitRows(readValues, currentY, startX, position.width, Styles.stencilRowLabel, _rowHeight);
-                        _model.BufferValue = updatedRead.BufferValue;
+                        if (updatedRead.BufferValueChanged) _model.SetBufferValue(updatedRead.BufferValue);
                         break;
                     }
                     case CalculatorLayoutElementType.ThinDivider:
@@ -149,7 +149,9 @@ namespace Thry.ThryEditor.Helpers
                         bool isOccluded = _model.IsOccluded;
                         WriteMaskValues updatedWrite = StencilBitVisualizerHelper.DrawWriteMaskBitRows(writeValues, _model.BufferValue, updatedRead.StencilReadMask, compareFunction, passOp, failOp, zFailOp, isOccluded, currentY, startX, position.width, Styles.stencilRowLabel, _rowHeight);
 
-                        _model.SaveStencilValues(updatedWrite.StencilRef, updatedRead.StencilReadMask, updatedWrite.StencilWriteMask);
+                        if (updatedRead.StencilRefChanged || updatedWrite.StencilRefChanged) _model.SetStencilRef(updatedWrite.StencilRef);
+                        if (updatedRead.StencilReadMaskChanged) _model.SetStencilReadMask(updatedRead.StencilReadMask);
+                        if (updatedWrite.StencilWriteMaskChanged) _model.SetStencilWriteMask(updatedWrite.StencilWriteMask);
                         _model.UpdateCheckResult();
                         break;
                     }

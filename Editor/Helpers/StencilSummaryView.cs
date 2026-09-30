@@ -200,9 +200,11 @@ namespace Thry.ThryEditor.Helpers
                 EditorLocale.editor.Get("stencil_summary_compare_function"), _neutralStyles.Label);
             compareY += _rowHeight;
             EditorGUI.showMixedValue = values.CompareFunctionIsMixed;
+            EditorGUI.BeginChangeCheck();
             values.CompareFunction = (CompareFunction)_comparePopup.DrawEnum(
                 new Rect(compareContentX, compareY, compareContentWidth, _rowHeight),
                 values.CompareFunction);
+            if (EditorGUI.EndChangeCheck()) _model.SetStencilCompareFunction(values.CompareFunction);
             EditorGUI.showMixedValue = false;
             compareY += _rowHeight;
 
@@ -213,34 +215,38 @@ namespace Thry.ThryEditor.Helpers
                     layout.CompareExplanationHeight),
                 new GUIContent(compareExplanation, compareExplanation), _neutralStyles.Explanation);
 
-            DrawOperationColumn(GetColumnContentRect(passRect),
+            if (DrawOperationColumn(GetColumnContentRect(passRect),
                 EditorLocale.editor.Get("stencil_summary_pass_op"), ref values.PassOp,
-                layout.PassExplanation, passStyles, values.PassOpIsMixed, _passPopup);
-            DrawOperationColumn(GetColumnContentRect(zFailRect),
+                layout.PassExplanation, passStyles, values.PassOpIsMixed, _passPopup))
+                _model.SetStencilPassOp(values.PassOp);
+            if (DrawOperationColumn(GetColumnContentRect(zFailRect),
                 EditorLocale.editor.Get("stencil_summary_zfail_op"), ref values.ZFailOp,
-                layout.ZFailExplanation, zFailStyles, values.ZFailOpIsMixed, _zFailPopup);
-            DrawOperationColumn(GetColumnContentRect(failRect),
+                layout.ZFailExplanation, zFailStyles, values.ZFailOpIsMixed, _zFailPopup))
+                _model.SetStencilZFailOp(values.ZFailOp);
+            if (DrawOperationColumn(GetColumnContentRect(failRect),
                 EditorLocale.editor.Get("stencil_summary_fail_op"), ref values.FailOp,
-                layout.FailExplanation, failStyles, values.FailOpIsMixed, _failPopup);
-
-            _model.SaveStencilOperations(values.CompareFunction, values.PassOp, values.FailOp, values.ZFailOp);
+                layout.FailExplanation, failStyles, values.FailOpIsMixed, _failPopup))
+                _model.SetStencilFailOp(values.FailOp);
         }
 
-        private void DrawOperationColumn(Rect rect, string label, ref StencilOp operation,
+        private bool DrawOperationColumn(Rect rect, string label, ref StencilOp operation,
             string explanation, SummaryStyles styles, bool hasMixedValue, InspectorPopup popup)
         {
             GUI.Label(new Rect(rect.x, rect.y, rect.width, _rowHeight), label, styles.Label);
 
             float popupY = rect.y + _rowHeight;
             EditorGUI.showMixedValue = hasMixedValue;
+            EditorGUI.BeginChangeCheck();
             operation = (StencilOp)popup.DrawEnum(
                 new Rect(rect.x, popupY, rect.width, _rowHeight), operation);
+            bool changed = EditorGUI.EndChangeCheck();
             EditorGUI.showMixedValue = false;
 
             float explanationY = popupY + _rowHeight;
             float explanationHeight = Mathf.Max(1f, rect.yMax - explanationY);
             GUI.Label(new Rect(rect.x, explanationY, rect.width, explanationHeight),
                 new GUIContent(explanation, explanation), styles.Explanation);
+            return changed;
         }
 
         private void DrawFlowConnectors(Rect compareRect, Rect connectorRect, Rect passRect,
