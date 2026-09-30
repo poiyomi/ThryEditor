@@ -97,15 +97,6 @@ namespace Thry.ThryEditor
         // Set to false if you want to keep UNITY_BRANCH and [branch]
         public static bool RemoveUnityBranches = true;
 
-        // LOD Crossfade Dithing doesn't have multi_compile keyword correctly toggled at build time (its always included) so
-        // this hard-coded material property will uncomment //#pragma multi_compile _ LOD_FADE_CROSSFADE in optimized .shader files
-        public static readonly string LODCrossFadePropertyName = "_LODCrossfade";
-
-        // IgnoreProjector and ForceNoShadowCasting don't work as override tags, so material properties by these names
-        // will determine whether or not //"IgnoreProjector"="True" etc. will be uncommented in optimized .shader files
-        public static readonly string IgnoreProjectorPropertyName = "_IgnoreProjector";
-        public static readonly string ForceNoShadowCastingPropertyName = "_ForceNoShadowCasting";
-
         // Material property suffix that controls whether the property of the same name gets baked into the optimized shader
         // e.g. if _Color exists and _ColorAnimated = 1, _Color will not be baked in
         public static readonly string AnimatedPropertySuffix = "Animated";
@@ -119,11 +110,9 @@ namespace Thry.ThryEditor
         // by hard-removing the shadowcaster and fwdadd passes from the shader being optimized.
         public static readonly string DisabledLightModesPropertyName = "_LightModes";
 
-        // Property that determines whether or not to evaluate KSOInlineSamplerState comments.
-        // Inline samplers can be used to get a wider variety of wrap/filter combinations at the cost
-        // of only having 1x anisotropic filtering on all textures
+        // Used to switch KSOInlineSamplerState comments on. The parser drops every // line before those
+        // could be read, so it does nothing now, but it is still kept out of the baked values.
         public static readonly string UseInlineSamplerStatesPropertyName = "_InlineSamplerStates";
-        private static bool UseInlineSamplerStates = true;
 
         // Material properties are put into each CGPROGRAM as preprocessor defines when the optimizer is run.
         // This is mainly targeted at culling interpolators and lines that rely on those interpolators.
@@ -158,23 +147,6 @@ namespace Thry.ThryEditor
 
         enum LightModeType { None, ForwardBase, ForwardAdd, ShadowCaster, Meta, DepthOnly, DepthNormals };
         private static LightModeType CurrentLightmode = LightModeType.None;
-
-        // In-order list of inline sampler state names that will be replaced by InlineSamplerState() lines
-        public static readonly string[] InlineSamplerStateNames = new string[]
-        {
-            "_linear_repeat",
-            "_linear_clamp",
-            "_linear_mirror",
-            "_linear_mirroronce",
-            "_point_repeat",
-            "_point_clamp",
-            "_point_mirror",
-            "_point_mirroronce",
-            "_trilinear_repeat",
-            "_trilinear_clamp",
-            "_trilinear_mirror",
-            "_trilinear_mirroronce"
-        };
 
         // Would be better to dynamically parse the "C:\Program Files\UnityXXXX\Editor\Data\CGIncludes\" folder
         // to get version specific includes but eh
@@ -413,15 +385,6 @@ namespace Thry.ThryEditor
         {
             public string filePath;
             public string[] lines;
-        }
-
-        public class TextureProperty
-        {
-            public string name;
-            public Texture texture;
-            public int uv;
-            public Vector2 scale;
-            public Vector2 offset;
         }
 
         public class GrabPassReplacement
@@ -1601,11 +1564,7 @@ namespace Thry.ThryEditor
                 }
 
                 if (prop.name.EndsWith(AnimatedPropertySuffix, StringComparison.Ordinal)) continue;
-                else if (prop.name == UseInlineSamplerStatesPropertyName)
-                {
-                    UseInlineSamplerStates = (prop.GetNumber() == 1);
-                    continue;
-                }
+                else if (prop.name == UseInlineSamplerStatesPropertyName) continue;
                 else if (prop.name.StartsWith(GeometryShaderEnabledPropertyName, StringComparison.Ordinal))
                 {
                     if (prop.name == GeometryShaderEnabledPropertyName)
@@ -1743,8 +1702,6 @@ namespace Thry.ThryEditor
             if(defines.Count > 0)
                 optimizerDefines = defines.Select(m => $"\r\n #define {m.name} {m.value}").Aggregate((s1, s2) => s1 + s2);
 
-            int commentKeywords = 0;
-
             Dictionary<string,PropertyData> constantPropsDictionary = constantProps.GroupBy(x => x.name).Select(g => g.First()).ToDictionary(x => x.name);
             Macro[] macrosArray = macros.ToArray();
 
@@ -1811,24 +1768,6 @@ namespace Thry.ThryEditor
                         {
                             psf.lines[i] = Regex.Replace(psf.lines[i], @"\d+\w*$", "1");
                         }
-                        else if (trimmedLine.StartsWith("//#pragmamulti_compile_LOD_FADE_CROSSFADE", StringComparison.Ordinal))
-                        {
-                            MaterialProperty crossfadeProp = Array.Find(props, x => x.name == LODCrossFadePropertyName);
-                            if (crossfadeProp != null && crossfadeProp.GetNumber() == 1)
-                                psf.lines[i] = psf.lines[i].Replace("//#pragma", "#pragma");
-                        }
-                        else if (trimmedLine.StartsWith("//\"IgnoreProjector\"=\"True\"", StringComparison.Ordinal))
-                        {
-                            MaterialProperty projProp = Array.Find(props, x => x.name == IgnoreProjectorPropertyName);
-                            if (projProp != null && projProp.GetNumber() == 1)
-                                psf.lines[i] = psf.lines[i].Replace("//\"IgnoreProjector", "\"IgnoreProjector");
-                        }
-                        else if (trimmedLine.StartsWith("//\"ForceNoShadowCasting\"=\"True\"", StringComparison.Ordinal))
-                        {
-                            MaterialProperty forceNoShadowsProp = Array.Find(props, x => x.name == ForceNoShadowCastingPropertyName);
-                            if (forceNoShadowsProp != null && forceNoShadowsProp.GetNumber() == 1)
-                                psf.lines[i] = psf.lines[i].Replace("//\"ForceNoShadowCasting", "\"ForceNoShadowCasting");
-                        }
                         else if (trimmedLine.StartsWith("GrabPass {", StringComparison.Ordinal))
                         {
                             GrabPassReplacement gpr = new GrabPassReplacement();
@@ -1856,8 +1795,7 @@ namespace Thry.ThryEditor
                         }
                         else if ((blockKind = IndexOfBlockStart(trimmedLine, CodeBlockStart)) >= 0)
                         {
-                            if (commentKeywords == 0)
-                                psf.lines[i] += optimizerDefines;
+                            psf.lines[i] += optimizerDefines;
                             for (int j = i + 1; j < psf.lines.Length; j++)
                                 if (psf.lines[j].TrimStart().StartsWith(CodeBlockEnd[blockKind], StringComparison.Ordinal))
                                 {
@@ -2616,8 +2554,6 @@ namespace Thry.ThryEditor
             GUIUtility.systemCopyBuffer = c;
 #endif
 
-            List <TextureProperty> uniqueSampledTextures = new List<TextureProperty>();
-
             // Outside loop is each line
             for (int i=startLine;i<endLine;i++)
             {
@@ -2676,115 +2612,6 @@ namespace Thry.ThryEditor
                                 if (!UseTessellationMeta)
                                     lines[i] = "//" + lines[i];
                                 break;
-                        }
-                    }
-                }
-                // Replace inline smapler states
-                else if (UseInlineSamplerStates && lineTrimmed.StartsWith("//KSOInlineSamplerState", StringComparison.Ordinal))
-                {
-                    string lineParsed = lineTrimmed.Replace(" ","").Replace("\t","");
-                    // Remove all whitespace
-                    int firstParenthesis = lineParsed.IndexOf('(');
-                    int lastParenthesis = lineParsed.IndexOf(')');
-                    string argsString = lineParsed.Substring(firstParenthesis+1, lastParenthesis - firstParenthesis-1);
-                    string[] args = argsString.Split(',');
-                    MaterialProperty texProp = Array.Find(props, x => x.name == args[1]);
-                    if (texProp != null)
-                    {
-                        Texture t = texProp.textureValue;
-                        int inlineSamplerIndex = 0;
-                        if (t != null)
-                        {
-                            switch (t.filterMode)
-                            {
-                                case FilterMode.Bilinear:
-                                    break;
-                                case FilterMode.Point:
-                                    inlineSamplerIndex += 1 * 4;
-                                    break;
-                                case FilterMode.Trilinear:
-                                    inlineSamplerIndex += 2 * 4;
-                                    break;
-                            }
-                            switch (t.wrapMode)
-                            {
-                                case TextureWrapMode.Repeat:
-                                    break;
-                                case TextureWrapMode.Clamp:
-                                    inlineSamplerIndex += 1;
-                                    break;
-                                case TextureWrapMode.Mirror:
-                                    inlineSamplerIndex += 2;
-                                    break;
-                                case TextureWrapMode.MirrorOnce:
-                                    inlineSamplerIndex += 3;
-                                    break;
-                            }
-                        }
-
-                        // Replace the token on the following line
-                        lines[i+1] = lines[i+1].Replace(args[0], InlineSamplerStateNames[inlineSamplerIndex]);
-                    }
-                }
-                else if (lineTrimmed.StartsWith("//KSODuplicateTextureCheckStart", StringComparison.Ordinal))
-                {
-                    // Since files are not fully parsed and instead loosely processed, each shader function needs to have
-                    // its sampled texture list reset somewhere before KSODuplicateTextureChecks are made.
-                    // As long as textures are sampled in-order inside a single function, this method will work.
-                    uniqueSampledTextures = new List<TextureProperty>();
-                }
-                else if (lineTrimmed.StartsWith("//KSODuplicateTextureCheck", StringComparison.Ordinal))
-                {
-                    // Each KSODuplicateTextureCheck line gets evaluated when the shader is optimized
-                    // If the texture given has already been sampled as another texture (i.e. one texture is used in two slots)
-                    // AND has been sampled with the same UV mode - as indicated by a convention UV property,
-                    // AND has been sampled with the exact same Tiling/Offset values
-                    // AND has been logged by KSODuplicateTextureCheck,
-                    // then the variable corresponding to the first instance of that texture being
-                    // sampled will be assigned to the variable corresponding to the given texture.
-                    // The compiler will then skip the duplicate texture sample since its variable is overwritten before being used
-
-                    // Parse line for argument texture property name
-                    string lineParsed = lineTrimmed.Replace(" ", "").Replace("\t", "");
-                    int firstParenthesis = lineParsed.IndexOf('(');
-                    int lastParenthesis = lineParsed.IndexOf(')');
-                    string argName = lineParsed.Substring(firstParenthesis+1, lastParenthesis-firstParenthesis-1);
-                    // Check if texture property by argument name exists and has a texture assigned
-                    if (Array.Exists(props, x => x.name == argName))
-                    {
-                        MaterialProperty argProp = Array.Find(props, x => x.name == argName);
-                        if (argProp.textureValue != null)
-                        {
-                            // If no convention UV property exists, sampled UV mode is assumed to be 0
-                            // Any UV enum or mode indicator can be used for this
-                            int UV = 0;
-                            if (Array.Exists(props, x => x.name == argName + "UV"))
-                                UV = (int)(Array.Find(props, x => x.name == argName + "UV").floatValue);
-
-                            Vector2 texScale = material.GetTextureScale(argName);
-                            Vector2 texOffset = material.GetTextureOffset(argName);
-
-                            // Check if this texture has already been sampled
-                            if (uniqueSampledTextures.Exists(x => (x.texture == argProp.textureValue)
-                                                               && (x.uv == UV)
-                                                               && (x.scale == texScale)
-                                                               && x.offset == texOffset))
-                            {
-                                string texName = uniqueSampledTextures.Find(x => (x.texture == argProp.textureValue) && (x.uv == UV)).name;
-                                // convention _var variables requried. i.e. _MainTex_var and _CoverageMap_var
-                                lines[i] = argName + "_var = " + texName + "_var;";
-                            }
-                            else
-                            {
-                                // Texture/UV/ST combo hasn't been sampled yet, add it to the list
-                                TextureProperty tp = new TextureProperty();
-                                tp.name = argName;
-                                tp.texture = argProp.textureValue;
-                                tp.uv = UV;
-                                tp.scale = texScale;
-                                tp.offset = texOffset;
-                                uniqueSampledTextures.Add(tp);
-                            }
                         }
                     }
                 }
@@ -3338,14 +3165,6 @@ namespace Thry.ThryEditor
             EditorUtility.ClearProgressBar();
         }
 
-        static void ClearConsole()
-        {
-            var logEntries = System.Type.GetType("UnityEditor.LogEntries, UnityEditor.dll");
-
-            var clearMethod = logEntries.GetMethod("Clear", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-
-            clearMethod.Invoke(null, null);
-        }
 #endregion
 
 #region Animator Clip Checkers
@@ -3673,27 +3492,6 @@ namespace Thry.ThryEditor
 
             // Internal call to skip checking "IsBroken"
             return IsShaderLockedInternal(material.shader);
-        }
-
-        private static Dictionary<Shader, int> shaderUsedTextureReferencesCount = new Dictionary<Shader, int>();
-        public static int GetUsedTextureReferencesCount(Shader s)
-        {
-            //Shader.m_ParsedForm.m_SubShaders[i].m_Passes[j].m_Programs[k].m_SubPrograms[l].m_Parameters[m].m_TextureParams[n]
-            //m_Programs not avaiable in unity 2019
-            return 0;
-            /*if (shaderUsedTextureReferencesCount.ContainsKey(s)) return shaderUsedTextureReferencesCount[s];
-            SerializedObject shaderObject = new SerializedObject(s);
-            SerializedProperty m_SubShaders = shaderObject.FindProperty("m_ParsedForm.m_SubShaders");
-            for (int i_subShader = 0; i_subShader < m_SubShaders.arraySize; i_subShader++)
-            {
-                SerializedProperty m_Passes = m_SubShaders.GetArrayElementAtIndex(i_subShader).FindPropertyRelative("m_Passes");
-                for (int i_passes = 0; i_passes < m_Passes.arraySize; i_passes++)
-                {
-                    SerializedProperty m_Programs = m_Passes.GetArrayElementAtIndex(i_passes);
-                    foreach (SerializedProperty p in m_Programs) Debug.Log(p.displayName);
-                }
-            }
-            return 0;*/
         }
     }
 }
