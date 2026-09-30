@@ -87,16 +87,16 @@ namespace Thry.ThryEditor
 
             foreach (Material m in unrecoverable)
             {
-                ThryLogger.LogErr($"Material \"{m.name}\" ({AssetDatabase.GetAssetPath(m)}) was locked, but neither it's locked shader "
+                ThryLogger.LogErr($"Material \"{m.name}\" ({AssetDatabase.GetAssetPath(m)}) was locked, but neither its locked shader "
                     + $"nor the shader it was locked from (\"{m.GetTag(ShaderOptimizer.TAG_ORIGINAL_SHADER, false, "unknown")}\") is in this project. "
-                    + "Install the required shaders and the material should recover on its own.");
+                    + "Install that shader, then run Poi > Thry > ThryEditor > Recover Locked Materials With Missing Shaders.");
             }
 
             if (recoverable.Count == 0) return repaired;
 
-            ThryLogger.Log($"{recoverable.Count} locked material{(recoverable.Count == 1 ? "" : "s")} had no shader - "
-                + $"most likely {LockedShaderCache.CacheRoot} was not carried across. Unlock it so they render normally again; "
-                + "lock them when you are ready and the cache will be rebuilt.");
+            bool one = recoverable.Count == 1;
+            ThryLogger.Log($"Unlocking {recoverable.Count} locked material{(one ? "" : "s")} whose shader is missing from "
+                + $"{LockedShaderCache.CacheRoot}. Lock {(one ? "it" : "them")} again when you are ready and the cache will be rebuilt.");
             
             ShaderOptimizer.UnlockMaterials(recoverable, showProgress ? ShaderOptimizer.ProgressBar.Uncancellable : ShaderOptimizer.ProgressBar.None);
             return repaired + recoverable.Count;
@@ -168,7 +168,7 @@ namespace Thry.ThryEditor
                     s_importedMaterialPaths.Clear();
                     s_needsFullScan = false;
 
-                    // Once per session at most; a project missing it's cache would otherwise re-scan
+                    // Once per session at most; a project missing its cache would otherwise re-scan
                     // every time anything at all is imported. Materials imported alongside are still
                     // checked when the scan is skipped.
                     if (fullScan && !SessionState.GetBool(SessionKeyDidFullScan, false))
