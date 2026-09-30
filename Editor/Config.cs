@@ -121,12 +121,6 @@ namespace Thry.ThryEditor
             return true;
         }
 
-        public void ClearVersion()
-        {
-            lastVersion = null;
-            Save();
-        }
-
         public Config Save()
         {
             FileHelper.WriteStringToFile(JsonUtility.ToJson(this, true), PATH_CONFIG_FILE);
