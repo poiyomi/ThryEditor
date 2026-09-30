@@ -27,6 +27,8 @@ namespace Thry.ThryEditor
 
     internal static class MaskLevelsBaker
     {
+        static readonly string[] OverridePlatforms = { "Standalone", "Android", "iPhone", "WebGL" };
+
         internal static string UnavailableReason(Material[] materials, string property)
         {
             if (materials.Length == 0) return "Select a material to bake.";
@@ -157,7 +159,8 @@ namespace Thry.ThryEditor
                         importer.alphaIsTransparency = false;
                         importer.alphaSource = TextureImporterAlphaSource.FromInput;
                         importer.npotScale = TextureImporterNPOTScale.None;
-                        importer.maxTextureSize = Mathf.Clamp(Mathf.NextPowerOfTwo(Mathf.Max(image.width, image.height)), 32, 16384);
+                        // The bake reads the full-resolution file, so keep the source's Max Size cap.
+                        importer.maxTextureSize = Mathf.Min(sourceImporter.maxTextureSize, Mathf.Clamp(Mathf.NextPowerOfTwo(Mathf.Max(image.width, image.height)), 32, 16384));
                         importer.filterMode = sourceImporter.filterMode;
                         importer.wrapModeU = sourceImporter.wrapModeU;
                         importer.wrapModeV = sourceImporter.wrapModeV;
@@ -183,6 +186,14 @@ namespace Thry.ThryEditor
                             importer.textureCompression = sourceImporter.textureCompression;
                             importer.compressionQuality = sourceImporter.compressionQuality;
                             importer.crunchedCompression = !hdr && sourceImporter.crunchedCompression;
+                        }
+                        // Keep per-platform overrides, such as a smaller size or another format for Android.
+                        foreach (string platformName in OverridePlatforms)
+                        {
+                            var platformSettings = sourceImporter.GetPlatformTextureSettings(platformName);
+                            if (!platformSettings.overridden) continue;
+                            if (stage.channels == 1 && !hdr) platformSettings.format = TextureImporterFormat.R8;
+                            importer.SetPlatformTextureSettings(platformSettings);
                         }
                         importer.userData = JsonUtility.ToJson(recipe);
                         importer.SaveAndReimport();
