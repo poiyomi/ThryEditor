@@ -222,7 +222,7 @@ namespace Thry.ThryEditor
                     target.SetFloat(propName, source.GetFloat(propName));
                     break;
                 case ShaderPropertyType.Int:
-                    target.SetInt(propName, source.GetInt(propName));
+                    target.SetInteger(propName, source.GetInteger(propName));
                     break;
                 case ShaderPropertyType.Color:
                     target.SetColor(propName, source.GetColor(propName));
