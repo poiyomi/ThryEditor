@@ -916,7 +916,8 @@ namespace Thry.ThryEditor
             s_lockedShaderNamesThisBatch.Clear();
             s_cacheEntriesTouchedThisBatch.Clear();
             s_ifexConditionsThisBatch.Clear();
-            s_materialsToVerifyLock.Clear();
+            // s_materialsToVerifyLock is emptied by VerifyLockedShaders, so a batch started while an earlier one is
+            // still compiling doesn't drop the earlier one's materials.
             
             // First the shaders are created. compiling is suppressed with start asset editing.
             // Guard the whole operation by keyword-fixing or linking throws, if setup. Then
@@ -1089,10 +1090,14 @@ namespace Thry.ThryEditor
                         if (ShaderOptimizer.LockApplyShader(m))
                         {
                             m.SetNumber(GetOptimizerPropertyName(m.shader), 1);
-                            s_materialsToVerifyLock.Add(m);
+                            if (!s_materialsToVerifyLock.Contains(m)) s_materialsToVerifyLock.Add(m);
                         }
                     }
-                    if (s_materialsToVerifyLock.Count > 0) EditorApplication.update += VerifyLockedShaders;
+                    if (s_materialsToVerifyLock.Count > 0)
+                    {
+                        EditorApplication.update -= VerifyLockedShaders;
+                        EditorApplication.update += VerifyLockedShaders;
+                    }
                 }
                 AssetDatabase.Refresh();
 
@@ -1110,6 +1115,7 @@ namespace Thry.ThryEditor
                 {
                     s_cacheEntriesProtectedUntilSave.UnionWith(entriesToProtect);
                     s_collectCacheGarbageAfterSave = true;
+                    EditorApplication.update -= QueueSaveAfterLockUnlock;
                     EditorApplication.update += QueueSaveAfterLockUnlock;
                 }
                 else
@@ -1190,6 +1196,7 @@ namespace Thry.ThryEditor
         static void QueueSaveAfterLockUnlock()
         {
             EditorApplication.update -= QueueSaveAfterLockUnlock;
+            EditorApplication.update -= SaveAfterLockUnlock;
             EditorApplication.update += SaveAfterLockUnlock;
         }
 
@@ -1228,6 +1235,7 @@ namespace Thry.ThryEditor
                 if (ShaderUtil.ShaderHasError(m.shader)) ThryLogger.LogErr($"Locked material \"{m.name}\" produced a compilation error! Refer to the Console to see what areas need to be checked. If this was thrown on an official release, please report a bug!");
                 else ThryLogger.LogDetail($"Successfully locked material \"{m.name}\".");
             }
+            s_materialsToVerifyLock.Clear();
         }
         // Round-trip formatting. Baked constants are written with up to 20 decimals, while the default
         // Color/Vector4.ToString() only emit 2-3, so anything coarser would let two materials that
