@@ -340,7 +340,7 @@
                 <tr>
                     <td>button_video</td>
                     <td>Button</td>
-                    <td>adds a video icon to a dropdown header. Clicking it plays the direct video file url in action.data in an editor window, with text as the window title</td>
+                    <td>adds a video icon to a dropdown header that plays the video file url in action.data in an editor window titled with text</td>
                     <td>Yes, only headers</td>
                     <td>[HideInInspector] m_start_Example ("Example--{button_video:{text:Example Tutorial,action:{type:URL,data:https://example.com/tutorial.mp4},hover:Watch Video}}", Float) = 0</td>
                 </tr>
@@ -580,7 +580,7 @@
                         <td>RenderQueue>=3000</td>
                     </tr>
                 </table>
-                A property name on its own is not a comparison and always counts as true, so write _ForceOpaque==1 rather than _ForceOpaque.<br />
+                A property name on its own always counts as true, so write _ForceOpaque==1, not _ForceOpaque.<br />
                 <br />
                 <b>Other terms</b>
                 <table>
@@ -603,7 +603,7 @@
                 </table>
                 <br />
                 <b>Combining</b><br />
-                Use &amp;&amp; (and) and || (or) to combine terms and parentheses to group them. &amp;&amp; and || have the same priority, so always use parentheses when mixing them, for example (_A==1 &amp;&amp; _B==1) || _C==1. A ! in front of a term is not supported yet; use != or isNotAnimated() instead.
+                Combine terms with &amp;&amp; (and) and || (or). Both have the same priority, so use parentheses when mixing them, for example (_A==1 &amp;&amp; _B==1) || _C==1. ! is not supported; use != or isNotAnimated().
             </div>
         </body>
 </html>
