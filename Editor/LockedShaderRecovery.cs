@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
@@ -179,6 +180,7 @@ namespace Thry.ThryEditor
                     }
 
                     IEnumerable<Material> materials = paths
+                        .Where(MightNeedRecovery)
                         .Select(AssetDatabase.LoadAssetAtPath<Material>)
                         .Where(m => m != null);
 
@@ -188,6 +190,26 @@ namespace Thry.ThryEditor
                 {
                     // Never let recovery break an import.
                     Debug.LogException(e);
+                }
+            }
+
+            // Reading the file is much cheaper than loading a material with thousands of properties. Only a
+            // material with a lock or section-lock tag can need recovery, or a variant whose root has one.
+            static bool MightNeedRecovery(string path)
+            {
+                try
+                {
+                    string text = File.ReadAllText(path);
+                    // Binary serialized; there is no telling without loading it.
+                    if (!text.StartsWith("%YAML", StringComparison.Ordinal)) return true;
+                    return text.Contains(ShaderOptimizer.TAG_ORIGINAL_SHADER)
+                        || text.Contains(ShaderOptimizer.TAG_ALL_MATERIALS_GUIDS_USING_THIS_LOCKED_SHADER)
+                        || text.Contains(SectionLock.TAG_SECTION_SOURCE)
+                        || (text.Contains("m_Parent:") && !text.Contains("m_Parent: {fileID: 0}"));
+                }
+                catch (Exception)
+                {
+                    return true;
                 }
             }
         }
