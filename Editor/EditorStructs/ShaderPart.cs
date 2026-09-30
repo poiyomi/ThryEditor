@@ -1255,6 +1255,7 @@ namespace Thry.ThryEditor
             var owners = shaderPart.PropertyContextTargets();
             if (owners.Length == 0) return;
             Undo.RegisterCompleteObjectUndo(owners, "Reset " + shaderPart.Content.text);
+            bool changed = false;
             foreach (var material in owners)
             {
                 // A section shader has the same defaults but no importer to hold the default textures.
@@ -1269,21 +1270,31 @@ namespace Thry.ThryEditor
                 {
                     case ShaderPropertyType.Float:
                     case ShaderPropertyType.Range:
-                        target.floatValue = shader.GetPropertyDefaultFloatValue(index);
+                        float defaultFloat = shader.GetPropertyDefaultFloatValue(index);
+                        changed |= target.floatValue != defaultFloat;
+                        target.floatValue = defaultFloat;
                         break;
                     case ShaderPropertyType.Vector:
-                        target.vectorValue = shader.GetPropertyDefaultVectorValue(index);
+                        Vector4 defaultVector = shader.GetPropertyDefaultVectorValue(index);
+                        changed |= target.vectorValue != defaultVector;
+                        target.vectorValue = defaultVector;
                         break;
                     case ShaderPropertyType.Color:
-                        target.colorValue = shader.GetPropertyDefaultVectorValue(index);
+                        Color defaultColor = shader.GetPropertyDefaultVectorValue(index);
+                        changed |= target.colorValue != defaultColor;
+                        target.colorValue = defaultColor;
                         break;
                     case ShaderPropertyType.Int:
-                        target.intValue = shader.GetPropertyDefaultIntValue(index);
+                        int defaultInt = shader.GetPropertyDefaultIntValue(index);
+                        changed |= target.intValue != defaultInt;
+                        target.intValue = defaultInt;
                         break;
                     case ShaderPropertyType.Texture:
                         Thry.ThryEditor.Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(target);
                         var importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(shader)) as ShaderImporter;
-                        target.textureValue = importer != null ? importer.GetDefaultTexture(prop.name) : null;
+                        Texture defaultTexture = importer != null ? importer.GetDefaultTexture(prop.name) : null;
+                        changed |= target.textureValue != defaultTexture;
+                        target.textureValue = defaultTexture;
                         target.textureScaleAndOffset = new Vector4(1, 1, 0, 0);
                         break;
                 }
@@ -1294,6 +1305,9 @@ namespace Thry.ThryEditor
             // before the retained inspector's next scheduled property refresh.
             shaderPart.MaterialProperty = MaterialEditor.GetMaterialProperty(owners.Cast<UnityEngine.Object>().ToArray(), prop.name);
             shaderPart.MaterialProperty.applyPropertyCallback = prop.applyPropertyCallback;
+            // Picking a value in the inspector runs its on_value_actions (the Rendering Preset sets blending and
+            // the render queue this way), so a reset to a different value has to run them too.
+            if (changed) shaderPart.ExecuteOnValueActions(owners);
         }
 
         void ToggleIsPreset()
