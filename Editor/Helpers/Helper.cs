@@ -159,7 +159,7 @@ namespace Thry.ThryEditor.Helpers
                         escaped = false;
                     i++;
                 }
-                return parts[1].Substring(begin, end);
+                return parts[1].Substring(begin, end - begin + 1);
             }
             return input;
         }
