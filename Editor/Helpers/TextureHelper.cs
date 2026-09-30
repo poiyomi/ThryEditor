@@ -165,7 +165,7 @@ namespace Thry.ThryEditor.Helpers
                 Int16 Height = r.ReadInt16();
                 byte PixelDepth = r.ReadByte();
                 byte ImageDescriptor = r.ReadByte();
-                // Only uncompressed 24 and 32-bit truecolor pixels are read below
+                // 2 = uncompressed truecolor
                 if (ImageType != 2 || (PixelDepth != 24 && PixelDepth != 32))
                 {
                     string reason = ImageType == 9 || ImageType == 10 || ImageType == 11 ? "is run-length encoded"
@@ -176,7 +176,6 @@ namespace Thry.ThryEditor.Helpers
                         : "has an unknown image type";
                     throw new NotSupportedException(Path.GetFileName(TGAFile) + " can't be read directly because it " + reason + ".");
                 }
-                // The image ID and color map sit between the header and the pixels
                 r.ReadBytes(IDLength);
                 if (ColorMapType == 1) r.ReadBytes((ushort)CMapLength * ((CMapDepth + 7) / 8));
                 if (r.BaseStream.Length - r.BaseStream.Position < (PixelDepth == 32 ? 4 : 3) * Width * Height)

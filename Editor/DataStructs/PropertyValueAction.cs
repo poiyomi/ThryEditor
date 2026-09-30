@@ -16,7 +16,6 @@ namespace Thry.ThryEditor
 
         public bool Execute(MaterialProperty p, Material[] targets)
         {
-            // Shader source writes numbers with a '.' decimal point whatever the editor's language is
             if (
                 (p.GetPropertyType() == ShaderPropertyType.Float && p.floatValue.ToString(CultureInfo.InvariantCulture) == value) ||
                 (p.GetPropertyType() == ShaderPropertyType.Int && p.intValue.ToString(CultureInfo.InvariantCulture) == value) ||

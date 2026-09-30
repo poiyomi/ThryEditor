@@ -45,8 +45,7 @@ namespace Thry.ThryEditor
                 {
                     if (!s_loaded_textures.ContainsKey(guid) || s_loaded_textures[guid] == null)
                     {
-                        // An unknown guid gives an empty path, and a deleted asset loads as null. The fallback
-                        // isn't cached so the texture still shows up once it is imported.
+                        // Not cached, so the texture shows up once imported
                         string path = AssetDatabase.GUIDToAssetPath(guid);
                         Texture texture = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<Texture>(path);
                         if (texture == null) return Texture2D.whiteTexture;

@@ -45,7 +45,6 @@ namespace Thry.ThryEditor.Decorators
             }
         }
 
-        // Only a mesh renderer that draws this material has UVs the tool can place the decal on.
         static Renderer SelectedRenderer()
         {
             var renderer = Selection.activeTransform != null ? Selection.activeTransform.GetComponent<Renderer>() : null;

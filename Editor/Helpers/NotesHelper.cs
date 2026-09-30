@@ -12,7 +12,7 @@ namespace Thry.ThryEditor.Helpers
         /// </summary>
         public static float GetPackedRightReservation(Rect rect, PropertyOptions options, string sectionPropertyName, GUIStyle authorLabelStyle = null, float iconGap = 2f, float safetyPad = 2f)
         {
-            // Match DrawIconsInternal, which uses fixed 16px icons regardless of the header height
+            // Match DrawIconsInternal's fixed 16px icons
             const float iconSize = 16f;
             float step = iconSize + iconGap;
 

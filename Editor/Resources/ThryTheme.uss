@@ -1418,7 +1418,7 @@
     border-color: #b9b9b9;
 }
 
-/* Menu layout. Colors and the card radius are set by the .thry-dropdown-menu rules further down. */
+/* Colors and radius come from .thry-dropdown-menu .thry-menu-card. */
 .thry-menu-card {
     border-width: var(--thry-border-width);
     padding: var(--thry-space-4);
@@ -6000,8 +6000,7 @@
 /* Appearance sliders: -20 to 20, with zero retaining the palette above.
    Foregrounds adapt at the
    brighter dark-skin and darker light-skin ends to preserve text contrast.
-   Root section hovers stop at #757575 under white text; where that would leave
-   little difference from the resting color, the hover goes darker instead. */
+   Root section hovers near #757575 go darker to stay visible. */
 /* Dark skin: dark surfaces. */
 .thry-inspector.thry-dark.thry-gray-dark-n10, .thry-dropdown-menu.thry-dark.thry-gray-dark-n10 {
     --thry-background-color: #101010;

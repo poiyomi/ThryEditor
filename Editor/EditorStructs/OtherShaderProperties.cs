@@ -291,7 +291,7 @@ namespace Thry.ThryEditor
             return MyShaderUI.Materials[0].globalIlluminationFlags;
         }
 
-        // New materials start as EmissiveIsBlack, which the popup shows as None. Only the part the popup edits counts.
+        // New materials start as EmissiveIsBlack (shown as None)
         public override object PropertyDefaultValue => MaterialGlobalIlluminationFlags.EmissiveIsBlack;
         public override bool IsPropertyValueDefault => MyShaderUI.Materials.All(m => (m.globalIlluminationFlags & MaterialGlobalIlluminationFlags.AnyEmissive) == MaterialGlobalIlluminationFlags.None);
     }

@@ -64,7 +64,6 @@ namespace Thry.ThryEditor
             InitReflections(window);
             
             List<Color> pixels = new List<Color>();
-            // Windows without an inspector scroll view (e.g. the Cross Shader Editor) only get their visible area captured
             bool canScroll = GetScrollView(window) != null;
             float originalScroll = SetScroll(window);
 
@@ -85,7 +84,7 @@ namespace Thry.ThryEditor
                 Color[] chunk = ReadWindowPixels(window, offset);
                 if(chunk.Length == 0)
                     break;
-                // Rows are stored bottom to top, so the rows that still fit are at the end of the chunk
+                // Rows are bottom to top, so keep the end of the chunk
                 int remainingRows = maxHeight - pixels.Count / width;
                 if(chunk.Length / width > remainingRows)
                 {
@@ -103,7 +102,7 @@ namespace Thry.ThryEditor
             SetPreviewExpanded(window, originalExpanded);
 
             if(truncated)
-                Debug.LogWarning($"The inspector is taller than the maximum texture size, so the screenshot only shows the top {maxHeight} pixels.");
+                Debug.LogWarning($"Inspector is taller than the maximum texture size. Only the top {maxHeight} pixels were captured.");
 
             int height = pixels.Count / width;
             Texture2D texture = new Texture2D(width, height, TextureFormat.RGB24, false);
@@ -165,7 +164,7 @@ namespace Thry.ThryEditor
             if(window.GetType() == lastWindowType)
                 return;
             
-            // Fields cached for a different window type can't be read from this one
+            // Cached fields belong to the previous window type
             lastWindowType = window.GetType();
             PreviewResizerField = lastWindowType.GetField("m_PreviewResizer", BindingFlags.NonPublic | BindingFlags.Instance);
             PreviewResizerGetExpandedMethod = null;

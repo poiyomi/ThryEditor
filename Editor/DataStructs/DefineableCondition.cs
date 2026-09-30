@@ -121,8 +121,7 @@ namespace Thry.ThryEditor
 
             public bool IsVersion => _type == DataType.THRY_EDITOR_VERSION || _type == DataType.VRC_SDK_VERSION;
 
-            // Versions compare by their parts, so "2.50" has to stay as written instead of becoming the float 2.5.
-            // A literal like "3.5.2" is not a float and would otherwise be read as a property name.
+            // Kept as written: version "2.50" is not 2.5
             public string VersionString
             {
                 get

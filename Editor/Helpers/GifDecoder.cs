@@ -193,7 +193,7 @@ namespace Thry.ThryEditor.Helpers
 
 			// Handle disposal from previous frame
 			HandleDisposal(_lastDisposalMethod);
-			// Restore to previous brings back the canvas as it was before this frame was drawn
+			// Snapshot for disposal 3 (restore to previous)
 			if (disposalMethod == 3)
 				Array.Copy(_canvas, _previousCanvas, _canvas.Length);
 
@@ -229,7 +229,7 @@ namespace Thry.ThryEditor.Helpers
 				case 0: // No disposal
 				case 1: // Do not dispose
 					break;
-				case 2: // Restore to background, only the area the previous frame covered
+				case 2: // Restore to background
 					int xEnd = Math.Min(_lastLeft + _lastWidth, _width);
 					int yEnd = Math.Min(_lastTop + _lastHeight, _height);
 					for (int y = _lastTop; y < yEnd; y++)
@@ -247,7 +247,6 @@ namespace Thry.ThryEditor.Helpers
 			int[] interlaceStarts = { 0, 4, 2, 1 };
 			int[] interlaceSteps = { 8, 8, 4, 2 };
 
-			// Truncated image data leaves the rest of the frame as it was on the canvas
 			int srcIdx = 0;
 			if (interlaced)
 			{

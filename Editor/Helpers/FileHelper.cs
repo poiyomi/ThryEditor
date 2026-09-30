@@ -112,7 +112,7 @@ namespace Thry.ThryEditor.Helpers
             try
             {
                 if (!File.Exists(path)) CreateFileWithDirectories(path);
-                // Create truncates, so a shorter file doesn't keep the old file's trailing bytes
+                // Create truncates old trailing bytes
                 using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
                 {
                     fs.Write(bytes, 0, bytes.Length);

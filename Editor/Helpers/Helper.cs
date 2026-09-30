@@ -19,8 +19,7 @@ namespace Thry.ThryEditor.Helpers
 
         public static Type FindTypeByFullName(string fullname)
         {
-            // Asking each assembly for the name avoids GetTypes, which throws for any assembly with a type
-            // whose dependency is missing and would otherwise break the lookup for every other type too
+            // Not GetTypes: it throws if any type has a missing dependency
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 try
@@ -218,7 +217,7 @@ namespace Thry.ThryEditor.Helpers
         public static unsafe void TryDetourFromTo(MethodInfo src, MethodInfo dst)
         {
 #if UNITY_EDITOR_WIN
-            // A nested call would back up the already patched bytes, so keep the first patch
+            // Re-patching would back up the patched bytes
             if (s_patchedData.ContainsKey(src)) return;
             try
             {

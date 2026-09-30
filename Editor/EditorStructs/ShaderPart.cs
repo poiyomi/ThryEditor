@@ -508,8 +508,7 @@ namespace Thry.ThryEditor
             if (type == ShaderPropertyType.Color) type = ShaderPropertyType.Vector;
             if (type == ShaderPropertyType.Range) type = ShaderPropertyType.Float;
 
-            // Each material carries its own old value, so read and write one material at a time. The shared
-            // property writes to every selected material, which would give all of them the last one's value.
+            // Per material: the shared property writes to every target
             bool copiedAny = false;
             foreach (Material m in this.MaterialProperty.targets)
             {
@@ -574,8 +573,7 @@ namespace Thry.ThryEditor
             if (!copiedAny)
                 return;
 
-            // The shared property still caches the values from before the copy. Re-read it so this frame's
-            // draw and default check see the upgraded values.
+            // The shared property still caches the old values
             MaterialProperty refreshed = MaterialEditor.GetMaterialProperty(this.MaterialProperty.targets, this.MaterialProperty.name);
             MaterialProperty[] editorProps = MyShaderUI.Properties;
             if (editorProps != null && ThryPropertyIndex >= 0 && ThryPropertyIndex < editorProps.Length
@@ -661,8 +659,7 @@ namespace Thry.ThryEditor
             CopyTo(new Material[] { target }, applyDrawers, deepCopy, copyReferenceProperties, skipPropertyTypes, skipPropertyNames);
         }
 
-        // A locked shader drops the toggles of disabled slots (for example _DecalEnabled1-3), so a section's
-        // reference properties can be missing on either side. Those are skipped rather than looked up directly.
+        // Locked shaders drop the toggles of disabled slots
         protected void CopyReferencePropertiesTo(Material[] targets, HashSet<ShaderPropertyType> skipPropertyTypes, HashSet<string> skipPropertyNames)
         {
             if (Options.reference_properties != null)
@@ -1305,8 +1302,7 @@ namespace Thry.ThryEditor
             // before the retained inspector's next scheduled property refresh.
             shaderPart.MaterialProperty = MaterialEditor.GetMaterialProperty(owners.Cast<UnityEngine.Object>().ToArray(), prop.name);
             shaderPart.MaterialProperty.applyPropertyCallback = prop.applyPropertyCallback;
-            // Picking a value in the inspector runs its on_value_actions (the Rendering Preset sets blending and
-            // the render queue this way), so a reset to a different value has to run them too.
+            // Picking a value in the inspector runs these too
             if (changed) shaderPart.ExecuteOnValueActions(owners);
         }
 
@@ -1372,8 +1368,7 @@ namespace Thry.ThryEditor
             if (selected.GetComponent<SkinnedMeshRenderer>()) rendererType = typeof(SkinnedMeshRenderer);
             if (selected.GetComponent<MeshRenderer>()) rendererType = typeof(MeshRenderer);
 
-            // The Animation Window's internal types sit next to AnimationWindow, which newer Unity 6 versions
-            // moved out of the core editor module.
+            // Newer Unity 6 moved these out of the core editor module
             Assembly animationWindowAssembly = typeof(AnimationWindow).Assembly;
             Type animationStateType = animationWindowAssembly.GetType("UnityEditorInternal.AnimationWindowState");
             Type animationKeyframeType = animationWindowAssembly.GetType("UnityEditorInternal.AnimationWindowKeyframe");
@@ -1382,7 +1377,7 @@ namespace Thry.ThryEditor
             FieldInfo clipboardField = animationStateType?.GetField("s_KeyframeClipboard", BindingFlags.NonPublic | BindingFlags.Static);
             if (clipboardField == null || animationKeyframeType == null || animationCurveType == null)
             {
-                ThryLogger.LogWarn("Copy Keyframe: Unable to access the Animation Window clipboard via reflection.");
+                ThryLogger.LogWarn("Copy Keyframe: Unable to access the Animation Window clipboard.");
                 return;
             }
 
@@ -1439,7 +1434,7 @@ namespace Thry.ThryEditor
                 if (keyframeList[i] == null) keyframeList.RemoveAt(i);
             if (keyframeList.Count == 0)
             {
-                ThryLogger.LogWarn("Copy Keyframe: Unable to create Animation Window keyframes via reflection.");
+                ThryLogger.LogWarn("Copy Keyframe: Unable to create Animation Window keyframes.");
                 return;
             }
             clipboardField.SetValue(null, keyframeList);
@@ -1586,7 +1581,7 @@ namespace Thry.ThryEditor
             ConstructorInfo constructor = animationCurveType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 3);
             if (curvesField == null || constructor == null) return null;
 
-            // Unity 6 takes the clip through the Animation Window's own clip wrapper instead of the AnimationClip itself.
+            // Unity 6 takes an AnimationWindowClip wrapper
             object windowClip = clip;
             if (!constructor.GetParameters()[0].ParameterType.IsAssignableFrom(typeof(AnimationClip)))
             {

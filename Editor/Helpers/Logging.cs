@@ -81,7 +81,6 @@ namespace Thry.ThryEditor.Helpers
                 sb.Append('\n');
                 sb.Append(new StackTrace().ToString());
             }
-            // Errors and warnings need their real severity so the Console filters and Error Pause pick them up
             if (type == LogType.Error) Debug.LogError(sb.ToString());
             else if (type == LogType.Warning) Debug.LogWarning(sb.ToString());
             else Debug.Log(sb.ToString());

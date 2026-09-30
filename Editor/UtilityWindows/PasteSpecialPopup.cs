@@ -99,7 +99,7 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
-            // The copied part isn't serialized, so after a domain reload there is nothing left to paste
+            // The copied part doesn't survive a domain reload
             if(partAdapter?.ShaderPart == null)
                 Close();
         }

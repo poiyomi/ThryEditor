@@ -24,7 +24,7 @@ namespace Thry.ThryEditor.Helpers
             ("InvertedSliderDrawer", "575bd1334554af5468820b6d6334a891"),
         };
 
-        // Folders the drawers shipped in, relative to the Poiyomi root.
+        // Relative to the Poiyomi root
         static readonly string[] OldPoiyomiFolders = { "Scripts/Editor", "Scripts/ThryStuff" };
         const string DrawerNamespace = "namespace Thry.ThryEditor.Drawers";
 
@@ -57,7 +57,7 @@ namespace Thry.ThryEditor.Helpers
                     if (string.Equals(normalized, canonicalPath, StringComparison.OrdinalIgnoreCase)) continue;
 
                     if (Path.GetFileNameWithoutExtension(normalized) != name) continue;
-                    // Other packages and ThryEditor copies can ship scripts with the same names
+                    // Other packages can ship scripts with these names
                     if (!IsOldPoiyomiCopy(normalized)) continue;
 
                     if (AssetDatabase.MoveAssetToTrash(path)) removed.Add(path);

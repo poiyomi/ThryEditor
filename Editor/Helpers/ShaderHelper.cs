@@ -91,7 +91,6 @@ namespace Thry.ThryEditor.Helpers
         {
             return material != null && material.shader != null && IsShaderUsingThryEditor(material.shader);
         }
-        // Looked up once, since inspectors call this on every GUI event
         static readonly MethodInfo s_customEditorGetter = typeof(Shader)
             .GetProperty("customEditor", BindingFlags.Instance | BindingFlags.NonPublic)?.GetGetMethod(nonPublic: true);
 
@@ -108,7 +107,7 @@ namespace Thry.ThryEditor.Helpers
 
             for (int i = 0; i < s.GetPropertyCount(); i++)
             {
-                // Keyword toggles also go on sliders. FixKeywords reads values with GetFloat, so Int properties stay out.
+                // Not Int: FixKeywords reads values with GetFloat
                 if (s.GetPropertyType(i) == ShaderPropertyType.Float || s.GetPropertyType(i) == ShaderPropertyType.Range)
                 {
                     string prop = s.GetPropertyName(i);
@@ -153,7 +152,7 @@ namespace Thry.ThryEditor.Helpers
 
             foreach (string attribute in attributes)
             {
-                // A bare [Toggle] has no parentheses for the regex below and uses PROPERTYNAME_ON
+                // Bare [Toggle] has no args and uses PROPERTYNAME_ON
                 if (attribute.Trim() == "Toggle")
                 {
                     keywords.Add(GetUnityKeywordName(propertyName, "ON"));
@@ -195,7 +194,7 @@ namespace Thry.ThryEditor.Helpers
 
                         break;
                     }
-                    else if (className == "ThryToggleUI") // Same as ThryToggle; its drawer reads the bool case-insensitively
+                    else if (className == "ThryToggleUI") // Like ThryToggle, but the bool is case-insensitive
                     {
                         if (args.Contains(","))
                             args = args.Split(',')[0].Trim();

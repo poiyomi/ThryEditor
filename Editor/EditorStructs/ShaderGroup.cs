@@ -428,8 +428,7 @@ namespace Thry.ThryEditor
             // Draw Children
             if (IsExpanded)
             {
-                // Restore the previous padding afterwards: sections nest, and the outer section's remaining rows keep its inset.
-                // Restore it on ExitGUI too, or the stale inset would carry into every later frame.
+                // Restored in finally so ExitGUI can't leave it stale
                 float previousPadding = GUILib.SectionContentPadding;
                 float previousRightPadding = GUILib.SectionContentRightPadding;
                 GUILib.SectionContentPadding = isSubsection ? previousPadding + 2 : 4;
@@ -510,7 +509,7 @@ namespace Thry.ThryEditor
                 if (linkedMaterials != null)
                     foreach (Material material in linkedMaterials)
                         CopyTo(material, true);
-                // Menu callbacks run outside the header's change check, so tell global links about the reset here.
+                // Menu callbacks run outside the header's change check
                 GlobalLinker.OnSectionChanged(this);
                 GlobalLinker.OnPropertyChanged(this);
                 Undo.SetCurrentGroupName($"Reset {Content.text}");

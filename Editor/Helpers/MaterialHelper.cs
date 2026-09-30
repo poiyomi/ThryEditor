@@ -102,7 +102,7 @@ namespace Thry.ThryEditor.Helpers
 
         public static void ToggleKeyword(MaterialProperty p, string keyword, bool on)
         {
-            // targets is an Object[], so casting the array itself gives null
+            // targets is Object[], so 'as Material[]' gives null
             ToggleKeyword(p.targets.OfType<Material>().ToArray(), keyword, on);
         }
 

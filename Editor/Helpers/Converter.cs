@@ -11,7 +11,6 @@ namespace Thry.ThryEditor.Helpers
     public class Converter
     {
 
-        // Metadata values are written with '.' decimals, so they are parsed the same way on every system locale
         public static Color StringToColor(string s)
         {
             s = s.Trim(new char[] { '(', ')' });
@@ -269,7 +268,7 @@ namespace Thry.ThryEditor.Helpers
         static void SelectionImagesToTextureArray()
         {
             string[] paths = Selection.assetGUIDs.Select(g => AssetDatabase.GUIDToAssetPath(g)).ToArray();
-            // Only the menu selects the result; a drop onto a material's flipbook slot keeps the material selected
+            // Only here: drops must keep the material selected
             Texture2DArray texture2DArray = PathsToTexture2DArray(paths);
             if (texture2DArray != null)
                 Selection.activeObject = texture2DArray;
@@ -308,7 +307,6 @@ namespace Thry.ThryEditor.Helpers
                     EditorUtility.DisplayDialog("Texture Array", "Only textures can be combined into a texture array.", "OK");
                     return null;
                 }
-                // Natural order keeps frame2 before frame10 when the numbers aren't zero-padded
                 Array.Sort(textures, (UnityEngine.Object one, UnityEngine.Object two) => EditorUtility.NaturalCompare(one.name, two.name));
 
                 string assetPath = AssetDatabase.GetAssetPath(textures[0]);
@@ -352,9 +350,7 @@ namespace Thry.ThryEditor.Helpers
             }
         }
 
-        // Frames can be copied as they are only when their CPU data exists (imports have Read/Write off by default,
-        // and a GPU-only copy is lost when the array is saved) and they already match the array's size, format and mips.
-        // Crunched formats can't be used for an array, so those frames are converted too.
+        // Needs CPU data: a GPU-only copy is lost when saved
         static bool CanCopyFramesDirectly(Texture2D[] textures)
         {
             Texture2D first = textures[0];
@@ -376,7 +372,6 @@ namespace Thry.ThryEditor.Helpers
             return GraphicsFormatUtility.IsCompressedFormat(format) ? format : TextureFormat.RGBA32;
         }
 
-        // Renders the frame into a readable copy at the array's size, with a full mip chain, in the array's format
         static Texture2D ReadableFrame(Texture2D source, int width, int height, TextureFormat format)
         {
             bool srgb = GraphicsFormatUtility.IsSRGBFormat(source.graphicsFormat);
@@ -432,7 +427,6 @@ namespace Thry.ThryEditor.Helpers
             Texture2DArray arrayTexture;
             try { arrayTexture = Textre2DArrayToAsset(array.ToArray()); }
             finally { foreach (Texture2D frame in array) UnityEngine.Object.DestroyImmediate(frame); }
-            // Converting again, or another file with the same name, must not replace an array other materials use
             string assetPath = System.IO.Path.ChangeExtension(path, ".asset");
             if (assetPath.StartsWith("Assets/", StringComparison.Ordinal) || assetPath.StartsWith("Packages/", StringComparison.Ordinal))
                 assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);

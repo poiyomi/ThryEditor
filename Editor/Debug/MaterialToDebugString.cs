@@ -39,7 +39,7 @@ namespace Thry.ThryEditor
                 public bool HasChildren => childProperties?.Count > 0;
                 public override string ToString()
                 {
-                    // The parent applies the indentation, so nested groups and leaves line up
+                    // The parent adds the indentation
                     if(!HasChildren)
                         return $"{propertyName}: {propertyValue}";
                     
@@ -106,7 +106,6 @@ namespace Thry.ThryEditor
                 }
             };
             
-            // Only top level groups: nested ones are printed inside their parent
             info.materialProperties = thryEditor.RootCategories
                 .Where(x => IsValidShaderPart(x, onlyNonDefaultProperties))
                 .Select(x => ShaderPartToMaterialPropertyInfo(x, onlyNonDefaultProperties))
