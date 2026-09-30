@@ -15,6 +15,7 @@ namespace Thry.ThryEditor
         const CameraEvent DrawEvent = CameraEvent.AfterForwardAlpha;
         public const string ShaderName = "Hidden/Thry/SceneTextureInspection";
         static readonly List<Renderer> Renderers = new List<Renderer>();
+        static readonly List<Material> SharedMaterials = new List<Material>();
         static SceneView _view;
         static Camera _attachedCamera;
         static CommandBuffer _commands;
@@ -273,15 +274,22 @@ namespace Thry.ThryEditor
             foreach (var entry in Entries.Values) Prepare(entry);
             foreach (var renderer in Renderers)
             {
-                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy || renderer.forceRenderingOff
+                if (renderer == null) continue;
+                // This runs every Scene view frame over the whole scene, and most renderers don't use a previewed
+                // material, so that is checked first and without allocating a material array.
+                renderer.GetSharedMaterials(SharedMaterials);
+                bool previewed = false;
+                foreach (var material in SharedMaterials)
+                    if (material != null && Entries.ContainsKey(material)) { previewed = true; break; }
+                if (!previewed || !renderer.enabled || !renderer.gameObject.activeInHierarchy || renderer.forceRenderingOff
                     || (camera.cullingMask & (1 << renderer.gameObject.layer)) == 0
                     || SceneVisibilityManager.instance.IsHidden(renderer.gameObject)
                     || StageUtility.GetStageHandle(renderer.gameObject) != StageUtility.GetCurrentStageHandle()) continue;
                 var filter = renderer.GetComponent<MeshFilter>();
                 var mesh = renderer is SkinnedMeshRenderer skin ? skin.sharedMesh : filter != null ? filter.sharedMesh : null;
                 if (mesh == null) continue;
-                var materials = renderer.sharedMaterials;
-                for (int slot = 0; slot < materials.Length; slot++)
+                var materials = SharedMaterials;
+                for (int slot = 0; slot < materials.Count; slot++)
                 {
                     if (materials[slot] == null || mesh.subMeshCount == 0 || !Entries.TryGetValue(materials[slot], out var entry)) continue;
                     _commands.DrawRenderer(renderer, entry.Preview, Mathf.Min(slot, mesh.subMeshCount - 1), 0);
