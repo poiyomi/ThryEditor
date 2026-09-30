@@ -309,7 +309,7 @@ namespace Thry.ThryEditor.Helpers
                 Selection.objects = textures;
 
                 string assetPath = AssetDatabase.GetAssetPath(textures[0]);
-                assetPath = assetPath.Remove(assetPath.LastIndexOf('/')) + "/Texture2DArray.asset";
+                assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath.Remove(assetPath.LastIndexOf('/')) + "/Texture2DArray.asset");
 
                 Texture2DArray texture2DArray;
                 if (CanCopyFramesDirectly(textures))
@@ -429,7 +429,11 @@ namespace Thry.ThryEditor.Helpers
                 return null;
             }
             Texture2DArray arrayTexture = Textre2DArrayToAsset(array.ToArray());
-            AssetDatabase.CreateAsset(arrayTexture, path.Replace(".gif", ".asset"));
+            // Converting again, or another file with the same name, must not replace an array other materials use
+            string assetPath = System.IO.Path.ChangeExtension(path, ".asset");
+            if (assetPath.StartsWith("Assets/", StringComparison.Ordinal) || assetPath.StartsWith("Packages/", StringComparison.Ordinal))
+                assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
+            AssetDatabase.CreateAsset(arrayTexture, assetPath);
             AssetDatabase.SaveAssets();
             return arrayTexture;
         }
