@@ -74,25 +74,31 @@ namespace Thry.ThryEditor.ShaderTranslations
                 itemTreeAsset.CloneTree(itemRoot);
                 var objField = itemRoot.Q<ObjectField>();
                 objField.SetEnabled(false);
+                // Rows are recycled while scrolling, so the callbacks are registered once here and read the
+                // index the row is currently bound to.
+                objField.RegisterValueChangedCallback(evt =>
+                {
+                    if(!(itemRoot.userData is int index) || index >= materials.Count)
+                        return;
+                    materials[index] = evt.newValue as Material;
+                    if(evt.newValue != null || evt.previousValue != null)
+                        UpdateTranslationsList(targetShaderDropdown.value);
+                });
+                itemRoot.Q<Button>().RegisterCallback<MouseUpEvent>(evt =>
+                {
+                    if(!(itemRoot.userData is int index) || index >= materials.Count)
+                        return;
+                    materialList.viewController.RemoveItem(index);
+                    materialList.Rebuild();
+                    UpdateTranslationsList(targetShaderDropdown.value);
+                });
                 return itemRoot;
             };
 
             materialList.bindItem += (element, index) =>
             {
-                var objField = element.Q<ObjectField>();
-                objField.value = materials[index];
-                objField.RegisterValueChangedCallback(evt =>
-                {
-                    materials[index] = evt.newValue as Material;
-                    if(evt.newValue != null || evt.previousValue != null)
-                        UpdateTranslationsList(targetShaderDropdown.value);
-                });
-                element.Q<Button>().RegisterCallback<MouseUpEvent>(evt =>
-                {
-                    materialList.viewController.RemoveItem(index);
-                    materialList.Rebuild();
-                    UpdateTranslationsList(targetShaderDropdown.value);
-                });
+                element.userData = index;
+                element.Q<ObjectField>().SetValueWithoutNotify(materials[index]);
             };
             materialList.itemsSourceChanged += () => UpdateTranslationsList(targetShaderDropdown.value);
             materialList.itemsRemoved += (_) => UpdateTranslationsList(targetShaderDropdown.value);
