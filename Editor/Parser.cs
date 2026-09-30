@@ -312,35 +312,8 @@ namespace Thry.ThryEditor
             return returnObject;
         }
 
-        private static Dictionary<Type, MethodInfo> thryArrayMethodCache = new Dictionary<Type, MethodInfo>();
-        private static bool TryThryArrayParser(string input, int start, int end, Type objtype, out object returnObject)
-        {
-            returnObject = null;
-            if (objtype.BaseType != typeof(System.Array)) return false;
-            MethodInfo method = null;
-            if (!thryArrayMethodCache.TryGetValue(objtype, out method))
-            {
-                method = objtype.GetMethod("ParseToArrayForThryParser", BindingFlags.Static | BindingFlags.NonPublic);
-                thryArrayMethodCache.Add(objtype, method);
-            }
-            if (method == null) return false;
-
-            int searchIndex = start;
-            while (searchIndex < end && input[searchIndex] != '[')
-                if(input[searchIndex] != ' ' && input[searchIndex] != '\t' && input[searchIndex] != '\n' && input[searchIndex] != '\r')
-                    return false;
-                else
-                    searchIndex++;
-
-            returnObject = method.Invoke(null, new object[] { input.Substring(start, end - start) });
-            return true;
-        }
-
         private static object ParseToArray(string input, int start, int end, Type t, string debugName)
         {
-            if(TryThryArrayParser(input, start, end, t, out object returnObject))
-                return returnObject;
-
             IList list = (IList)ParseToList(input, start, end, t, debugName);
             if(list == null) return null;
             object return_array = Activator.CreateInstance(t, list.Count);
@@ -531,83 +504,4 @@ namespace Thry.ThryEditor
         }
 #endregion
     }
-
-#region Animation Parser
-    public class AnimationParser
-    {
-        public class Animation
-        {
-            public PPtrCurve[] pPtrCurves;
-        }
-
-        public class PPtrCurve
-        {
-            public PPtrType curveType;
-            public PPtrKeyframe[] keyframes;
-        }
-
-        public enum PPtrType
-        {
-            None,Material
-        }
-
-        public class PPtrKeyframe
-        {
-            public float time;
-            public string guid;
-            public int type;
-        }
-
-        public static Animation Parse(AnimationClip clip)
-        {
-            return Parse(AssetDatabase.GetAssetPath(clip));
-        }
-
-        public static Animation Parse(string path)
-        {
-            string data = FileHelper.ReadFileIntoString(path);
-
-            List<PPtrCurve> pPtrCurves = new List<PPtrCurve>();
-            int pptrIndex;
-            int lastIndex = 0;
-            while ((pptrIndex = data.IndexOf("m_PPtrCurves", lastIndex)) != -1)
-            {
-                lastIndex = pptrIndex + 1;
-                int pptrEndIndex = data.IndexOf("  m_", pptrIndex);
-
-                int curveIndex;
-                int lastCurveIndex = pptrIndex;
-                //find all curves
-                while((curveIndex = data.IndexOf("  - curve:", lastCurveIndex, pptrEndIndex- lastCurveIndex)) != -1)
-                {
-                    lastCurveIndex = curveIndex + 1;
-                    int curveEndIndex = data.IndexOf("    script: ", curveIndex);
-
-                    PPtrCurve curve = new PPtrCurve();
-                    List<PPtrKeyframe> keyframes = new List<PPtrKeyframe>();
-
-                    int keyFrameIndex;
-                    int lastKeyFrameIndex = curveIndex;
-                    while((keyFrameIndex = data.IndexOf("    - time:", lastKeyFrameIndex, curveEndIndex - lastKeyFrameIndex)) != -1)
-                    {
-                        lastKeyFrameIndex = keyFrameIndex + 1;
-                        int keyFrameEndIndex = data.IndexOf("}", keyFrameIndex);
-
-                        PPtrKeyframe keyframe = new PPtrKeyframe();
-                        keyframe.time = float.Parse(data.Substring(keyFrameIndex, data.IndexOf("\n", keyFrameIndex, keyFrameEndIndex)));
-                        keyframes.Add(keyframe);
-                    }
-
-                    curve.curveType = data.IndexOf("    attribute: m_Materials", lastKeyFrameIndex, curveEndIndex - lastKeyFrameIndex) != -1 ? PPtrType.Material : PPtrType.None;
-                    curve.keyframes = keyframes.ToArray();
-                    pPtrCurves.Add(curve);
-                }
-            }
-            Animation animation = new Animation();
-            animation.pPtrCurves = pPtrCurves.ToArray();
-            Debug.Log(Parser.Serialize(animation));
-            return animation;
-        }
-    }
-#endregion
 }
