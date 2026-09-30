@@ -11,6 +11,7 @@ namespace Thry.ThryEditor
     {
         ScrollView _retainedGroups;
         Label _retainedSummary;
+        VisualElement _retainedNotice;
 
         public void CreateGUI()
         {
@@ -20,7 +21,7 @@ namespace Thry.ThryEditor
             var toolbar = new VisualElement(); toolbar.AddToClassList("thry-components"); root.Add(toolbar);
             var search = RetainedWindow.Search("Find materials…"); search.value = _search; search.style.flexGrow = 1; toolbar.Add(search);
             search.RegisterValueChangedCallback(e => { _search = e.newValue; _needsViewRebuild = true; });
-            toolbar.Add(new Button(() => _pendingRescan = true) { text = "Refresh" });
+            toolbar.Add(new Button(() => _pendingRescan = true) { text = "Refresh", tooltip = "Re-scan the project (F5)" });
             var filters = new VisualElement(); filters.AddToClassList("thry-components"); root.Add(filters);
             var grouping = new DropdownField("Group by", Enum.GetNames(typeof(MaterialLockGrouping)).Select(ObjectNames.NicifyVariableName).ToList(), (int)_grouping); RetainedWindow.Dropdown(grouping); filters.Add(grouping);
             grouping.RegisterValueChangedCallback(e => { _grouping = (MaterialLockGrouping)grouping.index; _needsViewRebuild = true; SavePreferences(); });
@@ -29,6 +30,9 @@ namespace Thry.ThryEditor
             var packages = new Toggle("Include packages") { value = _includePackages }; root.Add(packages);
             packages.RegisterValueChangedCallback(e => { _includePackages = e.newValue; _pendingRescan = true; SavePreferences(); });
             _retainedSummary = new Label(); _retainedSummary.AddToClassList("thry-muted"); root.Add(_retainedSummary);
+            _retainedNotice = new VisualElement(); _retainedNotice.AddToClassList("thry-components"); root.Add(_retainedNotice);
+            var stale = new HelpBox("Materials have changed since this scan.", HelpBoxMessageType.Info); stale.style.flexGrow = 1; _retainedNotice.Add(stale);
+            _retainedNotice.Add(new Button(() => _pendingRescan = true) { text = "Re-scan" });
             var actions = new VisualElement(); actions.AddToClassList("thry-components"); root.Add(actions);
             actions.Add(new Button(() => Enqueue(PendingKind.Lock, AllShown, true)) { text = "Lock shown" });
             actions.Add(new Button(() => Enqueue(PendingKind.Unlock, AllShown, true)) { text = "Unlock shown" });
@@ -38,9 +42,18 @@ namespace Thry.ThryEditor
             RefreshRetainedList();
         }
 
+        // Polled from Update, because asset changes bump the database version without queuing any work.
+        void UpdateRetainedNotice()
+        {
+            if (_retainedNotice == null) return;
+            DisplayStyle display = _hasScanned && _scannedVersion != s_databaseVersion ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_retainedNotice.style.display.value != display) _retainedNotice.style.display = display;
+        }
+
         void RefreshRetainedList()
         {
             if (_retainedGroups == null) return;
+            UpdateRetainedNotice();
             _retainedSummary.text = _scanCancelled ? _summaryText + " · Scan cancelled; showing partial results" : _summaryText;
             _retainedGroups.Clear();
             if (_entries == null) { _retainedGroups.Add(new Label("Scanning materials…")); return; }
