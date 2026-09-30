@@ -3143,7 +3143,8 @@ namespace Thry.ThryEditor
                 (guessed ? $"Guessed shader name from current shader ({material.shader.name}) to be \"{originalShader.name}\"."
                 : $"Guessing shader name from current shader ({material.shader.name}) failed."));
 
-            return originalShader;
+            // A failed guess is only the closest name, often an unrelated shader.
+            return guessed ? originalShader : null;
         }
         #endregion
 
