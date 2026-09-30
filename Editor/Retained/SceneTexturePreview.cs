@@ -62,6 +62,7 @@ namespace Thry.ThryEditor
         public static string UnavailableReason(Material material, string property)
         {
             if (material == null) return "The material is no longer available.";
+            if (GraphicsSettings.currentRenderPipeline != null) return "Scene texture preview only works in the Built-in Render Pipeline.";
             if (string.IsNullOrEmpty(property) || !material.HasProperty(property)) return material.name + ": texture slot is unavailable.";
             var texture = material.GetTexture(property);
             if (texture == null || texture.dimension != TextureDimension.Tex2D) return material.name + ": assign a 2D texture to preview this slot.";
