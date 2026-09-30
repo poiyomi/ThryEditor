@@ -63,9 +63,17 @@ namespace Thry.ThryEditor
                 var properties = Model.Shader.PropertyDictionary;
                 activeRenderer = findRenderer(); activeMaterial = Model.Shader.Materials[0];
                 activeUv = (int)properties[args[1]].MaterialProperty.GetNumber();
-                tool = DecalSceneTool.Create(activeRenderer, activeMaterial, activeUv,
-                    properties[args[2]].MaterialProperty, properties[args[3]].MaterialProperty,
-                    properties[args[4]].MaterialProperty, properties[args[5]].MaterialProperty);
+                try
+                {
+                    tool = DecalSceneTool.Create(activeRenderer, activeMaterial, activeUv,
+                        properties[args[2]].MaterialProperty, properties[args[3]].MaterialProperty,
+                        properties[args[4]].MaterialProperty, properties[args[5]].MaterialProperty);
+                }
+                catch (InvalidOperationException e)
+                {
+                    EditorWindow.focusedWindow?.ShowNotification(new GUIContent(e.Message));
+                    update(); return;
+                }
                 tools.userData = tool;
                 if (raycast) tool.StartRaycastMode(); else tool.StartHandleMode();
                 SceneView.RepaintAll(); update();
