@@ -1973,7 +1973,7 @@
 }
 
 .thry-light .thry-asset-tile {
-    background-color: var(--thry-caption-color);
+    background-color: var(--thry-surface-color);
     border-right-color: #aaaaaa;
 }
 
