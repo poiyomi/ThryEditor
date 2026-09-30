@@ -258,6 +258,9 @@ namespace Thry.ThryEditor
 
         public static readonly HashSet<char> ValidSeparators = new HashSet<char>() { ' ', '\t', '\r', '\n', ';', ',', '.', '(', ')', '[', ']', '{', '}', '>', '<', '=', '!', '&', '|', '^', '+', '-', '*', '/', '#' };
 
+        // "#define NAME" or "#define NAME(a, b)". Group 1 is the name; the match ends after the parameter list.
+        static readonly Regex DefineDeclarationRegex = new Regex(@"^\s*#\s*define\s+(\w+)(?:\([^)]*\))?", RegexOptions.Compiled);
+
         public static readonly HashSet<string> DontRemoveIfBranchesKeywords = new HashSet<string>() { "UNITY_SINGLE_PASS_STEREO", "FORWARD_BASE_PASS", "FORWARD_ADD_PASS", "POINT", "SPOT" };
         public static readonly HashSet<string> KeywordsUsedByPragmas = new HashSet<string>() {  };
 
@@ -2774,6 +2777,19 @@ namespace Thry.ThryEditor
                     }
                 }
 
+                // A property name used as a #define name or macro parameter declares a new symbol there,
+                // so replacing it would produce something like "#define 0.0 ..."
+                int defineNameStart = -1, defineNameEnd = -1;
+                if (lineTrimmed.StartsWith("#", StringComparison.Ordinal))
+                {
+                    Match define = DefineDeclarationRegex.Match(lines[i]);
+                    if (define.Success)
+                    {
+                        defineNameStart = define.Groups[1].Index;
+                        defineNameEnd = define.Index + define.Length;
+                    }
+                }
+
                 for(int t=0;t<tokens.Length;t++)
                 {
                     string token = tokens[t];
@@ -2787,6 +2803,8 @@ namespace Thry.ThryEditor
                         while ((constantIndex = lines[i].IndexOf(constant.name, lastIndex, StringComparison.Ordinal)) != -1)
                         {
                             lastIndex = constantIndex + 1;
+                            if (constantIndex >= defineNameStart && constantIndex < defineNameEnd)
+                                continue;
                             char charLeft = ' ';
                             if (constantIndex - 1 >= 0)
                                 charLeft = lines[i][constantIndex - 1];
