@@ -109,10 +109,11 @@ namespace Thry.ThryEditor.Helpers
 
         public static bool WriteBytesToFile(byte[] bytes, string path)
         {
-            if (!File.Exists(path)) CreateFileWithDirectories(path);
             try
             {
-                using (var fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write))
+                if (!File.Exists(path)) CreateFileWithDirectories(path);
+                // Create truncates, so a shorter file doesn't keep the old file's trailing bytes
+                using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
                 {
                     fs.Write(bytes, 0, bytes.Length);
                     return true;
