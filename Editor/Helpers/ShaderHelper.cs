@@ -108,7 +108,8 @@ namespace Thry.ThryEditor.Helpers
 
             for (int i = 0; i < s.GetPropertyCount(); i++)
             {
-                if (s.GetPropertyType(i) == ShaderPropertyType.Float)
+                // Keyword toggles also go on sliders. FixKeywords reads values with GetFloat, so Int properties stay out.
+                if (s.GetPropertyType(i) == ShaderPropertyType.Float || s.GetPropertyType(i) == ShaderPropertyType.Range)
                 {
                     string prop = s.GetPropertyName(i);
                     List<string> keywords = null;
@@ -152,6 +153,13 @@ namespace Thry.ThryEditor.Helpers
 
             foreach (string attribute in attributes)
             {
+                // A bare [Toggle] has no parentheses for the regex below and uses PROPERTYNAME_ON
+                if (attribute.Trim() == "Toggle")
+                {
+                    keywords.Add(GetUnityKeywordName(propertyName, "ON"));
+                    break;
+                }
+
                 string args = "";
                 // Regex based on Unity's reference implementation: Match a string of the form Keyword(Argument) and capture its components
                 //   (\w+)    - Match a word (keyword name)
@@ -183,6 +191,16 @@ namespace Thry.ThryEditor.Helpers
 
                         // Ignore ThryToggle's bools, since otherwise we get keywords that have the same name as HLSL language keywords
                         if (args != "false" && args != "true")
+                            keywords.Add(args);
+
+                        break;
+                    }
+                    else if (className == "ThryToggleUI") // Same as ThryToggle; its drawer reads the bool case-insensitively
+                    {
+                        if (args.Contains(","))
+                            args = args.Split(',')[0].Trim();
+
+                        if (args.Length > 0 && !args.Equals("false", System.StringComparison.OrdinalIgnoreCase) && !args.Equals("true", System.StringComparison.OrdinalIgnoreCase))
                             keywords.Add(args);
 
                         break;
