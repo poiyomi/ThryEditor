@@ -334,25 +334,35 @@ namespace Thry.ThryEditor
             if (ShaderEditor.Active == null) return;
             if (ShaderEditor.Active.IsInAnimationMode) return;
 
-            Material self = (Material)section.MaterialProperty.targets[0];
             string sectionPropName = section.MaterialProperty.name;
+            Material[] selected = section.MaterialProperty.targets.OfType<Material>().Where(m => m != null).ToArray();
 
-            GlobalLink link = GetLinkForMaterial(self, sectionPropName);
-            if (link == null) return;
-
-            // Change checks fire for UI-only interactions too (foldouts, focus changes). Bail before
-            // writing to disk or recording undos when no value in the section actually moved.
-            if (!CapturePropertiesFromSection(link, section)) return;
-            Save();
-
-            string selfGuid = UnityHelper.GetGUID(self);
-            foreach (string subscriberGuid in link.subscribedMaterialGuids)
+            // In a multi-selection every material can belong to a different link, or to none.
+            var handled = new HashSet<GlobalLink>();
+            bool changed = false;
+            for (int i = 0; i < selected.Length; i++)
             {
-                if (subscriberGuid == selfGuid) continue;
-                string path = AssetDatabase.GUIDToAssetPath(subscriberGuid);
-                Material target = AssetDatabase.LoadAssetAtPath<Material>(path);
-                if (target != null) ApplyLinkToMaterial(link, target, recordUndo: true);
+                Material self = selected[i];
+                GlobalLink link = GetLinkForMaterial(self, sectionPropName);
+                if (link == null || !handled.Add(link)) continue;
+
+                // Change checks fire for UI-only interactions too (foldouts, focus changes). Bail before
+                // writing to disk or recording undos when no value in the section actually moved.
+                // The section shows the first material's values, so the others are read from their own material.
+                if (!CapturePropertiesFromSection(link, section, i == 0 ? null : self)) continue;
+                changed = true;
+
+                string selfGuid = UnityHelper.GetGUID(self);
+                foreach (string subscriberGuid in link.subscribedMaterialGuids)
+                {
+                    if (subscriberGuid == selfGuid) continue;
+                    string path = AssetDatabase.GUIDToAssetPath(subscriberGuid);
+                    Material target = AssetDatabase.LoadAssetAtPath<Material>(path);
+                    if (target != null) ApplyLinkToMaterial(link, target, recordUndo: true);
+                }
             }
+            if (!changed) return;
+            Save();
             RequestRepaint(reloadUI);
         }
 
@@ -545,10 +555,11 @@ namespace Thry.ThryEditor
         /// <summary>
         /// Recaptures the section into the link. Returns true if any captured value differs from what the link already held.
         /// </summary>
-        private static bool CapturePropertiesFromSection(GlobalLink link, ShaderGroup section)
+        /// <param name="source">Reads the values from this material instead of the section's properties.</param>
+        private static bool CapturePropertiesFromSection(GlobalLink link, ShaderGroup section, Material source = null)
         {
             List<GlobalLinkPropertyValue> captured = new List<GlobalLinkPropertyValue>();
-            CaptureRecursive(captured, section);
+            CaptureRecursive(captured, section, new HashSet<string>(), source);
             if (!link.includeTextures) captured.RemoveAll(p => p.type == "Texture");
             bool changed = !IsSamePropertySet(link.properties, captured);
             link.properties = captured.ToArray();
@@ -602,20 +613,23 @@ namespace Thry.ThryEditor
 
         private static void CaptureRecursive(List<GlobalLinkPropertyValue> captured, ShaderGroup group)
         {
-            CaptureRecursive(captured, group, new HashSet<string>());
+            CaptureRecursive(captured, group, new HashSet<string>(), null);
         }
 
-        private static void CaptureRecursive(List<GlobalLinkPropertyValue> captured, ShaderGroup group, HashSet<string> seenNames)
+        private static void CaptureRecursive(List<GlobalLinkPropertyValue> captured, ShaderGroup group, HashSet<string> seenNames, Material source)
         {
             foreach (ShaderPart child in group.Children)
             {
                 if (child.MaterialProperty != null && seenNames.Add(child.MaterialProperty.name))
                 {
-                    GlobalLinkPropertyValue pv = CaptureProperty(child.MaterialProperty);
+                    GlobalLinkPropertyValue pv = null;
+                    if (source == null) pv = CaptureProperty(child.MaterialProperty);
+                    else if (source.HasProperty(child.MaterialProperty.name))
+                        pv = CaptureProperty(MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { source }, child.MaterialProperty.name));
                     if (pv != null) captured.Add(pv);
                     else seenNames.Remove(child.MaterialProperty.name);
                 }
-                if (child is ShaderGroup childGroup) CaptureRecursive(captured, childGroup, seenNames);
+                if (child is ShaderGroup childGroup) CaptureRecursive(captured, childGroup, seenNames, source);
             }
         }
 
