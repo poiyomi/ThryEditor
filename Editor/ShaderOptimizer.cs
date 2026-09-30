@@ -3333,13 +3333,14 @@ namespace Thry.ThryEditor
                 if (requestedBuildType == VRCSDKRequestedBuildType.Scene)
                 {
                     if (UnityEngine.Object.FindObjectsOfType(typeof(VRC_SceneDescriptor)) is VRC_SceneDescriptor[] descriptors && descriptors.Length > 0){
-                        var renderers = UnityEngine.Object.FindObjectsOfType<Renderer>();
-                        foreach (var rend in renderers)
-                        {
-                            foreach (var mat in rend.sharedMaterials){
-                                materials.Add(mat);
-                            }
-                        }
+                        // Unlocked shaders get stripped from the build, so this has to include objects that start
+                        // inactive and materials that animations swap in, not just what's visible right now.
+                        IEnumerable<GameObject> roots = Enumerable.Range(0, UnityEngine.SceneManagement.SceneManager.sceneCount)
+                            .Select(UnityEngine.SceneManagement.SceneManager.GetSceneAt)
+                            .Where(scene => scene.isLoaded)
+                            .SelectMany(scene => scene.GetRootGameObjects());
+                        materials.AddRange(global::Thry.ThryEditor.TexturePacker.PackedTextureBuildPreparation.CollectMaterials(roots));
+                        if (RenderSettings.skybox != null) materials.Add(RenderSettings.skybox);
                     }
                     SetLockedForAllMaterialsInternal(materials, 1, showProgressbar: true, showDialog: PersistentData.Get<bool>("ShowLockInDialog", true), allowCancel: false);
                 }
