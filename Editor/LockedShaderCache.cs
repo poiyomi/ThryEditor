@@ -34,7 +34,7 @@ are using Poiyomi Shaders, this folder is very important!
 - DO NOT DELETE THIS FOLDER! Deletion of this folder will cause Pink colors on locked materials and will require a re-compiled unlock!
 - Each subfolder is named after a shader, and each folder inside that is one unique combination of material settings. Materials with identical settings share a single shader on purpose, which allows improved performance on Lock and Unlock.
 - VERSION CONTROL: This folder can be safely ignored via .gitignore.
-- To clear this Cache: Thry > ThryEditor > Optimized Shader Cache > Remove Unused.
+- To clear this Cache: Poi > Thry > ThryEditor > Optimized Shader Cache > Remove Unused.
 ";
 
         #region Naming and Paths
@@ -491,9 +491,8 @@ are using Poiyomi Shaders, this folder is very important!
         {
             if (!EditorUtility.DisplayDialog("Optimized Shader Cache",
                     "Delete the entire cache (" + DescribeCache() + ")?\n\n"
-                    + "Materials that are currently locked will turn pink until you unlock and re-lock them, "
-                    + "or re-lock them via Thry > Materials > Lock All. Nothing else is lost - the cache is "
-                    + "rebuilt from your materials.",
+                    + "Materials that are currently locked get unlocked so they keep rendering. They lock again "
+                    + "when you upload, or you can lock them from Poi > Thry > Material Lock Manager.",
                     "Clear All", "Cancel"))
                 return;
 
