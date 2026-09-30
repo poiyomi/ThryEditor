@@ -626,9 +626,10 @@ namespace Thry.ThryEditor
                     foreach (string language in locale.Languages) sb.Append("," + ToCSVString(language));
                     sb.AppendLine();
 
-                    for (int i = 0; i < locale._keys.Length; i++)
+                    // Read the loaded entries, which also hold the shader keys UpdateData just added.
+                    foreach (var entry in locale._localizedStrings)
                     {
-                        string key = locale._keys[i];
+                        string key = entry.Key;
                         if (ShouldIgnoreKey(key)) continue;
                         sb.Append(ToCSVString(key));
 
@@ -638,7 +639,7 @@ namespace Thry.ThryEditor
                         sb.Append("," + ToCSVString(label));
 
                         // Remaining Columns: Translations
-                        for (int j = 0; j < locale.Languages.Length; j++) sb.Append("," + ToCSVString(locale._values[i * locale.Languages.Length + j]));
+                        for (int j = 0; j < locale.Languages.Length; j++) sb.Append("," + ToCSVString(j < entry.Value.Length ? entry.Value[j] : null));
                         sb.AppendLine();
                     }
                     // UTF-8 with BOM (Excel-friendly)
