@@ -222,6 +222,9 @@ namespace Thry.ThryEditor.Drawers
 
 		private void HandlePreviewDrag(Rect rect, ref float t0, ref float t1, ref float v0, ref float v1, MaterialProperty prop)
 		{
+			// Reads mouse events itself, so it has to honor a disabled group (e.g. a locked material) itself
+			if (!GUI.enabled) return;
+
 			float handleMargin = GUILib.GRAPH_HANDLE_MARGIN;
 
 			// Calculate time range for unclamped z/w mode
