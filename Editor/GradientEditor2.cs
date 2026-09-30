@@ -103,7 +103,8 @@ namespace Thry.ThryEditor
             Type gradientEditorType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.GradientEditor");
             var gradientEditorInit = gradientEditorType.GetMethod("Init");
 
-            gradientEditorInit.Invoke(gradientEditor, new object[] { gradient, 0, true, ColorSpace.Linear });
+            // Not HDR: the texture is saved as a PNG, which clamps every channel to 0-1.
+            gradientEditorInit.Invoke(gradientEditor, new object[] { gradient, 0, false, ColorSpace.Linear });
         }
 
         /// <summary>Saves a preset library editor's state to EditorPrefs and unloads its libraries, as Unity's gradient picker does on close.</summary>
