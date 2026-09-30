@@ -85,10 +85,11 @@ namespace Thry.ThryEditor
                 {
                     var source = (Texture2D)material.GetTexture(property);
                     var stage = Capture(material, property, channels);
-                    string key = AssetDatabase.GetAssetPath(source) + JsonUtility.ToJson(stage);
+                    bool colorSlot = ExpectsSrgb(material.shader, property);
+                    string key = AssetDatabase.GetAssetPath(source) + JsonUtility.ToJson(stage) + colorSlot;
                     if (!shared.TryGetValue(key, out var baked))
                     {
-                        baked = ExportTexture(source, stage);
+                        baked = ExportTexture(source, stage, colorSlot);
                         shared.Add(key, baked);
                     }
                     result.Add(material, baked);
@@ -102,7 +103,16 @@ namespace Thry.ThryEditor
             }
         }
 
-        internal static Texture2D ExportTexture(Texture2D source, MaskBakeStage stage)
+        // Color slots are marked [sRGBWarning(true)]; everything else is mask data.
+        static bool ExpectsSrgb(Shader shader, string property)
+        {
+            int index = shader.FindPropertyIndex(property);
+            if (index < 0) return false;
+            return shader.GetPropertyAttributes(index).Select(a => new DrawerAttribute(a)).Any(a => a.Name == "sRGBWarning"
+                && a.Args.Any(arg => arg.Equals("true", StringComparison.OrdinalIgnoreCase) || arg.Equals("gamma", StringComparison.OrdinalIgnoreCase)));
+        }
+
+        internal static Texture2D ExportTexture(Texture2D source, MaskBakeStage stage, bool colorSlot = false)
         {
             string sourcePath = AssetDatabase.GetAssetPath(source);
             var sourceImporter = AssetImporter.GetAtPath(sourcePath) as TextureImporter;
@@ -123,7 +133,11 @@ namespace Thry.ThryEditor
                 bool decodeSrgb = decoded != original && originalImporter.sRGBTexture && QualitySettings.activeColorSpace == ColorSpace.Linear;
                 // HDR sources need an HDR output even when untouched channels carry the range.
                 bool hdr = original.graphicsFormat.ToString().Contains("SFloat") || original.graphicsFormat.ToString().Contains("UFloat");
-                var image = Render(decoded, recipe.stages, decodeSrgb, hdr);
+                // An sRGB color texture stays sRGB. Its adjusted colors are linear here, so they are encoded back to
+                // sRGB, which keeps dark tones precise and leaves untouched colors as they were.
+                bool keepSrgb = colorSlot && !hdr && originalImporter.sRGBTexture;
+                bool encodeSrgb = keepSrgb && QualitySettings.activeColorSpace == ColorSpace.Linear;
+                var image = Render(decoded, recipe.stages, decodeSrgb, hdr, encodeSrgb);
                 try
                 {
                     string folder = Path.GetDirectoryName(sourcePath).Replace('\\', '/');
@@ -139,7 +153,7 @@ namespace Thry.ThryEditor
                         var importer = AssetImporter.GetAtPath(p) as TextureImporter;
                         if (importer == null) return null;
                         importer.textureType = TextureImporterType.Default;
-                        importer.sRGBTexture = false;
+                        importer.sRGBTexture = keepSrgb;
                         importer.alphaIsTransparency = false;
                         importer.alphaSource = TextureImporterAlphaSource.FromInput;
                         importer.npotScale = TextureImporterNPOTScale.None;
@@ -194,7 +208,7 @@ namespace Thry.ThryEditor
             return recipe;
         }
 
-        internal static Texture2D Render(Texture source, List<MaskBakeStage> stages, bool decodeSrgb, bool hdr)
+        internal static Texture2D Render(Texture source, List<MaskBakeStage> stages, bool decodeSrgb, bool hdr, bool encodeSrgb = false)
         {
             var shader = Shader.Find("Hidden/Thry/MaskBake");
             if (shader == null || !shader.isSupported) throw new InvalidOperationException("The mask bake shader is unavailable.");
@@ -220,9 +234,15 @@ namespace Thry.ThryEditor
                     current = next; input = next; decodeSrgb = false;
                 }
                 RenderTexture.active = current;
-                image = new Texture2D(source.width, source.height, hdr ? TextureFormat.RGBAFloat : TextureFormat.RGBA32, false, true);
+                image = new Texture2D(source.width, source.height, hdr || encodeSrgb ? TextureFormat.RGBAFloat : TextureFormat.RGBA32, false, true);
                 image.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0, false);
                 image.Apply(false);
+                if (encodeSrgb && !hdr)
+                {
+                    var linear = image;
+                    image = EncodeSrgb(linear);
+                    UnityEngine.Object.DestroyImmediate(linear);
+                }
                 return image;
             }
             catch { if (image != null) UnityEngine.Object.DestroyImmediate(image); throw; }
@@ -233,5 +253,32 @@ namespace Thry.ThryEditor
                 UnityEngine.Object.DestroyImmediate(material);
             }
         }
+
+        // Float linear RGBA to 8-bit sRGB RGB. Alpha is not color and stays linear.
+        static Texture2D EncodeSrgb(Texture2D linear)
+        {
+            var encoded = new Texture2D(linear.width, linear.height, TextureFormat.RGBA32, false, true);
+            try
+            {
+                var source = linear.GetPixelData<Color>(0);
+                var target = encoded.GetPixelData<Color32>(0);
+                for (int i = 0; i < source.Length; i++)
+                {
+                    var c = source[i];
+                    target[i] = new Color32(ToByte(LinearToSrgb(c.r)), ToByte(LinearToSrgb(c.g)), ToByte(LinearToSrgb(c.b)), ToByte(c.a));
+                }
+                encoded.Apply(false);
+                return encoded;
+            }
+            catch { UnityEngine.Object.DestroyImmediate(encoded); throw; }
+        }
+
+        static float LinearToSrgb(float value)
+        {
+            value = Mathf.Clamp01(value);
+            return value <= 0.0031308f ? value * 12.92f : 1.055f * Mathf.Pow(value, 1f / 2.4f) - 0.055f;
+        }
+
+        static byte ToByte(float value) => (byte)(Mathf.Clamp01(value) * 255f + 0.5f);
     }
 }
