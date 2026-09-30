@@ -338,7 +338,7 @@ are using Poiyomi Shaders, this folder is very important!
             {
                 long entrySize = budgetBytes > 0 ? GetDirectorySizeBytes(entry) : 0;
 
-                if (AssetDatabase.DeleteAsset(entry))
+                if (DeleteCollected(entry))
                 {
                     deleted++;
                     total -= entrySize;
@@ -367,8 +367,47 @@ are using Poiyomi Shaders, this folder is very important!
             foreach (string shaderDir in Directory.GetDirectories(CacheRoot))
             {
                 if (Directory.GetDirectories(shaderDir).Length == 0 && Directory.GetFiles(shaderDir).Length == 0)
-                    AssetDatabase.DeleteAsset(shaderDir.Replace('\\', '/'));
+                    DeleteCollected(shaderDir.Replace('\\', '/'));
             }
+        }
+
+        // Paths the GC deleted itself. Nothing referenced them, so LockedShaderRecovery can skip its
+        // project-wide scan for materials that lost their shader.
+        static readonly HashSet<string> s_collectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        static bool DeleteCollected(string assetPath)
+        {
+            s_collectedPaths.Add(assetPath);
+            if (!AssetDatabase.DeleteAsset(assetPath))
+            {
+                s_collectedPaths.Remove(assetPath);
+                return false;
+            }
+            // The GC runs outside StartAssetEditing, so the postprocessor has seen the deletion by the next tick.
+            // Forgetting it then keeps a later manual deletion of the same path from skipping recovery.
+            EditorApplication.delayCall -= ForgetCollected;
+            EditorApplication.delayCall += ForgetCollected;
+            return true;
+        }
+
+        /// <summary>True if the GC deleted this asset, or the folder it was in.</summary>
+        public static bool WasCollected(string assetPath)
+        {
+            if (s_collectedPaths.Count == 0 || string.IsNullOrEmpty(assetPath)) return false;
+            assetPath = assetPath.Replace('\\', '/');
+            foreach (string collected in s_collectedPaths)
+            {
+                if (assetPath.Equals(collected, StringComparison.OrdinalIgnoreCase)
+                    || assetPath.StartsWith(collected + "/", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>Called once the deletions have been through the import pipeline.</summary>
+        public static void ForgetCollected()
+        {
+            s_collectedPaths.Clear();
         }
 
         /// <summary>

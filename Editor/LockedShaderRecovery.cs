@@ -131,10 +131,11 @@ namespace Thry.ThryEditor
                         s_importedMaterialPaths.Add(path);
 
                 // Losing a cached shader does not necessarily re-import the materials that used it, so
-                // that case has to be caught from the deletion instead.
+                // that case has to be caught from the deletion instead. The cache's own GC only deletes
+                // entries no material uses, so those deletions can't have orphaned anything.
                 foreach (string path in deletedAssets)
                 {
-                    if (!LockedShaderCache.IsInCache(path)) continue;
+                    if (!LockedShaderCache.IsInCache(path) || LockedShaderCache.WasCollected(path)) continue;
                     s_needsFullScan = true;
                     break;
                 }
