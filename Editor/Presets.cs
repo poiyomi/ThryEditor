@@ -107,9 +107,17 @@ namespace Thry.ThryEditor
 
             public void AddOrUpdate(string name, string guid)
             {
+                // The cache file stores "name;guid", so names get the same cleanup AddPreset applies
+                name = name.Replace(';', '_');
                 if (_guidToName.ContainsKey(guid))
                 {
                     _nameToGuid.Remove(_guidToName[guid]);
+                }
+                // Taking a name another preset used drops that preset's reverse entry, otherwise
+                // removing it later would also remove this preset's name
+                if (_nameToGuid.TryGetValue(name, out string previousGuid) && previousGuid != guid)
+                {
+                    _guidToName.Remove(previousGuid);
                 }
                 _guidToName[guid] = name;
                 _nameToGuid[name] = guid;
@@ -145,9 +153,13 @@ namespace Thry.ThryEditor
 
             public void AddSerialized(string line)
             {
-                string[] split = line.Split(';');
-                _nameToGuid[split[0]] = split[1];
-                _guidToName[split[1]] = split[0];
+                // Guids never contain ';', so split on the last one in case an older cache has it in a name
+                int split = line.LastIndexOf(';');
+                if (split < 0) return;
+                string name = line.Substring(0, split);
+                string guid = line.Substring(split + 1);
+                _nameToGuid[name] = guid;
+                _guidToName[guid] = name;
             }
         }
         
