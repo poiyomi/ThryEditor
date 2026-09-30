@@ -89,13 +89,29 @@ namespace Thry.ThryEditor
         }
         internal static AnimationCurve Flip(AnimationCurve source)
         {
-            var keys = source.keys.Reverse().Select(key => new Keyframe(1 - key.time, key.value,
-                -key.outTangent, -key.inTangent, key.outWeight, key.inWeight)
+            var original = source.keys;
+            var keys = new List<Keyframe>();
+            for (int i = original.Length - 1; i >= 0; i--)
             {
-                weightedMode = ((key.weightedMode & WeightedMode.In) != 0 ? WeightedMode.Out : WeightedMode.None)
-                    | ((key.weightedMode & WeightedMode.Out) != 0 ? WeightedMode.In : WeightedMode.None)
-            }).ToArray();
-            return new AnimationCurve(keys) { preWrapMode = source.postWrapMode, postWrapMode = source.preWrapMode };
+                var key = original[i];
+                var mirrored = new Keyframe(1 - key.time, key.value, -key.outTangent, -key.inTangent, key.outWeight, key.inWeight)
+                {
+                    weightedMode = ((key.weightedMode & WeightedMode.In) != 0 ? WeightedMode.Out : WeightedMode.None)
+                        | ((key.weightedMode & WeightedMode.Out) != 0 ? WeightedMode.In : WeightedMode.None)
+                };
+                // A stepped segment holds its left key's value. Mirrored it has to hold the new right key's value,
+                // which a curve can't express, so step to that value just after the left key and hold it from there.
+                if (i < original.Length - 1 && (float.IsInfinity(key.outTangent) || float.IsInfinity(original[i + 1].inTangent))
+                    && mirrored.time - keys[keys.Count - 1].time > Separation * 2)
+                {
+                    var left = keys[keys.Count - 1];
+                    left.outTangent = float.PositiveInfinity;
+                    keys[keys.Count - 1] = left;
+                    keys.Add(new Keyframe(left.time + Separation, key.value, 0, float.PositiveInfinity));
+                }
+                keys.Add(mirrored);
+            }
+            return new AnimationCurve(keys.ToArray()) { preWrapMode = source.postWrapMode, postWrapMode = source.preWrapMode };
         }
 
         internal static AnimationCurve Preset(string name)
