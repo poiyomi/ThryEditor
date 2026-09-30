@@ -54,8 +54,23 @@ namespace Thry.ThryEditor
             EditorApplication.update += Tick;
         }
 
-        static int MaterialUV(Material material, string property) => material.HasProperty(property + "UV")
-            ? Mathf.RoundToInt(material.GetFloat(property + "UV")) : 0;
+        static int MaterialUV(Material material, string property)
+        {
+            string uv = Related(material, property, "UV");
+            return material.HasProperty(uv) ? Mathf.RoundToInt(material.GetFloat(uv)) : 0;
+        }
+
+        // Module instances put their index after the suffix: _FlipbookMask1 uses _FlipbookMaskUV1 and _FlipbookMaskPan1.
+        static string Related(Material material, string property, string suffix)
+        {
+            string name = property + suffix;
+            if (material.HasProperty(name)) return name;
+            int stem = property.Length;
+            while (stem > 0 && char.IsDigit(property[stem - 1])) stem--;
+            if (stem == 0 || stem == property.Length) return name;
+            string instanced = property.Substring(0, stem) + suffix + property.Substring(stem);
+            return material.HasProperty(instanced) ? instanced : name;
+        }
 
         public static bool CanPreview(Material material, string property) => UnavailableReason(material, property) == null;
 
@@ -226,8 +241,7 @@ namespace Thry.ThryEditor
             entry.Preview.SetTexture("_ThryInspectTex", texture);
             var scale = entry.Source.GetTextureScale(entry.Property); var offset = entry.Source.GetTextureOffset(entry.Property);
             entry.Preview.SetVector("_ThryInspectST", new Vector4(scale.x, scale.y, offset.x, offset.y));
-            var pan = entry.Source.HasProperty(entry.Property + "Pan") ? entry.Source.GetVector(entry.Property + "Pan") : Vector4.zero;
-            entry.Preview.SetVector("_ThryInspectPan", pan);
+            entry.Preview.SetVector("_ThryInspectPan", Vector(entry.Source, Related(entry.Source, entry.Property, "Pan"), Vector4.zero));
             entry.Preview.SetFloat("_ThryInspectUV", uv);
             entry.Preview.SetVector("_ThryInspectUVTiling", Vector(entry.Source, "_UVSettingsTiling" + uv, new Vector4(1, 1, 0, 0)));
             entry.Preview.SetVector("_ThryInspectUVOffset", Vector(entry.Source, "_UVSettingsOffset" + uv, Vector4.zero));
