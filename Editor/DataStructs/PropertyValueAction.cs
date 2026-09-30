@@ -67,11 +67,6 @@ namespace Thry.ThryEditor
             return null;
         }
 
-        private static PropertyValueAction[] ParseToArrayForThryParser(string s)
-        {
-            return ParseToArray(s);
-        }
-
         public static PropertyValueAction[] ParseToArray(string s)
         {
             //s := 0=>p1=v1;p2=v2;1=>p1=v3...
