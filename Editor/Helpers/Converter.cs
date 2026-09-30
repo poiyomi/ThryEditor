@@ -308,7 +308,8 @@ namespace Thry.ThryEditor.Helpers
                     EditorUtility.DisplayDialog("Texture Array", "Only textures can be combined into a texture array.", "OK");
                     return null;
                 }
-                Array.Sort(textures, (UnityEngine.Object one, UnityEngine.Object two) => one.name.CompareTo(two.name));
+                // Natural order keeps frame2 before frame10 when the numbers aren't zero-padded
+                Array.Sort(textures, (UnityEngine.Object one, UnityEngine.Object two) => EditorUtility.NaturalCompare(one.name, two.name));
 
                 string assetPath = AssetDatabase.GetAssetPath(textures[0]);
                 assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath.Remove(assetPath.LastIndexOf('/')) + "/Texture2DArray.asset");
