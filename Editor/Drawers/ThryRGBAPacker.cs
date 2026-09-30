@@ -462,7 +462,14 @@ namespace Thry.ThryEditor.Drawers
                     break;
                 case TextureSaveLocation.prompt:
                     dir = EditorUtility.OpenFolderPanel("Select Folder", "Assets", "");
-                    dir = dir.Replace(Application.dataPath, "Assets");
+                    if (string.IsNullOrEmpty(dir)) return;
+                    // The texture is imported as an asset, so it has to be saved inside the project's Assets folder.
+                    dir = FileUtil.GetProjectRelativePath(dir.Replace('\\', '/'));
+                    if (dir != "Assets" && !dir.StartsWith("Assets/", StringComparison.Ordinal))
+                    {
+                        EditorUtility.DisplayDialog("Merge", "Choose a folder inside this project's Assets folder.", "OK");
+                        return;
+                    }
                     break;
                 default:
                     dir = "Assets/Textures/Packed";
