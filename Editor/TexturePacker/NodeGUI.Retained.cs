@@ -16,12 +16,10 @@ namespace Thry.ThryEditor.TexturePacker
         int _retainedPreviewChannel;
         string _retainedError;
         DropdownField _retainedPreviewSelector;
-        // The settings the window last built or packed from, to tell its own undo steps apart from unrelated ones.
         string _shownConfig;
 
         void RememberShownConfig() => _shownConfig = _config == null ? null : JsonUtility.ToJson(_config);
 
-        // Settings edits share the window's Undo history with graph edits to the same configuration.
         const string SettingsUndoName = "Change texture studio settings";
 
         public void CreateGUI()

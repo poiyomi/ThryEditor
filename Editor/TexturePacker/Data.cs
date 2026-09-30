@@ -262,8 +262,7 @@ namespace Thry.ThryEditor.TexturePacker
             GradientTexture = BakeGradient(Gradient, size, GradientDirection == GradientDirection.Vertical);
         }
 
-        // Converter.GradientToTexture sets every texel on its own, which stalls the editor at large sizes.
-        // Every row (or column) is the same, so bake one with it and copy that across for identical texels.
+        // GradientToTexture is slow at large sizes, so bake one line
         static Texture2D BakeGradient(Gradient gradient, Vector2Int size, bool vertical)
         {
             int width = Mathf.Clamp(size.x, 0, 8192), height = Mathf.Clamp(size.y, 0, 8192);
@@ -391,7 +390,6 @@ namespace Thry.ThryEditor.TexturePacker
                     else if (extension == ".tga")
                     {
                         try { decoded = TextureHelper.LoadTGA(path, true); }
-                        // Unity imports more TGA types than the raw reader handles, so use the import like other formats
                         catch (NotSupportedException e) { ThryLogger.LogWarn("TexturePacker", e.Message + " Using the imported texture instead."); }
                         finally { EditorUtility.ClearProgressBar(); }
                         if (decoded != null) { decoded.filterMode = Texture.filterMode; decoded.hideFlags = HideFlags.HideAndDontSave; }

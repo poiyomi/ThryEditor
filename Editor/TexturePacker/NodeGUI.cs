@@ -225,8 +225,7 @@ namespace Thry.ThryEditor.TexturePacker
         {
             static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
             {
-                // Only texture importers hold packer configs. Saving materials, scenes and prefabs
-                // shouldn't force the next 'Previous packs' to rescan every texture in the project.
+                // Only texture importers hold packer configs
                 if (TexturePackerConfig.HasImporterCache
                     && (importedAssets.Concat(movedAssets).Any(path => AssetDatabase.GetImporterType(path) == typeof(TextureImporter))
                     || deletedAssets.Any(TexturePackerConfig.IsListedImporter)))
@@ -234,7 +233,7 @@ namespace Thry.ThryEditor.TexturePacker
                     TexturePackerConfig.InvalidateImporterCache();
                 }
 
-                // Only ShowWindow sets s_instance, so pick up a studio window restored by a domain reload
+                // Windows restored by a domain reload skip ShowWindow
                 if (s_instance == null && HasOpenInstances<NodeGUI>()) s_instance = Resources.FindObjectsOfTypeAll<NodeGUI>().FirstOrDefault();
                 if (s_instance == null || s_instance._config?.Sources == null) return;
 

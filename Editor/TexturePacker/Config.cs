@@ -47,7 +47,7 @@ namespace Thry.ThryEditor.TexturePacker
                 for (int i = 0; i < config.Sources.Length; i++)
                 {
                     var source = config.Sources[i];
-                    // Older configs saved instance IDs, which point at unrelated objects after a restart. Ask for the texture again.
+                    // Old configs saved instance IDs, which go stale on restart
                     if (config.Version < 2) source.ImageTexture = null;
                     if (!string.IsNullOrEmpty(source.ImageTextureGuid)) source.ResolveImageIdentity();
                     else if (legacy?.Sources != null && i < legacy.Sources.Length && legacy.Sources[i]?.ImageTexture?.instanceID != 0
@@ -121,11 +121,10 @@ namespace Thry.ThryEditor.TexturePacker
             return false;
         }
 
-        // A packed texture may have been moved, renamed or duplicated since its config was saved.
-        // Saving should update the texture that was opened, not the path stored in the config.
+        // The texture may have moved since its config was saved
         internal void SetOutputPath(string assetPath)
         {
-            // Package folders are usually read-only, so those keep saving to the stored folder
+            // Package folders are usually read-only
             if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal)) return;
             string extension = System.IO.Path.GetExtension(assetPath).ToLowerInvariant();
             foreach (SaveType type in Enum.GetValues(typeof(SaveType)))
@@ -166,7 +165,6 @@ namespace Thry.ThryEditor.TexturePacker
             s_textureImporterList[ImporterListName(importer.assetPath)] = importer;
         }
 
-        // Strip only the leading "Assets/" so textures in nested Assets folders keep distinct names
         static string ImporterListName(string path) => path.StartsWith("Assets/", StringComparison.Ordinal) ? path.Substring("Assets/".Length) : path;
 
         private static SortedList<string, TextureImporter> s_textureImporterList = new SortedList<string, TextureImporter>();
@@ -178,7 +176,6 @@ namespace Thry.ThryEditor.TexturePacker
         public static IList<string> AssetNames => s_textureImporterList.Keys;
 
         internal static bool IsListedImporter(string path) => s_textureImporterList.ContainsKey(ImporterListName(path));
-        // False until 'Previous packs' starts a scan, and the next scan starts from scratch anyway
         internal static bool HasImporterCache => s_importerGuids != null || s_isLoadingImportersDone;
 
         public static bool AreImportersLoaded()

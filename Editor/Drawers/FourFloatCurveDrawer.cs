@@ -73,7 +73,7 @@ namespace Thry.ThryEditor.Drawers
                 new Keyframe(1f, value.w)
             );
 
-            // Linear, so the curve shows what the shader renders between the samples
+            // Linear to match the shader
             for (int i = 0; i < curve.length; i++)
             {
                 AnimationUtility.SetKeyLeftTangentMode(curve, i, AnimationUtility.TangentMode.Linear);

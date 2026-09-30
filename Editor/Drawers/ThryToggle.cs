@@ -134,7 +134,7 @@ namespace Thry.ThryEditor.Drawers
                     UnityHelper.StartAnimationRecording();
             }
 
-            // Reopens the check ended above, so it stays paired with the one the caller closes
+            // Paired with the caller's EndAnimatedCheck
             if (hasKeyword)
                 ShaderEditor.Active.Editor.BeginAnimatedCheck(prop);
         }

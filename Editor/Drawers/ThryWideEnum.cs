@@ -23,7 +23,6 @@ namespace Thry.ThryEditor.Drawers
         internal static GUIStyle PopupStyle;
         private readonly InspectorPopup _popup = new InspectorPopup();
 
-        // Unity builds a new drawer for every shader it draws, and scanning every loaded type each time is slow
         private static readonly Dictionary<string, Type> s_enumTypes = new Dictionary<string, Type>();
 
         // internal Unity AssemblyHelper can't be accessed

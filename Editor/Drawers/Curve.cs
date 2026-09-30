@@ -17,7 +17,6 @@ namespace Thry.ThryEditor.Drawers
         // edited has to be tracked per material or material B is shown (and saves) material A's curve.
         private static readonly Dictionary<string, AnimationCurve> s_curvesByMaterialProperty = new Dictionary<string, AnimationCurve>();
         private string _curveKey;
-        // Where the unsaved in-memory texture was assigned, so it can still be saved after the selection moves on.
         private Object[] _pendingTargets;
         private string _pendingPropertyName;
 
@@ -48,8 +47,7 @@ namespace Thry.ThryEditor.Drawers
         {
             string key = GetCurveKey(prop);
             if (key == _curveKey) return;
-            // A pending edit belongs to the previous material, which only holds the in-memory texture from
-            // UpdateCurveTexture. Save it for that material, not the newly selected one, or the edit is lost.
+            // A pending edit belongs to the previous material
             if (!saved) SavePending();
             _curveKey = key;
             if (!s_curvesByMaterialProperty.TryGetValue(key, out curve))
@@ -120,7 +118,6 @@ namespace Thry.ThryEditor.Drawers
                 foreach (Object target in _pendingTargets)
                 {
                     Material material = target as Material;
-                    // Skip a material whose curve texture was changed some other way since the edit
                     if (material == null || !material.HasProperty(_pendingPropertyName) || material.GetTexture(_pendingPropertyName) != texture) continue;
                     Undo.RecordObject(material, "Save Curve");
                     material.SetTexture(_pendingPropertyName, saved_texture);

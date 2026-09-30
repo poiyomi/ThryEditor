@@ -21,8 +21,7 @@ namespace Thry.ThryEditor
         public static void Open(GradientData data, MaterialProperty prop, TextureData predefinedTextureSettings, bool force_texture_options = false, bool show_texture_options=true, ColorSpace colorSpace=ColorSpace.Linear)
         {
             GradientEditor window = (GradientEditor)EditorWindow.GetWindow(typeof(GradientEditor));
-            // Reusing the open window for another gradient ends its current session the same way closing it would.
-            // That can write to this same property, which prop has cached, so it is read again afterwards.
+            // Ending the session can write to prop, so re-read it
             if (window.EndSession())
             {
                 MaterialProperty refreshed = MaterialEditor.GetMaterialProperty(prop.targets, prop.name);
@@ -78,7 +77,6 @@ namespace Thry.ThryEditor
             EndSession();
         }
 
-        // Saves the edited gradient, or puts the original texture back if nothing was edited.
         private bool EndSession()
         {
             if (_data == null) return false;
@@ -116,8 +114,7 @@ namespace Thry.ThryEditor
 
         private string GetGradientSavefileName(string material_name)
         {
-            // Gradient.GetHashCode hashes the native object's address, which gets reused, so two different
-            // gradients could be saved over the same file. A new id gives every saved gradient its own file.
+            // Gradient.GetHashCode repeats across gradients
             string hash = Guid.NewGuid().ToString("N");
             return GetGradientSavefileName(hash, material_name);
         }
@@ -155,7 +152,7 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
-            // None of the session survives a script reload, so a window Unity restores afterwards has nothing to edit.
+            // The session doesn't survive script reloads
             if (_data == null || _prop == null) Close();
         }
 

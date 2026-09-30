@@ -13,8 +13,7 @@ namespace Thry.ThryEditor.Drawers
 
 		enum LinkMode { Off, Ratio, Delta }
 		static readonly Dictionary<string, LinkMode> s_LinkStates = new Dictionary<string, LinkMode>();
-		// Per material, so one material's shape is never applied to another. Seen is the value the baseline
-		// belongs to; if the vector changes any other way (Off/Delta edits, undo) the baseline starts over from it.
+		// Per material. A changed Seen (undo, Off/Delta edits) resets Shape
 		struct RatioBaseline { public Vector4 Shape; public Vector4 Seen; }
 		static readonly Dictionary<(int, string), RatioBaseline> s_RatioBaselines = new Dictionary<(int, string), RatioBaseline>();
 
@@ -218,7 +217,6 @@ namespace Thry.ThryEditor.Drawers
                 }
                 if (_useLink && s_RatioBaselines.TryGetValue(baselineKey, out var edited))
                 {
-                    // Only a Ratio edit carries the remembered shape forward
                     if (!s_LinkStates.TryGetValue(prop.name, out var editMode) || editMode != LinkMode.Ratio) edited.Shape = prop.vectorValue;
                     edited.Seen = prop.vectorValue;
                     s_RatioBaselines[baselineKey] = edited;

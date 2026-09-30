@@ -111,7 +111,7 @@ namespace Thry.ThryEditor.TexturePacker
                 {
                     config.FileOutput.ColorSpace = importer.sRGBTexture ? ColorSpace.Gamma : ColorSpace.Linear;
                     config.FileOutput.FilterMode = importer.filterMode;
-                    // Match the source so a mask with it off doesn't get its RGB dilated under transparent alpha on import
+                    // Match the source; enabling it dilates RGB under clear alpha
                     config.FileOutput.AlphaIsTransparency = importer.alphaIsTransparency;
                     return true;
                 }
@@ -197,7 +197,6 @@ namespace Thry.ThryEditor.TexturePacker
 
                 PackShader.Dispatch(0, width / 8 + 1, height / 8 + 1, 1);
 
-                // With no filter the kernel is the identity, so skip the extra pass and render texture.
                 if (config.KernelPreset != KernelPreset.None && config.KernelSettings != null && config.KernelSettings.Loops > 0)
                 {
                     // Settings Vector4s instead of floats because the SetFloats function is broken
@@ -329,7 +328,6 @@ namespace Thry.ThryEditor.TexturePacker
                 }
                 else
                 {
-                    // Opaque, like the grayscale exports; only the A export keeps the channel in alpha.
                     if (exportChannels[0])
                         ExportChannel(input, target, r, none, none, none, addAlpha, "_R", config);
                     if (exportChannels[1])
@@ -412,7 +410,7 @@ namespace Thry.ThryEditor.TexturePacker
                 importer.SetPlatformTextureSettings(new TextureImporterPlatformSettings
                 { name = "Standalone", overridden = format != TextureImporterFormat.Automatic, maxTextureSize = maximum, format = format });
                 if (storeConfig) config.SaveToImporter(importer);
-                // A channel export isn't the packed texture, so it must not reopen as that pack.
+                // Channel exports must not reopen as the pack
                 else if (importer.userData.StartsWith("ThryTexturePackerConfig:")) importer.userData = "";
                 importer.SaveAndReimport();
                 if (AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath) == null) throw new IOException("The exported texture could not be loaded at " + assetPath + ".");

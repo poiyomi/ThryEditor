@@ -25,7 +25,7 @@ namespace Thry.ThryEditor.TexturePacker
         void RestoreStudioGraph()
         {
             if (_config == null) return;
-            // Every undo in the editor lands here. Only rebuild when it restored the studio's own settings.
+            // Every editor undo lands here, not just the studio's
             if (JsonUtility.ToJson(_config) == _shownConfig) return;
             // A color picker taking back its own edits only changed source values. Rebuilding would close the
             // gradient popup its key color was picked from.

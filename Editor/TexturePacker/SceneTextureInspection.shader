@@ -31,7 +31,6 @@ Shader "Hidden/Thry/SceneTextureInspection"
                 return (_ThryInspectTimeSource == 1 && _VRChatTimeNetworkMs != 0)
                     ? ((_VRChatTimeNetworkMs << 6) >> 6) * float4(.00005, .001, .002, .003) : _Time;
             }
-            // Same conversion as the texture card so the decoded normal displays as n * .5 + .5.
             float3 InspectionNormal(float4 texel)
             {
                 float3 c = UnpackNormal(texel) * .5 + .5;

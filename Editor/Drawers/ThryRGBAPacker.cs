@@ -195,7 +195,6 @@ namespace Thry.ThryEditor.Drawers
                 r.width = 60;
                 r.x -= r.width;
                 EditorGUI.LabelField(r, "Fallback:");
-                // Also catches the texture being cleared above, which lands in this branch.
                 didChange = EditorGUI.EndChangeCheck();
             }
             else
@@ -245,7 +244,6 @@ namespace Thry.ThryEditor.Drawers
             _current._previousTexture = _prop.textureValue;
             _current._isInit = true;
 
-            // Init runs for every material this drawer shows; subscribe once.
             Undo.undoRedoEvent -= OnUndoRedo;
             Undo.undoRedoEvent += OnUndoRedo;
         }
@@ -254,8 +252,7 @@ namespace Thry.ThryEditor.Drawers
         {
             if (undoRedoInfo.undoName == "Thry Packer Texture Change " + _prop.name)
             {
-                // One drawer serves every material with this shader, and the undone change may belong to any of them.
-                // Each one reloads its tags the next time it is drawn.
+                // The undone change may belong to any material
                 foreach (ThryRGBAPackerData data in materialPackerData.Values) data._isInit = false;
                 _current._overwriteShowInline = 2;
                 Undo.undoRedoEvent -= OnUndoRedo;
@@ -280,8 +277,6 @@ namespace Thry.ThryEditor.Drawers
             {
                 if (input.Source.Texture != null) m.SetOverrideTag(id + "_texPack_" + channel + "_guid", AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(input.Source.Texture)));
                 else m.SetOverrideTag(id + "_texPack_" + channel + "_guid", "");
-                // Tags are read back with the invariant culture, so a comma decimal separator would load as 0.
-                // Written like the retained packer writes them.
                 m.SetOverrideTag(id + "_texPack_" + channel + "_fallback", input.Fallback.ToString(CultureInfo.InvariantCulture));
                 m.SetOverrideTag(id + "_texPack_" + channel + "_inverted", input.Invert.ToString());
                 m.SetOverrideTag(id + "_texPack_" + channel + "_channel", ((int)input.Channel).ToString(CultureInfo.InvariantCulture));
@@ -399,8 +394,7 @@ namespace Thry.ThryEditor.Drawers
         void OpenFullTexturePacker()
         {
             NodeGUI packer = NodeGUI.Open(GetConfig());
-            // The inspector may show another material with this shader by the time the packer reports back,
-            // so keep writing to the material it was opened from.
+            // The inspector may show another material by then
             MaterialProperty prop = _prop;
             ThryRGBAPackerData data = _current;
             packer.OnChange += (tex, config) => FullTexturePackerOnChange(prop, data, tex, config);
@@ -420,7 +414,7 @@ namespace Thry.ThryEditor.Drawers
             if (prop.targets.Any(t => t == null)) return;
             if (_firstTextureIsRGB)
             {
-                // The second slot is the alpha source, so its invert and fallback live on the A output.
+                // The second slot feeds the A output
                 SyncFromFullTexturePacker(data._input_r, config, 0, 0);
                 SyncFromFullTexturePacker(data._input_g, config, 1, 3);
             }
@@ -440,7 +434,7 @@ namespace Thry.ThryEditor.Drawers
 
         static void SyncFromFullTexturePacker(InlinePackerChannelConfig input, TexturePackerConfig config, int sourceIndex, int targetIndex)
         {
-            // Connection is a struct, so FirstOrDefault can't tell a missing connection apart from one to source 0.
+            // Connection is a struct; FirstOrDefault can't signal a miss
             bool connected = config.Connections.Any(c => c.FromTextureIndex == sourceIndex);
             Connection connection = config.Connections.FirstOrDefault(c => c.FromTextureIndex == sourceIndex);
             input.Source = connected ? config.Sources[sourceIndex] : new PackerSource();
@@ -479,7 +473,6 @@ namespace Thry.ThryEditor.Drawers
                 case TextureSaveLocation.prompt:
                     dir = EditorUtility.OpenFolderPanel("Select Folder", "Assets", "");
                     if (string.IsNullOrEmpty(dir)) return;
-                    // The texture is imported as an asset, so it has to be saved inside the project's Assets folder.
                     dir = FileUtil.GetProjectRelativePath(dir.Replace('\\', '/'));
                     if (dir != "Assets" && !dir.StartsWith("Assets/", StringComparison.Ordinal))
                     {
