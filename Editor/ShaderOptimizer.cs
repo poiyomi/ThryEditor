@@ -1270,6 +1270,8 @@ namespace Thry.ThryEditor
             stringBuilder.Append('|').Append((string)Config.Instance.Version);
             // Invalidate shaders generated before explicit texture samplers followed renaming.
             stringBuilder.Append("|texture-sampler-renaming:1");
+            // Colors are baked in gamma or linear space depending on the project.
+            stringBuilder.Append("|cs:").Append(PlayerSettings.colorSpace.ToString());
 
             // Keywords drive both the #define block and which #ifdef branches survive. FixKeywords
             // usually derives them from property values, but that is user-configurable, so they cannot
