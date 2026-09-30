@@ -1697,14 +1697,16 @@ namespace Thry.ThryEditor
             MaterialHelper.ApplyOverrideTags(material, ownTags);
         }
 
-        // Slots FillNonModifiableTextures filled, per material, so Revert can empty them again before a save.
-        static readonly Dictionary<Material, List<string>> s_filledTextures = new Dictionary<Material, List<string>>();
+        // Slots FillNonModifiableTextures filled, so Revert can empty them again before a save. Kept in SessionState,
+        // since a material stays on its section shader across a domain reload.
+        const string FilledKeyPrefix = "Thry.SectionLock.Filled.";
 
         // The importer gives its own shader the non-modifiable textures (Poiyomi's DFG lookup tables). A section
         // shader has no importer, so a material that leaves those slots empty gets the importer's texture instead.
         static void FillNonModifiableTextures(Material material, Shader source)
         {
             ShaderImporter importer = null;
+            List<string> filled = null;
             int count = source.GetPropertyCount();
             for (int i = 0; i < count; i++)
             {
@@ -1713,20 +1715,27 @@ namespace Thry.ThryEditor
                 string name = source.GetPropertyName(i);
                 if (material.GetTexture(name) != null) continue;
                 if (importer == null) importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(source)) as ShaderImporter;
-                if (importer == null) return;
+                if (importer == null) break;
                 Texture texture = importer.GetNonModifiableTexture(name);
                 if (texture == null) continue;
                 material.SetTexture(name, texture);
-                if (!s_filledTextures.TryGetValue(material, out List<string> filled)) s_filledTextures[material] = filled = new List<string>();
+                if (filled == null) filled = new List<string>();
                 filled.Add(name);
             }
+            if (filled == null) return;
+
+            string key = FilledKeyPrefix + MaterialKey(material);
+            string stored = SessionState.GetString(key, string.Empty);
+            SessionState.SetString(key, stored.Length == 0 ? string.Join(",", filled) : stored + "," + string.Join(",", filled));
         }
 
         static void ClearFilledTextures(Material material)
         {
-            if (!s_filledTextures.TryGetValue(material, out List<string> filled)) return;
-            foreach (string name in filled) material.SetTexture(name, null);
-            s_filledTextures.Remove(material);
+            string key = FilledKeyPrefix + MaterialKey(material);
+            string stored = SessionState.GetString(key, string.Empty);
+            if (stored.Length == 0) return;
+            foreach (string name in stored.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)) material.SetTexture(name, null);
+            SessionState.EraseString(key);
         }
 
         #endregion
