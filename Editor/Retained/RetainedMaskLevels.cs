@@ -59,8 +59,10 @@ namespace Thry.ThryEditor
         {
             this.model=model;textureProperty=texture;this.properties=properties;this.activeChannels=activeChannels;this.fields=fields;
             name="mask-levels-"+texture.MaterialProperty.name;
-            AddToClassList("thry-inspector");AddToClassList("poi-mask-levels");
-            styleSheets.Add(Resources.Load<StyleSheet>("MaskLevels"));RetainedAppearance.Install(this);
+            // Not a theme root of its own: the inspector root carries the skin, gray and height classes, and
+            // a nested root would re-declare the dark palette inside the light skin.
+            AddToClassList("poi-mask-levels");
+            styleSheets.Add(Resources.Load<StyleSheet>("MaskLevels"));
             Array.Copy(MaskLevelsData.Defaults,values,9);
             var toolbar=Row(this);toolbar.AddToClassList("poi-levels-tabs");
             int count=Enumerable.Range(0,4).Count(c=>(activeChannels&(1<<c))!=0);
