@@ -21,6 +21,8 @@ namespace Thry.ThryEditor.Drawers
             _labels[3] = label3;
         }
 
+        static GUIStyle s_centered;
+
         public override void OnGUI(Rect position, MaterialProperty prop, GUIContent label, MaterialEditor editor)
         {
             Rect fieldR = EditorGUI.PrefixLabel(position, GUIUtility.GetControlID(FocusType.Passive), label);
@@ -28,12 +30,14 @@ namespace Thry.ThryEditor.Drawers
             const float spacing = 4f;
             float colWidth = (fieldR.width - spacing * 3f) / 4f;
 
-            var centered = new GUIStyle(EditorStyles.miniLabel)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                clipping = TextClipping.Clip,
-                wordWrap = false
-            };
+            if (s_centered == null)
+                s_centered = new GUIStyle(EditorStyles.miniLabel)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    clipping = TextClipping.Clip,
+                    wordWrap = false
+                };
+            var centered = s_centered;
 
             for (int i = 0; i < 4; i++)
             {

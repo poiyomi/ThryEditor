@@ -14,6 +14,7 @@ namespace Thry.ThryEditor.Drawers
 		readonly int iconType;
 		readonly bool hasIconType;
 		Texture2D _customIcon;
+		static GUIStyle s_textStyle;
 
 		static readonly string[] _iconResourceNames =
 		{
@@ -73,9 +74,13 @@ namespace Thry.ThryEditor.Drawers
 		GUIContent content = new GUIContent(label.text);
 
 		// Calculate height using the actual text style and width (accounting for icon + padding)
-		GUIStyle textStyle = new GUIStyle(GUI.skin.label);
-		textStyle.wordWrap = true;
-		textStyle.alignment = TextAnchor.MiddleLeft;
+		if (s_textStyle == null)
+		{
+			s_textStyle = new GUIStyle(GUI.skin.label);
+			s_textStyle.wordWrap = true;
+			s_textStyle.alignment = TextAnchor.MiddleLeft;
+		}
+		GUIStyle textStyle = s_textStyle;
 		float textWidth = availableWidth - 56;
 		float textHeight = textStyle.CalcHeight(content, textWidth);
 		float height = Mathf.Max(textHeight + 8, 40); // 4px padding top+bottom, min 40 for icon

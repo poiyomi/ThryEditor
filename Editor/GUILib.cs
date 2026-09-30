@@ -873,21 +873,30 @@ namespace Thry.ThryEditor
             return changed;
         }
 
+        static GUIStyle s_importWarningBox, s_importWarningLabel, s_importWarningRow, s_importWarningButton;
+
         // Mimics the normal map import warning - written by Orels1
         static bool TextureImportWarningBox(string message) {
-            GUILayout.BeginVertical(new GUIStyle(EditorStyles.helpBox));
-            GUILayout.Label(message, new GUIStyle(EditorStyles.label) {
-                fontSize = 10, wordWrap = true
-            });
-            EditorGUILayout.BeginHorizontal(new GUIStyle() {
-                alignment = TextAnchor.MiddleRight
-            }, GUILayout.Height(24));
+            if (s_importWarningBox == null)
+            {
+                s_importWarningBox = new GUIStyle(EditorStyles.helpBox);
+                s_importWarningLabel = new GUIStyle(EditorStyles.label) {
+                    fontSize = 10, wordWrap = true
+                };
+                s_importWarningRow = new GUIStyle() {
+                    alignment = TextAnchor.MiddleRight
+                };
+                s_importWarningButton = new GUIStyle("button") {
+                    stretchWidth = false,
+                    margin = new RectOffset(0, 0, 0, 0),
+                    padding = new RectOffset(9, 9, 0, 0)
+                };
+            }
+            GUILayout.BeginVertical(s_importWarningBox);
+            GUILayout.Label(message, s_importWarningLabel);
+            EditorGUILayout.BeginHorizontal(s_importWarningRow, GUILayout.Height(24));
             EditorGUILayout.Space();
-            bool buttonPress = GUILayout.Button("Fix Now", new GUIStyle("button") {
-                stretchWidth = false,
-                margin = new RectOffset(0, 0, 0, 0),
-                padding = new RectOffset(9, 9, 0, 0)
-            }, GUILayout.Height(22));
+            bool buttonPress = GUILayout.Button("Fix Now", s_importWarningButton, GUILayout.Height(22));
             EditorGUILayout.EndHorizontal();
             GUILayout.EndVertical();
             return buttonPress;
@@ -1211,6 +1220,7 @@ namespace Thry.ThryEditor
         int _textureWidth;
         private ButtonData data;
         internal ButtonData Data => data;
+        static GUIStyle s_textureButtonStyle;
 
         public FooterButton(ButtonData data)
         {
@@ -1247,7 +1257,7 @@ namespace Thry.ThryEditor
             Rect cursorRect;
             if (isTextureContent)
             {
-                if(GUILayout.Button(content, new GUIStyle(), GUILayout.MaxWidth(_textureWidth), GUILayout.Height(_buttonHeight))){
+                if(GUILayout.Button(content, s_textureButtonStyle ?? (s_textureButtonStyle = new GUIStyle()), GUILayout.MaxWidth(_textureWidth), GUILayout.Height(_buttonHeight))){
                     data?.action?.Perform(ShaderEditor.Active?.Materials);
                 }
                 cursorRect = GUILayoutUtility.GetLastRect();
