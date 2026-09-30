@@ -134,7 +134,9 @@ namespace Thry.ThryEditor.Drawers
                     UnityHelper.StartAnimationRecording();
             }
 
-            ShaderEditor.Active.Editor.BeginAnimatedCheck(prop);
+            // Reopens the check ended above, so it stays paired with the one the caller closes
+            if (hasKeyword)
+                ShaderEditor.Active.Editor.BeginAnimatedCheck(prop);
         }
 
         public override void Apply(MaterialProperty prop)
