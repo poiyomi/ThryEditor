@@ -140,7 +140,7 @@ namespace Thry.ThryEditor.TexturePacker
             int height = config.FileOutput.Resolution.y;
 
 
-            RenderTexture target = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
+            RenderTexture target = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
             target.enableRandomWrite = true;
             target.filterMode = config.FileOutput.FilterMode;
 
@@ -197,7 +197,8 @@ namespace Thry.ThryEditor.TexturePacker
 
                 PackShader.Dispatch(0, width / 8 + 1, height / 8 + 1, 1);
 
-                if (config.KernelSettings != null)
+                // With no filter the kernel is the identity, so skip the extra pass and render texture.
+                if (config.KernelPreset != KernelPreset.None && config.KernelSettings != null && config.KernelSettings.Loops > 0)
                 {
                     // Settings Vector4s instead of floats because the SetFloats function is broken
                     float[] kernelNone = KernelSettings.GetKernelPreset(KernelPreset.None, false);
@@ -211,7 +212,7 @@ namespace Thry.ThryEditor.TexturePacker
                     // define the opposite way, because each loop flips it
                     RenderTexture filterTarget = target;
 
-                    filterInput = new RenderTexture(width, height, 24, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
+                    filterInput = new RenderTexture(width, height, 0, RenderTextureFormat.ARGB64, RenderTextureReadWrite.Linear);
                     ownedFilter = filterInput;
                     filterInput.enableRandomWrite = true;
                     filterInput.filterMode = config.FileOutput.FilterMode;
