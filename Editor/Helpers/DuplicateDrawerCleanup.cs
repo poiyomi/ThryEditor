@@ -24,6 +24,10 @@ namespace Thry.ThryEditor.Helpers
             ("InvertedSliderDrawer", "575bd1334554af5468820b6d6334a891"),
         };
 
+        // Folders the drawers shipped in, relative to the Poiyomi root.
+        static readonly string[] OldPoiyomiFolders = { "Scripts/Editor", "Scripts/ThryStuff" };
+        const string DrawerNamespace = "namespace Thry.ThryEditor.Drawers";
+
         const string SelfFileName = nameof(DuplicateDrawerCleanup) + ".cs";
 
         static DuplicateDrawerCleanup()
@@ -53,6 +57,8 @@ namespace Thry.ThryEditor.Helpers
                     if (string.Equals(normalized, canonicalPath, StringComparison.OrdinalIgnoreCase)) continue;
 
                     if (Path.GetFileNameWithoutExtension(normalized) != name) continue;
+                    // Other packages and ThryEditor copies can ship scripts with the same names
+                    if (!IsOldPoiyomiCopy(normalized)) continue;
 
                     if (AssetDatabase.MoveAssetToTrash(path)) removed.Add(path);
                     else failed.Add(path);
@@ -69,6 +75,22 @@ namespace Thry.ThryEditor.Helpers
             {
                 ThryLogger.LogErr("Failed to remove the following duplicate drawer script(s). Please delete them manually in order to continue using this project:\n - " + string.Join("\n - ", failed));
             }
+        }
+
+        static bool IsOldPoiyomiCopy(string path)
+        {
+            string dir = Path.GetDirectoryName(path)?.Replace('\\', '/');
+            if (string.IsNullOrEmpty(dir)) return false;
+
+            string folder = OldPoiyomiFolders.FirstOrDefault(f => dir.EndsWith("/" + f, StringComparison.OrdinalIgnoreCase));
+            if (folder == null) return false;
+
+            // e.g. Assets/_PoiyomiShaders or Packages/com.poiyomi.toon
+            string root = dir.Substring(0, dir.Length - folder.Length - 1);
+            if (Path.GetFileName(root).IndexOf("poiyomi", StringComparison.OrdinalIgnoreCase) < 0) return false;
+
+            var script = AssetDatabase.LoadAssetAtPath<MonoScript>(path);
+            return script != null && script.text.Contains(DrawerNamespace);
         }
 
         static string ResolveCanonicalDrawersDir()
