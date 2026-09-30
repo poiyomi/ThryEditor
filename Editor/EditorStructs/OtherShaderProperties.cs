@@ -291,8 +291,9 @@ namespace Thry.ThryEditor
             return MyShaderUI.Materials[0].globalIlluminationFlags;
         }
 
-        public override object PropertyDefaultValue => MaterialGlobalIlluminationFlags.AnyEmissive;
-        public override bool IsPropertyValueDefault => MyShaderUI.Materials.All(m => m.globalIlluminationFlags == MaterialGlobalIlluminationFlags.AnyEmissive);
+        // New materials start as EmissiveIsBlack, which the popup shows as None. Only the part the popup edits counts.
+        public override object PropertyDefaultValue => MaterialGlobalIlluminationFlags.EmissiveIsBlack;
+        public override bool IsPropertyValueDefault => MyShaderUI.Materials.All(m => (m.globalIlluminationFlags & MaterialGlobalIlluminationFlags.AnyEmissive) == MaterialGlobalIlluminationFlags.None);
     }
     public class DSGIProperty : ShaderProperty
     {
