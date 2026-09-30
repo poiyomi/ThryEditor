@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
@@ -14,7 +15,7 @@ namespace Thry.ThryEditor
             // Clean up the expression
             expression = expression.Replace(" ", "");
 
-            if(double.TryParse(expression, out _))
+            if(TryParseNumber(expression, out _))
             {
                 string oldExpression = expression;
                 expression = $"x == {expression}";
@@ -138,7 +139,7 @@ namespace Thry.ThryEditor
             {
                 var token = tokens[i];
 
-                if(double.TryParse(token, out var number))
+                if(TryParseNumber(token, out var number))
                 {
                     stack.Push(Expression.Constant(number));
                 }
@@ -243,6 +244,11 @@ namespace Thry.ThryEditor
 
 
         static readonly string[] _operators = new string[] { "+", "-", "*", "/", "%", "^", "==", "!=", "<", "<=", ">", ">=", "&&", "||", "_" };
+
+        private static bool TryParseNumber(string s, out double value)
+        {
+            return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out value) || double.TryParse(s, out value);
+        }
 
         private static bool IsOperator(string token)
         {
