@@ -295,7 +295,7 @@ namespace Thry.ThryEditor.Helpers
             fps = 0;
             if (paths.Length == 0)
                 return null;
-            if (paths[0].EndsWith(".gif"))
+            if (paths[0].EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
             {
                 return Converter.GifToTextureArray(paths[0], out fps);
             }
@@ -409,7 +409,7 @@ namespace Thry.ThryEditor.Helpers
         {
             if (Selection.assetGUIDs != null && Selection.assetGUIDs.Length > 0)
             {
-                return AssetDatabase.GUIDToAssetPath(Selection.assetGUIDs[0]).EndsWith(".gif");
+                return AssetDatabase.GUIDToAssetPath(Selection.assetGUIDs[0]).EndsWith(".gif", StringComparison.OrdinalIgnoreCase);
             }
             return false;
         }
