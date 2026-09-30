@@ -390,7 +390,7 @@ namespace Thry.ThryEditor.TexturePacker
                     else if (extension == ".tga")
                     {
                         try { decoded = TextureHelper.LoadTGA(path, true); }
-                        catch (NotSupportedException e) { ThryLogger.LogWarn("TexturePacker", e.Message + " Using the imported texture instead."); }
+                        catch (NotSupportedException) { }
                         finally { EditorUtility.ClearProgressBar(); }
                         if (decoded != null) { decoded.filterMode = Texture.filterMode; decoded.hideFlags = HideFlags.HideAndDontSave; }
                         else decoded = Texture;
