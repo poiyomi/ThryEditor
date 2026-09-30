@@ -330,16 +330,12 @@ namespace Thry.ThryEditor
             UnityWebRequest _spreadsheetRequest;
             Localization _spreadsheetTarget;
 
+            // Standard CSV quoting, which SplitCsvLine undoes on import. Curly quotes are real text in some languages.
             string ToCSVString(string s)
             {
                 if (s == null)
                     return "";
-                return "\"" + s.Replace("\"", "“") + "\"";
-            }
-
-            string FromCSVString(string s)
-            {
-                return s.Trim('"').Replace("“", "\"");
+                return "\"" + s.Replace("\"", "\"\"") + "\"";
             }
 
             static bool IsSourceHeader(string header)
@@ -469,7 +465,7 @@ namespace Thry.ThryEditor
 
                 if (lines.Length < 2) return false;
 
-                List<string> header = SplitCsvLine(lines[0]).Select(FromCSVString).ToList();
+                List<string> header = SplitCsvLine(lines[0]);
                 if (header.Count < 2) return false;
 
                 int languagesStartIndex = (header.Count > 1 && IsSourceHeader(header[1])) ? 2 : 1;
@@ -482,7 +478,7 @@ namespace Thry.ThryEditor
 
                 for (int i = 1; i < lines.Length; i++)
                 {
-                    List<string> cells = SplitCsvLine(lines[i]).Select(FromCSVString).ToList();
+                    List<string> cells = SplitCsvLine(lines[i]);
                     if (cells.Count == 0) continue;
 
                     string key = cells[0];
