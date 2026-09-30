@@ -232,6 +232,9 @@ namespace Thry.ThryEditor
 
         // "#define NAME" or "#define NAME(a, b)". Group 1 is the name; the match ends after the parameter list.
         static readonly Regex DefineDeclarationRegex = new Regex(@"^\s*#\s*define\s+(\w+)(?:\([^)]*\))?", RegexOptions.Compiled);
+        // The end of a texture property declaration: any texture type, then the default and "{ }" or "{}". The
+        // textures of such properties inside an excluded //ifex block are stripped from the locked material.
+        static readonly Regex ExcludedTexturePropertyRegex = new Regex(@",\s*(?:2D|2DArray|3D|Cube|CubeArray|Any)\s*\)\s*=\s*""[^""]*""\s*\{\s*\}\s*$", RegexOptions.Compiled);
 
         public static readonly HashSet<string> DontRemoveIfBranchesKeywords = new HashSet<string>() { "UNITY_SINGLE_PASS_STEREO", "FORWARD_BASE_PASS", "FORWARD_ADD_PASS", "POINT", "SPOT" };
         public static readonly HashSet<string> KeywordsUsedByPragmas = new HashSet<string>() {  };
@@ -2230,8 +2233,7 @@ namespace Thry.ThryEditor
                 if (doExclude)
                 {
                     // check for texture property definitions, remove textures later
-                    // needs specific naming
-                    if (lineParsed.EndsWith("{ }", StringComparison.Ordinal) && lineParsed.IndexOf("2D)", StringComparison.Ordinal) >= 0)
+                    if (ExcludedTexturePropertyRegex.IsMatch(lineParsed))
                     {
                         lineParsed = lineParsed.Substring(0, lineParsed.IndexOf('"'));
                         if (lineParsed.IndexOf("]", StringComparison.Ordinal) >= 0) // Unity 2019 doesn't like string.Contains(string, StringComparison)
