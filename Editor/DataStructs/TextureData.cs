@@ -45,11 +45,12 @@ namespace Thry.ThryEditor
                 {
                     if (!s_loaded_textures.ContainsKey(guid) || s_loaded_textures[guid] == null)
                     {
+                        // An unknown guid gives an empty path, and a deleted asset loads as null. The fallback
+                        // isn't cached so the texture still shows up once it is imported.
                         string path = AssetDatabase.GUIDToAssetPath(guid);
-                        if (path != null)
-                            s_loaded_textures[guid] = AssetDatabase.LoadAssetAtPath<Texture>(path);
-                        else
-                            s_loaded_textures[guid] = Texture2D.whiteTexture;
+                        Texture texture = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<Texture>(path);
+                        if (texture == null) return Texture2D.whiteTexture;
+                        s_loaded_textures[guid] = texture;
                     }
                     return s_loaded_textures[guid];
                 }
@@ -58,10 +59,8 @@ namespace Thry.ThryEditor
                     if (!s_loaded_textures.ContainsKey(name) || s_loaded_textures[name] == null)
                     {
                         string path = FileHelper.FindFile(name, "texture");
-                        if (path != null)
-                            s_loaded_textures[name] = AssetDatabase.LoadAssetAtPath<Texture>(path);
-                        else
-                            s_loaded_textures[name] = Texture2D.whiteTexture;
+                        Texture texture = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<Texture>(path);
+                        s_loaded_textures[name] = texture != null ? texture : Texture2D.whiteTexture;
                     }
                     return s_loaded_textures[name];
                 }
