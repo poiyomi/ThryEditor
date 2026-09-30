@@ -408,30 +408,34 @@ namespace Thry.ThryEditor.Drawers
 
         void FullTexturePackerOnChange(Texture2D tex, TexturePackerConfig config)
         {
-            Connection connection_0 = config.Connections.Where(c => c.FromTextureIndex == 0).FirstOrDefault();
-            Connection connection_1 = config.Connections.Where(c => c.FromTextureIndex == 1).FirstOrDefault();
-            Connection connection_2 = config.Connections.Where(c => c.FromTextureIndex == 2).FirstOrDefault();
-            Connection connection_3 = config.Connections.Where(c => c.FromTextureIndex == 3).FirstOrDefault();
-
-            _current._input_r.Source = connection_0.FromTextureIndex != -1 ? config.Sources[0] : new PackerSource();
-            _current._input_g.Source = connection_1.FromTextureIndex != -1 ? config.Sources[1] : new PackerSource();
-            _current._input_b.Source = connection_2.FromTextureIndex != -1 ? config.Sources[2] : new PackerSource();
-            _current._input_a.Source = connection_3.FromTextureIndex != -1 ? config.Sources[3] : new PackerSource();
-
-            _current._input_r.FromOutputConfig(config.Targets[0]);
-            _current._input_g.FromOutputConfig(config.Targets[1]);
-            _current._input_b.FromOutputConfig(config.Targets[2]);
-            _current._input_a.FromOutputConfig(config.Targets[3]);
-
-            _current._input_r.Channel = connection_0.FromTextureIndex != -1 ? connection_0.FromChannel : TextureChannelIn.Max;
-            _current._input_g.Channel = connection_1.FromTextureIndex != -1 ? connection_1.FromChannel : TextureChannelIn.Max;
-            _current._input_b.Channel = connection_2.FromTextureIndex != -1 ? connection_2.FromChannel : TextureChannelIn.Max;
-            _current._input_a.Channel = connection_3.FromTextureIndex != -1 ? connection_3.FromChannel : TextureChannelIn.Max;
+            if (_firstTextureIsRGB)
+            {
+                // The second slot is the alpha source, so its invert and fallback live on the A output.
+                SyncFromFullTexturePacker(_current._input_r, config, 0, 0);
+                SyncFromFullTexturePacker(_current._input_g, config, 1, 3);
+            }
+            else
+            {
+                SyncFromFullTexturePacker(_current._input_r, config, 0, 0);
+                SyncFromFullTexturePacker(_current._input_g, config, 1, 1);
+                SyncFromFullTexturePacker(_current._input_b, config, 2, 2);
+                SyncFromFullTexturePacker(_current._input_a, config, 3, 3);
+            }
 
             _current._packedTexture = tex;
             _prop.textureValue = _current._packedTexture;
             _current._hasTextureChanged = true;
             _current._hasConfigChanged = true;
+        }
+
+        static void SyncFromFullTexturePacker(InlinePackerChannelConfig input, TexturePackerConfig config, int sourceIndex, int targetIndex)
+        {
+            // Connection is a struct, so FirstOrDefault can't tell a missing connection apart from one to source 0.
+            bool connected = config.Connections.Any(c => c.FromTextureIndex == sourceIndex);
+            Connection connection = config.Connections.FirstOrDefault(c => c.FromTextureIndex == sourceIndex);
+            input.Source = connected ? config.Sources[sourceIndex] : new PackerSource();
+            input.FromOutputConfig(config.Targets[targetIndex]);
+            input.Channel = connected ? connection.FromChannel : TextureChannelIn.Max;
         }
 
         FilterMode GetFiltermode()
