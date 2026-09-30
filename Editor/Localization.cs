@@ -572,7 +572,6 @@ namespace Thry.ThryEditor
                         bool isHtml = contentType != null && contentType.IndexOf("html", StringComparison.OrdinalIgnoreCase) != -1;
                         if (isHtml || !LoadFromCSVText(locale, csv))
                         {
-                            ThryLogger.LogErr($"Spreadsheet CSV URL did not return locale data: {locale.SpreadsheetCsvUrl}");
                             EditorUtility.DisplayDialog(
                                 "Spreadsheet Sync Failed",
                                 "The URL didn't return a locale CSV, so nothing changed. Check that the sheet is public and the URL is its CSV export link.",
