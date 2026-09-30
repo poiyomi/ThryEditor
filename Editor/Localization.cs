@@ -840,6 +840,7 @@ namespace Thry.ThryEditor
                         if (s == null)
                         {
                             ThryLogger.LogWarn("[Localization] ValidateWithShaders contains a NULL shader (None). Skipping.");
+                            continue;
                         }
                         ShaderEditor se = new ShaderEditor();
                         se.FakePartialInitilizationForLocaleGathering(s);
