@@ -11,6 +11,7 @@ namespace Thry.ThryEditor.Drawers
     {
         public ThryMaskLevelsDecorator(float channels) { }
         public ThryMaskLevelsDecorator(float channels,string invert) { }
+        public ThryMaskLevelsDecorator(float channels,float optionalChannels,string toggle) { }
         public override float GetPropertyHeight(MaterialProperty prop,string label,MaterialEditor editor)
         { return 0; }
         public override void OnGUI(Rect position,MaterialProperty prop,GUIContent label,MaterialEditor editor)
@@ -21,13 +22,18 @@ namespace Thry.ThryEditor
 {
     internal sealed partial class RetainedFields
     {
+        // ThryMaskLevels(channels), (channels, invert) or (channels, optionalChannels, toggle).
+        // Optional channels only have levels while the toggle property is on. At least one channel stays required.
         void MaskLevels(VisualElement parent, ShaderProperty texture, DrawerAttribute attribute)
         {
             var properties = new ShaderProperty[MaskLevelsData.Suffixes.Length];
             for(int i=0;i<properties.Length;i++)
-                if(!Model.Shader.PropertyDictionary.TryGetValue(i==5 && attribute.Args.Length>1 ? attribute.Args[1] : MaskLevelsData.Name(texture.MaterialProperty.name,i),out properties[i]))return;
+                if(!Model.Shader.PropertyDictionary.TryGetValue(i==5 && attribute.Args.Length==2 ? attribute.Args[1] : MaskLevelsData.Name(texture.MaterialProperty.name,i),out properties[i]))return;
             int channels=15; if(attribute.Args.Length>0)int.TryParse(attribute.Args[0],out channels);
-            var levels=new RetainedMaskLevels(Model,texture,properties,channels,this);
+            int optionalChannels=0; ShaderProperty toggle=null;
+            if(attribute.Args.Length>2 && int.TryParse(attribute.Args[1],out optionalChannels))Model.Shader.PropertyDictionary.TryGetValue(attribute.Args[2],out toggle);
+            if((channels&~optionalChannels)==0)toggle=null;
+            var levels=new RetainedMaskLevels(Model,texture,properties,channels,this,toggle!=null?optionalChannels:0,toggle);
             parent.Add(levels); TrackVisible(levels,levels.Synchronize);
         }
     }
@@ -36,7 +42,9 @@ namespace Thry.ThryEditor
         readonly RetainedMaterialModel model;
         readonly ShaderProperty textureProperty;
         readonly ShaderProperty[] properties;
-        readonly int activeChannels;
+        readonly int activeChannels, optionalChannels;
+        readonly ShaderProperty channelToggle;
+        int shownChannels;
         bool LegacyInvert => properties[5].MaterialProperty.GetPropertyType() != UnityEngine.Rendering.ShaderPropertyType.Vector;
         readonly RetainedFields fields;
         readonly MaskLevelsPreview preview=new MaskLevelsPreview();
@@ -53,11 +61,16 @@ namespace Thry.ThryEditor
         int channel=-1;
         bool showPreview, initialized;
         Texture lastTexture; uint lastVersion;
-        int Current { get { for(int c=0;c<4;c++)if(channel==c || (channel<0 && (activeChannels&(1<<c))!=0))return c;return 0; } }
-        bool Applies(int c,int selected) => (activeChannels&(1<<c))!=0 && (selected<0||selected==c);
-        public RetainedMaskLevels(RetainedMaterialModel model,ShaderProperty texture,ShaderProperty[] properties,int activeChannels,RetainedFields fields)
+        int Current { get { for(int c=0;c<4;c++)if(channel==c || (channel<0 && (shownChannels&(1<<c))!=0))return c;return 0; } }
+        bool Applies(int c,int selected) => (shownChannels&(1<<c))!=0 && (selected<0||selected==c);
+        static int Count(int channels) => Enumerable.Range(0,4).Count(c=>(channels&(1<<c))!=0);
+        bool TabShown(int c) => c<0 ? Count(shownChannels)>1 : (shownChannels&(1<<c))!=0;
+        // Levels on an optional channel have no effect while its toggle is off, so they are neither shown nor baked.
+        int ChannelsFor(Material material) => channelToggle==null || material.GetFloat(channelToggle.MaterialProperty.name)>0 ? activeChannels : activeChannels&~optionalChannels;
+        public RetainedMaskLevels(RetainedMaterialModel model,ShaderProperty texture,ShaderProperty[] properties,int activeChannels,RetainedFields fields,int optionalChannels=0,ShaderProperty channelToggle=null)
         {
             this.model=model;textureProperty=texture;this.properties=properties;this.activeChannels=activeChannels;this.fields=fields;
+            this.optionalChannels=optionalChannels;this.channelToggle=channelToggle;shownChannels=activeChannels;
             name="mask-levels-"+texture.MaterialProperty.name;
             // Not a theme root of its own: the inspector root carries the skin, gray and height classes, and
             // a nested root would re-declare the dark palette inside the light skin.
@@ -76,7 +89,8 @@ namespace Thry.ThryEditor
                 button.RegisterCallback<KeyDownEvent>(e=>{
                     int index=tabChannels.IndexOf(channel);
                     if(e.keyCode!=KeyCode.LeftArrow&&e.keyCode!=KeyCode.RightArrow)return;
-                    index=Mathf.Clamp(index+(e.keyCode==KeyCode.RightArrow?1:-1),0,tabs.Count-1);
+                    int step=e.keyCode==KeyCode.RightArrow?1:-1;
+                    for(int next=index+step;next>=0&&next<tabs.Count;next+=step)if(TabShown(tabChannels[next])){index=next;break;}
                     channel=tabChannels[index];RefreshControls();Render();tabs[index].Focus();e.StopPropagation();e.PreventDefault();
                 });
                 tabs.Add(button);tabChannels.Add(c);toolbar.Add(button);
@@ -146,15 +160,19 @@ namespace Thry.ThryEditor
             var owners=model.Owners(textureProperty).Where(m=>m!=null).ToArray();
             if(!model.CanEdit(textureProperty) || properties.Take(7).Where((p,i)=>i!=5 || !LegacyInvert).Any(p=>!model.CanEdit(p)))return;
             Dictionary<Material,Texture2D> baked=null;
+            var channels=new Dictionary<Material,int>();
+            foreach(var owner in owners)channels[owner]=ChannelsFor(owner);
             int undo=-1;
             try
             {
-                baked=MaskLevelsBaker.Export(owners,textureProperty.MaterialProperty.name,activeChannels);
+                baked=new Dictionary<Material,Texture2D>();
+                foreach(var group in owners.GroupBy(m=>channels[m]))
+                    foreach(var pair in MaskLevelsBaker.Export(group.ToArray(),textureProperty.MaterialProperty.name,group.Key))baked[pair.Key]=pair.Value;
                 Undo.IncrementCurrentGroup();undo=Undo.GetCurrentGroup();Undo.SetCurrentGroupName("Bake mask adjustments");
                 model.Edit(textureProperty,p=>{
                     var owner=p.targets.OfType<Material>().Single();
                     p.textureValue=baked[owner];
-                    MaskLevelsBaker.Reset(owner,textureProperty.MaterialProperty.name,activeChannels);
+                    MaskLevelsBaker.Reset(owner,textureProperty.MaterialProperty.name,channels[owner]);
                 },true);
                 Undo.SetCurrentGroupName("Bake mask adjustments");
                 Undo.CollapseUndoOperations(undo);
@@ -238,6 +256,14 @@ namespace Thry.ThryEditor
                     if(differs!=mixed[i,c])changed=true;mixed[i,c]=differs;
                 }
             }
+            if(channelToggle!=null)
+            {
+                int shown=0;foreach(var owner in owners)shown|=ChannelsFor(owner);
+                if(shown!=shownChannels){shownChannels=shown;changed=true;}
+                for(int i=0;i<tabs.Count;i++)tabs[i].style.display=TabShown(tabChannels[i])?DisplayStyle.Flex:DisplayStyle.None;
+                if(channel>=0 && !TabShown(channel))channel=-1;
+                if(channel<0 && Count(shownChannels)==1)channel=Current;
+            }
             var texture=owners[0].GetTexture(textureProperty.MaterialProperty.name);
             uint version=texture!=null?texture.updateCount:0;
             changed|=texture!=lastTexture||version!=lastVersion;lastTexture=texture;lastVersion=version;
@@ -257,6 +283,16 @@ namespace Thry.ThryEditor
             if(showPreview) Render();
             else { before.image=null; after.image=null; preview.Dispose(); }
         }
-        void Render(){if(!showPreview)return;preview.Render(lastTexture,values,channel,LegacyInvert);before.image=preview.Before;after.image=preview.After;before.MarkDirtyRepaint();after.MarkDirtyRepaint();}
+        void Render()
+        {
+            if(!showPreview)return;
+            var shown=values;
+            if(shownChannels!=activeChannels)
+            {
+                shown=(Vector4[])values.Clone();
+                for(int i=0;i<7;i++)for(int c=0;c<4;c++)if((activeChannels&~shownChannels&(1<<c))!=0)shown[i][c]=MaskLevelsData.Defaults[i][c];
+            }
+            preview.Render(lastTexture,shown,channel,LegacyInvert);before.image=preview.Before;after.image=preview.After;before.MarkDirtyRepaint();after.MarkDirtyRepaint();
+        }
     }
 }
