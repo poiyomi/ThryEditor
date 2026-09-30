@@ -978,6 +978,25 @@ namespace Thry.ThryEditor
             shaderEditor.Reload();
         }
 
+        internal static bool ApplyPresetToMaterial(Material target, Material preset, string sectionHeader = null)
+        {
+            ShaderEditor editor = ShaderEditor.CreateTemporary(target);
+            try
+            {
+                editor.ShaderParts.Add(new RenderQueueProperty(editor));
+                editor.ShaderParts.Add(new VRCFallbackProperty(editor));
+                ShaderPart parent = null;
+                if (sectionHeader != null)
+                {
+                    parent = editor.ShaderParts.OfType<ShaderGroup>().FirstOrDefault(g => g.MaterialProperty?.name == sectionHeader);
+                    if (parent == null) return false;
+                }
+                ApplyPresetInternal(editor, preset, preset, parent);
+                return true;
+            }
+            finally { editor.ReleaseTemporary(); }
+        }
+
         static void ApplyPresetInternal(ShaderEditor shaderEditor, Material preset, Material copyFrom, ShaderPart parent)
         {
             // Work on a temporary in-memory clone so the preset asset on disk is never dirtied.

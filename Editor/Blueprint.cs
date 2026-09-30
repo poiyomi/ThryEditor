@@ -168,8 +168,28 @@ namespace Thry.ThryEditor
 
         static void ApplyPresetToMaterial(Material presetAsset, Material target)
         {
-            if (presetAsset == null || target == null) return;
+            ApplyPreset(presetAsset, target, null);
+        }
 
+        static void ApplySectionPresetToMaterial(Material preset, Material target, string collectionKey)
+        {
+            ApplyPreset(preset, target, collectionKey);
+        }
+
+        static void ApplyPreset(Material presetAsset, Material target, string sectionHeader)
+        {
+            if (presetAsset == null || target == null) return;
+            if (!ShaderHelper.IsShaderUsingThryEditor(target.shader))
+            {
+                CopyTaggedProperties(presetAsset, target);
+                return;
+            }
+            if (!Presets.ApplyPresetToMaterial(target, presetAsset, sectionHeader))
+                ThryLogger.LogWarn($"{target.shader.name} has no section {sectionHeader}, skipped preset {presetAsset.name}");
+        }
+
+        static void CopyTaggedProperties(Material presetAsset, Material target)
+        {
             var preset = new Material(presetAsset);
             try
             {
@@ -215,11 +235,6 @@ namespace Thry.ThryEditor
 
             }
             finally { Object.DestroyImmediate(preset); }
-        }
-
-        static void ApplySectionPresetToMaterial(Material preset, Material target, string collectionKey)
-        {
-            ApplyPresetToMaterial(preset, target);
         }
 
         static void CopyProperty(Material source, Material target, string propName, ShaderPropertyType propType)
