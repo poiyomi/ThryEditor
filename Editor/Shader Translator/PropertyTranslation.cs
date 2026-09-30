@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using UnityEngine;
+using Thry.ThryEditor.Helpers;
 
 namespace Thry.ThryEditor.ShaderTranslations
 {
@@ -17,10 +17,7 @@ namespace Thry.ThryEditor.ShaderTranslations
         public string GetAppropriateExpression(float value)
         {
             if(!UseConditionals)
-            {
-                Debug.Log($"<b>{Origin}</b> -> <b>{Target}</b> doesn't use conditionals, directly returning the math expression <b>{Math}</b>");
                 return Math;
-            }
 
             foreach(ConditionalTranslationBlock block in ConditionalProperties)
             {
@@ -45,7 +42,7 @@ namespace Thry.ThryEditor.ShaderTranslations
 
                     if((bool)result)
                     {
-                        Debug.Log($"<b>{Origin}</b> -> <b>{Target}</b>: <b>if</b> conditional <b>{block.ConditionalExpression}</b> returned math expression <b>{block.MathExpression}</b>");
+                        ThryLogger.LogDetail("ShaderTranslator", $"<b>{Origin}</b> -> <b>{Target}</b>: <b>if</b> conditional <b>{block.ConditionalExpression}</b> returned math expression <b>{block.MathExpression}</b>");
                         return block.MathExpression;
                     }
                 }
