@@ -329,12 +329,13 @@ namespace Thry.ThryEditor.TexturePacker
                 }
                 else
                 {
+                    // Opaque, like the grayscale exports; only the A export keeps the channel in alpha.
                     if (exportChannels[0])
-                        ExportChannel(input, target, r, none, none, none, none, "_R", config);
+                        ExportChannel(input, target, r, none, none, none, addAlpha, "_R", config);
                     if (exportChannels[1])
-                        ExportChannel(input, target, none, g, none, none, none, "_G", config);
+                        ExportChannel(input, target, none, g, none, none, addAlpha, "_G", config);
                     if (exportChannels[2])
-                        ExportChannel(input, target, none, none, b, none, none, "_B", config);
+                        ExportChannel(input, target, none, none, b, none, addAlpha, "_B", config);
                     if (exportChannels[3])
                         ExportChannel(input, target, none, none, none, a, none, "_A", config);
                 }
