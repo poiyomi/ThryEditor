@@ -1306,6 +1306,7 @@ namespace Thry.ThryEditor
                 if (isAnimated == "1")
                 {
                     stringBuilder.Append(isAnimated);
+                    AppendAnimatedTextureAssigned(stringBuilder, m, prop);
                 }
                 else if (isAnimated == "2")
                 {
@@ -1313,6 +1314,7 @@ namespace Thry.ThryEditor
                     // share a shader when the suffix matches too. It defaults to the material name but
                     // can be overridden by the thry_rename_suffix tag, so read the resolved value.
                     stringBuilder.Append("ren:").Append(GetRenamedPropertySuffix(m));
+                    AppendAnimatedTextureAssigned(stringBuilder, m, prop);
                 }
                 else
                 {
@@ -1365,6 +1367,14 @@ namespace Thry.ThryEditor
             byte[] bytes = Encoding.UTF8.GetBytes(stringBuilder.ToString());
             using (var sha = new MD5CryptoServiceProvider())
                 return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLower();
+        }
+
+        // Lock defines PROP_<NAME> for every assigned texture, animated or not, so an animated texture
+        // slot still changes the code depending on whether it is filled.
+        static void AppendAnimatedTextureAssigned(StringBuilder sb, Material m, MaterialProperty prop)
+        {
+            if (prop.GetPropertyType() != ShaderPropertyType.Texture) return;
+            sb.Append(m.GetTexture(prop.name) != null ? "tex" : "notex");
         }
 
         static string[] GetRenderQueueConditions(string shaderPath)
