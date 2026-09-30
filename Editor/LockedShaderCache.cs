@@ -66,12 +66,12 @@ are using Poiyomi Shaders, this folder is very important!
         {
             if (string.IsNullOrEmpty(shaderName)) return "Unnamed";
 
+            // Path.GetInvalidFileNameChars only covers the current OS, which on macOS and Linux is just
+            // '/' and '\0'. The cache can be exported to Windows, so always use Windows' set.
             StringBuilder sb = new StringBuilder(shaderName.Length);
-            char[] invalid = Path.GetInvalidFileNameChars();
             foreach (char c in shaderName)
             {
-                if (c == '/' || c == '\\') sb.Append('_');
-                else if (Array.IndexOf(invalid, c) >= 0) sb.Append('_');
+                if (c < ' ' || "\\/:*?\"<>|".IndexOf(c) >= 0) sb.Append('_');
                 else sb.Append(c);
             }
 
