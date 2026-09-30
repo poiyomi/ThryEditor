@@ -175,22 +175,22 @@ namespace Thry.ThryEditor.Helpers
                 Int16 Height = r.ReadInt16();
                 byte PixelDepth = r.ReadByte();
                 byte ImageDescriptor = r.ReadByte();
-                if (ImageType == 0)
+                // Only uncompressed 24 and 32-bit truecolor pixels are read below
+                if (ImageType != 2 || (PixelDepth != 24 && PixelDepth != 32))
                 {
-                    EditorUtility.DisplayDialog("Error", "Unsupported TGA file! No image data", "OK");
-                    Debug.LogError("Unsupported TGA file! No image data");
+                    string reason = ImageType == 9 || ImageType == 10 || ImageType == 11 ? "is run-length encoded"
+                        : ImageType == 3 ? "is grayscale"
+                        : ImageType == 1 ? "uses a color map"
+                        : ImageType == 0 ? "has no image data"
+                        : ImageType == 2 ? "has " + PixelDepth + "-bit pixels"
+                        : "has an unknown image type";
+                    throw new NotSupportedException(Path.GetFileName(TGAFile) + " can't be read directly because it " + reason + ".");
                 }
-                else if (ImageType == 3 | ImageType == 11)
-                {
-                    EditorUtility.DisplayDialog("Error", "Unsupported TGA file! 8-bit grayscale images are not supported", "OK");
-                    Debug.LogError("Unsupported TGA file! Not truecolor");
-                }
-                else if (ImageType == 9 | ImageType == 10)
-                {
-                    EditorUtility.DisplayDialog("Error", "Unsupported TGA file! Run-length encoded images are not supported", "OK");
-                    Debug.LogError("Unsupported TGA file! Colormapped");
-
-                }
+                // The image ID and color map sit between the header and the pixels
+                r.ReadBytes(IDLength);
+                if (ColorMapType == 1) r.ReadBytes((ushort)CMapLength * ((CMapDepth + 7) / 8));
+                if (r.BaseStream.Length - r.BaseStream.Position < (PixelDepth == 32 ? 4 : 3) * Width * Height)
+                    throw new EndOfStreamException(Path.GetFileName(TGAFile) + " ends before all of its pixels.");
                 bool startsAtTop = (ImageDescriptor & 1 << 5) >> 5 == 1;
                 bool startsAtRight = (ImageDescriptor & 1 << 4) >> 4 == 1;
                 //     MsgBox("Dimensions are "  Width  ","  Height)
