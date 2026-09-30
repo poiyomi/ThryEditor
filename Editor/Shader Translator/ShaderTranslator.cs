@@ -214,6 +214,7 @@ namespace Thry.ThryEditor.ShaderTranslations
             switch(materialProp.GetPropertyType())
             {
                 case ShaderPropertyType.Float:
+                case ShaderPropertyType.Range:
                 case ShaderPropertyType.Int:
                     materialProp.SetNumber(value);
                     break;
