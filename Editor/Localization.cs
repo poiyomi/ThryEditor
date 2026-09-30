@@ -289,7 +289,8 @@ namespace Thry.ThryEditor
             string fileName = Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(shaders[0]));
             string folderPath = Path.GetDirectoryName(AssetDatabase.GetAssetPath(shaders[0]));
             locale.ValidateWithShaders = shaders;
-            AssetDatabase.CreateAsset(locale, folderPath + "/" + fileName + "_Locale.asset");
+            // CreateAsset replaces whatever is at the path, so never reuse the name of an existing locale.
+            AssetDatabase.CreateAsset(locale, AssetDatabase.GenerateUniqueAssetPath(folderPath + "/" + fileName + "_Locale.asset"));
             AssetDatabase.SaveAssets();
         }
 
