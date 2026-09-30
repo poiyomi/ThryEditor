@@ -893,9 +893,9 @@ namespace Thry.ThryEditor
         // reconciled across every material sharing them once, rather than per material.
         private static readonly HashSet<string> s_cacheEntriesTouchedThisBatch = new HashSet<string>();
 
-        // The //ifex conditions on RenderQueue found in each shader, by asset path. Kept for one batch only:
-        // the asset dependency hash cannot see edits to included files, so across batches the list could be stale.
-        private static readonly Dictionary<string, string[]> s_renderQueueConditionsThisBatch = new Dictionary<string, string[]>();
+        // The //ifex conditions found in each shader, by asset path. Kept for one batch only: the asset
+        // dependency hash cannot see edits to included files, so across batches the list could be stale.
+        private static readonly Dictionary<string, IfexConditions> s_ifexConditionsThisBatch = new Dictionary<string, IfexConditions>();
 
         private static readonly List<Material> s_materialsToVerifyLock = new List<Material>();
 
@@ -915,7 +915,7 @@ namespace Thry.ThryEditor
             s_applyStructsLater.Clear();
             s_lockedShaderNamesThisBatch.Clear();
             s_cacheEntriesTouchedThisBatch.Clear();
-            s_renderQueueConditionsThisBatch.Clear();
+            s_ifexConditionsThisBatch.Clear();
             s_materialsToVerifyLock.Clear();
             
             // First the shaders are created. compiling is suppressed with start asset editing.
@@ -1281,13 +1281,16 @@ namespace Thry.ThryEditor
             // //ifex can test the render queue, which is not a property (Poiyomi drops its ShadowCaster pass
             // above 3000). Only the results go in, so queues on the same side of every threshold still share
             // a shader. Shaders without such a condition keep their old hashes.
-            string[] renderQueueConditions = GetRenderQueueConditions(AssetDatabase.GetAssetPath(m.shader));
-            if (renderQueueConditions.Length > 0)
+            IfexConditions ifexConditions = GetIfexConditions(AssetDatabase.GetAssetPath(m.shader));
+            if (ifexConditions.RenderQueue.Length > 0)
             {
                 stringBuilder.Append("|rq:");
-                foreach (string condition in renderQueueConditions)
+                foreach (string condition in ifexConditions.RenderQueue)
                     stringBuilder.Append(DefineableCondition.Parse(condition, m).Test() ? '1' : '0');
             }
+
+            // Properties whose value is left out below. //ifex still reads them, see the end of this method.
+            List<string> animatedProperties = new List<string>();
 
             // Properties are passed in rather than fetched here: the caller already has them, and on a
             // shader this size a second GetMaterialProperties call means allocating several thousand
@@ -1307,6 +1310,7 @@ namespace Thry.ThryEditor
                 {
                     stringBuilder.Append(isAnimated);
                     AppendAnimatedTextureAssigned(stringBuilder, m, prop);
+                    animatedProperties.Add(propName);
                 }
                 else if (isAnimated == "2")
                 {
@@ -1315,6 +1319,7 @@ namespace Thry.ThryEditor
                     // can be overridden by the thry_rename_suffix tag, so read the resolved value.
                     stringBuilder.Append("ren:").Append(GetRenamedPropertySuffix(m));
                     AppendAnimatedTextureAssigned(stringBuilder, m, prop);
+                    animatedProperties.Add(propName);
                 }
                 else
                 {
@@ -1361,6 +1366,22 @@ namespace Thry.ThryEditor
                 }
             }
 
+            // Lock evaluates //ifex against the raw value whether or not the property is animated, so an
+            // animated toggle still decides which code is removed. Only the results go in, and only for
+            // conditions on animated properties; every other value is already part of the hash above.
+            SortedSet<string> animatedConditions = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (string propName in animatedProperties)
+            {
+                if (ifexConditions.ByIdentifier.TryGetValue(propName, out List<string> conditions))
+                    animatedConditions.UnionWith(conditions);
+            }
+            if (animatedConditions.Count > 0)
+            {
+                stringBuilder.Append("|animifex:");
+                foreach (string condition in animatedConditions)
+                    stringBuilder.Append(DefineableCondition.Parse(condition, m).Test() ? '1' : '0');
+            }
+
             // https://forum.unity.com/threads/hash-function-for-game.452779/
             // UTF8 rather than ASCII: property names and material names can carry non-ASCII characters,
             // which ASCII encoding silently folds to '?' and would collide.
@@ -1377,21 +1398,52 @@ namespace Thry.ThryEditor
             sb.Append(m.GetTexture(prop.name) != null ? "tex" : "notex");
         }
 
-        static string[] GetRenderQueueConditions(string shaderPath)
+        class IfexConditions
         {
-            if (s_renderQueueConditionsThisBatch.TryGetValue(shaderPath, out string[] cached)) return cached;
+            // Conditions on the render queue, which is not a property.
+            public string[] RenderQueue;
+            // Every condition, filed under each identifier it mentions. Matching by name is enough to find
+            // the ones that read a given property; an extra match only costs an evaluation.
+            public Dictionary<string, List<string>> ByIdentifier = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        }
+
+        static readonly Regex s_ifexIdentifierRegex = new Regex(@"[A-Za-z_][A-Za-z0-9_]*", RegexOptions.Compiled);
+
+        static IfexConditions GetIfexConditions(string shaderPath)
+        {
+            if (s_ifexConditionsThisBatch.TryGetValue(shaderPath, out IfexConditions cached)) return cached;
 
             SortedSet<string> conditions = new SortedSet<string>(StringComparer.Ordinal);
-            CollectRenderQueueConditions(shaderPath, conditions, new HashSet<string>());
-            string[] result = conditions.ToArray();
-            s_renderQueueConditionsThisBatch[shaderPath] = result;
+            CollectIfexConditions(shaderPath, conditions, new HashSet<string>());
+
+            IfexConditions result = new IfexConditions();
+            List<string> renderQueueConditions = new List<string>();
+            foreach (string condition in conditions)
+            {
+                // DefineableCondition matches RenderQueue in any case.
+                if (condition.IndexOf("RenderQueue", StringComparison.OrdinalIgnoreCase) >= 0)
+                    renderQueueConditions.Add(condition);
+
+                foreach (Match identifier in s_ifexIdentifierRegex.Matches(condition))
+                {
+                    if (!result.ByIdentifier.TryGetValue(identifier.Value, out List<string> list))
+                    {
+                        list = new List<string>();
+                        result.ByIdentifier[identifier.Value] = list;
+                    }
+                    list.Add(condition);
+                }
+            }
+            result.RenderQueue = renderQueueConditions.ToArray();
+
+            s_ifexConditionsThisBatch[shaderPath] = result;
             return result;
         }
 
         // Reads the files Lock reads: the shader and every include it inlines. Conditions count whether or
         // not their block is reachable. An extra one can only split the cache, a missed one merges shaders
         // that differ.
-        static void CollectRenderQueueConditions(string filePath, SortedSet<string> conditions, HashSet<string> visited)
+        static void CollectIfexConditions(string filePath, SortedSet<string> conditions, HashSet<string> visited)
         {
             if (!visited.Add(filePath) || !File.Exists(filePath)) return;
 
@@ -1400,10 +1452,8 @@ namespace Thry.ThryEditor
                 string lineParsed = line.TrimStart();
                 if (lineParsed.StartsWith("//ifex", StringComparison.Ordinal))
                 {
-                    // The same text Lock parses. DefineableCondition matches RenderQueue in any case.
-                    string condition = lineParsed.Substring(6);
-                    if (condition.IndexOf("RenderQueue", StringComparison.OrdinalIgnoreCase) >= 0)
-                        conditions.Add(condition);
+                    // The same text Lock parses.
+                    conditions.Add(lineParsed.Substring(6));
                 }
                 else if (lineParsed.StartsWith("#include", StringComparison.Ordinal))
                 {
@@ -1411,7 +1461,7 @@ namespace Thry.ThryEditor
                     int lastQuotation = firstQuotation < 0 ? -1 : lineParsed.IndexOf('\"', firstQuotation + 1);
                     if (lastQuotation < 0) continue;
                     string includeFullpath = GetInlinedIncludePath(lineParsed.Substring(firstQuotation + 1, lastQuotation - firstQuotation - 1), filePath);
-                    if (includeFullpath != null) CollectRenderQueueConditions(includeFullpath, conditions, visited);
+                    if (includeFullpath != null) CollectIfexConditions(includeFullpath, conditions, visited);
                 }
             }
         }
