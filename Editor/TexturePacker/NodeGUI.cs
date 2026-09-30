@@ -234,6 +234,8 @@ namespace Thry.ThryEditor.TexturePacker
                     TexturePackerConfig.InvalidateImporterCache();
                 }
 
+                // Only ShowWindow sets s_instance, so pick up a studio window restored by a domain reload
+                if (s_instance == null && HasOpenInstances<NodeGUI>()) s_instance = Resources.FindObjectsOfTypeAll<NodeGUI>().FirstOrDefault();
                 if (s_instance == null || s_instance._config?.Sources == null) return;
 
                 string[] active_textures = s_instance._config.Sources
