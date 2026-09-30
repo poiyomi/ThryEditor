@@ -155,14 +155,10 @@ namespace Thry.ThryEditor.ShaderTranslations
 
             // Filter translations based on all our listed material shaders then pick translations in which source shader
             // matches any of our current materials shaders and target shader matches our selected shader in the dropdown
-            var selectedMaterialShaders = materials.Where(mat => mat != null).Select(mat => (SectionLock.GetSourceShader(mat.shader) ?? mat.shader).name).Distinct();
+            var selectedMaterialShaders = materials.Where(mat => mat != null).Select(SourceShaderName).Distinct();
             translations = ShaderTranslator.TranslationDefinitions.Where(trans =>
-            {
-                if(trans.MatchOriginShaderBasedOnRegex)
-                    return selectedMaterialShaders.Any(shaderName => Regex.IsMatch(shaderName, trans.OriginShaderRegex));
-                else
-                    return selectedMaterialShaders.Contains(trans.OriginShader);
-            }).Where(trans =>
+                selectedMaterialShaders.Any(shaderName => MatchesOrigin(trans, shaderName))
+            ).Where(trans =>
             {
                 if(trans.MatchTargetShaderBasedOnRegex)
                     return Regex.IsMatch(newShaderName, trans.TargetShaderRegex);
@@ -175,6 +171,15 @@ namespace Thry.ThryEditor.ShaderTranslations
 
             if(translations.Count == 1)
                 translationList.selectedIndex = 0;
+        }
+
+        static string SourceShaderName(Material mat) => (SectionLock.GetSourceShader(mat.shader) ?? mat.shader).name;
+
+        static bool MatchesOrigin(ShaderTranslator trans, string shaderName)
+        {
+            if(trans.MatchOriginShaderBasedOnRegex)
+                return Regex.IsMatch(shaderName, trans.OriginShaderRegex);
+            return trans.OriginShader == shaderName;
         }
 
         void HandleHelpBoxAndButtonVisibility(VisualElement helpBox, VisualElement buttonContainer, bool hideHelpBox)
@@ -251,7 +256,9 @@ namespace Thry.ThryEditor.ShaderTranslations
 
             Selection.activeGameObject = avatar;
 
-            foreach(Material mat in materials)
+            // The list holds every material on the avatar. Ones on other shaders are left as they are instead of
+            // being switched to the target shader and remapped as if they used the translation's origin shader.
+            foreach(Material mat in materials.Where(mat => mat != null && MatchesOrigin(translator, SourceShaderName(mat))))
             {
                 string materialPath = AssetDatabase.GetAssetPath(mat);
                 string materialFolderPath = Path.GetDirectoryName(materialPath);
