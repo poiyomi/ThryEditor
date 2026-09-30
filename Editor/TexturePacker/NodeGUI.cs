@@ -23,6 +23,7 @@ namespace Thry.ThryEditor.TexturePacker
 
         public Action<Texture2D> OnSave;
         public Action<Texture2D, TexturePackerConfig> OnChange;
+        [NonSerialized] public bool ListenerKeepsOutput;
 
         static Material s_channelPreviewMaterial;
         static Material ChannelPreviewMaterial
@@ -112,6 +113,8 @@ namespace Thry.ThryEditor.TexturePacker
             s_instance.minSize = new Vector2(MIN_WIDTH, MIN_HEIGHT);
             s_instance.titleContent = new GUIContent("Thry Texture Packer");
             s_instance.OnSave = null; // clear save callback
+            if (s_instance.ListenerKeepsOutput && s_instance.OnChange != null) s_instance._outputTexture = null;
+            s_instance.ListenerKeepsOutput = false;
             s_instance.OnChange = null; // clear save callback
             return s_instance;
         }
@@ -206,7 +209,7 @@ namespace Thry.ThryEditor.TexturePacker
             _graph?.Dispose(); _graph = null;
             _pendingPack?.Pause();
             if (_retainedChannelPreview != null) { _retainedChannelPreview.Release(); DestroyImmediate(_retainedChannelPreview); }
-            if (_outputTexture != null)
+            if (_outputTexture != null && !(ListenerKeepsOutput && OnChange != null))
                 UnityEngine.Object.DestroyImmediate(_outputTexture);
             _outputTexture = null;
             DisposeGeneratedSources();

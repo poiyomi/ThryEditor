@@ -394,6 +394,7 @@ namespace Thry.ThryEditor.Drawers
         void OpenFullTexturePacker()
         {
             NodeGUI packer = NodeGUI.Open(GetConfig());
+            packer.ListenerKeepsOutput = true;
             // The inspector may show another material by then
             MaterialProperty prop = _prop;
             ThryRGBAPackerData data = _current;
