@@ -935,6 +935,8 @@ namespace Thry.ThryEditor
                             locale._localizedStrings.Add(kv.key, new string[locale.Languages.Length]);
                         }
                         locale._localizedStrings[kv.key][_selectedLanguageIndex] = kv.newValue;
+                        // Save right away; UpdateData reloads the locale from its saved data.
+                        locale.Save();
                         kvToRemove = kv;
                     }
                     _missingKeys[i] = kv;
@@ -963,6 +965,7 @@ namespace Thry.ThryEditor
                             locale._localizedStrings[kv.Key][_selectedLanguageIndex] = _translateByValueOut;
                         }
                     }
+                    locale.Save();
                     UpdateMissing(locale);
                 }
             }
@@ -994,6 +997,7 @@ namespace Thry.ThryEditor
                 if (_searchById.Length > 0 || _searchByTranslation.Length > 0)
                 {
                     int count = 0;
+                    bool changed = false;
                     foreach (string key in _searchResults)
                     {
                         if (count > 50)
@@ -1008,9 +1012,14 @@ namespace Thry.ThryEditor
                             locale._localizedStrings[key][_selectedLanguageIndex] = "";
                         }
                         EditorGUILayout.EndHorizontal();
-                        locale._localizedStrings[key][_selectedLanguageIndex] = value;
+                        if (value != (locale._localizedStrings[key][_selectedLanguageIndex] ?? ""))
+                        {
+                            locale._localizedStrings[key][_selectedLanguageIndex] = value;
+                            changed = true;
+                        }
                         count++;
                     }
+                    if (changed) locale.Save();
                 }
             }
         }
