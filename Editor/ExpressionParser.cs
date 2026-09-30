@@ -51,8 +51,9 @@ namespace Thry.ThryEditor
         private static string HandleUnaryOperators(string expression)
         {
             // Replace unary minus and plus with special characters
-            expression = Regex.Replace(expression, @"(?<![\d)])-", "_"); // Replace unary minus
-            expression = Regex.Replace(expression, @"(?<![\d)])\+", ""); // Remove unary plus
+            // A sign right after a number, 'x' or ')' is binary: "x-0.5" is a subtraction
+            expression = Regex.Replace(expression, @"(?<![\dx)])-", "_"); // Replace unary minus
+            expression = Regex.Replace(expression, @"(?<![\dx)])\+", ""); // Remove unary plus
             return expression;
         }
 
@@ -196,6 +197,10 @@ namespace Thry.ThryEditor
                 var left = stack.Pop();
                 stack.Push(CreateBinaryExpression(op, left, right));
             }
+
+            // Leftover operands mean part of the expression was never combined, which would silently drop it
+            if(stack.Count != 1)
+                throw new ArgumentException($"Invalid expression: {string.Join("", tokens)}");
 
             return stack.Pop();
         }
