@@ -102,7 +102,7 @@ namespace Thry.ThryEditor
             {
                 if (_data.PreviewTexture != null && _data.PreviewTexture.GetType() == typeof(Texture2D))
                 {
-                    string file_name = GetGradientSavefileName(_data.Gradient, _prop.targets[0].name);
+                    string file_name = GetGradientSavefileName(_prop.targets[0].name);
                     Texture2D finalGradientTexture = GetFinalGradientTexture();
                     Texture savedAsset = TextureHelper.SaveTextureAsPNG(finalGradientTexture, PATH.TEXTURES_DIR+"/Gradients/" + file_name, textureSettings);
                     FileHelper.SaveValueToFile(AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(savedAsset)), Parser.Serialize(_data.Gradient), PATH.GRADIENT_INFO_FILE);
@@ -130,9 +130,11 @@ namespace Thry.ThryEditor
             return _data.PreviewTexture as Texture2D;
         }
 
-        private string GetGradientSavefileName(Gradient gradient, string material_name)
+        private string GetGradientSavefileName(string material_name)
         {
-            string hash = "" + gradient.GetHashCode();
+            // Gradient.GetHashCode hashes the native object's address, which gets reused, so two different
+            // gradients could be saved over the same file. A new id gives every saved gradient its own file.
+            string hash = Guid.NewGuid().ToString("N");
             return GetGradientSavefileName(hash, material_name);
         }
 
