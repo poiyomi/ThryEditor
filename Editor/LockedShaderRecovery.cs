@@ -168,11 +168,11 @@ namespace Thry.ThryEditor
                     s_importedMaterialPaths.Clear();
                     s_needsFullScan = false;
 
-                    if (fullScan)
+                    // Once per session at most; a project missing it's cache would otherwise re-scan
+                    // every time anything at all is imported. Materials imported alongside are still
+                    // checked when the scan is skipped.
+                    if (fullScan && !SessionState.GetBool(SessionKeyDidFullScan, false))
                     {
-                        // Once per session at most; a project missing it's cache would otherwise re-scan
-                        // every time anything at all is imported.
-                        if (SessionState.GetBool(SessionKeyDidFullScan, false)) return;
                         SessionState.SetBool(SessionKeyDidFullScan, true);
                         RecoverAll(showProgress: true);
                         return;

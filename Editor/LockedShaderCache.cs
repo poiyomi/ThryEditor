@@ -443,11 +443,14 @@ are using Poiyomi Shaders, this folder is very important!
                 sizeBytes += GetDirectorySizeBytes(entry);
         }
 
-        /// <summary>Deletes the whole cache. Locked materials go pink until they are locked again.</summary>
+        /// <summary>
+        /// Deletes the whole cache. Materials locked to it lose their shader, and the recovery
+        /// postprocessor ignores these deletions, so the caller has to run LockedShaderRecovery itself.
+        /// </summary>
         public static void Clear()
         {
             foreach (string shaderDir in Directory.Exists(CacheRoot) ? Directory.GetDirectories(CacheRoot) : new string[0])
-                AssetDatabase.DeleteAsset(shaderDir.Replace('\\', '/'));
+                DeleteCollected(shaderDir.Replace('\\', '/'));
         }
 
         #endregion
@@ -496,6 +499,9 @@ are using Poiyomi Shaders, this folder is very important!
 
             LockedShaderCache.Clear();
             AssetDatabase.Refresh();
+
+            // Recover here rather than from the deletion, which only triggers a full scan once per session.
+            LockedShaderRecovery.RecoverAll(showProgress: true);
         }
     }
 }
