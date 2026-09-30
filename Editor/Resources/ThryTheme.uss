@@ -216,7 +216,6 @@
 
 /* Icon, navigation, and inline buttons share interaction states on a clear surface. */
 .thry-inspector .thry-icon-button,
-.thry-inspector .thry-text-button,
 .thry-inspector .thry-header-action,
 .thry-inspector .thry-fold-arrow,
 .thry-inspector .thry-footer Button,
@@ -435,41 +434,9 @@
     font-size: var(--thry-type-body-small);
 }
 
-.thry-text-button {
-    border-width: 0;
-    color: var(--thry-caption-color);
-    font-size: var(--thry-font-size);
-    margin: 0;
-    padding: var(--thry-space-2) 0;
-}
-
-.thry-text-button:hover {
-    color: var(--thry-accent-color);
-}
-
-.thry-text-button:focus {
-    color: var(--thry-accent-color);
-}
-
 .thry-material-controls {
     margin-left: 0;
     margin-right: 0;
-}
-
-.thry-empty {
-    padding: var(--thry-space-20) var(--thry-space-12);
-    margin: var(--thry-space-4) var(--thry-space-8);
-    border-radius: var(--thry-radius-card);
-    background-color: var(--thry-background-color);
-    color: var(--thry-muted-color);
-    font-size: var(--thry-type-body-small);
-}
-
-.thry-empty-title {
-    color: #e4e4e4;
-    -unity-font-style: bold;
-    font-size: var(--thry-font-size);
-    margin-bottom: var(--thry-space-4);
 }
 
 .thry-compact .thry-title {
@@ -488,37 +455,6 @@
 
 .thry-narrow .thry-tools {
     margin: var(--thry-space-4) 0 0 -3px;
-}
-
-.thry-changed-filter {
-    height: var(--thry-toolbar-height);
-    margin: 0 0 0 var(--thry-space-5);
-    padding: 0 var(--thry-space-7);
-    flex-shrink: 0;
-    background-color: #484848;
-    border-width: var(--thry-border-width);
-    border-color: #545454;
-    border-radius: var(--thry-radius-panel);
-}
-
-.thry-changed-filter .unity-base-field__input {
-    align-items: center;
-    padding: 0;
-    background-color: transparent;
-}
-
-.thry-changed-filter .unity-toggle__text {
-    color: #d4d4d4;
-    font-size: var(--thry-type-body-small);
-    margin-left: var(--thry-space-5);
-}
-
-.thry-changed-filter:hover {
-    background-color: var(--thry-border-color);
-}
-
-.thry-changed-filter:focus {
-    border-color: var(--thry-focus-color);
 }
 
 .thry-compact .thry-navigation {
@@ -540,19 +476,6 @@
     flex-grow: 1;
 }
 
-.thry-compact .thry-changed-filter {
-    flex-grow: 1;
-}
-
-.thry-light .thry-changed-filter {
-    background-color: var(--thry-surface-color);
-    border-color: var(--thry-border-color);
-}
-
-.thry-light .thry-changed-filter .unity-toggle__text {
-    color: #454545;
-}
-
 .thry-light.thry-active {
     background-color: var(--thry-background-color);
     color: #252525;
@@ -566,7 +489,7 @@
     background-color: var(--thry-surface-color);
 }
 
-.thry-light .thry-version, .thry-light .thry-state, .thry-light .thry-text-button {
+.thry-light .thry-version, .thry-light .thry-state {
     color: #5b5b5b;
 }
 
@@ -598,15 +521,6 @@
 
 .thry-light .thry-state.thry-optimized {
     color: #4c7020;
-}
-
-.thry-light .thry-empty {
-    background-color: var(--thry-surface-color);
-    color: #5b5b5b;
-}
-
-.thry-light .thry-empty-title {
-    color: #252525;
 }
 
 .thry-dropdown-menu {
@@ -1486,13 +1400,6 @@
     border-color: #aaaaaa;
 }
 
-.thry-stencil {
-    background-color: #333333;
-    padding: var(--thry-space-8);
-    margin-bottom: var(--thry-space-6);
-    border-radius: var(--thry-radius-panel);
-}
-
 .thry-light .thry-section-header, .thry-light.thry-window .unity-foldout__toggle {
     background-color: #b4b4b4;
     border-color: #b4b4b4;
@@ -1507,7 +1414,7 @@
     color: #292929;
 }
 
-.thry-light .thry-texture-details, .thry-light .thry-stencil {
+.thry-light .thry-texture-details {
     background-color: #c9c9c9;
 }
 
@@ -1528,33 +1435,6 @@
 
 .thry-texture-workspace {
     padding: var(--thry-space-16);
-}
-
-.thry-studio-columns {
-    flex-direction: row;
-    flex-grow: 1;
-    min-height: 0;
-    margin-top: var(--thry-space-12);
-    margin-bottom: var(--thry-space-12);
-}
-
-.thry-studio-controls {
-    flex-basis: 56%;
-    flex-grow: 1;
-    margin-right: var(--thry-space-16);
-}
-
-.thry-studio-preview {
-    flex-basis: 40%;
-    flex-grow: 1;
-    min-width: 200px;
-    padding: var(--thry-space-12);
-    background-color: #303030;
-    border-radius: var(--thry-radius-card);
-}
-
-.thry-studio-preview > .unity-image {
-    margin-bottom: var(--thry-space-12);
 }
 
 .thry-studio-section {
@@ -1583,31 +1463,12 @@
     border-radius: var(--thry-radius-control);
 }
 
-.thry-studio-columns .unity-base-field__label {
-    min-width: 90px;
-    width: 38%;
-}
-
-.thry-studio-columns .unity-base-field {
-    min-height: var(--thry-button-height);
-    margin-bottom: var(--thry-space-4);
-}
-
-.thry-studio-columns .unity-base-field__input {
-    min-width: 0;
-}
-
-.thry-studio-columns .thry-components .unity-base-field__label {
-    min-width: 0;
-    width: auto;
-}
-
 .thry-primary-action {
     min-height: 32px;
     -unity-font-style: bold;
 }
 
-.thry-light .thry-studio-preview, .thry-light .thry-studio-route {
+.thry-light .thry-studio-route {
     background-color: #c5c5c5;
 }
 
@@ -2339,32 +2200,6 @@
 }
 
 /* Light theme contrast and interaction states. */
-.thry-menu-item .thry-menu-label {
-    flex-grow: 1;
-    flex-shrink: 1;
-}
-
-.thry-menu-item .thry-menu-arrow {
-    width: 12px;
-    flex-grow: 0;
-    flex-shrink: 0;
-    margin-left: var(--thry-space-6);
-    -unity-text-align: middle-right;
-    opacity: .7;
-}
-
-.thry-light .thry-text-button:hover, .thry-light .thry-text-button:focus {
-    color: #326f9c;
-}
-
-.thry-light .thry-changed-filter:hover {
-    background-color: #eeeeee;
-}
-
-.thry-light .thry-changed-filter:focus {
-    border-color: var(--thry-accent-color);
-}
-
 .thry-light .thry-material-controls .unity-base-text-field__input:focus, .thry-light .thry-material-controls .unity-base-popup-field__input:focus {
     border-color: var(--thry-accent-color);
 }
@@ -2455,10 +2290,6 @@
 .thry-property-search-results {
     margin: var(--thry-space-4) var(--thry-space-3) 0 var(--thry-space-3);
     padding: 0;
-}
-
-.thry-filtering .thry-utility {
-    display: none;
 }
 
 .thry-filter-toolbar {
@@ -4397,13 +4228,6 @@
     margin: var(--thry-space-5) 0 0 30px;
 }
 
-.pathing-help {
-    color: var(--thry-muted-color);
-    font-size: var(--thry-type-small);
-    white-space: normal;
-    margin: var(--thry-space-3) var(--thry-space-4) var(--thry-space-8);
-}
-
 .thry-pathing #pathing-sources {
     margin-bottom: var(--thry-space-8);
 }
@@ -4557,19 +4381,6 @@
 
 .pathing-component {
     flex-grow: 1;
-}
-
-.pathing-cell .pathing-auto-label {
-    color: var(--thry-muted-color);
-    font-size: var(--thry-type-caption);
-    -unity-text-align: middle-center;
-    margin: 0;
-}
-
-.pathing-routing-note {
-    font-size: var(--thry-type-caption);
-    color: var(--thry-muted-color);
-    margin: 0;
 }
 
 .pathing-actions {
@@ -6164,7 +5975,6 @@
     background-color: var(--thry-selection-background);
 }
 
-.thry-inspector .thry-studio-preview,
 .thry-inspector .thry-studio-route,
 .thry-inspector .thry-studio-source,
 .thry-inspector .thry-stencil-view {
