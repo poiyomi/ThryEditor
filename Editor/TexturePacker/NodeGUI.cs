@@ -165,6 +165,7 @@ namespace Thry.ThryEditor.TexturePacker
                         TexturePackerConfig newConfig = TexturePackerConfig.Deserialize(importer.userData);
                         try
                         {
+                            newConfig.SetOutputPath(importer.assetPath);
                             InitilizeWithData(newConfig, importer);
                         }
                         catch (Exception e)

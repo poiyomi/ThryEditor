@@ -109,6 +109,7 @@ namespace Thry.ThryEditor.TexturePacker
                             config = TexturePackerConfig.Deserialize(json);
                             if (config.Sources.Length > 0)
                             {
+                                config.SetOutputPath(path);
                                 return true;
                             }
                         }
@@ -118,6 +119,23 @@ namespace Thry.ThryEditor.TexturePacker
             }
             config = null;
             return false;
+        }
+
+        // A packed texture may have been moved, renamed or duplicated since its config was saved.
+        // Saving should update the texture that was opened, not the path stored in the config.
+        internal void SetOutputPath(string assetPath)
+        {
+            // Package folders are usually read-only, so those keep saving to the stored folder
+            if (!assetPath.StartsWith("Assets/", StringComparison.Ordinal)) return;
+            string extension = System.IO.Path.GetExtension(assetPath).ToLowerInvariant();
+            foreach (SaveType type in Enum.GetValues(typeof(SaveType)))
+            {
+                if (type.GetTypeEnding() != extension) continue;
+                FileOutput.SaveType = type;
+                FileOutput.SaveFolder = System.IO.Path.GetDirectoryName(assetPath).Replace('\\', '/');
+                FileOutput.FileName = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+                return;
+            }
         }
 
         public void Fix()
