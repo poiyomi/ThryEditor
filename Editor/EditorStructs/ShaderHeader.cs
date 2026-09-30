@@ -587,9 +587,11 @@ namespace Thry.ThryEditor
                 Undo.RecordObjects(materials, $"Paste from Text {property.Content.text}");
 
                 var scratch = new Material(shader);
-                int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch);
+                var appliedNames = new HashSet<string>();
+                int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch, appliedNames);
+                var skipNames = MaterialTextSerializer.GetUnpastedPropertyNames(property.MyShaderUI, appliedNames);
 
-                property.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures);
+                property.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames);
                 property.UpdateLinkedMaterials();
                 GlobalLinker.OnSectionChanged(property);
 

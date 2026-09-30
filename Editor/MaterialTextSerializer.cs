@@ -259,7 +259,7 @@ namespace Thry.ThryEditor
             }
         }
 
-        public static int ApplyToMaterial(SerializedMaterial data, Material target)
+        public static int ApplyToMaterial(SerializedMaterial data, Material target, HashSet<string> appliedNames = null)
         {
             if (data == null || target == null || data.props == null) return 0;
 
@@ -280,6 +280,8 @@ namespace Thry.ThryEditor
                 if (p == null || string.IsNullOrEmpty(p.n) || p.v == null) continue;
                 if (!target.HasProperty(p.n)) continue;
 
+                int appliedBefore = applied;
+
                 switch (p.t)
                 {
                     case "Float":
@@ -299,8 +301,19 @@ namespace Thry.ThryEditor
                         else if (p.v.Length == 2) { target.SetVector(p.n, new Vector4(p.v[0], p.v[1], 0f, 0f)); applied++; }
                         break;
                 }
+                if (applied != appliedBefore) appliedNames?.Add(p.n);
             }
             return applied;
+        }
+
+        // Paste copies through the inspector's parts from a scratch material that holds shader defaults for
+        // everything the text doesn't set. Skipping those properties keeps the targets' own values for them.
+        public static HashSet<string> GetUnpastedPropertyNames(ShaderEditor editor, HashSet<string> appliedNames)
+        {
+            var skip = new HashSet<string>();
+            foreach (string name in editor.PropertyDictionary.Keys)
+                if (!appliedNames.Contains(name)) skip.Add(name);
+            return skip;
         }
 
         public static readonly HashSet<UnityEngine.Rendering.ShaderPropertyType> SkipTextures = new HashSet<UnityEngine.Rendering.ShaderPropertyType>

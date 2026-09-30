@@ -1434,9 +1434,11 @@ namespace Thry
                 Undo.RecordObjects(Materials, "Paste from Text");
 
                 var scratch = new Material(Shader);
-                int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch);
+                var appliedNames = new HashSet<string>();
+                int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch, appliedNames);
+                var skipNames = MaterialTextSerializer.GetUnpastedPropertyNames(this, appliedNames);
 
-                foreach (var part in ShaderParts) part.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures);
+                foreach (var part in ShaderParts) part.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames);
 
                 UnityEngine.Object.DestroyImmediate(scratch);
 
