@@ -23,8 +23,8 @@ namespace Thry.ThryEditor
                 (p.GetPropertyType() == ShaderPropertyType.Range && p.floatValue.ToString(CultureInfo.InvariantCulture) == value) ||
                 (p.GetPropertyType() == ShaderPropertyType.Color && p.colorValue.ToString() == value) ||
                 (p.GetPropertyType() == ShaderPropertyType.Vector && p.vectorValue.ToString() == value) ||
-                (p.GetPropertyType() == ShaderPropertyType.Texture && ((p.textureValue == null) == (value == "0"))) ||
-                (p.GetPropertyType() == ShaderPropertyType.Texture && ((p.textureValue != null) == (value == "1"))) ||
+                (p.GetPropertyType() == ShaderPropertyType.Texture && value == "0" && p.textureValue == null) ||
+                (p.GetPropertyType() == ShaderPropertyType.Texture && value == "1" && p.textureValue != null) ||
                 (p.GetPropertyType() == ShaderPropertyType.Texture && (p.textureValue != null && p.textureValue.name == value))
             )
             {
