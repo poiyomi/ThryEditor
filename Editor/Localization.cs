@@ -453,9 +453,13 @@ namespace Thry.ThryEditor
                 }
             }
 
-            void LoadFromCSVText(Localization locale, string csvText)
+            // Returns false without touching the locale when the text isn't locale CSV.
+            bool LoadFromCSVText(Localization locale, string csvText)
             {
-                if (string.IsNullOrEmpty(csvText) || locale == null) return;
+                if (string.IsNullOrEmpty(csvText) || locale == null) return false;
+
+                // Sign-in and error pages come back as HTML.
+                if (csvText.TrimStart('\uFEFF', ' ', '\t', '\r', '\n').StartsWith("<", StringComparison.Ordinal)) return false;
 
                 string[] lines = csvText
                     .Replace("\r\n", "\n")
@@ -464,22 +468,17 @@ namespace Thry.ThryEditor
                     .Where(l => !string.IsNullOrWhiteSpace(l))
                     .ToArray();
 
-                if (lines.Length == 0) return;
-
-                locale.Clear();
+                if (lines.Length < 2) return false;
 
                 List<string> header = SplitCsvLine(lines[0]).Select(FromCSVString).ToList();
-                if (header.Count < 2) return;
+                if (header.Count < 2) return false;
 
                 int languagesStartIndex = (header.Count > 1 && IsSourceHeader(header[1])) ? 2 : 1;
-                for (int i = languagesStartIndex; i < header.Count; i++)
-                {
-                    locale.AddLanguage(header[i]);
-                }
-
                 int languageCount = header.Count - languagesStartIndex;
-                locale._values = new string[(lines.Length - 1) * languageCount];
-                locale._keys = new string[lines.Length - 1];
+                if (languageCount < 1) return false;
+
+                string[] values = new string[(lines.Length - 1) * languageCount];
+                string[] keys = new string[lines.Length - 1];
 
                 for (int i = 1; i < lines.Length; i++)
                 {
@@ -487,19 +486,29 @@ namespace Thry.ThryEditor
                     if (cells.Count == 0) continue;
 
                     string key = cells[0];
-                    locale._keys[i - 1] = key;
+                    keys[i - 1] = key;
 
                     for (int j = 0; j < languageCount; j++)
                     {
                         int cellIndex = languagesStartIndex + j;
                         string value = (cellIndex < cells.Count) ? cells[cellIndex] : "";
-                        locale._values[(i - 1) * languageCount + j] = value;
+                        values[(i - 1) * languageCount + j] = value;
                     }
                 }
+
+                // Only replace the existing data once the whole file has been read.
+                locale.Clear();
+                for (int i = languagesStartIndex; i < header.Count; i++)
+                {
+                    locale.AddLanguage(header[i]);
+                }
+                locale._values = values;
+                locale._keys = keys;
 
                 locale.Load();
                 locale.Save();
                 WriteLocaleTimestamp(locale);
+                return true;
             }
 
             void ImportOnlineSpreadsheet(Localization locale)
@@ -553,8 +562,19 @@ namespace Thry.ThryEditor
                         }
 
                         string csv = _spreadsheetRequest.downloadHandler.text;
+                        string contentType = _spreadsheetRequest.GetResponseHeader("Content-Type");
+                        bool isHtml = contentType != null && contentType.IndexOf("html", StringComparison.OrdinalIgnoreCase) != -1;
+                        if (isHtml || !LoadFromCSVText(locale, csv))
+                        {
+                            ThryLogger.LogErr($"Spreadsheet CSV URL did not return locale data: {locale.SpreadsheetCsvUrl}");
+                            EditorUtility.DisplayDialog(
+                                "Spreadsheet Sync Failed",
+                                "The URL didn't return a locale CSV, so nothing was changed. Make sure the spreadsheet is shared publicly and the URL is the CSV export link.",
+                                "OK"
+                            );
+                            return;
+                        }
                         WriteLocaleBackupFile(locale, csv);
-                        LoadFromCSVText(locale, csv);
                         Undo.RecordObject(locale, "Commit Spreadsheet CSV URL");
                         EditorUtility.SetDirty(locale);
                         AssetDatabase.SaveAssets();
@@ -622,7 +642,14 @@ namespace Thry.ThryEditor
                 {
                     // Read as UTF-8 (handles BOM as well)
                     string csvText = File.ReadAllText(path, System.Text.Encoding.UTF8);
-                    LoadFromCSVText(locale, csvText);
+                    if (!LoadFromCSVText(locale, csvText))
+                    {
+                        EditorUtility.DisplayDialog(
+                            "Load from CSV",
+                            "This file doesn't contain locale data, so nothing was changed. The first row needs a Property column followed by one column per language.",
+                            "OK"
+                        );
+                    }
                 }
             }
 
