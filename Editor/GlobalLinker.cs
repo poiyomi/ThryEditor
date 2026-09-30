@@ -763,7 +763,6 @@ namespace Thry.ThryEditor
             private string _newLinkName = "";
             private bool _newIncludeTextures = false;
             private const string TexturePolicyTooltip = "Applies to every material in this link. Disable to preserve each material’s textures, tiling, offset and texture animation tags. Enabling copies textures from the inspected material.";
-            private Vector2 _scrollPos;
             private List<GlobalLink> _availableLinks;
             private GlobalLink _currentLink;       // non-null only when ALL selected materials share the same link
             private bool _hasMixedState;           // true when selected materials are in inconsistent link states
@@ -807,116 +806,8 @@ namespace Thry.ThryEditor
 
             void OnGUI()
             {
-                if(rootVisualElement.childCount>0)return;
-                if (_section == null)
-                {
-                    Close();
-                    return;
-                }
-
-                RefreshState();
-                // Header
-                GUILayout.Label("Global Links", EditorStyles.boldLabel);
-                GUILayout.Space(4);
-
-                // Current Status
-                if (_hasMixedState)
-                {
-                    EditorGUILayout.HelpBox($"Mixed — {_linkedCount} of {_materials.Length} selected materials are linked.", MessageType.Warning);
-                    if (GUILayout.Button("Disconnect All"))
-                    {
-                        Unsubscribe(_materials, _sectionPropertyName);
-                        RefreshState();
-                    }
-                    GUILayout.Space(4);
-                }
-                else if (_currentLink != null)
-                {
-                    string selectionSuffix = _materials.Length > 1 ? $" — {_materials.Length} selected" : "";
-                    EditorGUILayout.HelpBox($"Linked to: \"{_currentLink.name}\" ({_currentLink.subscribedMaterialGuids.Length} material(s)){selectionSuffix}", MessageType.Info);
-                    if (GUILayout.Button("Disconnect"))
-                    {
-                        Unsubscribe(_materials, _sectionPropertyName);
-                        RefreshState();
-                    }
-                    if (_currentLink != null)
-                    {
-                        bool include = EditorGUILayout.Toggle(new GUIContent("Include Textures", TexturePolicyTooltip), _currentLink.includeTextures);
-                        if (include != _currentLink.includeTextures) SetIncludeTextures(_currentLink, include, _section);
-                    }
-                    GUILayout.Space(4);
-                }
-
-                // Available Links List
-                GUILayout.Label("Available Links:", EditorStyles.miniBoldLabel);
-                float listMaxHeight = position.height - 180;
-                _scrollPos = GUILayout.BeginScrollView(_scrollPos, GUILayout.MaxHeight(listMaxHeight));
-
-                if (_availableLinks.Count == 0)
-                {
-                    GUILayout.Label("No global links exist for this section yet.", EditorStyles.miniLabel);
-                }
-                else
-                {
-                    for (int i = _availableLinks.Count - 1; i >= 0; i--)
-                    {
-                        GlobalLink link = _availableLinks[i];
-                        GUILayout.BeginHorizontal();
-
-                        bool isCurrent = _currentLink == link;
-                        string label = link.name + $" ({link.subscribedMaterialGuids.Length})";
-
-                        EditorGUI.BeginDisabledGroup(isCurrent);
-                        if (GUILayout.Button(isCurrent ? "● " + label : label, EditorStyles.miniButtonLeft)) SelectLink(link);
-                        EditorGUI.EndDisabledGroup();
-
-                        // Delete Button
-                        if (GUILayout.Button("✕", EditorStyles.miniButtonRight, GUILayout.Width(24)))
-                        {
-                            if (EditorUtility.DisplayDialog("Delete Global Link", $"Delete \"{link.name}\"?\n\nAll materials linked to it will be disconnected. Their current properties will be retained.", "Delete", "Cancel"))
-                            {
-                                DeleteLink(link);
-                                RefreshState();
-                            }
-                        }
-
-                        GUILayout.EndHorizontal();
-                    }
-                }
-
-                GUILayout.EndScrollView();
-                GUILayout.Space(4);
-
-                // Create New Link
-                GUILayout.Label("Create New Link:", EditorStyles.miniBoldLabel);
-                _newIncludeTextures = EditorGUILayout.Toggle(new GUIContent("Include Textures", TexturePolicyTooltip), _newIncludeTextures);
-                GUILayout.BeginHorizontal();
-                _newLinkName = EditorGUILayout.TextField(_newLinkName);
-                EditorGUI.BeginDisabledGroup(string.IsNullOrWhiteSpace(_newLinkName));
-                if (GUILayout.Button("Add", GUILayout.Width(50)))
-                {
-                    // Check for duplicates
-                    if (_availableLinks.Any(l => l.name == _newLinkName))
-                    {
-                        EditorUtility.DisplayDialog("Duplicate Name", $"A global link named \"{_newLinkName}\" already exists for this section.", "OK");
-                    }
-                    else
-                    {
-                        // Drop any existing links on the selected materials first (force-switch)
-                        Unsubscribe(_materials, _sectionPropertyName);
-
-                        GlobalLink newLink = CreateLink(_newLinkName, _sectionPropertyName, _section, _materials, _newIncludeTextures);
-                        _newLinkName = "";
-                        RefreshState();
-                    }
-                }
-                EditorGUI.EndDisabledGroup();
-                GUILayout.EndHorizontal();
-
-                GUILayout.Space(4);
-
-                // Done button
-                if (GUILayout.Button("Done")) Close();
+                // CreateGUI builds the window. The section is not serialized, so the window closes after a domain reload.
+                if (_section == null) Close();
             }
 
             public void CreateGUI()
