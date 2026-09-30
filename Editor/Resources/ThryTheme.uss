@@ -62,9 +62,9 @@
    Neutral surfaces continue to use the shared Poiyomi gray theme below. */
 .thry-inspector, .thry-dropdown-menu {
     --thry-monokai-pink: #f92672;
-    --thry-monokai-pink-surface: #60434e;
-    --thry-monokai-pink-surface-hover: #71505d;
-    --thry-monokai-pink-surface-pressed: #513941;
+    --thry-monokai-pink-surface: #793c51;
+    --thry-monokai-pink-surface-hover: #8a4960;
+    --thry-monokai-pink-surface-pressed: #683345;
     --thry-monokai-pink-surface-disabled: #4e4146;
     --thry-monokai-green: #a6e22e;
     --thry-monokai-yellow: #e6db74;
@@ -78,9 +78,9 @@
 
 .thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
     --thry-monokai-pink: #b9144c;
-    --thry-monokai-pink-surface: #e2c3ce;
-    --thry-monokai-pink-surface-hover: #edd2dc;
-    --thry-monokai-pink-surface-pressed: #d6b5c0;
+    --thry-monokai-pink-surface: #df96b0;
+    --thry-monokai-pink-surface-hover: #e8aac0;
+    --thry-monokai-pink-surface-pressed: #d3839f;
     --thry-monokai-pink-surface-disabled: #d2c4c9;
     --thry-monokai-green: #638f14;
     --thry-monokai-yellow: #82721e;
@@ -8157,6 +8157,37 @@
     border-color: var(--thry-control-border-color);
     justify-content: center;
     align-items: stretch;
+    flex-direction: row;
+}
+
+.thry-uv-cell > .thry-uv-discard-marker {
+    width: var(--thry-property-checkbox-size);
+    min-width: var(--thry-property-checkbox-size);
+    height: var(--thry-property-checkbox-size);
+    flex-shrink: 0;
+    align-self: center;
+    margin: 0 var(--thry-space-2) 0 0;
+    border-width: var(--thry-border-width);
+    border-radius: var(--thry-radius-compact);
+    border-color: var(--thry-control-border-color);
+    background-color: var(--thry-field-background);
+    color: var(--thry-value-color);
+    font-size: var(--thry-type-small);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--thry-value-color);
+}
+
+.thry-uv-cell.thry-uv-discarded > .thry-uv-discard-marker {
+    background-image: url("ThryToolbar/property-checkmark.png");
+}
+
+.thry-uv-cell > .thry-uv-coordinate,
+.thry-uv-cell > .thry-uv-caption {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
 }
 
 .thry-inspector Button.thry-uv-cell:hover {
@@ -8238,9 +8269,9 @@
 }
 
 .thry-inspector.thry-light Button.thry-uv-cell.thry-uv-discarded {
-    --thry-button-background: #e3a9bd;
-    --thry-button-hover-background: #ebbccc;
-    --thry-button-pressed-background: #d696ac;
+    --thry-button-background: var(--thry-monokai-pink-surface);
+    --thry-button-hover-background: var(--thry-monokai-pink-surface-hover);
+    --thry-button-pressed-background: var(--thry-monokai-pink-surface-pressed);
     --thry-button-disabled-background: var(--thry-monokai-pink-surface-disabled);
     border-color: var(--thry-monokai-pink);
 }

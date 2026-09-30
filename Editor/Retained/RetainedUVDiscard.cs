@@ -15,6 +15,7 @@ namespace Thry.ThryEditor
         readonly ShaderProperty[] tiles;
         readonly Button[] cells = new Button[16];
         readonly Label[] captions = new Label[16], states = new Label[16];
+        readonly Label[] discardMarkers = new Label[16];
         internal static string Prefix(ShaderGroup group)
         {
             switch (group.MaterialProperty?.name)
@@ -60,6 +61,9 @@ namespace Thry.ThryEditor
                     var property = tiles[index];
                     var cell = new Button(() => Activate(index)) { name = "tile-" + property.MaterialProperty.name, userData = property };
                     cell.AddToClassList("thry-uv-cell");
+                    discardMarkers[index] = new Label();
+                    discardMarkers[index].AddToClassList("thry-uv-discard-marker");
+                    cell.Add(discardMarkers[index]);
                     var coordinate = new Label(u + ", " + v); coordinate.AddToClassList("thry-uv-coordinate"); cell.Add(coordinate);
                     captions[index] = new Label(); captions[index].AddToClassList("thry-uv-caption"); cell.Add(captions[index]);
                     states[index] = new Label(); states[index].AddToClassList("thry-uv-state"); cell.Add(states[index]);
@@ -106,6 +110,7 @@ namespace Thry.ThryEditor
                 var p = tiles[i]; p.RefreshRetainedProjection(model.Renderers);
                 bool mixed = p.MaterialProperty.hasMixedValue;
                 bool discarded = p.MaterialProperty.GetNumber() > .5f;
+                discardMarkers[i].text = mixed ? "−" : "";
                 var labels = model.Owners(p).Select(m => TileLabelUtility.GetTileLabel(m, p.MaterialProperty.name) ?? "").Distinct().ToArray();
                 captions[i].text = labels.Length > 1 ? "Mixed names" : labels.FirstOrDefault() ?? "";
                 bool named = !string.IsNullOrEmpty(captions[i].text);
