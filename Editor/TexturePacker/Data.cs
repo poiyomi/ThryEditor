@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Thry.ThryEditor.Helpers;
+using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
 
@@ -258,7 +259,34 @@ namespace Thry.ThryEditor.TexturePacker
             if (GradientTexture != null && GradientTexture.width == size.x && GradientTexture.height == size.y) return;
             if (Gradient == null) Gradient = new Gradient();
             ReleaseGeneratedTexture(GradientTexture);
-            GradientTexture = Converter.GradientToTexture(Gradient, size.x, size.y, GradientDirection == GradientDirection.Vertical, linear: true);
+            GradientTexture = BakeGradient(Gradient, size, GradientDirection == GradientDirection.Vertical);
+        }
+
+        // Converter.GradientToTexture sets every texel on its own, which stalls the editor at large sizes.
+        // Every row (or column) is the same, so bake one with it and copy that across for identical texels.
+        static Texture2D BakeGradient(Gradient gradient, Vector2Int size, bool vertical)
+        {
+            int width = Mathf.Clamp(size.x, 0, 8192), height = Mathf.Clamp(size.y, 0, 8192);
+            Texture2D line = Converter.GradientToTexture(gradient, vertical ? 1 : width, vertical ? height : 1, vertical, linear: true);
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA64, false, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            try
+            {
+                // One ulong is one RGBA64 texel
+                NativeArray<ulong> lineTexels = line.GetPixelData<ulong>(0);
+                NativeArray<ulong> texels = texture.GetPixelData<ulong>(0);
+                for (int y = 0; y < height; y++)
+                {
+                    int row = y * width;
+                    if (!vertical) { NativeArray<ulong>.Copy(lineTexels, 0, texels, row, width); continue; }
+                    texels[row] = lineTexels[y];
+                    for (int filled = 1; filled < width; filled *= 2)
+                        NativeArray<ulong>.Copy(texels, row, texels, row + filled, Mathf.Min(filled, width - filled));
+                }
+                texture.Apply();
+                return texture;
+            }
+            catch { UnityEngine.Object.DestroyImmediate(texture); throw; }
+            finally { UnityEngine.Object.DestroyImmediate(line); }
         }
 
         public void UpdateColorTexture()
