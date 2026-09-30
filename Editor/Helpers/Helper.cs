@@ -14,18 +14,23 @@ namespace Thry.ThryEditor.Helpers
     {
         public static bool ClassWithNamespaceExists(string classname)
         {
-            return (from assembly in AppDomain.CurrentDomain.GetAssemblies()
-                    from type in assembly.GetTypes()
-                    where type.FullName == classname
-                    select type).Count() > 0;
+            return FindTypeByFullName(classname) != null;
         }
 
         public static Type FindTypeByFullName(string fullname)
         {
-            return (from assembly in AppDomain.CurrentDomain.GetAssemblies()
-                    from type in assembly.GetTypes()
-                    where type.FullName == fullname
-                    select type).FirstOrDefault();
+            // Asking each assembly for the name avoids GetTypes, which throws for any assembly with a type
+            // whose dependency is missing and would otherwise break the lookup for every other type too
+            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    Type type = assembly.GetType(fullname, false);
+                    if (type != null) return type;
+                }
+                catch (Exception) { }
+            }
+            return null;
         }
 
         private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
