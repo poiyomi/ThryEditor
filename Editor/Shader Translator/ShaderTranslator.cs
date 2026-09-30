@@ -29,9 +29,25 @@ namespace Thry.ThryEditor.ShaderTranslations
 
         public void Apply(ShaderEditor editor, int? renderQueueOverride = null)
         {
+            Material[] materials = editor.Materials;
+            if (materials.Length == 1)
+            {
+                ApplyTo(editor, materials[0], null, renderQueueOverride);
+                return;
+            }
+
+            // The editor's properties write to every selected material at once, which would give all of them
+            // the first material's values. Translate each material from its own old values instead.
+            foreach (Material material in materials)
+                ApplyTo(editor, material, material, renderQueueOverride);
+            editor.Reload();
+        }
+
+        // `only` is null when the editor holds just this material, so values are written through the editor's own
+        // properties. Otherwise every write is limited to `only`.
+        void ApplyTo(ShaderEditor editor, Material material, Material only, int? renderQueueOverride)
+        {
             Shader originShader = editor.LastShader;
-            Shader targetShader = editor.Shader;
-            Material material = editor.Materials[0];
             SerializedObject serializedMaterial = new SerializedObject(material);
 
             List<PropertyTranslation> allTranslations = AllPropertyTranslations;
@@ -50,7 +66,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_Floats", trans.Origin);
                             if(p != null)
                             {
-                                _HandleFloatProperty(editor, trans, p);
+                                _HandleFloatProperty(targetProp, trans, p);
                                 break;
                             }
                             // Convert a texture property to a 1 if assigned and to 0 if not
@@ -67,14 +83,14 @@ namespace Thry.ThryEditor.ShaderTranslations
                                     else
                                         textureValue = Helper.SolveMath(trans.Math, textureValue);
                                 }
-                                editor.PropertyDictionary[trans.Target].FloatValue = textureValue;
+                                SetFloat(targetProp, only, textureValue);
                             }
                             break;
                         case ShaderPropertyType.Int:
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_Ints", trans.Origin);
                             if(p != null)
                             {
-                                _HandleIntProperty(editor, trans, p);
+                                _HandleIntProperty(targetProp, trans, p);
                                 break;
                             }
 
@@ -91,7 +107,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                                     else
                                         f = Helper.SolveMath(trans.Math, f);
                                 }
-                                editor.PropertyDictionary[trans.Target].FloatValue = (int)f;
+                                SetFloat(targetProp, only, (int)f);
                                 break;
                             }
                             // Convert a texture property to a 1 if assigned and to 0 if not
@@ -108,28 +124,26 @@ namespace Thry.ThryEditor.ShaderTranslations
                                     else
                                         textureValue = Helper.SolveMath(trans.Math, textureValue);
                                 }
-                                editor.PropertyDictionary[trans.Target].FloatValue = (int)textureValue;
+                                SetFloat(targetProp, only, (int)textureValue);
                             }
                             break;
                         case ShaderPropertyType.Vector:
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_Colors", trans.Origin);
-                            if(p != null) editor.PropertyDictionary[trans.Target].VectorValue = p.FindPropertyRelative("second").vector4Value;
+                            if(p != null) SetVector(targetProp, only, p.FindPropertyRelative("second").vector4Value);
                             break;
                         case ShaderPropertyType.Color:
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_Colors", trans.Origin);
-                            if(p != null) editor.PropertyDictionary[trans.Target].ColorValue = p.FindPropertyRelative("second").colorValue;
+                            if(p != null) SetColor(targetProp, only, p.FindPropertyRelative("second").colorValue);
                             break;
                         case ShaderPropertyType.Texture:
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_TexEnvs", trans.Origin);
                             if(p != null)
                             {
                                 SerializedProperty values = p.FindPropertyRelative("second");
-                                editor.PropertyDictionary[trans.Target].TextureValue =
-                                    values.FindPropertyRelative("m_Texture").objectReferenceValue as Texture;
                                 Vector2 scale = values.FindPropertyRelative("m_Scale").vector2Value;
                                 Vector2 offset = values.FindPropertyRelative("m_Offset").vector2Value;
-                                editor.PropertyDictionary[trans.Target].MaterialProperty.textureScaleAndOffset =
-                                    new Vector4(scale.x, scale.y, offset.x, offset.y);
+                                SetTexture(targetProp, only, values.FindPropertyRelative("m_Texture").objectReferenceValue as Texture,
+                                    new Vector4(scale.x, scale.y, offset.x, offset.y));
                             }
                             break;
                     }
@@ -146,7 +160,7 @@ namespace Thry.ThryEditor.ShaderTranslations
 
             ShaderEditor.FixKeywords(new Material[] { material });
 
-            void _HandleFloatProperty(ShaderEditor _editor, PropertyTranslation trans, SerializedProperty p)
+            void _HandleFloatProperty(ShaderProperty _targetProp, PropertyTranslation trans, SerializedProperty p)
             {
                 float f = p.FindPropertyRelative("second").floatValue;
                 string expression = trans.GetAppropriateExpression(f);
@@ -159,10 +173,10 @@ namespace Thry.ThryEditor.ShaderTranslations
                     else
                         f = Helper.SolveMath(trans.Math, f);
                 }
-                _editor.PropertyDictionary[trans.Target].FloatValue = f;
+                SetFloat(_targetProp, only, f);
             }
 
-            void _HandleIntProperty(ShaderEditor _editor, PropertyTranslation trans, SerializedProperty p)
+            void _HandleIntProperty(ShaderProperty _targetProp, PropertyTranslation trans, SerializedProperty p)
             {
                 float f = p.FindPropertyRelative("second").intValue;
                 string expression = trans.GetAppropriateExpression(f);
@@ -174,7 +188,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                     else
                         f = Helper.SolveMath(trans.Math, f);
                 }
-                _editor.PropertyDictionary[trans.Target].FloatValue = (int)f;
+                SetFloat(_targetProp, only, (int)f);
             }
 
             void _HandlePropertyModifications(ShaderEditor _editor, Shader _originShader, List<ShaderNameMatchedModifications> modifications)
@@ -192,7 +206,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                                 Shader newShader = Shader.Find(action.targetValue);
                                 if(newShader)
                                 {
-                                    Material m = _editor.Materials[0];
+                                    Material m = material;
                                     var preservedTags = MaterialHelper.GetOwnOverrideTags(m, MaterialHelper.TagsPreservedAcrossShaderSwap);
                                     m.shader = newShader;
                                     MaterialHelper.ApplyOverrideTags(m, preservedTags);
@@ -203,10 +217,11 @@ namespace Thry.ThryEditor.ShaderTranslations
                                 {
                                     if(action.propertyName == ShaderEditor.PROPERTY_NAME_IN_SHADER_PRESETS)
                                     {
-                                        _editor.ShaderRenderingPreset = parsedFloat;
+                                        if (only == null) _editor.ShaderRenderingPreset = parsedFloat;
+                                        else ShaderEditor.ApplyRenderingPresetToMaterial(only, parsedFloat);
                                     }
                                     else
-                                        SetPropertyValue(_editor, action.propertyName, parsedFloat);
+                                        SetPropertyValue(_editor, action.propertyName, parsedFloat, only);
                                 }
                                 break;
                         }
@@ -215,22 +230,99 @@ namespace Thry.ThryEditor.ShaderTranslations
             }
         }
 
-        void SetPropertyValue(ShaderEditor editor, string propertyName, float value)
+        void SetPropertyValue(ShaderEditor editor, string propertyName, float value, Material only)
         {
             if (!editor.PropertyDictionary.TryGetValue(propertyName, out var prop))
                 return;
-            switch(prop.MaterialProperty.GetPropertyType())
+            MaterialProperty materialProp = only == null ? prop.MaterialProperty : GetMaterialProperty(prop, only);
+            switch(materialProp.GetPropertyType())
             {
                 case ShaderPropertyType.Float:
                 case ShaderPropertyType.Int:
-                    prop.MaterialProperty.SetNumber(value);
+                    materialProp.SetNumber(value);
                     break;
                     // If our property is 0f, clear texture
                 case ShaderPropertyType.Texture:
                     if(Convert.ToInt32(value) == 0)
-                        prop.MaterialProperty.textureValue = null;
+                        materialProp.textureValue = null;
                     break;
             }
+        }
+
+        static MaterialProperty GetMaterialProperty(ShaderProperty prop, Material only)
+        {
+            return MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { only }, prop.MaterialProperty.name);
+        }
+
+        // The single-material writes mirror the ShaderProperty value setters, scoped to one material.
+        static void SetFloat(ShaderProperty prop, Material only, float value)
+        {
+            if (only == null)
+            {
+                prop.FloatValue = value;
+                return;
+            }
+            // A rendering preset's actions write through the active editor, which holds every selected material.
+            if (RenderingPresets.PresetPropertyNames.Contains(prop.MaterialProperty.name))
+            {
+                ShaderEditor.ApplyRenderingPresetToMaterial(only, value);
+                return;
+            }
+            MaterialProperty materialProp = GetMaterialProperty(prop, only);
+            materialProp.SetNumber(value);
+            if (prop.Keyword != null)
+            {
+                if (materialProp.GetNumber() == 1) only.EnableKeyword(prop.Keyword);
+                else only.DisableKeyword(prop.Keyword);
+            }
+            ExecuteOnValueActions(prop, materialProp, only);
+        }
+
+        static void SetVector(ShaderProperty prop, Material only, Vector4 value)
+        {
+            if (only == null)
+            {
+                prop.VectorValue = value;
+                return;
+            }
+            MaterialProperty materialProp = GetMaterialProperty(prop, only);
+            materialProp.vectorValue = value;
+            ExecuteOnValueActions(prop, materialProp, only);
+        }
+
+        static void SetColor(ShaderProperty prop, Material only, Color value)
+        {
+            if (only == null)
+            {
+                prop.ColorValue = value;
+                return;
+            }
+            MaterialProperty materialProp = GetMaterialProperty(prop, only);
+            materialProp.colorValue = value;
+            ExecuteOnValueActions(prop, materialProp, only);
+        }
+
+        static void SetTexture(ShaderProperty prop, Material only, Texture texture, Vector4 scaleAndOffset)
+        {
+            if (only == null)
+            {
+                prop.TextureValue = texture;
+                prop.MaterialProperty.textureScaleAndOffset = scaleAndOffset;
+                return;
+            }
+            MaterialProperty materialProp = GetMaterialProperty(prop, only);
+            materialProp.textureValue = texture;
+            materialProp.textureScaleAndOffset = scaleAndOffset;
+            MaterialEditor.ApplyMaterialPropertyDrawers(only);
+        }
+
+        static void ExecuteOnValueActions(ShaderProperty prop, MaterialProperty materialProp, Material only)
+        {
+            Material[] targets = { only };
+            if (prop.Options.on_value_actions != null)
+                foreach (PropertyValueAction action in prop.Options.on_value_actions)
+                    action?.Execute(materialProp, targets);
+            MaterialEditor.ApplyMaterialPropertyDrawers(targets);
         }
 
         SerializedProperty GetProperty(SerializedObject o, string arrayPath, string propertyName)
