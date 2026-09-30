@@ -32,6 +32,9 @@ namespace Thry.ThryEditor
             // One snapshot per selected material, in the editor's material order. Reverting a
             // multi-selection from a single snapshot would hand every material the first one's values.
             public Material[] prePresetStates;
+            // The materials the snapshots belong to. The selection can change before Revert is clicked,
+            // so snapshots are matched back to their own material rather than by position.
+            public Material[] targets;
             public ShaderPart parent;
 
             public static AppliedPreset Create(string name, Material preset, Material[] currentStates, ShaderPart parent)
@@ -39,6 +42,7 @@ namespace Thry.ThryEditor
                 AppliedPreset appliedPreset = new AppliedPreset();
                 appliedPreset.name = name;
                 appliedPreset.preset = preset;
+                appliedPreset.targets = (Material[])currentStates.Clone();
                 appliedPreset.prePresetStates = new Material[currentStates.Length];
                 for (int i = 0; i < currentStates.Length; i++)
                 {
@@ -752,20 +756,26 @@ namespace Thry.ThryEditor
             Material[] materials = shaderEditor.Materials;
             Material[] snapshots = appliedPreset.prePresetStates;
             Undo.RecordObjects(materials, "Revert preset");
-            if (materials.Length == 1 || snapshots.Length != materials.Length)
+            if (materials.Length == 1)
             {
-                // Single material, or the selection changed since the preset was applied: the shared
-                // path writes the first snapshot through the editor's own property objects.
-                ApplyPresetInternal(shaderEditor, appliedPreset.preset, snapshots[0], appliedPreset.parent);
+                // Single material: the shared path writes its snapshot through the editor's own property objects.
+                int index = Array.IndexOf(appliedPreset.targets, materials[0]);
+                if (index >= 0)
+                    ApplyPresetInternal(shaderEditor, appliedPreset.preset, snapshots[index], appliedPreset.parent);
             }
             else
             {
                 // Multi-selection: the editor's MaterialProperty objects write to every target at once,
                 // so each material gets its own snapshot copied through a single-target property instead.
+                // Materials the preset was not applied to have no snapshot and are left alone.
                 HashSet<ShaderProperty> affected = new HashSet<ShaderProperty>();
                 CollectPresetProperties(shaderEditor, appliedPreset.preset, appliedPreset.parent, affected);
                 for (int i = 0; i < materials.Length; i++)
-                    CopyPresetPropertiesToMaterial(appliedPreset.preset, materials[i], snapshots[i], affected);
+                {
+                    int index = Array.IndexOf(appliedPreset.targets, materials[i]);
+                    if (index >= 0)
+                        CopyPresetPropertiesToMaterial(appliedPreset.preset, materials[i], snapshots[index], affected);
+                }
                 shaderEditor.Reload();
             }
             GlobalLinker.PropagateAfterPreset(shaderEditor, appliedPreset.preset, appliedPreset.parent);
