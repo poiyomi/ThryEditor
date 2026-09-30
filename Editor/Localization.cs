@@ -477,8 +477,9 @@ namespace Thry.ThryEditor
                 int languageCount = header.Count - languagesStartIndex;
                 if (languageCount < 1) return false;
 
-                string[] values = new string[(lines.Length - 1) * languageCount];
-                string[] keys = new string[lines.Length - 1];
+                List<string> keys = new List<string>();
+                Dictionary<string, string[]> rows = new Dictionary<string, string[]>();
+                HashSet<string> duplicates = new HashSet<string>();
 
                 for (int i = 1; i < lines.Length; i++)
                 {
@@ -486,14 +487,35 @@ namespace Thry.ThryEditor
                     if (cells.Count == 0) continue;
 
                     string key = cells[0];
-                    keys[i - 1] = key;
-
+                    string[] row = new string[languageCount];
                     for (int j = 0; j < languageCount; j++)
                     {
                         int cellIndex = languagesStartIndex + j;
-                        string value = (cellIndex < cells.Count) ? cells[cellIndex] : "";
-                        values[(i - 1) * languageCount + j] = value;
+                        row[j] = (cellIndex < cells.Count) ? cells[cellIndex] : "";
                     }
+
+                    if (rows.TryGetValue(key, out string[] existing))
+                    {
+                        // A later duplicate row still wins, but its empty cells must not erase translations from the earlier one.
+                        duplicates.Add(key);
+                        for (int j = 0; j < languageCount; j++)
+                        {
+                            if (!string.IsNullOrEmpty(row[j])) existing[j] = row[j];
+                        }
+                        continue;
+                    }
+                    rows.Add(key, row);
+                    keys.Add(key);
+                }
+                if (duplicates.Count > 0)
+                {
+                    ThryLogger.LogWarn($"[Localization] The CSV has more than one row for: {string.Join(", ", duplicates)}. Their translations were merged; remove the extra rows from the source sheet.");
+                }
+
+                string[] values = new string[keys.Count * languageCount];
+                for (int i = 0; i < keys.Count; i++)
+                {
+                    Array.Copy(rows[keys[i]], 0, values, i * languageCount, languageCount);
                 }
 
                 // Only replace the existing data once the whole file has been read.
@@ -503,7 +525,7 @@ namespace Thry.ThryEditor
                     locale.AddLanguage(header[i]);
                 }
                 locale._values = values;
-                locale._keys = keys;
+                locale._keys = keys.ToArray();
 
                 locale.Load();
                 locale.Save();
