@@ -240,6 +240,80 @@ namespace Thry.ThryEditor.ShaderTranslations
             // Can't seem to assign materials to duplicate correctly, so I'm replacing them on the old avatar and swapping them around
             var avatar = avatarField.value as GameObject;
 
+            string folderName = Regex.Replace(translator.Name ?? "", @"[<>:""/\\|?*\x00-\x1F]", "").Trim().TrimEnd('.');
+            if(string.IsNullOrEmpty(folderName)) folderName = "Translated";
+
+            // The list holds every material on the avatar. Ones on other shaders are left as they are instead of
+            // being switched to the target shader and remapped as if they used the translation's origin shader.
+            // Built-in, scene-only and read-only package materials have nowhere to put a copy, so they are left
+            // as they are too. Checking this up front keeps one of them from stopping the run halfway.
+            var toTranslate = new List<Material>();
+            var uncopyable = new List<Material>();
+            foreach(Material mat in materials.Where(mat => mat != null && MatchesOrigin(translator, SourceShaderName(mat))).Distinct())
+            {
+                string materialPath = AssetDatabase.GetAssetPath(mat);
+                if(materialPath.StartsWith("Assets/", StringComparison.Ordinal)
+                    || (materialPath.StartsWith("Packages/", StringComparison.Ordinal) && AssetDatabase.IsOpenForEdit(mat)))
+                    toTranslate.Add(mat);
+                else
+                    uncopyable.Add(mat);
+            }
+            if(uncopyable.Count > 0)
+                Debug.LogWarning($"Skipped materials that are built in, read-only or not saved as assets: {string.Join(", ", uncopyable.Select(mat => mat.name))}");
+            if(toTranslate.Count == 0)
+                return;
+
+            var createdPaths = new List<string>();
+            try
+            {
+                foreach(Material mat in toTranslate)
+                {
+                    string materialPath = AssetDatabase.GetAssetPath(mat);
+                    string materialFolderPath = Path.GetDirectoryName(materialPath).Replace('\\', '/');
+                    bool standalone = AssetDatabase.IsMainAsset(mat) && materialPath.EndsWith(".mat", StringComparison.OrdinalIgnoreCase);
+                    // A material inside a model file takes its own name, not the model's.
+                    string materialName = standalone ? Path.GetFileNameWithoutExtension(materialPath)
+                        : Regex.Replace(mat.name, @"[<>:""/\\|?*\x00-\x1F]", "_");
+
+                    string translatedFolderPath = $"{materialFolderPath}/{folderName}";
+                    if(!AssetDatabase.IsValidFolder(translatedFolderPath))
+                    {
+                        AssetDatabase.CreateFolder(materialFolderPath, folderName);
+                        createdPaths.Add(translatedFolderPath);
+                    }
+
+                    // Earlier translated copies can hold edits and be used elsewhere, so they are never replaced.
+                    string newMaterialPath = AssetDatabase.GenerateUniqueAssetPath($"{translatedFolderPath}/{materialName}_translated.mat");
+                    if(standalone)
+                    {
+                        // CopyAsset copies the file on disk, which is missing edits that haven't been saved yet.
+                        SaveUnsavedEdits(mat);
+                        if(!AssetDatabase.CopyAsset(materialPath, newMaterialPath))
+                            throw new Exception($"Failed to duplicate material: <b>{materialPath}</b> -> <b>{newMaterialPath}</b>");
+                        createdPaths.Add(newMaterialPath);
+                        AssetDatabase.ImportAsset(newMaterialPath);
+                    }
+                    else
+                    {
+                        AssetDatabase.CreateAsset(new Material(mat), newMaterialPath);
+                        createdPaths.Add(newMaterialPath);
+                    }
+
+                    var newMaterial = AssetDatabase.LoadAssetAtPath<Material>(newMaterialPath);
+                    if(newMaterial == null)
+                        throw new Exception($"Failed to load the translated copy of <b>{mat.name}</b> at <b>{newMaterialPath}</b>");
+                    originalAndTranslatedMaterials.Add(mat, newMaterial);
+                    TranslateMaterial(newMaterial, newShader, translator);
+                }
+            }
+            catch
+            {
+                // Nothing has been assigned yet, so remove the copies and folders this run made instead of leaving them behind.
+                for(int i = createdPaths.Count - 1; i >= 0; i--)
+                    AssetDatabase.DeleteAsset(createdPaths[i]);
+                throw;
+            }
+
             if(createBackupAvatar)
             {
                 string oldName = avatar.name;
@@ -256,30 +330,6 @@ namespace Thry.ThryEditor.ShaderTranslations
 
             Selection.activeGameObject = avatar;
 
-            // The list holds every material on the avatar. Ones on other shaders are left as they are instead of
-            // being switched to the target shader and remapped as if they used the translation's origin shader.
-            foreach(Material mat in materials.Where(mat => mat != null && MatchesOrigin(translator, SourceShaderName(mat))))
-            {
-                string materialPath = AssetDatabase.GetAssetPath(mat);
-                string materialFolderPath = Path.GetDirectoryName(materialPath);
-                string materialName = Path.GetFileNameWithoutExtension(materialPath);
-
-                string folderName = Regex.Replace(translator.Name ?? "", @"[<>:""/\\|?*\x00-\x1F]", "").Trim().TrimEnd('.');
-                if(string.IsNullOrEmpty(folderName)) folderName = "Translated";
-                string newMaterialPath = $"{materialFolderPath}/{folderName}/{materialName}_translated.mat";
-
-                if(!AssetDatabase.IsValidFolder($"{materialFolderPath}/{folderName}"))
-                    AssetDatabase.CreateFolder(materialFolderPath, folderName);
-
-                if(!AssetDatabase.CopyAsset(materialPath, newMaterialPath))
-                    throw new Exception($"Failed to duplicate material: <b>{materialPath}</b> -> <b>{newMaterialPath}</b>");
-
-                AssetDatabase.ImportAsset(newMaterialPath);
-                var newMaterial = AssetDatabase.LoadAssetAtPath<Material>(newMaterialPath);
-                originalAndTranslatedMaterials.Add(mat, newMaterial);
-                TranslateMaterial(newMaterial, newShader, translator);
-            }
-
             // Replace old materials with their translated copies
             var renderers = avatar.GetComponentsInChildren<Renderer>(true);
             foreach(var renderer in renderers)
@@ -293,6 +343,32 @@ namespace Thry.ThryEditor.ShaderTranslations
                 }
                 renderer.SetSharedMaterials(sharedMats);
             }
+        }
+
+        static void SaveUnsavedEdits(Material mat)
+        {
+            if(!EditorUtility.IsDirty(mat))
+                return;
+            if(!SectionLock.IsSectionLocked(mat))
+            {
+                AssetDatabase.SaveAssetIfDirty(mat);
+                return;
+            }
+            // SaveAssetIfDirty skips the section lock's save guard and would write the material without a shader,
+            // so the original shader goes back in for the write, like the section lock's own saves. A variant's
+            // shader belongs to its parent, so its copy is made from the file as it was.
+            if(mat.isVariant)
+                return;
+            Shader sectionShader = mat.shader;
+            Shader source = SectionLock.GetSourceShader(mat);
+            if(!SectionLock.Revert(mat))
+                return;
+            EditorUtility.SetDirty(mat);
+            AssetDatabase.SaveAssetIfDirty(mat);
+            if(!SectionLockService.IsActive)
+                return;
+            SectionLock.Restore(mat, sectionShader, source);
+            EditorUtility.ClearDirty(mat);
         }
 
         void TranslateMaterial(Material mat, Shader newShader, ShaderTranslator translator)
