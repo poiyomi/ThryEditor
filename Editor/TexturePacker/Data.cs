@@ -30,11 +30,6 @@ namespace Thry.ThryEditor.TexturePacker
             }
         }
     }
-    
-    public abstract class IPackerUIDragable
-    {
-        public Vector2 UIPosition;
-    }
 
     [Serializable]
     public class KernelSettings
@@ -77,45 +72,6 @@ namespace Thry.ThryEditor.TexturePacker
             return new float[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
         }
 
-        public float[] GetKernel(KernelPreset preset, bool isXKernel)
-        {
-            if (preset == KernelPreset.Custom)
-            {
-                return isXKernel ? X : Y;
-            }
-            return GetKernelPreset(preset, isXKernel);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is KernelSettings settings &&
-                   SplitVerticalHorizontal == settings.SplitVerticalHorizontal &&
-                   EqualityComparer<float[]>.Default.Equals(X, settings.X) &&
-                   EqualityComparer<float[]>.Default.Equals(Y, settings.Y) &&
-                   Loops == settings.Loops &&
-                   Strength == settings.Strength &&
-                   TwoPass == settings.TwoPass &&
-                   GrayScale == settings.GrayScale &&
-                   EqualityComparer<bool[]>.Default.Equals(Channels, settings.Channels);
-        }
-
-        public override int GetHashCode()
-        {
-#if NET_STANDARD_2_1
-            return HashCode.Combine(SplitVerticalHorizontal, X, Y, Loops, Strength, TwoPass, GrayScale, Channels);
-#else
-            int hash = 17;
-            hash = hash * 23 + SplitVerticalHorizontal.GetHashCode();
-            hash = hash * 23 + EqualityComparer<float[]>.Default.GetHashCode(X);
-            hash = hash * 23 + EqualityComparer<float[]>.Default.GetHashCode(Y);
-            hash = hash * 23 + Loops.GetHashCode();
-            hash = hash * 23 + Strength.GetHashCode();
-            hash = hash * 23 + TwoPass.GetHashCode();
-            hash = hash * 23 + GrayScale.GetHashCode();
-            hash = hash * 23 + EqualityComparer<bool[]>.Default.GetHashCode(Channels);
-            return hash;
-#endif
-        }
     }
 
     [Serializable]
@@ -161,7 +117,7 @@ namespace Thry.ThryEditor.TexturePacker
     }
 
     [Serializable]
-    public class ImageAdjust : IPackerUIDragable
+    public class ImageAdjust
     {
         public float Brightness = 1;
         public float Hue = 0;
@@ -169,7 +125,6 @@ namespace Thry.ThryEditor.TexturePacker
         public float Rotation = 0;
         public Vector2 Scale = Vector2.one;
         public Vector2 Offset = Vector2Int.zero;
-        public bool ChangeCheck = false;
 
         public override bool Equals(object obj)
         {
@@ -208,7 +163,7 @@ namespace Thry.ThryEditor.TexturePacker
     }
 
     [Serializable, InitializeOnLoad]
-    public class PackerSource : IPackerUIDragable
+    public class PackerSource
     {
         public FilterMode FilterMode;
         public Color Color;
@@ -222,9 +177,7 @@ namespace Thry.ThryEditor.TexturePacker
         public bool MissingImageReference;
         public Texture2D ColorTexture;
         public InputType InputType = InputType.Texture;
-        [NonSerialized] public Vector2[] ChannelPositions = new Vector2[5];
-        [NonSerialized] public Rect[] ChannelRects = new Rect[5];
-        
+
         public Texture2D Texture
         {
             get

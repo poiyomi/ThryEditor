@@ -101,16 +101,6 @@ namespace Thry.ThryEditor.Helpers
             return ret;
         }
 
-        public static void MakeTextureReadible(string path)
-        {
-            TextureImporter importer = (TextureImporter)TextureImporter.GetAtPath(path);
-            if (!importer.isReadable)
-            {
-                importer.isReadable = true;
-                importer.SaveAndReimport();
-            }
-        }
-
         public static Texture2D GetReadableTexture(Texture texture)
         {
             RenderTexture previous = RenderTexture.active;

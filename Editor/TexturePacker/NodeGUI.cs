@@ -116,7 +116,6 @@ namespace Thry.ThryEditor.TexturePacker
             return s_instance;
         }
 
-        public static Vector2 DefaultScrollPosition = new Vector2(0, 115);
         private void OnGUI()
         {
             if (rootVisualElement.childCount == 0) CreateGUI();

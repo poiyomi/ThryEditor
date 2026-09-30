@@ -19,7 +19,6 @@ namespace Thry.ThryEditor.TexturePacker
 
         public KernelPreset KernelPreset;
         public KernelSettings KernelSettings;
-        public Vector2 ScrollPosition;
 
         public string Serialize()
         {
@@ -91,7 +90,6 @@ namespace Thry.ThryEditor.TexturePacker
             config.ImageAdjust = new ImageAdjust();
             config.KernelPreset = KernelPreset.None;
             config.KernelSettings = null;
-            config.ScrollPosition = NodeGUI.DefaultScrollPosition;
             return config;
         }
 

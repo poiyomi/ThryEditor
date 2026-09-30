@@ -171,8 +171,6 @@ namespace Thry.ThryEditor.TexturePacker
                 PackShader.SetFloat("Saturation", config.ImageAdjust.Saturation);
                 PackShader.SetFloat("Brightness", config.ImageAdjust.Brightness);
 
-                bool repeatTextures = Math.Abs(config.ImageAdjust.Scale.x) > 1 || Math.Abs(config.ImageAdjust.Scale.y) > 1;
-
                 // Set Compute Shader Properties
                 connectionsBuffer = new ComputeBuffer(config.Connections.Count + 1, System.Runtime.InteropServices.Marshal.SizeOf(typeof(Connection)));
                 connectionsBuffer.SetData(config.Connections.ToArray());
