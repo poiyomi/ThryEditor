@@ -24,6 +24,7 @@ namespace Thry.ThryEditor.Helpers
 		Color32[] _previousCanvas;
 		int _bgColorIndex;
 		int _lastDisposalMethod;
+		int _lastLeft, _lastTop, _lastWidth, _lastHeight;
 
 		public int Width => _width;
 		public int Height => _height;
@@ -192,6 +193,9 @@ namespace Thry.ThryEditor.Helpers
 
 			// Handle disposal from previous frame
 			HandleDisposal(_lastDisposalMethod);
+			// Restore to previous brings back the canvas as it was before this frame was drawn
+			if (disposalMethod == 3)
+				Array.Copy(_canvas, _previousCanvas, _canvas.Length);
 
 			// Decode LZW image data
 			byte[] indices = DecodeLZW(width, height);
@@ -200,6 +204,10 @@ namespace Thry.ThryEditor.Helpers
 
 			// Render frame to canvas
 			RenderFrame(indices, left, top, width, height, colorTable, transparentIndex, interlaced);
+			_lastLeft = left;
+			_lastTop = top;
+			_lastWidth = width;
+			_lastHeight = height;
 
 			// Copy canvas to frame
 			var frame = new GifFrame
@@ -220,11 +228,13 @@ namespace Thry.ThryEditor.Helpers
 			{
 				case 0: // No disposal
 				case 1: // Do not dispose
-					Array.Copy(_canvas, _previousCanvas, _canvas.Length);
 					break;
-				case 2: // Restore to background
-					for (int i = 0; i < _canvas.Length; i++)
-						_canvas[i] = new Color32(0, 0, 0, 0);
+				case 2: // Restore to background, only the area the previous frame covered
+					int xEnd = Math.Min(_lastLeft + _lastWidth, _width);
+					int yEnd = Math.Min(_lastTop + _lastHeight, _height);
+					for (int y = _lastTop; y < yEnd; y++)
+						for (int x = _lastLeft; x < xEnd; x++)
+							_canvas[y * _width + x] = new Color32(0, 0, 0, 0);
 					break;
 				case 3: // Restore to previous
 					Array.Copy(_previousCanvas, _canvas, _canvas.Length);
