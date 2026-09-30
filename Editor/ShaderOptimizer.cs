@@ -1956,16 +1956,39 @@ namespace Thry.ThryEditor
                 s_disableApplyMaterialPropertyDrawers.SetValue(null, true);
             }
         // Unity 2022 Crashes on apple silicon when detouring ApplyMaterialPropertyDrawers
-            Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersOriginalMethodInfo, ApplyMaterialPropertyDrawersPatchMethodInfo);
-            Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo, ApplyMaterialPropertyDrawersFromNativePatchMethodInfo);
+            try
+            {
+                // Either method can be missing on some Unity versions. Skipping its detour only costs speed.
+                if (ApplyMaterialPropertyDrawersOriginalMethodInfo != null)
+                    Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersOriginalMethodInfo, ApplyMaterialPropertyDrawersPatchMethodInfo);
+                if (ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo != null)
+                    Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo, ApplyMaterialPropertyDrawersFromNativePatchMethodInfo);
+            }
+            catch
+            {
+                // Callers only restore once this returns. Left set, Unity's flag would keep drawers off for the session.
+                // Restoring the method that failed can throw as well; the detour's own exception is the useful one.
+                try { RestoreApplyMaterialPropertyDrawers(); }
+                catch { }
+                throw;
+            }
         }
 
         public static void RestoreApplyMaterialPropertyDrawers()
         {
-            Helper.RestoreDetour(ApplyMaterialPropertyDrawersOriginalMethodInfo);
-            Helper.RestoreDetour(ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo);
-            if (s_drawersDisabledDepth > 0 && --s_drawersDisabledDepth == 0)
-                s_disableApplyMaterialPropertyDrawers?.SetValue(null, s_drawersDisabledBefore);
+            try
+            {
+                if (ApplyMaterialPropertyDrawersOriginalMethodInfo != null)
+                    Helper.RestoreDetour(ApplyMaterialPropertyDrawersOriginalMethodInfo);
+                if (ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo != null)
+                    Helper.RestoreDetour(ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo);
+            }
+            finally
+            {
+                // Unity's flag must come back even if a restore throws.
+                if (s_drawersDisabledDepth > 0 && --s_drawersDisabledDepth == 0)
+                    s_disableApplyMaterialPropertyDrawers?.SetValue(null, s_drawersDisabledBefore);
+            }
         }
 
         private static bool LockApplyShader(ApplyStruct applyStruct)
