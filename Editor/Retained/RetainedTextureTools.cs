@@ -255,7 +255,9 @@ namespace Thry.ThryEditor.Drawers
                         remapInput.AddToClassList("thry-components");
                     }
                     var remap = new FloatField(component % 2 == 0 ? Text("packer_remap_min", "Min") : Text("packer_remap_max", "Max")) {
-                        name = "packer-remap-" + remapKeys[component] + "-" + channelIndex,
+                        // Every change packs a preview that Undo keeps alive, so commit on Enter,
+                        // focus loss or the end of a label drag instead of every step.
+                        name = "packer-remap-" + remapKeys[component] + "-" + channelIndex, isDelayed = true,
                         tooltip = Text("packer_remap_" + remapKeys[component] + "_hint", remapHints[component])
                     };
                     remap.AddToClassList("thry-component");
