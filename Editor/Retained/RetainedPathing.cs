@@ -68,8 +68,8 @@ namespace Thry.ThryEditor
             fields.Track(actions, () => { bool editable = MotionEditable(selected); presets.SetEnabled(editable); copy.SetEnabled(editable); });
             visual.Add(actions);
             BuildRanges();
-            var output = Fold("Output & blending", false); visual.Add(output); AddField(output, "_PathSurfaceBlendMode"); AddField(output, "_PathOverlapMode"); AddField(output, "_PathAntialiasing"); AddField(output, "_PathingOverrideAlpha");
-            output.tooltip = "Color alpha controls surface opacity. Emission is separate. Layered overlap blends paths in R, G, B, A order.";
+            var output = Fold("Output & Blending", false); visual.Add(output); AddField(output, "_PathSurfaceBlendMode"); AddField(output, "_PathOverlapMode"); AddField(output, "_PathAntialiasing"); AddField(output, "_PathingOverrideAlpha");
+            output.tooltip = "Color Alpha controls surface opacity. Emission is separate. Layered overlap blends paths in R, G, B, A order.";
             // Keep the complete existing controls and their menus for complex mask/audio workflows.
             var handled = new HashSet<string> { "s_start_PathGlobalMasks", "s_start_PathAudioLink" };
             foreach (var child in group.Children.Where(c => handled.Contains(c.MaterialProperty?.name))) addOriginal(visual, child);
@@ -146,8 +146,8 @@ namespace Thry.ThryEditor
             if (name == "_PathingMap" || name == "_PathingColorMap" || name == "_PathingOverrideAlpha")
                 fields.Track(field, () => {
                     var label = field.Q<Label>(className:"thry-texture-caption") ?? field.Q<Label>(className:"thry-property-label");
-                    if (label != null) label.text = name == "_PathingMap" ? "Direction map"
-                        : name == "_PathingColorMap" ? "Color & shared mask" : "Write material alpha";
+                    if (label != null) label.text = name == "_PathingMap" ? "Direction Map"
+                        : name == "_PathingColorMap" ? "Color & Shared Mask" : "Write Material Alpha";
                 });
         }
 
@@ -174,7 +174,7 @@ namespace Thry.ThryEditor
             previewContent = new VisualElement { name = "pathing-preview-content" }; previewContent.AddToClassList("pathing-preview-content"); preview.Add(previewContent);
             for (int i = 0; i < 4; i++)
             {
-                int channel = i; var row = Row(); var badge = new Button(() => Select(channel)) { text = letters[i], tooltip = "Select " + letters[i] + " path" }; badge.AddToClassList("pathing-lane-label"); badge.AddToClassList("pathing-accent-" + i); row.Add(badge);
+                int channel = i; var row = Row(); var badge = new Button(() => Select(channel)) { text = letters[i], tooltip = "Select " + letters[i] + " Path" }; badge.AddToClassList("pathing-lane-label"); badge.AddToClassList("pathing-accent-" + i); row.Add(badge);
                 var strip = new VisualElement { name = "pathing-lane-" + i }; strip.AddToClassList("pathing-lane"); strip.AddToClassList("pathing-accent-" + i);
                 strip.generateVisualContent += c => PaintLane(c, strip, channel); strip.RegisterCallback<PointerDownEvent>(e => Select(channel)); strips[i] = strip; row.Add(strip); previewContent.Add(row);
             }
@@ -200,8 +200,8 @@ namespace Thry.ThryEditor
         {
             var grid = new VisualElement { name = "pathing-grid" }; grid.AddToClassList("pathing-grid"); visual.Add(grid);
             var header = GridRow(grid, "Paths"); header.AddToClassList("pathing-grid-heading");
-            for (int i = 0; i < 4; i++) { int ch = i; var cell = Cell(header, i); var button = new Button(() => Select(ch)) { text = letters[i] + " path", name = "pathing-select-" + i }; button.AddToClassList("pathing-accent-" + i); selectButtons[i] = button; cell.Add(button); }
-            var directions = GridRow(grid, "UV direction", "UV axis used by each path.");
+            for (int i = 0; i < 4; i++) { int ch = i; var cell = Cell(header, i); var button = new Button(() => Select(ch)) { text = letters[i] + " Path", name = "pathing-select-" + i }; button.AddToClassList("pathing-accent-" + i); selectButtons[i] = button; cell.Add(button); }
+            var directions = GridRow(grid, "UV Direction", "UV axis used by each path.");
             directions.name = "pathing-uv-directions";
             for (int i = 0; i < 4; i++)
             {
@@ -254,7 +254,7 @@ namespace Thry.ThryEditor
         void BuildRanges()
         {
             if (Property("_EnablePathRemapping") == null) return;
-            var fold = Fold("Gradient range", false); visual.Add(fold); AddField(fold, "_EnablePathRemapping");
+            var fold = Fold("Gradient Range", false); visual.Add(fold); AddField(fold, "_EnablePathRemapping");
             fold.tooltip = "Remap the selected gradient range to 0–1.";
             for (int i = 0; i < 4; i++)
             {
@@ -290,8 +290,8 @@ namespace Thry.ThryEditor
             {
                 int target = i; if (target == source) continue;
                 bool editable = MotionEditable(target);
-                if (!editable) { menu.Add(new RetainedMenu.Item { Text = "To " + letters[i] + " path" }); continue; }
-                menu.Add(new RetainedMenu.Item { Text = "To " + letters[i] + " path", Action = () => {
+                if (!editable) { menu.Add(new RetainedMenu.Item { Text = "To " + letters[i] + " Path" }); continue; }
+                menu.Add(new RetainedMenu.Item { Text = "To " + letters[i] + " Path", Action = () => {
                     Undo.IncrementCurrentGroup(); int undo = Undo.GetCurrentGroup();
                     foreach (var n in MotionNames.Where(n => Property(n) != null)) { var p = Property(n); model.Edit(p, mp => { var v = mp.vectorValue; v[target] = v[source]; mp.vectorValue = v; }, true); }
                     model.Edit(Property("_PathType" + letters[target]), mp => { var owner = mp.targets.OfType<Material>().First(); mp.SetNumber(owner.GetFloat("_PathType" + letters[source])); }, true);
@@ -344,7 +344,7 @@ namespace Thry.ThryEditor
                 strips[i].parent.style.display = MergedPreview && i > 0 ? DisplayStyle.None : DisplayStyle.Flex;
                 var badge = strips[i].parent.Q<Button>();
                 badge.text = MergedPreview ? "Mix" : letters[i];
-                badge.tooltip = MergedPreview ? "Merged paths" : "Select " + letters[i] + " path";
+                badge.tooltip = MergedPreview ? "Merged Paths" : "Select " + letters[i] + " Path";
                 strips[i].MarkDirtyRepaint();
             }
         }
