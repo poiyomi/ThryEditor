@@ -5,6 +5,7 @@ using Thry.ThryEditor.Helpers;
 using Unity.Collections;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 
 namespace Thry.ThryEditor.TexturePacker
 {
@@ -362,6 +363,27 @@ namespace Thry.ThryEditor.TexturePacker
         {
             foreach (var source in _cachedUncompressedTextures.Keys.ToArray()) RemoveDecodedTexture(source);
         }
+        // The sRGB target re-encodes what sampling decodes, leaving the file's values
+        static Texture2D FileValueCopy(Texture2D source)
+        {
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture temp = RenderTexture.GetTemporary(source.width, source.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            Texture2D read = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false);
+            Texture2D copy = null;
+            try
+            {
+                Graphics.Blit(source, temp);
+                RenderTexture.active = temp;
+                read.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0);
+                copy = new Texture2D(source.width, source.height, TextureFormat.RGBA32, false, true) { hideFlags = HideFlags.HideAndDontSave, filterMode = source.filterMode };
+                copy.LoadRawTextureData(read.GetRawTextureData<byte>());
+                copy.Apply(false);
+                return copy;
+            }
+            catch { if (copy != null) UnityEngine.Object.DestroyImmediate(copy); throw; }
+            finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(temp); UnityEngine.Object.DestroyImmediate(read); }
+        }
+
         public Texture2D UncompressedTexture
         {
             get
@@ -393,6 +415,7 @@ namespace Thry.ThryEditor.TexturePacker
                         catch (NotSupportedException) { }
                         finally { EditorUtility.ClearProgressBar(); }
                         if (decoded != null) { decoded.filterMode = Texture.filterMode; decoded.hideFlags = HideFlags.HideAndDontSave; }
+                        else if (GraphicsFormatUtility.IsSRGBFormat(Texture.graphicsFormat)) decoded = FileValueCopy(Texture);
                         else decoded = Texture;
                     }
                     else decoded = Texture;
