@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
@@ -277,7 +276,7 @@ namespace Thry.ThryEditor.Helpers
         {
             if (Selection.assetGUIDs != null && Selection.assetGUIDs.Length > 0)
             {
-                return Selection.assetGUIDs.All(g => Regex.IsMatch(AssetDatabase.GUIDToAssetPath(g), @".*\.(png)|(jpg)"));
+                return Selection.assetGUIDs.All(g => AssetDatabase.GetMainAssetTypeAtPath(AssetDatabase.GUIDToAssetPath(g)) == typeof(Texture2D));
             }
             return false;
         }
