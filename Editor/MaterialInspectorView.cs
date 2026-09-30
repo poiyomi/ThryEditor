@@ -563,11 +563,12 @@ namespace Thry.ThryEditor
                 _crossProperties = _propertyProvider == null ? new RetainedCrossSelectionProperties(_editor, current) : null;
                 model.PropertyProvider = _propertyProvider ?? _crossProperties.Read;
                 model.Renderers = FindRenderers();
-                current.HasRetainedToolbar = true; current.ShowDropdown = ShowDropdown;
                 _body.Clear(); _retained = new RetainedMaterialBody(model,this); _body.Add(_retained);
             }
             if (current != null)
             {
+                // Detaching clears these, and a reattached view keeps its model, so they are set on every refresh.
+                current.HasRetainedToolbar = true; current.ShowDropdown = ShowDropdown;
                 _retained.Model.Renderers = FindRenderers(); _retained.Model.Refresh();
                 if (_retained.childCount == 0 || !ClassListContains("thry-filtering")) _retained.Synchronize();
             }
