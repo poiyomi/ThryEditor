@@ -21,6 +21,9 @@ namespace Thry.ThryEditor.TexturePacker
 
         void RememberShownConfig() => _shownConfig = _config == null ? null : JsonUtility.ToJson(_config);
 
+        // Settings edits share the window's Undo history with graph edits to the same configuration.
+        const string SettingsUndoName = "Change texture studio settings";
+
         public void CreateGUI()
         {
             if (_config == null)
@@ -87,18 +90,18 @@ namespace Thry.ThryEditor.TexturePacker
             if (source.InputType == InputType.Texture)
             {
                 var field = new ObjectField { objectType = typeof(Texture2D), allowSceneObjects = false, value = source.ImageTexture };
-                field.RegisterValueChangedCallback(e => { source.SetInputTexture(e.newValue as Texture2D); root.Clear(); BuildSourceValue(root, source); QueuePack(); });
+                field.RegisterValueChangedCallback(e => { Undo.RecordObject(this, "Choose texture source"); source.SetInputTexture(e.newValue as Texture2D); root.Clear(); BuildSourceValue(root, source); QueuePack(); });
                 root.Add(field);
                 if (source.MissingImageReference)
                 {
                     var hint = new Label(RetainedText.Get("studio_missing_source_hint", "Source missing. Reassign it, or clear it to use the fallback.")); hint.style.whiteSpace = WhiteSpace.Normal; root.Add(hint);
-                    root.Add(new Button(() => { source.SetInputTexture(null); root.Clear(); BuildSourceValue(root, source); QueuePack(); }) { text = RetainedText.Get("studio_clear_missing_source", "Clear missing source") });
+                    root.Add(new Button(() => { Undo.RecordObject(this, "Choose texture source"); source.SetInputTexture(null); root.Clear(); BuildSourceValue(root, source); QueuePack(); }) { text = RetainedText.Get("studio_clear_missing_source", "Clear missing source") });
                 }
             }
             else if (source.InputType == InputType.Color)
             {
                 var field = new ThryColorField(RetainedText.Get("studio_color", "Color")) { value = source.Color };
-                Action<Color> write = color => { source.Color = color; source.UpdateColorTexture(); QueuePack(); };
+                Action<Color> write = color => { Undo.RecordObject(this, "Change source color"); source.Color = color; source.UpdateColorTexture(); QueuePack(); };
                 field.RegisterValueChangedCallback(e => write(e.newValue));
                 RetainedColorPicker.Attach(field, write);
                 root.Add(field);
@@ -112,7 +115,7 @@ namespace Thry.ThryEditor.TexturePacker
                     source.GradientTexture = null;
                     source.UpdateGradientTexture(_config.FileOutput.Resolution);
                 };
-                field.RegisterValueChangedCallback(e => { source.Gradient = e.newValue; update(); QueuePack(); });
+                field.RegisterValueChangedCallback(e => { Undo.RecordObject(this, "Change source gradient"); source.Gradient = e.newValue; update(); QueuePack(); });
                 root.Add(field);
                 AddEnum(root, RetainedText.Get("studio_direction", "Direction"), source.GradientDirection, v => { source.GradientDirection = v; update(); });
             }
@@ -146,18 +149,18 @@ namespace Thry.ThryEditor.TexturePacker
                         var connection = _config.Connections[j];
                         var source = new DropdownField(RetainedText.Get("studio_source", "Source"), Enumerable.Range(1, _config.Sources.Length).Select(n => RetainedText.Get("studio_source", "Source") + " " + n).ToList(), Mathf.Clamp(connection.FromTextureIndex, 0, _config.Sources.Length - 1));
                         RetainedWindow.Dropdown(source);
-                        source.RegisterValueChangedCallback(e => { change(b => b.Value.FromTextureIndex = source.index); QueuePack(); });
+                        source.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); change(b => b.Value.FromTextureIndex = source.index); QueuePack(); });
                         route.Add(source);
                         AddEnum(route, RetainedText.Get("studio_channel", "Channel"), connection.FromChannel, v => change(b => b.Value.FromChannel = v));
                         AddEnum(route, RetainedText.Get("studio_remap", "Remap"), connection.RemappingMode, v => change(b => b.Value.RemappingMode = v));
                         var range = new Vector4Field(RetainedText.Get("studio_range", "Input / output range")) { value = connection.Remapping };
-                        range.RegisterValueChangedCallback(e => { change(b => b.Value.Remapping = e.newValue); QueuePack(); });
+                        range.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); change(b => b.Value.Remapping = e.newValue); QueuePack(); });
                         route.Add(range);
-                        route.Add(new Button(() => { _config.Connections.RemoveAt(routeIndex); root.Clear(); BuildAdvancedRouting(root); QueuePack(); }) { text = RetainedText.Get("studio_remove_source", "Remove source") });
+                        route.Add(new Button(() => { Undo.RecordObject(this, "Disconnect texture channel"); _config.Connections.RemoveAt(routeIndex); root.Clear(); BuildAdvancedRouting(root); QueuePack(); }) { text = RetainedText.Get("studio_remove_source", "Remove source") });
                     }
                 };
                 rebuild();
-                channel.Add(new Button(() => { _config.Connections.Add(new Connection(Mathf.Min(output, _config.Sources.Length - 1), (TextureChannelIn)output, (TextureChannelOut)output)); root.Clear(); BuildAdvancedRouting(root); QueuePack(); }) { text = RetainedText.Get("studio_add_source", "Add source") });
+                channel.Add(new Button(() => { Undo.RecordObject(this, "Connect texture channel"); _config.Connections.Add(new Connection(Mathf.Min(output, _config.Sources.Length - 1), (TextureChannelIn)output, (TextureChannelOut)output)); root.Clear(); BuildAdvancedRouting(root); QueuePack(); }) { text = RetainedText.Get("studio_add_source", "Add source") });
                 AddEnum(channel, RetainedText.Get("studio_combine", "Combine"), _config.Targets[i].BlendMode, v => _config.Targets[output].BlendMode = v);
                 AddEnum(channel, RetainedText.Get("studio_invert", "Invert"), _config.Targets[i].Invert, v => _config.Targets[output].Invert = v);
                 AddNumber(channel, RetainedText.Get("studio_when_empty", "When empty"), _config.Targets[i].Fallback, v => _config.Targets[output].Fallback = Mathf.Clamp01(v));
@@ -175,7 +178,7 @@ namespace Thry.ThryEditor.TexturePacker
             AddNumber(root, RetainedText.Get("studio_rotation", "Rotation"), settings.Rotation, v => settings.Rotation = v);
             AddVector(root, RetainedText.Get("studio_scale", "Scale"), settings.Scale, v => settings.Scale = v);
             AddVector(root, RetainedText.Get("studio_offset", "Offset"), settings.Offset, v => settings.Offset = v);
-            root.Add(new Button(() => { _config.ImageAdjust = new ImageAdjust(); root.Clear(); BuildAdjustments(root); QueuePack(); }) { text = RetainedText.Get("studio_reset_adjustments", "Reset adjustments") });
+            root.Add(new Button(() => { Undo.RecordObject(this, SettingsUndoName); _config.ImageAdjust = new ImageAdjust(); root.Clear(); BuildAdjustments(root); QueuePack(); }) { text = RetainedText.Get("studio_reset_adjustments", "Reset adjustments") });
         }
 
         void BuildFilter(VisualElement root)
@@ -218,7 +221,7 @@ namespace Thry.ThryEditor.TexturePacker
                     var field = new FloatField { value = values[index], isDelayed = true };
                     field.style.flexBasis = 0;
                     field.style.flexGrow = 1;
-                    field.RegisterValueChangedCallback(e => { values[index] = e.newValue; QueuePack(); });
+                    field.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); values[index] = e.newValue; QueuePack(); });
                     row.Add(field);
                 }
             }
@@ -232,12 +235,12 @@ namespace Thry.ThryEditor.TexturePacker
             var size = new Vector2IntField(RetainedText.Get("studio_resolution", "Resolution")) { value = output.Resolution };
             sizing.tooltip = RetainedText.Get("studio_automatic_size_tip", "Automatic uses the largest source width and height, rounds each up to a power of two, and limits each to 4096. Choose Custom for a different size.");
             size.SetEnabled(output.CustomResolution);
-            sizing.RegisterValueChangedCallback(e => { output.CustomResolution = sizing.index == 1; size.SetEnabled(output.CustomResolution); QueuePack(); });
+            sizing.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); output.CustomResolution = sizing.index == 1; size.SetEnabled(output.CustomResolution); QueuePack(); });
             size.Query<IntegerField>().ForEach(field => field.isDelayed = true);
-            size.RegisterValueChangedCallback(e => { output.CustomResolution = true; sizing.SetValueWithoutNotify(RetainedText.Get("custom", "Custom")); output.Resolution = new Vector2Int(Mathf.Clamp(e.newValue.x, 1, 8192), Mathf.Clamp(e.newValue.y, 1, 8192)); size.SetValueWithoutNotify(output.Resolution); QueuePack(); });
+            size.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); output.CustomResolution = true; sizing.SetValueWithoutNotify(RetainedText.Get("custom", "Custom")); output.Resolution = new Vector2Int(Mathf.Clamp(e.newValue.x, 1, 8192), Mathf.Clamp(e.newValue.y, 1, 8192)); size.SetValueWithoutNotify(output.Resolution); QueuePack(); });
             root.Add(size);
             var filename = new TextField(RetainedText.Get("name", "Name")) { value = output.FileName, isDelayed = true };
-            filename.RegisterValueChangedCallback(e => output.FileName = e.newValue);
+            filename.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); output.FileName = e.newValue; RememberShownConfig(); });
             root.Add(filename);
 
             var advice = new VisualElement(); root.Add(advice);
@@ -253,6 +256,7 @@ namespace Thry.ThryEditor.TexturePacker
                     StudioHint(advice, "studio_mask_settings_recommendation", "For masks, use PNG, Linear color space, and turn off Alpha is transparency.");
                     advice.Add(new Button(() =>
                     {
+                        Undo.RecordObject(this, SettingsUndoName);
                         output.SaveType = SaveType.PNG; output.ColorSpace = ColorSpace.Linear; output.AlphaIsTransparency = false;
                         root.Clear(); BuildOutput(root); QueuePack();
                     }) { name = "studio-use-mask-settings", text = RetainedText.Get("studio_use_mask_settings", "Use recommended mask settings") });
@@ -279,28 +283,28 @@ namespace Thry.ThryEditor.TexturePacker
             var values = Enum.GetValues(typeof(T)).Cast<T>().ToArray();
             var field = new DropdownField(label, values.Select(item => RetainedText.EnumCaption(typeof(T), item.ToString())).ToList(), Array.IndexOf(values, value));
             RetainedWindow.Dropdown(field);
-            field.RegisterValueChangedCallback(e => { if (field.index < 0 || field.index >= values.Length) return; set(values[field.index]); QueuePack(); });
+            field.RegisterValueChangedCallback(e => { if (field.index < 0 || field.index >= values.Length) return; Undo.RecordObject(this, SettingsUndoName); set(values[field.index]); QueuePack(); });
             root.Add(field);
         }
 
         void AddNumber(VisualElement root, string label, float value, Action<float> set)
         {
             var field = new FloatField(label) { value = value, isDelayed = true };
-            field.RegisterValueChangedCallback(e => { set(e.newValue); QueuePack(); });
+            field.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); set(e.newValue); QueuePack(); });
             root.Add(field);
         }
 
         void AddToggle(VisualElement root, string label, bool value, Action<bool> set, bool pack = true)
         {
             var field = new Toggle(label) { value = value };
-            field.RegisterValueChangedCallback(e => { set(e.newValue); if (pack) QueuePack(); });
+            field.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); set(e.newValue); if (pack) QueuePack(); else RememberShownConfig(); });
             root.Add(field);
         }
 
         void AddVector(VisualElement root, string label, Vector2 value, Action<Vector2> set)
         {
             var field = new Vector2Field(label) { value = value };
-            field.RegisterValueChangedCallback(e => { set(e.newValue); QueuePack(); });
+            field.RegisterValueChangedCallback(e => { Undo.RecordObject(this, SettingsUndoName); set(e.newValue); QueuePack(); });
             root.Add(field);
         }
 
