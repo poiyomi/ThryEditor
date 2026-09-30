@@ -37,15 +37,13 @@ namespace Thry.ThryEditor.ShaderTranslations
                 return;
             }
 
-            // The editor's properties write to every selected material at once, which would give all of them
-            // the first material's values. Translate each material from its own old values instead.
+            // Editor properties would write to every selected material
             foreach (Material material in materials)
                 ApplyTo(editor, material, material, renderQueueOverride);
             editor.Reload();
         }
 
-        // `only` is null when the editor holds just this material, so values are written through the editor's own
-        // properties. Otherwise every write is limited to `only`.
+        // only == null: write through the editor's properties
         void ApplyTo(ShaderEditor editor, Material material, Material only, int? renderQueueOverride)
         {
             Shader originShader = editor.LastShader;
@@ -187,7 +185,6 @@ namespace Thry.ThryEditor.ShaderTranslations
             }
         }
 
-        // Evaluates the expression picked for this value, which is the matching conditional block's when conditionals are used
         static float SolveExpression(PropertyTranslation trans, float value)
         {
             string expression = trans.GetAppropriateExpression(value);
@@ -199,8 +196,7 @@ namespace Thry.ThryEditor.ShaderTranslations
             return Helper.SolveMath(expression, value);
         }
 
-        // "0.5" reads the same on every system locale, like SolveMath. The system locale is still tried after that,
-        // so definitions written with that locale's format ("0,5", "1,000") keep their value.
+        // Invariant first; system locale for older definitions
         static bool TryParseNumber(string s, out float value)
         {
             return float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out value) || float.TryParse(s, out value);
@@ -231,7 +227,6 @@ namespace Thry.ThryEditor.ShaderTranslations
             return MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { only }, prop.MaterialProperty.name);
         }
 
-        // The single-material writes mirror the ShaderProperty value setters, scoped to one material.
         static void SetFloat(ShaderProperty prop, Material only, float value)
         {
             if (only == null)
@@ -239,7 +234,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                 prop.FloatValue = value;
                 return;
             }
-            // A rendering preset's actions write through the active editor, which holds every selected material.
+            // Preset actions write through the editor (all selected materials)
             if (RenderingPresets.PresetPropertyNames.Contains(prop.MaterialProperty.name))
             {
                 ShaderEditor.ApplyRenderingPresetToMaterial(only, value);
@@ -327,8 +322,6 @@ namespace Thry.ThryEditor.ShaderTranslations
             }
         }
 
-        // Definitions can also arrive through packages, duplication or moves, and can be deleted, so the list is
-        // rebuilt on the next use after any of those.
         class TranslationDefinitionWatcher : AssetPostprocessor
         {
             static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)

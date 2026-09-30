@@ -66,8 +66,7 @@ are using Poiyomi Shaders, this folder is very important!
         {
             if (string.IsNullOrEmpty(shaderName)) return "Unnamed";
 
-            // Path.GetInvalidFileNameChars only covers the current OS, which on macOS and Linux is just
-            // '/' and '\0'. The cache can be exported to Windows, so always use Windows' set.
+            // Windows' invalid chars, since the cache can be exported there
             StringBuilder sb = new StringBuilder(shaderName.Length);
             foreach (char c in shaderName)
             {
@@ -288,9 +287,7 @@ are using Poiyomi Shaders, this folder is very important!
                 }
             }
 
-            // The import database only knows what is saved. A material locked since its last save still
-            // points at its original shader on disk, so count the shaders loaded materials use in memory.
-            // This only looks at materials that are already loaded, it does not load any.
+            // Also count locks on loaded materials that aren't saved yet
             foreach (Material material in Resources.FindObjectsOfTypeAll<Material>())
             {
                 if (material == null || material.shader == null) continue;
@@ -371,8 +368,7 @@ are using Poiyomi Shaders, this folder is very important!
             }
         }
 
-        // Paths the GC deleted itself. Nothing referenced them, so LockedShaderRecovery can skip its
-        // project-wide scan for materials that lost their shader.
+        // Deleted by the GC, so recovery can skip them
         static readonly HashSet<string> s_collectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         static bool DeleteCollected(string assetPath)
@@ -383,8 +379,7 @@ are using Poiyomi Shaders, this folder is very important!
                 s_collectedPaths.Remove(assetPath);
                 return false;
             }
-            // The GC runs outside StartAssetEditing, so the postprocessor has seen the deletion by the next tick.
-            // Forgetting it then keeps a later manual deletion of the same path from skipping recovery.
+            // The postprocessor has seen the deletion by the next tick
             EditorApplication.delayCall -= ForgetCollected;
             EditorApplication.delayCall += ForgetCollected;
             return true;
@@ -404,7 +399,6 @@ are using Poiyomi Shaders, this folder is very important!
             return false;
         }
 
-        /// <summary>Called once the deletions have been through the import pipeline.</summary>
         public static void ForgetCollected()
         {
             s_collectedPaths.Clear();
@@ -443,10 +437,7 @@ are using Poiyomi Shaders, this folder is very important!
                 sizeBytes += GetDirectorySizeBytes(entry);
         }
 
-        /// <summary>
-        /// Deletes the whole cache. Materials locked to it lose their shader, and the recovery
-        /// postprocessor ignores these deletions, so the caller has to run LockedShaderRecovery itself.
-        /// </summary>
+        /// <summary>Deletes the whole cache. The caller must run LockedShaderRecovery.</summary>
         public static void Clear()
         {
             foreach (string shaderDir in Directory.Exists(CacheRoot) ? Directory.GetDirectories(CacheRoot) : new string[0])
@@ -491,15 +482,14 @@ are using Poiyomi Shaders, this folder is very important!
         {
             if (!EditorUtility.DisplayDialog("Optimized Shader Cache",
                     "Delete the entire cache (" + DescribeCache() + ")?\n\n"
-                    + "Materials that are currently locked get unlocked so they keep rendering. They lock again "
-                    + "when you upload, or you can lock them from Poi > Thry > Material Lock Manager.",
+                    + "Locked materials get unlocked so they keep rendering. They lock again "
+                    + "on upload, or from Poi > Thry > Material Lock Manager.",
                     "Clear All", "Cancel"))
                 return;
 
             LockedShaderCache.Clear();
             AssetDatabase.Refresh();
 
-            // Recover here rather than from the deletion, which only triggers a full scan once per session.
             LockedShaderRecovery.RecoverAll(showProgress: true);
         }
     }

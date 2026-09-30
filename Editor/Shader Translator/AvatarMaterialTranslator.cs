@@ -74,8 +74,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                 itemTreeAsset.CloneTree(itemRoot);
                 var objField = itemRoot.Q<ObjectField>();
                 objField.SetEnabled(false);
-                // Rows are recycled while scrolling, so the callbacks are registered once here and read the
-                // index the row is currently bound to.
+                // Rows are recycled, so read the index bound to the row
                 objField.RegisterValueChangedCallback(evt =>
                 {
                     if(!(itemRoot.userData is int index) || index >= materials.Count)
@@ -243,10 +242,6 @@ namespace Thry.ThryEditor.ShaderTranslations
             string folderName = Regex.Replace(translator.Name ?? "", @"[<>:""/\\|?*\x00-\x1F]", "").Trim().TrimEnd('.');
             if(string.IsNullOrEmpty(folderName)) folderName = "Translated";
 
-            // The list holds every material on the avatar. Ones on other shaders are left as they are instead of
-            // being switched to the target shader and remapped as if they used the translation's origin shader.
-            // Built-in, scene-only and read-only package materials have nowhere to put a copy, so they are left
-            // as they are too. Checking this up front keeps one of them from stopping the run halfway.
             var toTranslate = new List<Material>();
             var uncopyable = new List<Material>();
             foreach(Material mat in materials.Where(mat => mat != null && MatchesOrigin(translator, SourceShaderName(mat))).Distinct())
@@ -259,7 +254,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                     uncopyable.Add(mat);
             }
             if(uncopyable.Count > 0)
-                Debug.LogWarning($"Skipped materials that are built in, read-only or not saved as assets: {string.Join(", ", uncopyable.Select(mat => mat.name))}");
+                Debug.LogWarning($"Skipped built-in, read-only or unsaved materials: {string.Join(", ", uncopyable.Select(mat => mat.name))}");
             if(toTranslate.Count == 0)
                 return;
 
@@ -271,7 +266,6 @@ namespace Thry.ThryEditor.ShaderTranslations
                     string materialPath = AssetDatabase.GetAssetPath(mat);
                     string materialFolderPath = Path.GetDirectoryName(materialPath).Replace('\\', '/');
                     bool standalone = AssetDatabase.IsMainAsset(mat) && materialPath.EndsWith(".mat", StringComparison.OrdinalIgnoreCase);
-                    // A material inside a model file takes its own name, not the model's.
                     string materialName = standalone ? Path.GetFileNameWithoutExtension(materialPath)
                         : Regex.Replace(mat.name, @"[<>:""/\\|?*\x00-\x1F]", "_");
 
@@ -282,11 +276,11 @@ namespace Thry.ThryEditor.ShaderTranslations
                         createdPaths.Add(translatedFolderPath);
                     }
 
-                    // Earlier translated copies can hold edits and be used elsewhere, so they are never replaced.
+                    // Never overwrite earlier translated copies
                     string newMaterialPath = AssetDatabase.GenerateUniqueAssetPath($"{translatedFolderPath}/{materialName}_translated.mat");
                     if(standalone)
                     {
-                        // CopyAsset copies the file on disk, which is missing edits that haven't been saved yet.
+                        // CopyAsset copies the file on disk, so save first
                         SaveUnsavedEdits(mat);
                         if(!AssetDatabase.CopyAsset(materialPath, newMaterialPath))
                             throw new Exception($"Failed to duplicate material: <b>{materialPath}</b> -> <b>{newMaterialPath}</b>");
@@ -308,7 +302,7 @@ namespace Thry.ThryEditor.ShaderTranslations
             }
             catch
             {
-                // Nothing has been assigned yet, so remove the copies and folders this run made instead of leaving them behind.
+                // Nothing is assigned yet, so undo this run's copies
                 for(int i = createdPaths.Count - 1; i >= 0; i--)
                     AssetDatabase.DeleteAsset(createdPaths[i]);
                 throw;
@@ -354,9 +348,8 @@ namespace Thry.ThryEditor.ShaderTranslations
                 AssetDatabase.SaveAssetIfDirty(mat);
                 return;
             }
-            // SaveAssetIfDirty skips the section lock's save guard and would write the material without a shader,
-            // so the original shader goes back in for the write, like the section lock's own saves. A variant's
-            // shader belongs to its parent, so its copy is made from the file as it was.
+            // SaveAssetIfDirty skips the section lock's save guard.
+            // A variant's shader belongs to its parent; copy the saved file.
             if(mat.isVariant)
                 return;
             Shader sectionShader = mat.shader;

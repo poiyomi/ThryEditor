@@ -693,7 +693,7 @@ namespace Thry.ThryEditor
 
         public static bool AcceptDragAndDrop(Rect r, MaterialProperty prop)
         {
-            // Files dragged in from the OS carry only paths, so objectReferences can be empty.
+            // OS file drags have no objectReferences
             if ((ShaderEditor.Input.is_drag_drop_event) && r.Contains(ShaderEditor.Input.mouse_position) && DragAndDrop.objectReferences.Length > 0 && DragAndDrop.objectReferences[0] is Texture)
             {
                 DragAndDrop.visualMode = DragAndDropVisualMode.Copy;

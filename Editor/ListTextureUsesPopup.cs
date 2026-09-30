@@ -38,7 +38,7 @@ namespace Thry.ThryEditor
                 var property = new Button(() => { _selectedMaterial = use.material; _selectedPropertyName = use.propertyName; Selection.activeObject = use.material; }) { text = ObjectNames.NicifyVariableName(use.propertyName.TrimStart('_')) }; property.style.flexGrow = 1; row.Add(property);
                 search.RegisterValueChangedCallback(e => row.style.display = (use.material.name + use.propertyName).IndexOf(e.newValue, StringComparison.OrdinalIgnoreCase) >= 0 ? DisplayStyle.Flex : DisplayStyle.None);
             }
-            // CreateGUI runs again for every new texture; Clear does not cancel scheduled items, so register the hand-off once.
+            // Clear doesn't cancel scheduled items, so schedule once
             if (_searchHandOff == null) _searchHandOff = root.schedule.Execute(() =>
             {
                 if (ShaderEditor.Active == null || _selectedMaterial == null || ShaderEditor.Active.Materials[0] != _selectedMaterial) return;
@@ -62,8 +62,7 @@ namespace Thry.ThryEditor
         {
             Material[] materials = Resources.FindObjectsOfTypeAll<Material>();
             List<(Material material, string propertyName)> textureUses = new List<(Material, string)>();
-            // Check each material's own saved textures. Several materials can share one asset file, and
-            // saved entries the current shader no longer declares still count as uses.
+            // Saved entries the shader no longer declares still count
             foreach (Material material in materials)
             {
                 if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(material))) continue;

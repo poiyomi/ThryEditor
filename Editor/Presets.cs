@@ -32,8 +32,7 @@ namespace Thry.ThryEditor
             // One snapshot per selected material, in the editor's material order. Reverting a
             // multi-selection from a single snapshot would hand every material the first one's values.
             public Material[] prePresetStates;
-            // The materials the snapshots belong to. The selection can change before Revert is clicked,
-            // so snapshots are matched back to their own material rather than by position.
+            // The selection can change before Revert is clicked
             public Material[] targets;
             public ShaderPart parent;
 
@@ -107,14 +106,12 @@ namespace Thry.ThryEditor
 
             public void AddOrUpdate(string name, string guid)
             {
-                // The cache file stores "name;guid", so names get the same cleanup AddPreset applies
+                // The cache file stores "name;guid"
                 name = name.Replace(';', '_');
                 if (_guidToName.ContainsKey(guid))
                 {
                     _nameToGuid.Remove(_guidToName[guid]);
                 }
-                // Taking a name another preset used drops that preset's reverse entry, otherwise
-                // removing it later would also remove this preset's name
                 if (_nameToGuid.TryGetValue(name, out string previousGuid) && previousGuid != guid)
                 {
                     _guidToName.Remove(previousGuid);
@@ -153,7 +150,7 @@ namespace Thry.ThryEditor
 
             public void AddSerialized(string line)
             {
-                // Guids never contain ';', so split on the last one in case an older cache has it in a name
+                // Older caches can have ';' in names; guids never do
                 int split = line.LastIndexOf(';');
                 if (split < 0) return;
                 string name = line.Substring(0, split);
@@ -497,7 +494,7 @@ namespace Thry.ThryEditor
                     bool missingPresets = false;
                     foreach (string g in PresetCollections.SelectMany(c => c.Value.Guids).Distinct())
                     {
-                        // Presets that are already gone resolve to an empty path, often several at once
+                        // Missing presets all resolve to an empty path
                         string path = AssetDatabase.GUIDToAssetPath(g);
                         if (string.IsNullOrWhiteSpace(path)) missingPresets = true;
                         else if (!pathsToGuids.ContainsKey(path)) pathsToGuids[path] = g;
@@ -514,7 +511,7 @@ namespace Thry.ThryEditor
                             RemovePreset(pathsToGuids[asset]);
                         }
                     }
-                    // Deleted presets whose path no longer resolves are dropped by the save
+                    // Save drops presets that no longer resolve
                     if (deletedMaterials && missingPresets) Save();
                 }
             }
@@ -789,7 +786,6 @@ namespace Thry.ThryEditor
             {
                 // Multi-selection: the editor's MaterialProperty objects write to every target at once,
                 // so each material gets its own snapshot copied through a single-target property instead.
-                // Materials the preset was not applied to have no snapshot and are left alone.
                 HashSet<ShaderProperty> affected = new HashSet<ShaderProperty>();
                 CollectPresetProperties(shaderEditor, appliedPreset.preset, appliedPreset.parent, affected);
                 for (int i = 0; i < materials.Length; i++)
@@ -949,8 +945,7 @@ namespace Thry.ThryEditor
             return changes;
         }
 
-        // Assigning a shader runs every property drawer, which is slow on Poiyomi. Preset clones are only read from,
-        // and drawers only set keywords that the copy derives from values anyway, so they are skipped.
+        // Drawers are slow on Poiyomi and clones are only read from
         static void SwapCloneShader(Material clone, Shader shader)
         {
             ShaderOptimizer.DetourApplyMaterialPropertyDrawers();

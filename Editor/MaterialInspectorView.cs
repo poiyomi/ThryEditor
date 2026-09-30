@@ -534,8 +534,7 @@ namespace Thry.ThryEditor
             if (!float.IsNaN(right) && resolvedStyle.marginRight != -right) style.marginRight = -right;
         }
 
-        // Finding a locked material's original shader goes through the AssetDatabase, and the header refreshes
-        // every 150 ms, so the result is kept until the material's shader or dirty count changes.
+        // GetOriginalShader is slow and the header refreshes every 150 ms
         private readonly Dictionary<Material, (Shader locked, int version, Shader original)> _originalShaders = new Dictionary<Material, (Shader, int, Shader)>();
         private string _titleSource, _titleText;
         private Match _titleVersion;
@@ -581,7 +580,7 @@ namespace Thry.ThryEditor
             }
             if (current != null)
             {
-                // Detaching clears these, and a reattached view keeps its model, so they are set on every refresh.
+                // Detaching clears these, so set them on every refresh
                 current.HasRetainedToolbar = true; current.ShowDropdown = ShowDropdown;
                 _retained.Model.Renderers = FindRenderers(); _retained.Model.Refresh();
                 if (_retained.childCount == 0 || !ClassListContains("thry-filtering")) _retained.Synchronize();

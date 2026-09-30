@@ -106,8 +106,7 @@ namespace Thry.ThryEditor
         // by hard-removing the shadowcaster and fwdadd passes from the shader being optimized.
         public static readonly string DisabledLightModesPropertyName = "_LightModes";
 
-        // Used to switch KSOInlineSamplerState comments on. The parser drops every // line before those
-        // could be read, so it does nothing now, but it is still kept out of the baked values.
+        // Obsolete, but still kept out of the baked values
         public static readonly string UseInlineSamplerStatesPropertyName = "_InlineSamplerStates";
 
         // Material properties are put into each CGPROGRAM as preprocessor defines when the optimizer is run.
@@ -226,10 +225,7 @@ namespace Thry.ThryEditor
 
         public static readonly HashSet<char> ValidSeparators = new HashSet<char>() { ' ', '\t', '\r', '\n', ';', ',', '.', '(', ')', '[', ']', '{', '}', '>', '<', '=', '!', '&', '|', '^', '+', '-', '*', '/', '#' };
 
-        // "#define NAME" or "#define NAME(a, b)". Group 1 is the name; the match ends after the parameter list.
         static readonly Regex DefineDeclarationRegex = new Regex(@"^\s*#\s*define\s+(\w+)(?:\([^)]*\))?", RegexOptions.Compiled);
-        // The end of a texture property declaration: any texture type, then the default and "{ }" or "{}". The
-        // textures of such properties inside an excluded //ifex block are stripped from the locked material.
         static readonly Regex ExcludedTexturePropertyRegex = new Regex(@",\s*(?:2D|2DArray|3D|Cube|CubeArray|Any)\s*\)\s*=\s*""[^""]*""\s*\{\s*\}\s*$", RegexOptions.Compiled);
 
         public static readonly HashSet<string> DontRemoveIfBranchesKeywords = new HashSet<string>() { "UNITY_SINGLE_PASS_STEREO", "FORWARD_BASE_PASS", "FORWARD_ADD_PASS", "POINT", "SPOT" };
@@ -855,8 +851,7 @@ namespace Thry.ThryEditor
         // reconciled across every material sharing them once, rather than per material.
         private static readonly HashSet<string> s_cacheEntriesTouchedThisBatch = new HashSet<string>();
 
-        // The //ifex conditions found in each shader, by asset path. Kept for one batch only: the asset
-        // dependency hash cannot see edits to included files, so across batches the list could be stale.
+        // Per batch only: the dependency hash misses included files
         private static readonly Dictionary<string, IfexConditions> s_ifexConditionsThisBatch = new Dictionary<string, IfexConditions>();
 
         private static readonly List<Material> s_materialsToVerifyLock = new List<Material>();
@@ -878,8 +873,7 @@ namespace Thry.ThryEditor
             s_lockedShaderNamesThisBatch.Clear();
             s_cacheEntriesTouchedThisBatch.Clear();
             s_ifexConditionsThisBatch.Clear();
-            // s_materialsToVerifyLock is emptied by VerifyLockedShaders, so a batch started while an earlier one is
-            // still compiling doesn't drop the earlier one's materials.
+            // Not s_materialsToVerifyLock: an earlier batch may still need it
             
             // First the shaders are created. compiling is suppressed with start asset editing.
             // Guard the whole operation by keyword-fixing or linking throws, if setup. Then
@@ -1232,7 +1226,7 @@ namespace Thry.ThryEditor
             stringBuilder.Append('|').Append((string)Config.Instance.Version);
             // Invalidate shaders generated before explicit texture samplers followed renaming.
             stringBuilder.Append("|texture-sampler-renaming:1");
-            // Colors are baked in gamma or linear space depending on the project.
+            // Colors bake differently in gamma and linear space
             stringBuilder.Append("|cs:").Append(PlayerSettings.colorSpace.ToString());
 
             // Keywords drive both the #define block and which #ifdef branches survive. FixKeywords
@@ -1261,7 +1255,6 @@ namespace Thry.ThryEditor
                     stringBuilder.Append(DefineableCondition.Parse(condition, m).Test() ? '1' : '0');
             }
 
-            // Properties whose value is left out below. //ifex still reads them, see the end of this method.
             List<string> animatedProperties = new List<string>();
 
             // Properties are passed in rather than fetched here: the caller already has them, and on a
@@ -1338,9 +1331,7 @@ namespace Thry.ThryEditor
                 }
             }
 
-            // Lock evaluates //ifex against the raw value whether or not the property is animated, so an
-            // animated toggle still decides which code is removed. Only the results go in, and only for
-            // conditions on animated properties; every other value is already part of the hash above.
+            // //ifex still reads animated values, so hash those results
             SortedSet<string> animatedConditions = new SortedSet<string>(StringComparer.Ordinal);
             foreach (string propName in animatedProperties)
             {
@@ -1362,8 +1353,7 @@ namespace Thry.ThryEditor
                 return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLower();
         }
 
-        // Lock defines PROP_<NAME> for every assigned texture, animated or not, so an animated texture
-        // slot still changes the code depending on whether it is filled.
+        // Lock defines PROP_<NAME> even for animated textures
         static void AppendAnimatedTextureAssigned(StringBuilder sb, Material m, MaterialProperty prop)
         {
             if (prop.GetPropertyType() != ShaderPropertyType.Texture) return;
@@ -1372,10 +1362,7 @@ namespace Thry.ThryEditor
 
         class IfexConditions
         {
-            // Conditions on the render queue, which is not a property.
             public string[] RenderQueue;
-            // Every condition, filed under each identifier it mentions. Matching by name is enough to find
-            // the ones that read a given property; an extra match only costs an evaluation.
             public Dictionary<string, List<string>> ByIdentifier = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         }
 
@@ -1424,7 +1411,6 @@ namespace Thry.ThryEditor
                 string lineParsed = line.TrimStart();
                 if (lineParsed.StartsWith("//ifex", StringComparison.Ordinal))
                 {
-                    // The same text Lock parses.
                     conditions.Add(lineParsed.Substring(6));
                 }
                 else if (lineParsed.StartsWith("#include", StringComparison.Ordinal))
@@ -1902,8 +1888,7 @@ namespace Thry.ThryEditor
 
             // Record which textures were stripped. A later session that reuses this shader skips the
             // parse entirely, so it has no other way to learn what to strip off the material - and
-            // without it, unlock could not restore them. A regenerated entry keeps the materials already
-            // using it.
+            // without it, unlock could not restore them.
             LockedShaderCache.EntryInfo entryInfo = LockedShaderCache.ReadEntry(entryDirectory) ?? new LockedShaderCache.EntryInfo();
             entryInfo.StrippedTextures.Clear();
             entryInfo.StrippedTextures.AddRange(stripTextures);
@@ -1957,7 +1942,7 @@ namespace Thry.ThryEditor
         // Unity 2022 Crashes on apple silicon when detouring ApplyMaterialPropertyDrawers
             try
             {
-                // Either method can be missing on some Unity versions. Skipping its detour only costs speed.
+                // Either method can be missing on some Unity versions
                 if (ApplyMaterialPropertyDrawersOriginalMethodInfo != null)
                     Helper.TryDetourFromTo(ApplyMaterialPropertyDrawersOriginalMethodInfo, ApplyMaterialPropertyDrawersPatchMethodInfo);
                 if (ApplyMaterialPropertyDrawersFromNativeOriginalMethodInfo != null)
@@ -1965,8 +1950,7 @@ namespace Thry.ThryEditor
             }
             catch
             {
-                // Callers only restore once this returns. Left set, Unity's flag would keep drawers off for the session.
-                // Restoring the method that failed can throw as well; the detour's own exception is the useful one.
+                // Callers only restore on success; rethrow the detour's error
                 try { RestoreApplyMaterialPropertyDrawers(); }
                 catch { }
                 throw;
@@ -1984,7 +1968,6 @@ namespace Thry.ThryEditor
             }
             finally
             {
-                // Unity's flag must come back even if a restore throws.
                 if (s_drawersDisabledDepth > 0 && --s_drawersDisabledDepth == 0)
                     s_disableApplyMaterialPropertyDrawers?.SetValue(null, s_drawersDisabledBefore);
             }
@@ -1999,8 +1982,7 @@ namespace Thry.ThryEditor
             List<RenamingProperty> animatedPropsToDuplicate = applyStruct.animatedPropsToDuplicate;
             string animPropertySuffix = applyStruct.animPropertySuffix;
 
-            // Checked before anything is written, so a failed lock leaves the material as it was instead of
-            // unlocked with its stripped textures gone.
+            // Check before anything is written to the material
             Shader newShader = Shader.Find(newShaderName);
             if (newShader == null)
             {
@@ -2048,8 +2030,6 @@ namespace Thry.ThryEditor
                     if(doStrip)
                     {
                         savedTextures.Add(("_stripped_tex_" + propName, AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(material.GetTexture(propName)))));
-                        // Deleting the entry drops its tiling and offset too, and the original shader would
-                        // bring the slot back at (1,1) (0,0).
                         Vector2 scale = prop.FindPropertyRelative("second.m_Scale").vector2Value;
                         Vector2 offset = prop.FindPropertyRelative("second.m_Offset").vector2Value;
                         savedTextures.Add(("_stripped_st_" + propName, FormatTextureST(new Vector4(scale.x, scale.y, offset.x, offset.y))));
@@ -2315,8 +2295,7 @@ namespace Thry.ThryEditor
                     }
                     else if (lineParsed.StartsWith("#elif", StringComparison.Ordinal))
                     {
-                        // The #ifdef this belongs to was removed, so the #elif becomes the #if of what is left, and the
-                        // #endif stays.
+                        // The #ifdef was removed, so this #elif becomes the #if
                         if (!isIncluded && ifStacking - 1 == isNotIncludedAtDepth && removeEndifStack.Count > 0 && removeEndifStack.Peek())
                         {
                             isIncluded = true;
@@ -2429,7 +2408,6 @@ namespace Thry.ThryEditor
             return true;
         }
 
-        // A line starting with "/*" only comments out the lines after it if the comment is still open at its end.
         static bool BlockCommentClosesOnLine(string line)
         {
             int close = line.LastIndexOf("*/", StringComparison.Ordinal);
@@ -2726,8 +2704,7 @@ namespace Thry.ThryEditor
                     }
                 }
 
-                // A property name used as a #define name or macro parameter declares a new symbol there,
-                // so replacing it would produce something like "#define 0.0 ..."
+                // Don't replace #define names or macro parameters
                 int defineNameStart = -1, defineNameEnd = -1;
                 if (lineTrimmed.StartsWith("#", StringComparison.Ordinal))
                 {
@@ -2877,7 +2854,6 @@ namespace Thry.ThryEditor
             return shader != null && closestDistance < name.Length * 0.5f;
         }
 
-        // Tiling and offset of a stripped texture as "scaleX,scaleY,offsetX,offsetY".
         static string FormatTextureST(Vector4 st)
         {
             return string.Join(",", new float[] { st.x, st.y, st.z, st.w }.Select(f => f.ToString("R", CultureInfo.InvariantCulture)));
@@ -2974,7 +2950,6 @@ namespace Thry.ThryEditor
                     material.SetOverrideTag("_stripped_tex_" + tex, "");
                     material.SetTexture(tex, AssetDatabase.LoadAssetAtPath<Texture>(AssetDatabase.GUIDToAssetPath(guid)));
                 }
-                // Materials locked before tiling was saved have no such tag and keep the default.
                 string st = material.GetTag("_stripped_st_" + tex, false);
                 if (!string.IsNullOrWhiteSpace(st))
                 {
@@ -3306,8 +3281,7 @@ namespace Thry.ThryEditor
                 if (requestedBuildType == VRCSDKRequestedBuildType.Scene)
                 {
                     if (UnityEngine.Object.FindObjectsOfType(typeof(VRC_SceneDescriptor)) is VRC_SceneDescriptor[] descriptors && descriptors.Length > 0){
-                        // Unlocked shaders get stripped from the build, so this has to include objects that start
-                        // inactive and materials that animations swap in, not just what's visible right now.
+                        // Include inactive objects and animation-swapped materials
                         IEnumerable<GameObject> roots = Enumerable.Range(0, UnityEngine.SceneManagement.SceneManager.sceneCount)
                             .Select(UnityEngine.SceneManagement.SceneManager.GetSceneAt)
                             .Where(scene => scene.isLoaded)
@@ -3342,7 +3316,7 @@ namespace Thry.ThryEditor
         {
             if (shader == null) return;
 
-            // Called for every snippet of the shader; the renderers only need scanning once per build.
+            // Runs per snippet; scan the renderers once per shader
             if (s_strippedSceneMaterialTrace.ContainsKey(shader.name)) return;
             var set = new HashSet<string>();
             s_strippedSceneMaterialTrace.Add(shader.name, set);
@@ -3428,7 +3402,6 @@ namespace Thry.ThryEditor
 
                         ThryLogger.LogErr($"Unlocked shader, {shaderName}, found in\n" + string.Join("\n", entries.OrderBy(e => e)));
                     }
-                    // The next build reports only what it strips itself.
                     s_strippedSceneMaterialTrace.Clear();
 
                     ThryLogger.LogErr($"Unlocked shaders were found and removed from the build. Materials will be pink. Please open the Console for instructions and traceback details.\n" + "Try using Thry -> Materials -> Lock All on hierarchy items to ensure all materials are locked. Some materials may get overlooked if you are doing material swap animations!\n" + "If this happens again, please take a full screenshot of the Console with the traceback messages printed here and report the issue via GitHub or Discord!");

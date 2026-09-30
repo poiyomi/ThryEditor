@@ -1697,8 +1697,8 @@ namespace Thry.ThryEditor
             MaterialHelper.ApplyOverrideTags(material, ownTags);
         }
 
-        // Slots FillNonModifiableTextures filled, so Revert can empty them again before a save. Kept in SessionState,
-        // since a material stays on its section shader across a domain reload.
+        // Slots FillNonModifiableTextures filled, so Revert can empty them again before a save.
+        // SessionState, since materials stay on section shaders across a domain reload.
         const string FilledKeyPrefix = "Thry.SectionLock.Filled.";
 
         // The importer gives its own shader the non-modifiable textures (Poiyomi's DFG lookup tables). A section

@@ -158,13 +158,12 @@ namespace Thry.ThryEditor
 
         void Init()
         {
-            if (_uvIndex < 0 || _uvIndex > 3) throw new System.InvalidOperationException("Scene tools require mesh UV0–UV3; procedural coordinates are not supported.");
+            if (_uvIndex < 0 || _uvIndex > 3) throw new System.InvalidOperationException("Scene tools only work with mesh UV0–UV3.");
             GetMesh();
 
             if (_mesh == null) throw new System.InvalidOperationException("The renderer has no mesh for decal positioning.");
 
-            // Each material slot has its own UV layout, so only the submeshes drawn with this material count.
-            // Slots past the last submesh draw the last submesh again.
+            // Slots past the last submesh draw the last submesh again
             var subMeshes = new HashSet<int>();
             Material[] slots = _renderer.sharedMaterials;
             for (int i = 0; i < slots.Length && _mesh.subMeshCount > 0; i++)
@@ -411,12 +410,10 @@ namespace Thry.ThryEditor
         bool _pivotMissing;
         bool _pivotFound;
 
-        // False when the decal center lies outside every UV triangle, e.g. in a gap between UV islands.
-        // The handles are hidden then, since there is no surface point to draw them on.
         bool GetPivot(SceneView sceneView, bool keepWhileDragging = false)
         {
             bool found = FindPivot();
-            // An Edges drag moves the center with it. Keep the last point while it crosses a UV gap so the drag isn't cut off.
+            // An Edges drag moves the center; don't stop it at UV gaps
             if (!found && keepWhileDragging && GUIUtility.hotControl != 0 && _pivotFound) return true;
             if (!found && !_pivotMissing) sceneView.ShowNotification(new GUIContent("The decal isn't on this mesh's UVs. Use Raycast to place it."));
             _pivotMissing = !found;
@@ -424,10 +421,9 @@ namespace Thry.ThryEditor
             return found;
         }
 
-        // Leaves the last pivot in place when nothing is found.
         bool FindPivot()
         {
-            // The shader rotates and scales around position + side offset center, the same point Raycast places.
+            // Same center the shader rotates and scales around
             Vector2 uv = (Vector2)GetVector(_propPosition) + CenterOffset();
             Vector2 uvUp = uv + Vector2.up * 0.0001f;
             // uv position to world position using renderer mesh
@@ -513,9 +509,7 @@ namespace Thry.ThryEditor
             SetFloat(property, value);
         }
 
-        // MaterialProperty setters record an undo step for every drag, which would stay behind after Deactivate turns
-        // the session into one step, or none when cancelled. Recording into an animation and renderer property
-        // blocks still go through the property, which handles them.
+        // Property setters add an undo step per drag frame
         static bool UsesProperty(MaterialProperty property) => property.applyPropertyCallback != null || AnimationMode.InAnimationMode();
 
         static Vector4 GetVector(MaterialProperty property) => UsesProperty(property) ? property.vectorValue : ((Material)property.targets[0]).GetVector(property.name);

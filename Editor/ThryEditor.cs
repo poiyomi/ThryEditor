@@ -416,8 +416,7 @@ namespace Thry
         private bool IsPoiyomiShader => Shader != null && Shader.name.Contains(".poiyomi/");
         private void CollectAllProperties()
         {
-            // Only set when the shader declares them, so clear what the previous shader left behind.
-            // Stale swap actions would otherwise run on a material swapped to a shader without any.
+            // Only set when the shader declares them, so reset first
             _onSwapToActions = null;
             _shaderHeader = null;
             ShaderOptimizerPropertyName = null;
@@ -1445,8 +1444,7 @@ namespace Thry
                 int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch, appliedNames);
                 var skipNames = MaterialTextSerializer.GetUnpastedPropertyNames(this, appliedNames);
 
-                // A copied preset value doesn't run its on_value_actions, so apply a changed preset first to get its
-                // render queue, render type and blend setup. The copy below then puts the text's own values over it.
+                // Copying a preset value skips its on_value_actions
                 ShaderProperty preset = RenderingPresets.FindPresetProperty(this);
                 if (preset != null && appliedNames.Contains(preset.MaterialProperty.name))
                 {
@@ -1458,7 +1456,7 @@ namespace Thry
                 {
                     foreach (var part in ShaderParts)
                     {
-                        // The text carries neither, so copying them would only put the shader's defaults back.
+                        // Not in the text; copying would reset them to defaults
                         if (part == _renderQueueProperty || part == _vRCFallbackProperty) continue;
                         part.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames);
                     }

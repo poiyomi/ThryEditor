@@ -148,8 +148,7 @@ namespace Thry.ThryEditor
             MaterialEditor.ApplyMaterialPropertyDrawers(newMaterial);
 
             // Save the Asset
-            // Overwrite an existing material in place. CreateAsset would give it a new GUID and break
-            // every renderer, prefab and animation that uses it.
+            // CreateAsset would assign a new GUID and break references
             Material existing = AssetDatabase.LoadAssetAtPath<Material>(savePath);
             if (existing != null)
             {

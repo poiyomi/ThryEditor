@@ -142,8 +142,7 @@ namespace Thry.ThryEditor
                 }
             }
 
-            // A section's enable toggle is its reference property and is usually [HideInInspector], so it isn't
-            // among the children. Without it a paste couldn't carry the section's on/off state.
+            // Section toggles are usually hidden, so not among the children
             if (isNew) CollectReferenceProperties(part, material, list, seen);
 
             if (part is ShaderGroup group && group.Children != null)
@@ -324,8 +323,7 @@ namespace Thry.ThryEditor
             return applied;
         }
 
-        // Paste copies through the inspector's parts from a scratch material that holds shader defaults for
-        // everything the text doesn't set. Skipping those properties keeps the targets' own values for them.
+        // The scratch material's defaults would overwrite unset properties
         public static HashSet<string> GetUnpastedPropertyNames(ShaderEditor editor, HashSet<string> appliedNames)
         {
             var skip = new HashSet<string>();
@@ -334,8 +332,7 @@ namespace Thry.ThryEditor
             return skip;
         }
 
-        // The text doesn't carry Animated tags and the scratch material has none, so the copy would clear the
-        // targets' tags on every pasted property. Put each target's own tags back afterwards.
+        // The copy from the scratch material clears Animated tags
         public static void KeepAnimatedTags(ShaderEditor editor, HashSet<string> appliedNames, Action paste)
         {
             var saved = new List<(Material material, string tag, string value)>();

@@ -199,9 +199,7 @@ namespace Thry.ThryEditor
 
         private static readonly Dictionary<string, bool> s_singleMaterialFiles = new Dictionary<string, bool>();
 
-        // Links identify materials by asset GUID. A material that isn't saved as an asset has none, and several
-        // materials inside one file share it, so neither can be told apart from other materials and neither can be linked.
-        // A material that is the only one in its file (e.g. a sub-asset of a prefab) is still unique and resolves by path.
+        // Links key on the asset GUID, so it must be unique to the material
         public static bool CanLink(Material material)
         {
             if (material == null || string.IsNullOrEmpty(UnityHelper.GetGUID(material))) return false;
@@ -358,7 +356,6 @@ namespace Thry.ThryEditor
             string sectionPropName = section.MaterialProperty.name;
             Material[] selected = section.MaterialProperty.targets.OfType<Material>().Where(m => m != null).ToArray();
 
-            // In a multi-selection every material can belong to a different link, or to none.
             var handled = new HashSet<GlobalLink>();
             bool changed = false;
             for (int i = 0; i < selected.Length; i++)
@@ -369,7 +366,7 @@ namespace Thry.ThryEditor
 
                 // Change checks fire for UI-only interactions too (foldouts, focus changes). Bail before
                 // writing to disk or recording undos when no value in the section actually moved.
-                // The section shows the first material's values, so the others are read from their own material.
+                // The section shows the first material's values
                 if (!CapturePropertiesFromSection(link, section, i == 0 ? null : self)) continue;
                 changed = true;
 
@@ -577,7 +574,6 @@ namespace Thry.ThryEditor
         /// <summary>
         /// Recaptures the section into the link. Returns true if any captured value differs from what the link already held.
         /// </summary>
-        /// <param name="source">Reads the values from this material instead of the section's properties.</param>
         private static bool CapturePropertiesFromSection(GlobalLink link, ShaderGroup section, Material source = null)
         {
             List<GlobalLinkPropertyValue> captured = new List<GlobalLinkPropertyValue>();
@@ -806,8 +802,7 @@ namespace Thry.ThryEditor
 
             private Material PrimaryMaterial => _materials != null && _materials.Length > 0 ? _materials[0] : null;
 
-            // Actions here can reload the inspector, which rebuilds its parts; the replaced group keeps the values it
-            // had when it was built. Capture from the group the inspector shows now while it still shows these materials.
+            // The inspector may have rebuilt the group since Init
             private ShaderGroup Section
             {
                 get
@@ -855,7 +850,7 @@ namespace Thry.ThryEditor
 
             void OnGUI()
             {
-                // CreateGUI builds the window. The section is not serialized, so the window closes after a domain reload.
+                // _section isn't serialized; close after a domain reload
                 if (_section == null) Close();
             }
 
@@ -866,7 +861,7 @@ namespace Thry.ThryEditor
                 root.Add(new UnityEngine.UIElements.Label(_section.Content.text));
                 if(!_materials.Any(CanLink))
                 {
-                    root.Add(new UnityEngine.UIElements.HelpBox("Only saved materials can be linked, and each one needs an asset file with no other materials in it.",UnityEngine.UIElements.HelpBoxMessageType.Info));
+                    root.Add(new UnityEngine.UIElements.HelpBox("Only materials saved in their own asset file can be linked.",UnityEngine.UIElements.HelpBoxMessageType.Info));
                     root.Add(new UnityEngine.UIElements.Button(Close){text="Done"});
                     return;
                 }

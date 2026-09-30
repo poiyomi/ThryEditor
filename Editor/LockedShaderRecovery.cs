@@ -97,7 +97,7 @@ namespace Thry.ThryEditor
 
             bool one = recoverable.Count == 1;
             ThryLogger.Log($"Unlocking {recoverable.Count} locked material{(one ? "" : "s")} whose shader is missing from "
-                + $"{LockedShaderCache.CacheRoot}. Lock {(one ? "it" : "them")} again when you are ready and the cache will be rebuilt.");
+                + $"{LockedShaderCache.CacheRoot}. Lock {(one ? "it" : "them")} again to rebuild the cache.");
             
             ShaderOptimizer.UnlockMaterials(recoverable, showProgress ? ShaderOptimizer.ProgressBar.Uncancellable : ShaderOptimizer.ProgressBar.None);
             return repaired + recoverable.Count;
@@ -132,8 +132,7 @@ namespace Thry.ThryEditor
                         s_importedMaterialPaths.Add(path);
 
                 // Losing a cached shader does not necessarily re-import the materials that used it, so
-                // that case has to be caught from the deletion instead. The cache's own GC only deletes
-                // entries no material uses, so those deletions can't have orphaned anything.
+                // that case has to be caught from the deletion instead. The GC only deletes unused entries.
                 foreach (string path in deletedAssets)
                 {
                     if (!LockedShaderCache.IsInCache(path) || LockedShaderCache.WasCollected(path)) continue;
@@ -170,8 +169,7 @@ namespace Thry.ThryEditor
                     s_needsFullScan = false;
 
                     // Once per session at most; a project missing its cache would otherwise re-scan
-                    // every time anything at all is imported. Materials imported alongside are still
-                    // checked when the scan is skipped.
+                    // every time anything at all is imported.
                     if (fullScan && !SessionState.GetBool(SessionKeyDidFullScan, false))
                     {
                         SessionState.SetBool(SessionKeyDidFullScan, true);
@@ -193,14 +191,13 @@ namespace Thry.ThryEditor
                 }
             }
 
-            // Reading the file is much cheaper than loading a material with thousands of properties. Only a
-            // material with a lock or section-lock tag can need recovery, or a variant whose root has one.
+            // Much cheaper than loading a material with thousands of properties
             static bool MightNeedRecovery(string path)
             {
                 try
                 {
                     string text = File.ReadAllText(path);
-                    // Binary serialized; there is no telling without loading it.
+                    // Binary: can't tell without loading it
                     if (!text.StartsWith("%YAML", StringComparison.Ordinal)) return true;
                     return text.Contains(ShaderOptimizer.TAG_ORIGINAL_SHADER)
                         || text.Contains(ShaderOptimizer.TAG_ALL_MATERIALS_GUIDS_USING_THIS_LOCKED_SHADER)

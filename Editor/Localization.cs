@@ -72,7 +72,6 @@ namespace Thry.ThryEditor
         {
             // Load languages
             int langCount = (Languages != null) ? Languages.Length : 0;
-            // An import with fewer languages can leave the selection past the end.
             if (SelectedLanguage >= langCount) SelectedLanguage = -1;
             _allLanguages = new string[Languages.Length + 1];
             _allLanguages[0] = DefaultLanguage;
@@ -188,7 +187,6 @@ namespace Thry.ThryEditor
             }
             if (SelectedLanguage < 0 || SelectedLanguage >= Languages.Length)
             {
-                // The default language comes from the shader itself and has no column to write to.
                 ThryLogger.LogWarn("Select a translation language before editing labels.");
                 return;
             }
@@ -229,7 +227,6 @@ namespace Thry.ThryEditor
             int index = System.Array.IndexOf(Languages, language);
             if (index != -1)
             {
-                // Keep the material UI on the same language, or fall back to the default one if it was removed.
                 if (SelectedLanguage == index) SelectedLanguage = -1;
                 else if (SelectedLanguage > index) SelectedLanguage--;
                 if (Languages.Length > 1)
@@ -289,7 +286,7 @@ namespace Thry.ThryEditor
             string fileName = Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(shaders[0]));
             string folderPath = Path.GetDirectoryName(AssetDatabase.GetAssetPath(shaders[0]));
             locale.ValidateWithShaders = shaders;
-            // CreateAsset replaces whatever is at the path, so never reuse the name of an existing locale.
+            // CreateAsset overwrites an existing asset
             AssetDatabase.CreateAsset(locale, AssetDatabase.GenerateUniqueAssetPath(folderPath + "/" + fileName + "_Locale.asset"));
             AssetDatabase.SaveAssets();
         }
@@ -331,7 +328,6 @@ namespace Thry.ThryEditor
             UnityWebRequest _spreadsheetRequest;
             Localization _spreadsheetTarget;
 
-            // Standard CSV quoting, which SplitCsvLine undoes on import. Curly quotes are real text in some languages.
             string ToCSVString(string s)
             {
                 if (s == null)
@@ -449,12 +445,11 @@ namespace Thry.ThryEditor
                 }
             }
 
-            // Returns false without touching the locale when the text isn't locale CSV.
             bool LoadFromCSVText(Localization locale, string csvText)
             {
                 if (string.IsNullOrEmpty(csvText) || locale == null) return false;
 
-                // Sign-in and error pages come back as HTML.
+                // Sign-in and error pages come back as HTML
                 if (csvText.TrimStart('\uFEFF', ' ', '\t', '\r', '\n').StartsWith("<", StringComparison.Ordinal)) return false;
 
                 string[] lines = csvText
@@ -492,7 +487,6 @@ namespace Thry.ThryEditor
 
                     if (rows.TryGetValue(key, out string[] existing))
                     {
-                        // A later duplicate row still wins, but its empty cells must not erase translations from the earlier one.
                         duplicates.Add(key);
                         for (int j = 0; j < languageCount; j++)
                         {
@@ -505,7 +499,7 @@ namespace Thry.ThryEditor
                 }
                 if (duplicates.Count > 0)
                 {
-                    ThryLogger.LogWarn($"[Localization] The CSV has more than one row for: {string.Join(", ", duplicates)}. Their translations were merged; remove the extra rows from the source sheet.");
+                    ThryLogger.LogWarn($"[Localization] Merged duplicate CSV rows for: {string.Join(", ", duplicates)}");
                 }
 
                 string[] values = new string[keys.Count * languageCount];
@@ -514,7 +508,7 @@ namespace Thry.ThryEditor
                     Array.Copy(rows[keys[i]], 0, values, i * languageCount, languageCount);
                 }
 
-                // Only replace the existing data once the whole file has been read.
+                // Clear only after the whole file is read
                 locale.Clear();
                 for (int i = languagesStartIndex; i < header.Count; i++)
                 {
@@ -581,7 +575,7 @@ namespace Thry.ThryEditor
                             ThryLogger.LogErr($"Spreadsheet CSV URL did not return locale data: {locale.SpreadsheetCsvUrl}");
                             EditorUtility.DisplayDialog(
                                 "Spreadsheet Sync Failed",
-                                "The URL didn't return a locale CSV, so nothing was changed. Make sure the spreadsheet is shared publicly and the URL is the CSV export link.",
+                                "The URL didn't return a locale CSV, so nothing changed. Check that the sheet is public and the URL is its CSV export link.",
                                 "OK"
                             );
                             return;
@@ -627,7 +621,7 @@ namespace Thry.ThryEditor
                     foreach (string language in locale.Languages) sb.Append("," + ToCSVString(language));
                     sb.AppendLine();
 
-                    // Read the loaded entries, which also hold the shader keys UpdateData just added.
+                    // _keys lacks the shader keys UpdateData added
                     foreach (var entry in locale._localizedStrings)
                     {
                         string key = entry.Key;
@@ -659,7 +653,7 @@ namespace Thry.ThryEditor
                     {
                         EditorUtility.DisplayDialog(
                             "Load from CSV",
-                            "This file doesn't contain locale data, so nothing was changed. The first row needs a Property column followed by one column per language.",
+                            "This file has no locale data, so nothing changed. The first row needs a Property column, then one column per language.",
                             "OK"
                         );
                     }
@@ -669,7 +663,6 @@ namespace Thry.ThryEditor
             void UpdateMissing(Localization locale)
             {
                 _missingKeys.Clear();
-                // New locale files have no languages yet, and removing one can leave the selection past the end.
                 if (locale.Languages.Length == 0) return;
                 _selectedLanguageIndex = Mathf.Clamp(_selectedLanguageIndex, 0, locale.Languages.Length - 1);
                 foreach (string key in locale._localizedStrings.Keys)
@@ -771,7 +764,7 @@ namespace Thry.ThryEditor
                 EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
                 EditorGUILayout.LabelField("Import / Export", EditorStyles.boldLabel);
                 EditorGUILayout.HelpBox("Use this area to load Localization data from an external CSV file locally, then click Import. Optionally, you can load data from the internet via a valid URL.", MessageType.Info);
-                EditorGUILayout.HelpBox("Keep each translation on a single line. A line break inside a cell splits the row and breaks the import.", MessageType.Warning);
+                EditorGUILayout.HelpBox("Keep each translation on one line. Line breaks inside a cell break the import.", MessageType.Warning);
                 GUICSV(locale);
 
                 if (locale.Languages.Length == 0)
@@ -938,7 +931,7 @@ namespace Thry.ThryEditor
                             locale._localizedStrings.Add(kv.key, new string[locale.Languages.Length]);
                         }
                         locale._localizedStrings[kv.key][_selectedLanguageIndex] = kv.newValue;
-                        // Save right away; UpdateData reloads the locale from its saved data.
+                        // UpdateData reloads from the saved data
                         locale.Save();
                         kvToRemove = kv;
                     }

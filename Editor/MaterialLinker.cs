@@ -125,8 +125,6 @@ namespace Thry.ThryEditor
                 foreach (Material m in old_materials)
                     linked_materials.Remove((m, p.name));
             }
-            // A material can only be in one group per property. Take newly added ones out of the group
-            // they were in, or that group would keep pushing its edits to them.
             foreach (Material m in new_linked_materials)
             {
                 if (linked_materials.TryGetValue((m, p.name), out List<Material> previous) && previous != new_linked_materials)

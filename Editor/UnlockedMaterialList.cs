@@ -15,8 +15,7 @@ namespace Thry.ThryEditor
     /// Lists every material the shader optimizer can act on, grouped by shader, folder or the
     /// prefab/scene object using it, and locks or unlocks them in bulk.
     ///
-    /// Every mutation is queued and carried out from <see cref="Update"/>. Locking rewrites assets and
-    /// shows its own progress bar, which has no business running inside a UI callback.
+    /// Every mutation is queued and carried out from <see cref="Update"/>.
     /// </summary>
     public partial class UnlockedMaterialsList : EditorWindow
     {

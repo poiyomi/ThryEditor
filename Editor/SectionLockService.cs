@@ -112,8 +112,7 @@ namespace Thry.ThryEditor
             }
         }
 
-        /// <summary>Makes these materials get a section shader on the next check, e.g. after they were put back on their
-        /// original because it changed.</summary>
+        /// <summary>Queues these materials for a section shader on the next check.</summary>
         public static void Recheck(IEnumerable<Material> materials)
         {
             foreach (Material material in materials)
@@ -182,9 +181,7 @@ namespace Thry.ThryEditor
             {
                 foreach (Material material in inspected)
                 {
-                    // A variant renders with its root's shader, and a section shader has the root's keywords and values
-                    // written in. Apply keeps a root with loaded variants off, but a variant made or loaded later
-                    // finds it already on one, so the root goes back to its original.
+                    // A section shader bakes in the root's values, which a variant can't use
                     if (material != null && material.isVariant && SectionLock.IsSectionLocked(material))
                         SectionLock.RevertAll(new[] { material });
                     if (material == null || s_tracked.ContainsKey(material)) continue;
@@ -498,10 +495,10 @@ namespace Thry.ThryEditor
                 bool clean = !EditorUtility.IsDirty(material);
                 if (!SectionLock.Revert(material)) continue;
                 if (clean) EditorUtility.ClearDirty(material);
-                // Reverting a variant reverts its root.
+                // Reverting a variant reverts its root
                 reverted.Add(material.GetRoot());
             }
-            // Back on the original they aren't section-locked any more, so RecheckAll would skip them.
+            // RecheckAll skips materials that aren't section-locked
             if (reverted.Count > 0 && SectionLockService.Enabled) SectionLockService.Recheck(reverted);
         }
 
