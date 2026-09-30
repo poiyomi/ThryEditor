@@ -65,6 +65,7 @@ namespace Thry.ThryEditor
             private DataType _type;
             private DefineableCondition _condition;
             private float _floatData;
+            private string _literal;
             private bool _isConstant;
             private MaterialRenference _materialReference;
             private string _key;
@@ -118,6 +119,21 @@ namespace Thry.ThryEditor
             }
             public bool IsConstant => _isConstant;
 
+            public bool IsVersion => _type == DataType.THRY_EDITOR_VERSION || _type == DataType.VRC_SDK_VERSION;
+
+            // Versions compare by their parts, so "2.50" has to stay as written instead of becoming the float 2.5.
+            // A literal like "3.5.2" is not a float and would otherwise be read as a property name.
+            public string VersionString
+            {
+                get
+                {
+                    if (_type == DataType.FLOAT) return _literal ?? _floatData.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    if (_type == DataType.VRC_SDK_VERSION && VRCInterface.Get().Sdk_information.type == VRCInterface.VRC_SDK_Type.NONE) return "0";
+                    if (_type == DataType.MATERIAL_PROPERTY && _materialReference.GetMaterialProperty(_key) == null) return _key;
+                    return Value?.ToString() ?? "0";
+                }
+            }
+
             /// <summary>
             /// SectionLock only follows section switches. A slider, color, vector or texture is a value, not a
             /// switch, and its code has to stay in so dragging it never needs a new shader.
@@ -140,6 +156,7 @@ namespace Thry.ThryEditor
                 if (float.TryParse(data, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out _floatData))
                 {
                     _type = DataType.FLOAT;
+                    _literal = data;
                     _isConstant = true;
                 }
                 else if (data == "VRCSDK")
@@ -236,7 +253,19 @@ namespace Thry.ThryEditor
 
             private bool Evaluate()
             {
-                if (TryCompareGeneral(_left.Value, _right.Value, out int result))
+                int result;
+                bool compared;
+                if (_left.IsVersion || _right.IsVersion)
+                {
+                    // CompareVersions returns -1 when the first version is newer
+                    result = -Helper.CompareVersions(_left.VersionString, _right.VersionString);
+                    compared = true;
+                }
+                else
+                {
+                    compared = TryCompareGeneral(_left.Value, _right.Value, out result);
+                }
+                if (compared)
                 {
                     if (_compareType == ComparisonType.EQUAL) return result == 0;
                     if (_compareType == ComparisonType.NOT_EQUAL) return result != 0;
