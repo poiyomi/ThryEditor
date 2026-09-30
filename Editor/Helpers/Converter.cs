@@ -429,7 +429,9 @@ namespace Thry.ThryEditor.Helpers
                 Debug.LogError("Failed to decode GIF or GIF is empty.");
                 return null;
             }
-            Texture2DArray arrayTexture = Textre2DArrayToAsset(array.ToArray());
+            Texture2DArray arrayTexture;
+            try { arrayTexture = Textre2DArrayToAsset(array.ToArray()); }
+            finally { foreach (Texture2D frame in array) UnityEngine.Object.DestroyImmediate(frame); }
             // Converting again, or another file with the same name, must not replace an array other materials use
             string assetPath = System.IO.Path.ChangeExtension(path, ".asset");
             if (assetPath.StartsWith("Assets/", StringComparison.Ordinal) || assetPath.StartsWith("Packages/", StringComparison.Ordinal))
@@ -470,6 +472,7 @@ namespace Thry.ThryEditor.Helpers
                 if (EditorUtility.DisplayCancelableProgressBar("From GIF", $"Processing frame {i + 1}/{frames.Count}", (float)i / frames.Count))
                 {
                     EditorUtility.ClearProgressBar();
+                    foreach (Texture2D decoded in gifFrames) UnityEngine.Object.DestroyImmediate(decoded);
                     return null;
                 }
 
