@@ -817,7 +817,7 @@ namespace Thry.ThryEditor
                     material.SetFloat(targetName, source.floatValue);
                     break;
                 case ShaderPropertyType.Int:
-                    material.SetInt(targetName, source.intValue);
+                    material.SetInteger(targetName, source.intValue);
                     break;
                 case ShaderPropertyType.Texture:
                     material.SetTexture(targetName, source.textureValue);
@@ -1345,7 +1345,7 @@ namespace Thry.ThryEditor
                             AppendNumber(stringBuilder, m.GetFloat(propName));
                             break;
                         case ShaderPropertyType.Int:
-                            stringBuilder.Append(m.GetInt(propName)
+                            stringBuilder.Append(m.GetInteger(propName)
                                 .ToString(CultureInfo.InvariantCulture));
                             break;
                         case ShaderPropertyType.Texture:
