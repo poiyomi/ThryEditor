@@ -492,13 +492,21 @@ namespace Thry.ThryEditor
                 if(deletedAssets.Length > 0)
                 {
                     // go through all preset collections
-                    Dictionary<string, string> pathsToGuids = PresetCollections.
-                        SelectMany(c => c.Value.Guids).Distinct(). // Guids of all preset materials. Because of sectioned can exists multiples
-                        Select(g => (AssetDatabase.GUIDToAssetPath(g), g)). // Tuple of path and guid
-                        ToDictionary(k => k.Item1, v => v.Item2);
+                    // Guids of all preset materials. Because of sectioned can exists multiples
+                    Dictionary<string, string> pathsToGuids = new Dictionary<string, string>();
+                    bool missingPresets = false;
+                    foreach (string g in PresetCollections.SelectMany(c => c.Value.Guids).Distinct())
+                    {
+                        // Presets that are already gone resolve to an empty path, often several at once
+                        string path = AssetDatabase.GUIDToAssetPath(g);
+                        if (string.IsNullOrWhiteSpace(path)) missingPresets = true;
+                        else if (!pathsToGuids.ContainsKey(path)) pathsToGuids[path] = g;
+                    }
                     // Check if any presets were deleted, iterate over all deleted materials
+                    bool deletedMaterials = false;
                     foreach (string asset in deletedAssets.Where(IsMaterialAssetPath))
                     {
+                        deletedMaterials = true;
                         // Check if asset is preset
                         if (pathsToGuids.ContainsKey(asset))
                         {
@@ -506,6 +514,8 @@ namespace Thry.ThryEditor
                             RemovePreset(pathsToGuids[asset]);
                         }
                     }
+                    // Deleted presets whose path no longer resolves are dropped by the save
+                    if (deletedMaterials && missingPresets) Save();
                 }
             }
 
