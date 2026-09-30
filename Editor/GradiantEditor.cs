@@ -20,10 +20,18 @@ namespace Thry.ThryEditor
         }
         public static void Open(GradientData data, MaterialProperty prop, TextureData predefinedTextureSettings, bool force_texture_options = false, bool show_texture_options=true, ColorSpace colorSpace=ColorSpace.Linear)
         {
+            GradientEditor window = (GradientEditor)EditorWindow.GetWindow(typeof(GradientEditor));
+            // Reusing the open window for another gradient ends its current session the same way closing it would.
+            // That can write to this same property, which prop has cached, so it is read again afterwards.
+            if (window.EndSession())
+            {
+                MaterialProperty refreshed = MaterialEditor.GetMaterialProperty(prop.targets, prop.name);
+                refreshed.applyPropertyCallback = prop.applyPropertyCallback;
+                prop = refreshed;
+            }
             texture_settings_data = LoadTextureSettings(prop, predefinedTextureSettings, force_texture_options);
             data.Gradient = TextureHelper.GetGradient(prop.textureValue);
             data.UsePreviewTexture = true;
-            GradientEditor window = (GradientEditor)EditorWindow.GetWindow(typeof(GradientEditor));
             window.titleContent = new GUIContent("Gradient '" +prop.name +"' of '"+ prop.targets[0].name + "'");
             window._colorSpace = colorSpace;
             window._previous_property_texture = prop.textureValue;
@@ -83,10 +91,16 @@ namespace Thry.ThryEditor
 
         public void OnDestroy()
         {
-            if (_data == null) return;
+            EndSession();
+        }
+
+        // Saves the edited gradient, or puts the original texture back if nothing was edited.
+        private bool EndSession()
+        {
+            if (_data == null) return false;
             if (_gradient_has_been_edited)
             {
-                if (_data.PreviewTexture.GetType() == typeof(Texture2D))
+                if (_data.PreviewTexture != null && _data.PreviewTexture.GetType() == typeof(Texture2D))
                 {
                     string file_name = GetGradientSavefileName(_data.Gradient, _prop.targets[0].name);
                     Texture2D finalGradientTexture = GetFinalGradientTexture();
@@ -100,7 +114,11 @@ namespace Thry.ThryEditor
                 if (_prop != null) _prop.textureValue = _previous_property_texture;
             }
             _data.UsePreviewTexture = false;
+            _data = null;
+            _prop = null;
+            _gradient_has_been_edited = false;
             ShaderEditor.RepaintActive();
+            return true;
         }
 
         private Texture2D GetFinalGradientTexture()
