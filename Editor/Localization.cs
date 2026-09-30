@@ -329,7 +329,6 @@ namespace Thry.ThryEditor
 
             UnityWebRequest _spreadsheetRequest;
             Localization _spreadsheetTarget;
-            string _prevSpreadsheetUrl;
 
             string ToCSVString(string s)
             {
@@ -547,8 +546,6 @@ namespace Thry.ThryEditor
                     return;
                 }
 
-                _prevSpreadsheetUrl = locale.SpreadsheetCsvUrl;
-
                 if (_spreadsheetRequest != null)
                 {
                     EditorUtility.DisplayDialog(
@@ -570,14 +567,10 @@ namespace Thry.ThryEditor
                     {
                         if (_spreadsheetRequest.result != UnityWebRequest.Result.Success)
                         {
-                            Undo.RecordObject(locale, "Revert Spreadsheet CSV URL");
-                            locale.SpreadsheetCsvUrl = _prevSpreadsheetUrl;
-                            EditorUtility.SetDirty(locale);
-                            AssetDatabase.SaveAssets();
                             ThryLogger.LogErr($"Spreadsheet CSV Download failed {_spreadsheetRequest.error} at URL: {locale.SpreadsheetCsvUrl}");
                             EditorUtility.DisplayDialog(
                                 "Spreadsheet Sync Failed",
-                                $"Could not download external CSV from: {_spreadsheetRequest.error}",
+                                $"Could not download the CSV from:\n{locale.SpreadsheetCsvUrl}\n\n{_spreadsheetRequest.error}",
                                 "OK"
                             );
                             return;
