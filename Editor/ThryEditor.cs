@@ -416,6 +416,13 @@ namespace Thry
         private bool IsPoiyomiShader => Shader != null && Shader.name.Contains(".poiyomi/");
         private void CollectAllProperties()
         {
+            // Only set when the shader declares them, so clear what the previous shader left behind.
+            // Stale swap actions would otherwise run on a material swapped to a shader without any.
+            _onSwapToActions = null;
+            _shaderHeader = null;
+            ShaderOptimizerPropertyName = null;
+            _duplicatePropertyNamesString = null;
+
             if (ShaderOptimizer.IsShaderUsingThryOptimizer(Shader))
             {
                 ShaderOptimizerPropertyName = ShaderOptimizer.GetOptimizerPropertyName(Shader);
