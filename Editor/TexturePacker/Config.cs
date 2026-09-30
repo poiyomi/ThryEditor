@@ -177,6 +177,10 @@ namespace Thry.ThryEditor.TexturePacker
         public static IList<TextureImporter> AssetImporters => s_textureImporterList.Values;
         public static IList<string> AssetNames => s_textureImporterList.Keys;
 
+        internal static bool IsListedImporter(string path) => s_textureImporterList.ContainsKey(ImporterListName(path));
+        // False until 'Previous packs' starts a scan, and the next scan starts from scratch anyway
+        internal static bool HasImporterCache => s_importerGuids != null || s_isLoadingImportersDone;
+
         public static bool AreImportersLoaded()
         {
             return s_isLoadingImportersDone;
