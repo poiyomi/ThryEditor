@@ -152,7 +152,7 @@ namespace Thry.ThryEditor.ShaderTranslations
             var selectedMaterialShaders = materials.Where(mat => mat != null).Select(mat => (SectionLock.GetSourceShader(mat.shader) ?? mat.shader).name).Distinct();
             translations = ShaderTranslator.TranslationDefinitions.Where(trans =>
             {
-                if(trans.MatchTargetShaderBasedOnRegex)
+                if(trans.MatchOriginShaderBasedOnRegex)
                     return selectedMaterialShaders.Any(shaderName => Regex.IsMatch(shaderName, trans.OriginShaderRegex));
                 else
                     return selectedMaterialShaders.Contains(trans.OriginShader);
