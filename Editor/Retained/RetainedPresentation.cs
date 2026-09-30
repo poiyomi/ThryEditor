@@ -76,6 +76,13 @@ namespace Thry.ThryEditor
                             label.style.marginTop = Mathf.Max(0, property.Options.margin_top);
                             label.style.marginBottom = Mathf.Max(0, property.Options.margin_bottom);
                         }
+                        // Shaders use this for "click for more info" links, like the Helpbox above
+                        if (property.Options.onClick != null)
+                        {
+                            label.focusable = true;
+                            label.RegisterCallback<ClickEvent>(e => { if (e.button == 0) PerformPresentationAction(property, property.Options.onClick); });
+                            label.RegisterCallback<NavigationSubmitEvent>(e => { PerformPresentationAction(property, property.Options.onClick); e.StopPropagation(); });
+                        }
                         root.Add(label); handled = true;
                         break;
                     case "LocalMessage":
