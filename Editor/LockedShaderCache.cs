@@ -288,6 +288,16 @@ are using Poiyomi Shaders, this folder is very important!
                 }
             }
 
+            // The import database only knows what is saved. A material locked since its last save still
+            // points at its original shader on disk, so count the shaders loaded materials use in memory.
+            // This only looks at materials that are already loaded, it does not load any.
+            foreach (Material material in Resources.FindObjectsOfTypeAll<Material>())
+            {
+                if (material == null || material.shader == null) continue;
+                string shaderPath = AssetDatabase.GetAssetPath(material.shader);
+                if (IsInCache(shaderPath)) referenced.Add(shaderPath.Replace('\\', '/'));
+            }
+
             return referenced;
         }
 
