@@ -129,10 +129,12 @@ namespace Thry.ThryEditor
         {
             if (part == null) return;
 
+            bool isNew = true;
             if (part.MaterialProperty != null)
             {
                 string name = part.MaterialProperty.name;
-                if (seen.Add(name) && material.HasProperty(name))
+                isNew = seen.Add(name);
+                if (isNew && material.HasProperty(name))
                 {
                     var type = part.MaterialProperty.GetPropertyType();
                     var entry = TryReadProp(material, name, type);
@@ -140,11 +142,27 @@ namespace Thry.ThryEditor
                 }
             }
 
+            // A section's enable toggle is its reference property and is usually [HideInInspector], so it isn't
+            // among the children. Without it a paste couldn't carry the section's on/off state.
+            if (isNew) CollectReferenceProperties(part, material, list, seen);
+
             if (part is ShaderGroup group && group.Children != null)
             {
                 foreach (var child in group.Children)
                     CollectFromPart(child, material, list, seen);
             }
+        }
+
+        static void CollectReferenceProperties(ShaderPart part, Material material, List<SerializedProp> list, HashSet<string> seen)
+        {
+            var properties = part.MyShaderUI?.PropertyDictionary;
+            if (properties == null || part.Options == null) return;
+
+            if (part.Options.reference_properties != null)
+                foreach (string name in part.Options.reference_properties)
+                    if (properties.TryGetValue(name, out var property)) CollectFromPart(property, material, list, seen);
+            if (!string.IsNullOrWhiteSpace(part.Options.reference_property) && properties.TryGetValue(part.Options.reference_property, out var reference))
+                CollectFromPart(reference, material, list, seen);
         }
 
         static SerializedProp TryReadProp(Material m, string name, UnityEngine.Rendering.ShaderPropertyType type)
