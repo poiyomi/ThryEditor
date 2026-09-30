@@ -91,11 +91,14 @@ namespace Thry.ThryEditor.Helpers
         {
             return material != null && material.shader != null && IsShaderUsingThryEditor(material.shader);
         }
+        // Looked up once, since inspectors call this on every GUI event
+        static readonly MethodInfo s_customEditorGetter = typeof(Shader)
+            .GetProperty("customEditor", BindingFlags.Instance | BindingFlags.NonPublic)?.GetGetMethod(nonPublic: true);
+
         public static bool IsShaderUsingThryEditor(Shader shader)
         {
-            PropertyInfo shaderGUIProperty = typeof(Shader).GetProperty("customEditor", BindingFlags.Instance | BindingFlags.NonPublic);
-            MethodInfo getter = shaderGUIProperty.GetGetMethod(nonPublic: true);
-            string customEditorName = (string)getter.Invoke(shader, null);
+            if (s_customEditorGetter == null) return false;
+            string customEditorName = (string)s_customEditorGetter.Invoke(shader, null);
             return customEditorName == typeof(ShaderEditor).FullName;
         }
 
