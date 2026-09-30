@@ -365,8 +365,24 @@ namespace Thry
         {
             if (material == null || !RenderingPresets.PresetPropertyNames.Any(n => material.HasProperty(n))) return;
 
-            ShaderEditor previousActive = Active;
+            ShaderEditor tempEditor = CreateTemporary(material);
+            try
+            {
+                if (tempEditor.InShaderPresetsProperty != null) tempEditor.ShaderRenderingPreset = modeValue;
+            }
+            finally
+            {
+                tempEditor.ReleaseTemporary();
+            }
+        }
+
+        ShaderEditor _previousActive;
+
+        // The editor stays Active until ReleaseTemporary
+        internal static ShaderEditor CreateTemporary(Material material, Shader lastShader = null)
+        {
             ShaderEditor tempEditor = new ShaderEditor();
+            tempEditor._previousActive = Active;
             try
             {
                 tempEditor.Materials = new Material[] { material };
@@ -375,16 +391,22 @@ namespace Thry
                 tempEditor.RenamedPropertySuffix = ShaderOptimizer.GetRenamedPropertySuffix(material);
                 tempEditor.HasCustomRenameSuffix = ShaderOptimizer.HasCustomRenameSuffix(material);
                 Active = tempEditor;
-                tempEditor.SetShader(SectionLock.GetSourceShader(material.shader));
+                tempEditor.SetShader(SectionLock.GetSourceShader(material.shader), lastShader);
                 tempEditor.CollectAllProperties();
-
-                if (tempEditor.InShaderPresetsProperty != null) tempEditor.ShaderRenderingPreset = modeValue;
+                return tempEditor;
             }
-            finally
+            catch
             {
-                if (tempEditor.Editor != null) UnityEngine.Object.DestroyImmediate(tempEditor.Editor);
-                Active = previousActive;
+                tempEditor.ReleaseTemporary();
+                throw;
             }
+        }
+
+        internal void ReleaseTemporary()
+        {
+            if (Editor != null) UnityEngine.Object.DestroyImmediate(Editor);
+            Editor = null;
+            Active = _previousActive;
         }
 
         // finds all properties and headers and stores them in correct order
