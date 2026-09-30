@@ -2,7 +2,6 @@
 // Copyright (C) 2019 Thryrallo
 
 using System.Collections.Generic;
-using System.IO;
 using UnityEditor;
 using UnityEngine;
 using System;
@@ -26,8 +25,6 @@ namespace Thry
         public const string PROPERTY_NAME_IN_SHADER_PRESETS = "_Mode";
 
         //Static
-        private static string s_edtiorDirectoryPath;
-
         public static InputEvent Input = new InputEvent();
         public static ShaderEditor Active { get; private set; }
 
@@ -1581,20 +1578,6 @@ namespace Thry
         {
             foreach (Material target in Materials)
                 MaterialEditor.ApplyMaterialPropertyDrawers(target);
-        }
-
-        public static string GetShaderEditorDirectoryPath()
-        {
-            if (s_edtiorDirectoryPath == null)
-            {
-                IEnumerable<string> paths = AssetDatabase.FindAssets("ThryEditor").Select(g => AssetDatabase.GUIDToAssetPath(g));
-                foreach (string p in paths)
-                {
-                    if (p.EndsWith("/ThryEditor.cs"))
-                        s_edtiorDirectoryPath = Directory.GetParent(Path.GetDirectoryName(p)).FullName;
-                }
-            }
-            return s_edtiorDirectoryPath;
         }
 
         // Cache property->keyword lookup for performance
