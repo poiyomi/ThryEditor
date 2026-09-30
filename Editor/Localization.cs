@@ -72,6 +72,8 @@ namespace Thry.ThryEditor
         {
             // Load languages
             int langCount = (Languages != null) ? Languages.Length : 0;
+            // An import with fewer languages can leave the selection past the end.
+            if (SelectedLanguage >= langCount) SelectedLanguage = -1;
             _allLanguages = new string[Languages.Length + 1];
             _allLanguages[0] = DefaultLanguage;
             if (langCount > 0) Array.Copy(Languages, 0, _allLanguages, 1, Languages.Length);
@@ -227,6 +229,9 @@ namespace Thry.ThryEditor
             int index = System.Array.IndexOf(Languages, language);
             if (index != -1)
             {
+                // Keep the material UI on the same language, or fall back to the default one if it was removed.
+                if (SelectedLanguage == index) SelectedLanguage = -1;
+                else if (SelectedLanguage > index) SelectedLanguage--;
                 if (Languages.Length > 1)
                 {
                     for (int i = index; i < Languages.Length - 1; i++)
