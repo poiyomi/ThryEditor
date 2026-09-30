@@ -45,6 +45,8 @@ namespace Thry.ThryEditor.Drawers
 			{
 				sliderValue = EditorGUILayout.Slider(sliderLabel, prop.vectorValue.w, _min, _max);
 			}
+			// Otherwise every control drawn after this one shows as mixed too
+			EditorGUI.showMixedValue = false;
 
 			if (EditorGUI.EndChangeCheck())
 			{
