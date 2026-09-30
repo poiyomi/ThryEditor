@@ -13,7 +13,10 @@ namespace Thry.ThryEditor.Drawers
 
 		enum LinkMode { Off, Ratio, Delta }
 		static readonly Dictionary<string, LinkMode> s_LinkStates = new Dictionary<string, LinkMode>();
-		static readonly Dictionary<string, Vector4> s_RatioBaselines = new Dictionary<string, Vector4>();
+		// Per material, so one material's shape is never applied to another. Seen is the value the baseline
+		// belongs to; if the vector changes any other way (Off/Delta edits, undo) the baseline starts over from it.
+		struct RatioBaseline { public Vector4 Shape; public Vector4 Seen; }
+		static readonly Dictionary<(int, string), RatioBaseline> s_RatioBaselines = new Dictionary<(int, string), RatioBaseline>();
 
 		static Texture2D s_IconOff;
 		static Texture2D s_IconRatio;
@@ -67,7 +70,9 @@ namespace Thry.ThryEditor.Drawers
 
             EditorGUI.BeginChangeCheck();
             EditorGUI.showMixedValue = prop.hasMixedValue;
-            if (_useLink && !s_RatioBaselines.ContainsKey(prop.name)) s_RatioBaselines[prop.name] = prop.vectorValue;
+            var baselineKey = (Helpers.ObjectExtensions.GetObjectId(prop.targets[0]), prop.name);
+            if (_useLink && (!s_RatioBaselines.TryGetValue(baselineKey, out var tracked) || tracked.Seen != prop.vectorValue))
+                s_RatioBaselines[baselineKey] = new RatioBaseline { Shape = prop.vectorValue, Seen = prop.vectorValue };
 
             Rect fieldR = EditorGUI.PrefixLabel(position, GUIUtility.GetControlID(FocusType.Passive), label);
 			Rect linkR = Rect.zero;
@@ -172,21 +177,20 @@ namespace Thry.ThryEditor.Drawers
 								float factor = values[changedIndex] / oldV[changedIndex];
 								for (int j = 0; j < vectorChannels; j++) values[j] = oldV[j] * factor;
 								// Update baseline to new scaled shape
-								s_RatioBaselines[prop.name] = new Vector4(values[0], vectorChannels > 1 ? values[1] : 0f, vectorChannels > 2 ? values[2] : 0f, vectorChannels > 3 ? values[3] : 0f);
+								SetRatioShape(baselineKey, values);
 
 							}
 							else
 							{
 								// Leaving ~0: use stored baseline to restore proportional scaling
-								Vector4 baseline;
-								if (!s_RatioBaselines.TryGetValue(prop.name, out baseline)) baseline = oldV;
+								Vector4 baseline = s_RatioBaselines.TryGetValue(baselineKey, out var stored) ? stored.Shape : oldV;
 								float baseDenom = Mathf.Abs(baseline[changedIndex]);
 								if (baseDenom > 0.000001f)
 								{
 									float factor = values[changedIndex] / baseline[changedIndex];
 									for (int j = 0; j < vectorChannels; j++) values[j] = baseline[j] * factor;
 									// Update baseline to new scaled shape
-									s_RatioBaselines[prop.name] = new Vector4(values[0], vectorChannels > 1 ? values[1] : 0f, vectorChannels > 2 ? values[2] : 0f, vectorChannels > 3 ? values[3] : 0f);
+									SetRatioShape(baselineKey, values);
 								}
 								else
 								{
@@ -212,8 +216,22 @@ namespace Thry.ThryEditor.Drawers
                     default:
                         break;
                 }
+                if (_useLink && s_RatioBaselines.TryGetValue(baselineKey, out var edited))
+                {
+                    // Only a Ratio edit carries the remembered shape forward
+                    if (!s_LinkStates.TryGetValue(prop.name, out var editMode) || editMode != LinkMode.Ratio) edited.Shape = prop.vectorValue;
+                    edited.Seen = prop.vectorValue;
+                    s_RatioBaselines[baselineKey] = edited;
+                }
             }
         }
+
+		void SetRatioShape((int, string) key, float[] values)
+		{
+			s_RatioBaselines.TryGetValue(key, out var entry);
+			entry.Shape = new Vector4(values[0], vectorChannels > 1 ? values[1] : 0f, vectorChannels > 2 ? values[2] : 0f, vectorChannels > 3 ? values[3] : 0f);
+			s_RatioBaselines[key] = entry;
+		}
 
         public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
         {
