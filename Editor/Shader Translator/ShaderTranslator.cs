@@ -322,8 +322,21 @@ namespace Thry.ThryEditor.ShaderTranslations
             {
                 if (s_translationDefinitions == null)
                     s_translationDefinitions = AssetDatabase.FindAssets("t:" + nameof(ShaderTranslator)).Select(
-                        g => AssetDatabase.LoadAssetAtPath<ShaderTranslator>(AssetDatabase.GUIDToAssetPath(g))).ToList();
+                        g => AssetDatabase.LoadAssetAtPath<ShaderTranslator>(AssetDatabase.GUIDToAssetPath(g))).Where(t => t != null).ToList();
                 return s_translationDefinitions;
+            }
+        }
+
+        // Definitions can also arrive through packages, duplication or moves, and can be deleted, so the list is
+        // rebuilt on the next use after any of those.
+        class TranslationDefinitionWatcher : AssetPostprocessor
+        {
+            static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+            {
+                if (s_translationDefinitions == null) return;
+                if (imported.Concat(deleted).Concat(moved)
+                    .Any(path => path.EndsWith(".asset", StringComparison.OrdinalIgnoreCase)))
+                    s_translationDefinitions = null;
             }
         }
 
@@ -401,7 +414,7 @@ namespace Thry.ThryEditor.ShaderTranslations
             translator.name = Path.GetFileNameWithoutExtension(pathName);
             AssetDatabase.CreateAsset(translator, pathName);
             Selection.activeObject = translator;
-            TranslationDefinitions.Add(translator);
+            s_translationDefinitions = null;
         }
     }
 }
