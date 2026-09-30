@@ -534,10 +534,24 @@ namespace Thry.ThryEditor
             if (!float.IsNaN(right) && resolvedStyle.marginRight != -right) style.marginRight = -right;
         }
 
-        private static string DisplayShaderName(Material material)
+        // Finding a locked material's original shader goes through the AssetDatabase, and the header refreshes
+        // every 150 ms, so the result is kept until the material's shader or dirty count changes.
+        private readonly Dictionary<Material, (Shader locked, int version, Shader original)> _originalShaders = new Dictionary<Material, (Shader, int, Shader)>();
+        private string _titleSource, _titleText;
+        private Match _titleVersion;
+
+        private string DisplayShaderName(Material material)
         {
             if (material == null) return "";
-            var shader = material.IsLocked() ? ShaderOptimizer.GetOriginalShader(material, false) : SectionLock.GetSourceShader(material.shader);
+            Shader shader;
+            if (material.IsLocked())
+            {
+                int version = EditorUtility.GetDirtyCount(material);
+                if (!_originalShaders.TryGetValue(material, out var cached) || cached.locked != material.shader || cached.version != version)
+                    _originalShaders[material] = cached = (material.shader, version, ShaderOptimizer.GetOriginalShader(material, false));
+                shader = cached.original;
+            }
+            else shader = SectionLock.GetSourceShader(material.shader);
             return shader != null ? shader.name : material.GetTag(ShaderOptimizer.TAG_ORIGINAL_SHADER, false, "");
         }
 
@@ -597,8 +611,15 @@ namespace Thry.ThryEditor
             EnableInClassList("thry-dark", EditorGUIUtility.isProSkin);
             if (!visible) { EnableInClassList("thry-filtering", false); _propertySearch.Refresh(null, ""); _body.style.display = DisplayStyle.Flex; return; }
             if (_shader != current) { _shader = current; _shader.FocusCategory(null); _builtTools = false; _localeIndex = -1; }
-            string title = Regex.Replace(_shader.InspectorTitle, "<[^>]+>", "");
-            var version = Regex.Match(title, @"\s+(?:v)?\d+\.\d+[\w.\-]*$", RegexOptions.IgnoreCase);
+            if (_titleText == null || _titleSource != _shader.InspectorTitle)
+            {
+                _titleSource = _shader.InspectorTitle;
+                _titleText = Regex.Replace(_titleSource, "<[^>]+>", "");
+                _titleVersion = Regex.Match(_titleText, @"\s+(?:v)?\d+\.\d+[\w.\-]*$", RegexOptions.IgnoreCase);
+            }
+            string title = _titleText;
+            var version = _titleVersion;
+            if (_originalShaders.Count > _shader.Materials.Length) _originalShaders.Clear();
             var shaderNames = _shader.Materials.Select(DisplayShaderName).Distinct(StringComparer.Ordinal).ToArray();
             string shaderName = shaderNames.FirstOrDefault();
             bool mixedPoiyomi = shaderNames.Length > 1 && shaderNames.All(n => n.Split('/').Last().StartsWith("Poiyomi", StringComparison.OrdinalIgnoreCase));
