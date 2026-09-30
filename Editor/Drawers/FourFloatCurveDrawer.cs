@@ -8,7 +8,7 @@ namespace Thry.ThryEditor.Drawers
     // Usage in shader:
     // [Curve4] _MyFourFloatCurve ("My Curve (4 samples)", Vector) = (1,1,1,1)
     // This drawer shows a CurveField and bakes 4 evenly spaced samples (0, 1/3, 2/3, 1)
-    // into the Vector4 material property. Runtime code samples with smooth cubic.
+    // into the Vector4 material property. Runtime code (poiSampleCurve4) interpolates linearly between them.
     public class Curve4Drawer : MaterialPropertyDrawer
     {
         private AnimationCurve _curve = new AnimationCurve();
@@ -73,14 +73,11 @@ namespace Thry.ThryEditor.Drawers
                 new Keyframe(1f, value.w)
             );
 
+            // Linear, so the curve shows what the shader renders between the samples
             for (int i = 0; i < curve.length; i++)
             {
-                AnimationUtility.TangentMode tangentMode = i == 0 || i == curve.length - 1
-                    ? AnimationUtility.TangentMode.Auto
-                    : AnimationUtility.TangentMode.ClampedAuto;
-
-                AnimationUtility.SetKeyLeftTangentMode(curve, i, tangentMode);
-                AnimationUtility.SetKeyRightTangentMode(curve, i, tangentMode);
+                AnimationUtility.SetKeyLeftTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
+                AnimationUtility.SetKeyRightTangentMode(curve, i, AnimationUtility.TangentMode.Linear);
             }
 
             return curve;

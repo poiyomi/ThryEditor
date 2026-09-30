@@ -185,7 +185,7 @@ namespace Thry.ThryEditor
                     case "Curve4":
                         var curve = new CurveField(); parent.Add(curve); Vector4 last=new Vector4(float.NaN,0,0,0);
                         Track(curve,()=>{ curve.showMixedValue=property.MaterialProperty.hasMixedValue; var v=property.MaterialProperty.vectorValue; if(last==v) return; last=v; var c=new AnimationCurve(new Keyframe(0,v.x),new Keyframe(1f/3,v.y),new Keyframe(2f/3,v.z),new Keyframe(1,v.w));
-                            for(int i=0;i<4;i++){var mode=i==0||i==3?AnimationUtility.TangentMode.Auto:AnimationUtility.TangentMode.ClampedAuto;AnimationUtility.SetKeyLeftTangentMode(c,i,mode); AnimationUtility.SetKeyRightTangentMode(c,i,mode);} curve.SetValueWithoutNotify(c); curve.showMixedValue=property.MaterialProperty.hasMixedValue; });
+                            for(int i=0;i<4;i++){AnimationUtility.SetKeyLeftTangentMode(c,i,AnimationUtility.TangentMode.Linear); AnimationUtility.SetKeyRightTangentMode(c,i,AnimationUtility.TangentMode.Linear);} curve.SetValueWithoutNotify(c); curve.showMixedValue=property.MaterialProperty.hasMixedValue; });
                         curve.RegisterValueChangedCallback(e=>Model.Edit(property,p=>p.vectorValue=new Vector4(Mathf.Clamp01(e.newValue.Evaluate(0)),Mathf.Clamp01(e.newValue.Evaluate(1f/3)),Mathf.Clamp01(e.newValue.Evaluate(2f/3)),Mathf.Clamp01(e.newValue.Evaluate(1)))));
                         handled=true; return;
                     case "Ramp4":
