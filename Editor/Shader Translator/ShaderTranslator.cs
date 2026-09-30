@@ -74,15 +74,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                             if(p != null)
                             {
                                 float textureValue = p.FindPropertyRelative("second").FindPropertyRelative("m_Texture").objectReferenceValue != null ? 1f : 0f;
-                                string expression = trans.GetAppropriateExpression(textureValue);
-                                if(!string.IsNullOrWhiteSpace(expression))
-                                {
-                                    // If we can parse the expression then our expression is just a number. Replace old value with ours
-                                    if(float.TryParse(expression, out float result))
-                                        textureValue = result;
-                                    else
-                                        textureValue = Helper.SolveMath(trans.Math, textureValue);
-                                }
+                                textureValue = SolveExpression(trans, textureValue);
                                 SetFloat(targetProp, only, textureValue);
                             }
                             break;
@@ -95,18 +87,9 @@ namespace Thry.ThryEditor.ShaderTranslations
                             }
 
                             p = GetProperty(serializedMaterial, "m_SavedProperties.m_Floats", trans.Origin);
-                            if(p != null) // I'm sorry but I don't have time to not-copy paste this
+                            if(p != null)
                             {
-                                float f = p.FindPropertyRelative("second").floatValue;
-                                string expression = trans.GetAppropriateExpression(f);
-                                if(!string.IsNullOrWhiteSpace(expression))
-                                {
-                                    // If we can parse the expression then our expression is just a number. Replace old value with ours
-                                    if(float.TryParse(expression, out float result))
-                                        f = result;
-                                    else
-                                        f = Helper.SolveMath(trans.Math, f);
-                                }
+                                float f = SolveExpression(trans, p.FindPropertyRelative("second").floatValue);
                                 SetFloat(targetProp, only, (int)f);
                                 break;
                             }
@@ -115,15 +98,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                             if(p != null)
                             {
                                 float textureValue = p.FindPropertyRelative("second").FindPropertyRelative("m_Texture").objectReferenceValue != null ? 1f : 0f;
-                                string expression = trans.GetAppropriateExpression(textureValue);
-                                if(!string.IsNullOrWhiteSpace(expression))
-                                {
-                                    // If we can parse the expression then our expression is just a number. Replace old value with ours
-                                    if(float.TryParse(expression, out float result))
-                                        textureValue = result;
-                                    else
-                                        textureValue = Helper.SolveMath(trans.Math, textureValue);
-                                }
+                                textureValue = SolveExpression(trans, textureValue);
                                 SetFloat(targetProp, only, (int)textureValue);
                             }
                             break;
@@ -162,32 +137,13 @@ namespace Thry.ThryEditor.ShaderTranslations
 
             void _HandleFloatProperty(ShaderProperty _targetProp, PropertyTranslation trans, SerializedProperty p)
             {
-                float f = p.FindPropertyRelative("second").floatValue;
-                string expression = trans.GetAppropriateExpression(f);
-
-                if(!string.IsNullOrWhiteSpace(expression))
-                {
-                    // If we can parse the expression then our expression is just a number. Replace old value with ours
-                    if(float.TryParse(expression, out float result))
-                        f = result;
-                    else
-                        f = Helper.SolveMath(trans.Math, f);
-                }
+                float f = SolveExpression(trans, p.FindPropertyRelative("second").floatValue);
                 SetFloat(_targetProp, only, f);
             }
 
             void _HandleIntProperty(ShaderProperty _targetProp, PropertyTranslation trans, SerializedProperty p)
             {
-                float f = p.FindPropertyRelative("second").intValue;
-                string expression = trans.GetAppropriateExpression(f);
-                if(!string.IsNullOrWhiteSpace(expression))
-                {
-                    // If we can parse the expression then our expression is just a number. Replace old value with ours
-                    if(float.TryParse(expression, out float result))
-                        f = result;
-                    else
-                        f = Helper.SolveMath(trans.Math, f);
-                }
+                float f = SolveExpression(trans, p.FindPropertyRelative("second").intValue);
                 SetFloat(_targetProp, only, (int)f);
             }
 
@@ -228,6 +184,18 @@ namespace Thry.ThryEditor.ShaderTranslations
                     }
                 }
             }
+        }
+
+        // Evaluates the expression picked for this value, which is the matching conditional block's when conditionals are used
+        static float SolveExpression(PropertyTranslation trans, float value)
+        {
+            string expression = trans.GetAppropriateExpression(value);
+            if(string.IsNullOrWhiteSpace(expression))
+                return value;
+            // If we can parse the expression then our expression is just a number. Replace old value with ours
+            if(float.TryParse(expression, out float result))
+                return result;
+            return Helper.SolveMath(expression, value);
         }
 
         void SetPropertyValue(ShaderEditor editor, string propertyName, float value, Material only)
