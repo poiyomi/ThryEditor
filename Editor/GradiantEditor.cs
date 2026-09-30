@@ -141,7 +141,7 @@ namespace Thry.ThryEditor
             {
                 importer.SetPlatformTextureSettings(new TextureImporterPlatformSettings()
                 {
-                    name = "PC",
+                    name = "Standalone",
                     overridden = true,
                     maxTextureSize = 2048,
                     format = Config.Instance.gradientEditorCompressionOverwrite

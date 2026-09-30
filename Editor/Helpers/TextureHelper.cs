@@ -325,8 +325,9 @@ namespace Thry.ThryEditor.Helpers
                     if (assetImporter is TextureImporter)
                     {
                         TextureImporter textureImporter = (TextureImporter)assetImporter;
-                        TextureImporterFormat textureFormat = textureImporter.GetPlatformTextureSettings("PC").format;
-                        if (textureFormat == TextureImporterFormat.Automatic) textureFormat = textureImporter.GetAutomaticFormat("PC");
+                        TextureImporterPlatformSettings platformSettings = textureImporter.GetPlatformTextureSettings("Standalone");
+                        TextureImporterFormat textureFormat = platformSettings.overridden ? platformSettings.format : TextureImporterFormat.Automatic;
+                        if (textureFormat == TextureImporterFormat.Automatic) textureFormat = textureImporter.GetAutomaticFormat("Standalone");
                         if (BPP.ContainsKey(textureFormat))
                         {
                             add = textureFormat.ToString();
