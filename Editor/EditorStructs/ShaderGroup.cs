@@ -510,6 +510,9 @@ namespace Thry.ThryEditor
                 if (linkedMaterials != null)
                     foreach (Material material in linkedMaterials)
                         CopyTo(material, true);
+                // Menu callbacks run outside the header's change check, so tell global links about the reset here.
+                GlobalLinker.OnSectionChanged(this);
+                GlobalLinker.OnPropertyChanged(this);
                 Undo.SetCurrentGroupName($"Reset {Content.text}");
             }
             finally
