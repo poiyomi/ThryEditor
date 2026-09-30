@@ -218,6 +218,8 @@ namespace Thry.ThryEditor.Helpers
         public static unsafe void TryDetourFromTo(MethodInfo src, MethodInfo dst)
         {
 #if UNITY_EDITOR_WIN
+            // A nested call would back up the already patched bytes, so keep the first patch
+            if (s_patchedData.ContainsKey(src)) return;
             try
             {
                 if (IntPtr.Size == sizeof(Int64))
@@ -290,8 +292,8 @@ namespace Thry.ThryEditor.Helpers
         public static unsafe void RestoreDetour(MethodInfo src)
         {
 #if UNITY_EDITOR_WIN
+            if (!s_patchedData.TryGetValue(src, out var backup)) return;
             var Source_IntPtr = src.MethodHandle.GetFunctionPointer();
-            var backup = s_patchedData[src];
             Marshal.Copy(backup, 0, Source_IntPtr, backup.Length);
             s_patchedData.Remove(src);
 #endif
