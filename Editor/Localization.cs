@@ -771,7 +771,7 @@ namespace Thry.ThryEditor
                 EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
                 EditorGUILayout.LabelField("Import / Export", EditorStyles.boldLabel);
                 EditorGUILayout.HelpBox("Use this area to load Localization data from an external CSV file locally, then click Import. Optionally, you can load data from the internet via a valid URL.", MessageType.Info);
-                EditorGUILayout.HelpBox("DO NOT USE COMMAS in translated text! Commas will break formatting by leaking text into other languages!", MessageType.Warning);
+                EditorGUILayout.HelpBox("Keep each translation on a single line. A line break inside a cell splits the row and breaks the import.", MessageType.Warning);
                 GUICSV(locale);
 
                 if (locale.Languages.Length == 0)
