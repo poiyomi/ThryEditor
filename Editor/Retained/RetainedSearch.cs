@@ -384,7 +384,8 @@ namespace Thry.ThryEditor
         {
             var words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (words.Length == 0) return;
-            string pattern = string.Join("|", words.OrderByDescending(w => w.Length).Select(System.Text.RegularExpressions.Regex.Escape));
+            // Rich-text tags are matched first and kept as they are, so a word like "size" doesn't highlight inside <size=13>.
+            string pattern = "(" + RichTextTag + ")|" + string.Join("|", words.OrderByDescending(w => w.Length).Select(System.Text.RegularExpressions.Regex.Escape));
             foreach (var label in wrapper.Query<Label>(className: "thry-property-label").ToList())
             {
                 string last = null;
@@ -392,7 +393,7 @@ namespace Thry.ThryEditor
                     if (label.text == last) return;
                     string color = EditorGUIUtility.isProSkin ? "#b4d9ea" : "#215f7d";
                     last = System.Text.RegularExpressions.Regex.Replace(label.text ?? "", pattern,
-                        m => "<color=" + color + ">" + m.Value + "</color>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        m => m.Groups[1].Success ? m.Value : "<color=" + color + ">" + m.Value + "</color>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                     label.enableRichText = true; label.text = last;
                 });
             }
@@ -537,7 +538,9 @@ namespace Thry.ThryEditor
             }
             return true;
         }
-        static string Clean(string text) => (text ?? "").Trim().TrimEnd('*').Split('|')[0];
+        const string RichTextTag = @"</?[A-Za-z][^<>]*>";
+        // Captions can carry rich-text tags such as <size=13><b>, which aren't visible text and shouldn't match.
+        static string Clean(string text) => System.Text.RegularExpressions.Regex.Replace(text ?? "", RichTextTag, "").Trim().TrimEnd('*').Split('|')[0];
         static bool HasChanged(ShaderProperty property, ShaderEditor shader, HashSet<ShaderProperty> visited = null)
         {
             return RetainedPropertyDefaults.HasChanged(property, shader, visited);
