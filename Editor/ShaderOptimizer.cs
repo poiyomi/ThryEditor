@@ -1903,8 +1903,10 @@ namespace Thry.ThryEditor
 
             // Record which textures were stripped. A later session that reuses this shader skips the
             // parse entirely, so it has no other way to learn what to strip off the material - and
-            // without it, unlock could not restore them.
-            LockedShaderCache.EntryInfo entryInfo = new LockedShaderCache.EntryInfo();
+            // without it, unlock could not restore them. A regenerated entry keeps the materials already
+            // using it.
+            LockedShaderCache.EntryInfo entryInfo = LockedShaderCache.ReadEntry(entryDirectory) ?? new LockedShaderCache.EntryInfo();
+            entryInfo.StrippedTextures.Clear();
             entryInfo.StrippedTextures.AddRange(stripTextures);
             LockedShaderCache.WriteEntry(entryDirectory, entryInfo);
 
