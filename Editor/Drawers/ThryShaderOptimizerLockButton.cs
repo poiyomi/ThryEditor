@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
@@ -44,9 +41,7 @@ namespace Thry.ThryEditor.Drawers
             {
                 if(RectifiedLayout.Button(EditorLocale.editor.Get("lockin_button_multi").ReplaceVariables(materialEditor.targets.Length)))
                 {
-                    SaveChangeStack();
                     ShaderOptimizer.ToggleLockFromPropertyButton(shaderOptimizer);
-                    RestoreChangeStack();
                     doExitGUI = true;
                 }
             }
@@ -69,9 +64,7 @@ namespace Thry.ThryEditor.Drawers
                 }
                 if (didClickButton)
                 {
-                    SaveChangeStack();
                     ShaderOptimizer.ToggleLockFromPropertyButton(shaderOptimizer);
-                    RestoreChangeStack();
                     doExitGUI = true;
                 }
             }
@@ -107,38 +100,6 @@ namespace Thry.ThryEditor.Drawers
             {
                 ShaderEditor.Active.Reload();
                 GUIUtility.ExitGUI();
-            }
-        }
-
-        //This code purly exists cause Unity 2019 is a piece of shit that looses it's internal change stack on locking CAUSE FUCK IF I KNOW
-        static System.Reflection.FieldInfo changeStack = typeof(EditorGUI).GetField("s_ChangedStack", BindingFlags.Static | BindingFlags.NonPublic);
-        static int preLockStackSize = 0;
-        private static void SaveChangeStack()
-        {
-            if (changeStack != null)
-            {
-                Stack<bool> stack = (Stack<bool>)changeStack.GetValue(null);
-                if (stack != null)
-                {
-                    preLockStackSize = stack.Count();
-                }
-            }
-        }
-
-        private static void RestoreChangeStack()
-        {
-            if (changeStack != null)
-            {
-                Stack<bool> stack = (Stack<bool>)changeStack.GetValue(null);
-                if (stack != null)
-                {
-                    int postLockStackSize = stack.Count();
-                    //Restore change stack from before lock / unlocking
-                    for (int i = postLockStackSize; i < preLockStackSize; i++)
-                    {
-                        EditorGUI.BeginChangeCheck();
-                    }
-                }
             }
         }
 
