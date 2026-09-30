@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Thry.ThryEditor.Helpers;
 using Thry.ThryEditor.TexturePacker;
@@ -273,10 +274,12 @@ namespace Thry.ThryEditor.Drawers
             {
                 if (input.Source.Texture != null) m.SetOverrideTag(id + "_texPack_" + channel + "_guid", AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(input.Source.Texture)));
                 else m.SetOverrideTag(id + "_texPack_" + channel + "_guid", "");
-                m.SetOverrideTag(id + "_texPack_" + channel + "_fallback", input.Fallback.ToString());
+                // Tags are read back with the invariant culture, so a comma decimal separator would load as 0.
+                // Written like the retained packer writes them.
+                m.SetOverrideTag(id + "_texPack_" + channel + "_fallback", input.Fallback.ToString(CultureInfo.InvariantCulture));
                 m.SetOverrideTag(id + "_texPack_" + channel + "_inverted", input.Invert.ToString());
-                m.SetOverrideTag(id + "_texPack_" + channel + "_channel", ((int)input.Channel).ToString());
-                m.SetOverrideTag(id + "_texPack_" + channel + "_srcRange", input.Remapping.ToString());
+                m.SetOverrideTag(id + "_texPack_" + channel + "_channel", ((int)input.Channel).ToString(CultureInfo.InvariantCulture));
+                m.SetOverrideTag(id + "_texPack_" + channel + "_srcRange", "(" + string.Join(",", Enumerable.Range(0, 4).Select(i => input.Remapping[i].ToString(CultureInfo.InvariantCulture))) + ")");
             }
         }
 
