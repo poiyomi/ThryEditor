@@ -661,18 +661,20 @@ namespace Thry.ThryEditor
             CopyTo(new Material[] { target }, applyDrawers, deepCopy, copyReferenceProperties, skipPropertyTypes, skipPropertyNames);
         }
 
+        // A locked shader drops the toggles of disabled slots (for example _DecalEnabled1-3), so a section's
+        // reference properties can be missing on either side. Those are skipped rather than looked up directly.
         protected void CopyReferencePropertiesTo(Material[] targets, HashSet<ShaderPropertyType> skipPropertyTypes, HashSet<string> skipPropertyNames)
         {
             if (Options.reference_properties != null)
                 foreach (string r_property in Options.reference_properties)
                 {
-                    ShaderProperty property = MyShaderUI.PropertyDictionary[r_property];
+                    if (!MyShaderUI.PropertyDictionary.TryGetValue(r_property, out ShaderProperty property)) continue;
                     property.CopyTo(targets, false, true, true, skipPropertyTypes, skipPropertyNames);
                 }
-            if (string.IsNullOrWhiteSpace(Options.reference_property) == false)
+            if (string.IsNullOrWhiteSpace(Options.reference_property) == false
+                && MyShaderUI.PropertyDictionary.TryGetValue(Options.reference_property, out ShaderProperty referenceProperty))
             {
-                ShaderProperty property = MyShaderUI.PropertyDictionary[Options.reference_property];
-                property.CopyTo(targets, false, true, true, skipPropertyTypes, skipPropertyNames);
+                referenceProperty.CopyTo(targets, false, true, true, skipPropertyTypes, skipPropertyNames);
             }
         }
 
@@ -681,13 +683,13 @@ namespace Thry.ThryEditor
             if (Options.reference_properties != null)
                 foreach (string r_property in Options.reference_properties)
                 {
-                    ShaderProperty property = MyShaderUI.PropertyDictionary[r_property];
+                    if (!MyShaderUI.PropertyDictionary.TryGetValue(r_property, out ShaderProperty property)) continue;
                     property.CopyFrom(source, false, true, true, skipPropertyTypes, skipPropertyNames);
                 }
-            if (string.IsNullOrWhiteSpace(Options.reference_property) == false)
+            if (string.IsNullOrWhiteSpace(Options.reference_property) == false
+                && MyShaderUI.PropertyDictionary.TryGetValue(Options.reference_property, out ShaderProperty referenceProperty))
             {
-                ShaderProperty property = MyShaderUI.PropertyDictionary[Options.reference_property];
-                property.CopyFrom(source, false, true, true, skipPropertyTypes, skipPropertyNames);
+                referenceProperty.CopyFrom(source, false, true, true, skipPropertyTypes, skipPropertyNames);
             }
         }
 
@@ -696,15 +698,15 @@ namespace Thry.ThryEditor
             if (Options.reference_properties != null && src.Options.reference_properties != null)
                 for (int i = 0; i < Options.reference_properties.Length && i < src.Options.reference_properties.Length; i++)
                 {
-                    ShaderProperty property = MyShaderUI.PropertyDictionary[Options.reference_properties[i]];
-                    ShaderProperty srcProperty = src.MyShaderUI.PropertyDictionary[src.Options.reference_properties[i]];
+                    if (!MyShaderUI.PropertyDictionary.TryGetValue(Options.reference_properties[i], out ShaderProperty property)
+                        || !src.MyShaderUI.PropertyDictionary.TryGetValue(src.Options.reference_properties[i], out ShaderProperty srcProperty)) continue;
                     property.CopyFrom(srcProperty, false, true, true, skipPropertyTypes, skipPropertyNames);
                 }
-            if (!string.IsNullOrWhiteSpace(Options.reference_property) && !string.IsNullOrWhiteSpace(src.Options.reference_property))
+            if (!string.IsNullOrWhiteSpace(Options.reference_property) && !string.IsNullOrWhiteSpace(src.Options.reference_property)
+                && MyShaderUI.PropertyDictionary.TryGetValue(Options.reference_property, out ShaderProperty referenceProperty)
+                && src.MyShaderUI.PropertyDictionary.TryGetValue(src.Options.reference_property, out ShaderProperty srcReferenceProperty))
             {
-                ShaderProperty property = MyShaderUI.PropertyDictionary[Options.reference_property];
-                ShaderProperty srcProperty = src.MyShaderUI.PropertyDictionary[src.Options.reference_property];
-                property.CopyFrom(srcProperty, false, true, true, skipPropertyTypes, skipPropertyNames);
+                referenceProperty.CopyFrom(srcReferenceProperty, false, true, true, skipPropertyTypes, skipPropertyNames);
             }
         }
 
@@ -713,15 +715,15 @@ namespace Thry.ThryEditor
             if (Options.reference_properties != null && target.Options.reference_properties != null)
                 for (int i = 0; i < Options.reference_properties.Length && i < target.Options.reference_properties.Length; i++)
                 {
-                    ShaderProperty property = MyShaderUI.PropertyDictionary[Options.reference_properties[i]];
-                    ShaderProperty targetProperty = target.MyShaderUI.PropertyDictionary[target.Options.reference_properties[i]];
+                    if (!MyShaderUI.PropertyDictionary.TryGetValue(Options.reference_properties[i], out ShaderProperty property)
+                        || !target.MyShaderUI.PropertyDictionary.TryGetValue(target.Options.reference_properties[i], out ShaderProperty targetProperty)) continue;
                     property.CopyTo(targetProperty, false, true, true, skipPropertyTypes, skipPropertyNames);
                 }
-            if (!string.IsNullOrWhiteSpace(Options.reference_property) && !string.IsNullOrWhiteSpace(target.Options.reference_property))
+            if (!string.IsNullOrWhiteSpace(Options.reference_property) && !string.IsNullOrWhiteSpace(target.Options.reference_property)
+                && MyShaderUI.PropertyDictionary.TryGetValue(Options.reference_property, out ShaderProperty referenceProperty)
+                && target.MyShaderUI.PropertyDictionary.TryGetValue(target.Options.reference_property, out ShaderProperty targetReferenceProperty))
             {
-                ShaderProperty property = MyShaderUI.PropertyDictionary[Options.reference_property];
-                ShaderProperty targetProperty = target.MyShaderUI.PropertyDictionary[target.Options.reference_property];
-                property.CopyTo(targetProperty, false, true, true, skipPropertyTypes, skipPropertyNames);
+                referenceProperty.CopyTo(targetReferenceProperty, false, true, true, skipPropertyTypes, skipPropertyNames);
             }
         }
 
