@@ -111,13 +111,27 @@ namespace Thry.ThryEditor.Helpers
         /// </summary>
         /// <param name="key">Property Name or "render_queue"</param>
         /// <param name="value"></param>
-        public static void SetValueAdvanced(string key, string value)
+        public static void SetValueAdvanced(string key, string value) => SetValueAdvanced(key, value, null);
+
+        public static void SetValueAdvanced(string key, string value, Material[] targets)
         {
             Material[] materials = ShaderEditor.Active.Materials;
+            bool subset = targets != null && targets.Length > 0 && !new HashSet<Material>(targets).SetEquals(materials);
+            if (subset) materials = targets;
             if (ShaderEditor.Active.PropertyDictionary.TryGetValue(key, out ShaderProperty p))
             {
-                MaterialHelper.SetValue(p.MaterialProperty, value);
-                p.UpdateKeywordFromValue();
+                if (!subset)
+                {
+                    MaterialHelper.SetValue(p.MaterialProperty, value);
+                    p.UpdateKeywordFromValue();
+                    return;
+                }
+                Material[] own = targets.Where(m => m != null && m.HasProperty(key)).ToArray();
+                if (own.Length == 0) return;
+                MaterialProperty mp = MaterialEditor.GetMaterialProperty(own, key);
+                mp.applyPropertyCallback = p.MaterialProperty?.applyPropertyCallback;
+                SetValue(mp, value);
+                if (p.Keyword != null) ToggleKeyword(own, p.Keyword, mp.GetNumber() == 1);
             }
             else if (key == "render_queue")
             {
