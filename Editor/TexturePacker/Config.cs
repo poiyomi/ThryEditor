@@ -147,8 +147,11 @@ namespace Thry.ThryEditor.TexturePacker
         {
             if (importer == null || this == null) return;
             importer.userData = this.Serialize();
-            s_textureImporterList[importer.assetPath.Replace("Assets/", "")] = importer;
+            s_textureImporterList[ImporterListName(importer.assetPath)] = importer;
         }
+
+        // Strip only the leading "Assets/" so textures in nested Assets folders keep distinct names
+        static string ImporterListName(string path) => path.StartsWith("Assets/", StringComparison.Ordinal) ? path.Substring("Assets/".Length) : path;
 
         private static SortedList<string, TextureImporter> s_textureImporterList = new SortedList<string, TextureImporter>();
         private static string[] s_importerGuids = null;
@@ -197,7 +200,7 @@ namespace Thry.ThryEditor.TexturePacker
                     {
                         if (importer.userData.StartsWith("ThryTexturePackerConfig:"))
                         {
-                            s_textureImporterList.Add(path.Replace("Assets/", ""), importer);
+                            s_textureImporterList[ImporterListName(path)] = importer;
                         }
                     }
                 }
