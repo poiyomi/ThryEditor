@@ -15,9 +15,9 @@ namespace Thry.ThryEditor
     ///
     /// Recovery is an unlock. Everything needed is on the material itself and therefore survives an
     /// export: the original shader is named by an override tag, textures the optimizer stripped were
-    /// stashed as _stripped_tex_ tags, and the pre-lock keyword set is in OriginalKeywords. So the
-    /// material returns to exactly the state it had before locking, and can simply be locked again -
-    /// which regenerates the cache entry.
+    /// stashed with their tiling as _stripped_tex_ and _stripped_st_ tags, and the pre-lock keyword
+    /// set is in OriginalKeywords. So the material returns to exactly the state it had before locking,
+    /// and can simply be locked again - which regenerates the cache entry.
     /// </summary>
     public static class LockedShaderRecovery
     {

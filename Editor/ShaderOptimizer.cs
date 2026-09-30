@@ -2076,6 +2076,11 @@ namespace Thry.ThryEditor
                     if(doStrip)
                     {
                         savedTextures.Add(("_stripped_tex_" + propName, AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(material.GetTexture(propName)))));
+                        // Deleting the entry drops its tiling and offset too, and the original shader would
+                        // bring the slot back at (1,1) (0,0).
+                        Vector2 scale = prop.FindPropertyRelative("second.m_Scale").vector2Value;
+                        Vector2 offset = prop.FindPropertyRelative("second.m_Offset").vector2Value;
+                        savedTextures.Add(("_stripped_st_" + propName, FormatTextureST(new Vector4(scale.x, scale.y, offset.x, offset.y))));
                     }
                     serializedTexProperties.DeleteArrayElementAtIndex(i);
                     i -= 1;
@@ -2991,6 +2996,26 @@ namespace Thry.ThryEditor
             return shader != null && closestDistance < name.Length * 0.5f;
         }
 
+        // Tiling and offset of a stripped texture as "scaleX,scaleY,offsetX,offsetY".
+        static string FormatTextureST(Vector4 st)
+        {
+            return string.Join(",", new float[] { st.x, st.y, st.z, st.w }.Select(f => f.ToString("R", CultureInfo.InvariantCulture)));
+        }
+
+        static bool TryParseTextureST(string s, out Vector4 st)
+        {
+            st = new Vector4(1, 1, 0, 0);
+            string[] parts = s.Split(',');
+            if (parts.Length != 4) return false;
+            float[] values = new float[4];
+            for (int i = 0; i < 4; i++)
+            {
+                if (!float.TryParse(parts[i], NumberStyles.Float, CultureInfo.InvariantCulture, out values[i])) return false;
+            }
+            st = new Vector4(values[0], values[1], values[2], values[3]);
+            return true;
+        }
+
         private static UnlockSuccess UnlockConcrete(Material material)
         {
             Shader lockedShader = material.shader;
@@ -3067,6 +3092,17 @@ namespace Thry.ThryEditor
                 {
                     material.SetOverrideTag("_stripped_tex_" + tex, "");
                     material.SetTexture(tex, AssetDatabase.LoadAssetAtPath<Texture>(AssetDatabase.GUIDToAssetPath(guid)));
+                }
+                // Materials locked before tiling was saved have no such tag and keep the default.
+                string st = material.GetTag("_stripped_st_" + tex, false);
+                if (!string.IsNullOrWhiteSpace(st))
+                {
+                    material.SetOverrideTag("_stripped_st_" + tex, "");
+                    if (TryParseTextureST(st, out Vector4 value))
+                    {
+                        material.SetTextureScale(tex, new Vector2(value.x, value.y));
+                        material.SetTextureOffset(tex, new Vector2(value.z, value.w));
+                    }
                 }
             }
 
