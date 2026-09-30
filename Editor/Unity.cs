@@ -29,42 +29,6 @@ namespace Thry.ThryEditor
             return guids.Select(g => AssetDatabase.GUIDToAssetPath(g)).Where(p => p.EndsWith(filename)).ToList();
         }
 
-        public static void SetDefineSymbol(string symbol, bool active)
-        {
-            SetDefineSymbol(symbol, active, true);
-        }
-
-        public static void SetDefineSymbol(string symbol, bool active, bool refresh_if_changed)
-        {
-            try
-            {
-                string symbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(
-                        BuildTargetGroup.Standalone);
-                if (!symbols.Contains(symbol) && active)
-                {
-                    PlayerSettings.SetScriptingDefineSymbolsForGroup(
-                                  BuildTargetGroup.Standalone, symbols + ";" + symbol);
-                    if(refresh_if_changed)
-                        AssetDatabase.Refresh();
-                }
-                else if (symbols.Contains(symbol) && !active)
-                {
-                    PlayerSettings.SetScriptingDefineSymbolsForGroup(
-                                  BuildTargetGroup.Standalone, Regex.Replace(symbols, @";?" + @symbol, ""));
-                    if(refresh_if_changed)
-                        AssetDatabase.Refresh();
-                }
-            }
-            catch (Exception e)
-            {
-                e.ToString();
-            }
-        }
-
-        public static void RemoveDefineSymbols()
-        {
-        }
-
         public static void RepaintEditorWindow<T>() where T : EditorWindow
         {
             EditorWindow window = (EditorWindow)Resources.FindObjectsOfTypeAll<T>().FirstOrDefault();
@@ -106,24 +70,6 @@ namespace Thry.ThryEditor
                 return windows[0] as EditorWindow;
             }
             return null;
-        }
-
-        public static string GetCurrentAssetExplorerFolder()
-        {
-            if (Selection.activeObject) return "Assets";
-            string path = AssetDatabase.GetAssetPath(Selection.activeObject);
-            if (Directory.Exists(path)) return path;
-            else return Path.GetDirectoryName(path);
-        }
-        
-        public static void AddShaderPropertyToSourceCode(string path, string property, string value)
-        {
-            string shaderCode = FileHelper.ReadFileIntoString(path);
-            string pattern = @"Properties.*\n?\s*{";
-            RegexOptions options = RegexOptions.Multiline;
-            shaderCode = Regex.Replace(shaderCode, pattern, "Properties \r\n  {" + " \r\n      " + property + "=" + value, options);
-
-            FileHelper.WriteStringToFile(shaderCode, path);
         }
 
         static MethodInfo[] method_PropertyBeginOriginal = typeof(MaterialProperty).GetMethods(BindingFlags.Static | BindingFlags.NonPublic).Where(m => m.Name == "BeginProperty").ToArray();
@@ -293,35 +239,13 @@ namespace Thry.ThryEditor
     }
 
 
-    public class UnityFixer
-    {
-        public static ApiCompatibilityLevel CheckAPICompatibility()
-        {
-            ApiCompatibilityLevel level =
-#if UNITY_6000_0_OR_NEWER
-                PlayerSettings.GetApiCompatibilityLevel(UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(BuildTargetGroup.Standalone));
-#else
-                PlayerSettings.GetApiCompatibilityLevel(BuildTargetGroup.Standalone);
-#endif
-            if (level == ApiCompatibilityLevel.NET_2_0_Subset)
-                PlayerSettings.SetApiCompatibilityLevel(BuildTargetGroup.Standalone, ApiCompatibilityLevel.NET_2_0);
-
-            return level;
-        }
-    }
-
     [InitializeOnLoad]
     public class OnCompileHandler
     {
         static OnCompileHandler()
         {
-            //Init Editor Variables with paths
-            ShaderEditor.GetShaderEditorDirectoryPath();
-
             Config.OnCompile();
             TrashHandler.EmptyThryTrash();
-
-            UnityFixer.CheckAPICompatibility(); //check that Net_2.0 is ApiLevel
         }
     }
 
@@ -329,7 +253,6 @@ namespace Thry.ThryEditor
     {
         static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
         {
-            if (deletedAssets.Length > 0) AssetsDeleted(deletedAssets);
             if (importedAssets.Length > 0) RepairLockedShaderRefs(importedAssets);
             // A shader's property attributes can change on reimport, and ShaderEditor caches which of them
             // carry [ThryHideInInspector] to keep material selection fast.
@@ -341,26 +264,6 @@ namespace Thry.ThryEditor
         {
             for (int i = 0; i < assets.Length; i++)
                 if (assets[i].EndsWith(".shader", System.StringComparison.OrdinalIgnoreCase)) return true;
-            return false;
-        }
-
-        private static void AssetsDeleted(string[] assets)
-        {
-            if (CheckForEditorRemove(assets))
-            {
-                Debug.Log("[Thry] ShaderEditor is being deleted.");
-                Config.Instance.ClearVersion();
-            }
-        }
-
-        private static bool CheckForEditorRemove(string[] assets)
-        {
-            string test_for = ShaderEditor.GetShaderEditorDirectoryPath() + "/Editor/ShaderEditor.cs";
-            foreach (string p in assets)
-            {
-                if (p == test_for)
-                    return true;
-            }
             return false;
         }
 
