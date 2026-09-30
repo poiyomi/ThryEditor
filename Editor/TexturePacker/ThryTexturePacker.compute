@@ -190,14 +190,18 @@ float4 Kernel_Channels;
 [numthreads(8, 8, 1)]
 void CS_Kernel(uint3 id : SV_DispatchThreadID)
 {
+	if (id.x >= (uint)Width || id.y >= (uint)Height) return;
+
 	float4 pixel_x = float4(0, 0, 0, 0);
 	float4 pixel_y = float4(0, 0, 0, 0);
+	// Clamp neighbors to the edge; out-of-range loads return 0 and darken or brighten the border.
+	int2 maxCoord = int2(Width, Height) - 1;
 	
 	for (int x = -2; x <= 2; x++)
 	{
 		for (int y = -2; y <= 2; y++)
 		{
-			float4 p = Kernel_Input.Load(int3(id.xy + int2(x,y), 0));
+			float4 p = Kernel_Input.Load(int3(clamp(int2(id.xy) + int2(x,y), 0, maxCoord), 0));
 			[branch]
 			if(Kernel_Grayscale)
 			{
