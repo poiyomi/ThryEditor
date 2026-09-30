@@ -190,11 +190,13 @@ namespace Thry.ThryEditor.Drawers
             {
                 r.width = 70;
                 r.x = totalRect.x + totalRect.width - r.width;
-                input.Fallback = EditorGUI.FloatField(r, input.Fallback);
+                input.Fallback = EditorGUI.DelayedFloatField(r, input.Fallback);
 
                 r.width = 60;
                 r.x -= r.width;
                 EditorGUI.LabelField(r, "Fallback:");
+                // Also catches the texture being cleared above, which lands in this branch.
+                didChange = EditorGUI.EndChangeCheck();
             }
             else
             {
