@@ -1438,7 +1438,21 @@ namespace Thry
                 int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch, appliedNames);
                 var skipNames = MaterialTextSerializer.GetUnpastedPropertyNames(this, appliedNames);
 
-                foreach (var part in ShaderParts) part.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames);
+                // A copied preset value doesn't run its on_value_actions, so apply a changed preset first to get its
+                // render queue, render type and blend setup. The copy below then puts the text's own values over it.
+                ShaderProperty preset = RenderingPresets.FindPresetProperty(this);
+                if (preset != null && appliedNames.Contains(preset.MaterialProperty.name))
+                {
+                    float pastedPreset = scratch.GetNumber(preset.MaterialProperty);
+                    if (preset.MaterialProperty.hasMixedValue || preset.MaterialProperty.GetNumber() != pastedPreset) preset.FloatValue = pastedPreset;
+                }
+
+                foreach (var part in ShaderParts)
+                {
+                    // The text carries neither, so copying them would only put the shader's defaults back.
+                    if (part == _renderQueueProperty || part == _vRCFallbackProperty) continue;
+                    part.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames);
+                }
 
                 UnityEngine.Object.DestroyImmediate(scratch);
 
