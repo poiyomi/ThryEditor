@@ -165,6 +165,11 @@ namespace Thry.ThryEditor
             {
                 foreach (Material material in inspected)
                 {
+                    // A variant renders with its root's shader, and a section shader has the root's keywords and values
+                    // written in. Apply keeps a root with loaded variants off, but a variant made or loaded later
+                    // finds it already on one, so the root goes back to its original.
+                    if (material != null && material.isVariant && SectionLock.IsSectionLocked(material))
+                        SectionLock.RevertAll(new[] { material });
                     if (material == null || s_tracked.ContainsKey(material)) continue;
                     // The first look only records the state, so selecting a material changes nothing. One that is
                     // already on a section shader is checked once, in case it changed while nobody watched it.
