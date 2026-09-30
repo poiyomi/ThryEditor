@@ -112,6 +112,23 @@ namespace Thry.ThryEditor
             }
         }
 
+        /// <summary>Makes these materials get a section shader on the next check, e.g. after they were put back on their
+        /// original because it changed.</summary>
+        public static void Recheck(IEnumerable<Material> materials)
+        {
+            foreach (Material material in materials)
+            {
+                if (material == null) continue;
+                s_tracked[material] = new TrackedMaterial
+                {
+                    DirtyCount = EditorUtility.GetDirtyCount(material),
+                    Keywords = KeywordState(material),
+                    Pending = true,
+                    ChangedAt = ApplyNow,
+                };
+            }
+        }
+
         // A domain reload empties s_tracked, but section-locked materials stay on their section shaders. They are
         // tracked again and checked, so changes made from outside the inspector still reach their shader.
         static void TrackLoadedSectionLocked()
@@ -472,17 +489,20 @@ namespace Thry.ThryEditor
         // shader on their next check.
         static void RevertMaterialsOf(HashSet<string> shaderPaths)
         {
-            bool reverted = false;
+            List<Material> reverted = new List<Material>();
             foreach (Material material in Resources.FindObjectsOfTypeAll<Material>())
             {
                 if (!SectionLock.IsSectionLocked(material)) continue;
                 Shader source = SectionLock.GetSourceShader(material);
                 if (source == null || !shaderPaths.Contains(AssetDatabase.GetAssetPath(source))) continue;
                 bool clean = !EditorUtility.IsDirty(material);
-                if (SectionLock.Revert(material) && clean) EditorUtility.ClearDirty(material);
-                reverted = true;
+                if (!SectionLock.Revert(material)) continue;
+                if (clean) EditorUtility.ClearDirty(material);
+                // Reverting a variant reverts its root.
+                reverted.Add(material.GetRoot());
             }
-            if (reverted && SectionLockService.Enabled) SectionLockService.RecheckAll();
+            // Back on the original they aren't section-locked any more, so RecheckAll would skip them.
+            if (reverted.Count > 0 && SectionLockService.Enabled) SectionLockService.Recheck(reverted);
         }
 
         static bool FileMentionsSectionLock(string path)
