@@ -2027,6 +2027,15 @@ namespace Thry.ThryEditor
             List<RenamingProperty> animatedPropsToDuplicate = applyStruct.animatedPropsToDuplicate;
             string animPropertySuffix = applyStruct.animPropertySuffix;
 
+            // Checked before anything is written, so a failed lock leaves the material as it was instead of
+            // unlocked with its stripped textures gone.
+            Shader newShader = Shader.Find(newShaderName);
+            if (newShader == null)
+            {
+                ThryLogger.LogErr("Generated shader " + newShaderName + " could not be found. Did you delete the file?");
+                return false;
+            }
+
             string shaderGUID = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(shader));
 
             // Write original shader to override tag
@@ -2078,12 +2087,6 @@ namespace Thry.ThryEditor
                 material.SetOverrideTag(tag, guid);
 
             // Actually switch the shader
-            Shader newShader = Shader.Find(newShaderName);
-            if (newShader == null)
-            {
-                ThryLogger.LogErr("Generated shader " + newShaderName + " could not be found. Did you delete the file?");
-                return false;
-            }
             // The locked shader's properties are the original's, so it can reuse their drawer handlers instead of
             // Unity parsing them again on first use.
             SectionLock.ShareDrawerHandlersByName(shader, newShader);
