@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -61,22 +60,22 @@ namespace Thry.ThryEditor
 
         private static void FindReferencesAndOpenEditor(Texture texture)
         {
-            string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(texture));
             Material[] materials = Resources.FindObjectsOfTypeAll<Material>();
             List<(Material material, string propertyName)> textureUses = new List<(Material, string)>();
-            // Search files for references
+            // Check each material's own saved textures. Several materials can share one asset file, and
+            // saved entries the current shader no longer declares still count as uses.
             foreach (Material material in materials)
             {
-                string path = AssetDatabase.GetAssetPath(material);
-                if (File.Exists(path))
+                if (string.IsNullOrEmpty(AssetDatabase.GetAssetPath(material))) continue;
+                using (SerializedObject serializedMaterial = new SerializedObject(material))
                 {
-                    string[] lines = File.ReadAllLines(path);
-                    for(int i = 0; i < lines.Length; i++)
+                    SerializedProperty texEnvs = serializedMaterial.FindProperty("m_SavedProperties.m_TexEnvs");
+                    if (texEnvs == null || !texEnvs.isArray) continue;
+                    for (int i = 0; i < texEnvs.arraySize; i++)
                     {
-                        if (lines[i].IndexOf(guid, StringComparison.OrdinalIgnoreCase) != -1)
-                        {
-                            textureUses.Add((material, lines[i-1].Substring(6, lines[i-1].Length - 7)));
-                        }
+                        SerializedProperty entry = texEnvs.GetArrayElementAtIndex(i);
+                        if (entry.FindPropertyRelative("second.m_Texture").objectReferenceValue == texture)
+                            textureUses.Add((material, entry.FindPropertyRelative("first").stringValue));
                     }
                 }
             }
