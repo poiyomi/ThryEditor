@@ -111,6 +111,8 @@ namespace Thry.ThryEditor.TexturePacker
                 {
                     config.FileOutput.ColorSpace = importer.sRGBTexture ? ColorSpace.Gamma : ColorSpace.Linear;
                     config.FileOutput.FilterMode = importer.filterMode;
+                    // Match the source so a mask with it off doesn't get its RGB dilated under transparent alpha on import
+                    config.FileOutput.AlphaIsTransparency = importer.alphaIsTransparency;
                     return true;
                 }
             }
