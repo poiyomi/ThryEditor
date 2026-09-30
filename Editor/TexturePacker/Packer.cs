@@ -292,7 +292,7 @@ namespace Thry.ThryEditor.TexturePacker
             tex.alphaIsTransparency = false;
             tex.Apply();
 
-            Save(tex, config, overwriteName: config.FileOutput.FileName + namePostfix);
+            Save(tex, config, overwriteName: config.FileOutput.FileName + namePostfix, storeConfig: false);
             }
             finally { RenderTexture.active = previousActive; UnityEngine.Object.DestroyImmediate(tex); }
         }
@@ -358,7 +358,7 @@ namespace Thry.ThryEditor.TexturePacker
             if (PackShader == null) throw new InvalidOperationException("The texture packing shader is missing. Reimport the shader package before packing textures.");
         }
 
-        public static TextureImporter Save(Texture2D texture, TexturePackerConfig config, string overwriteName = null)
+        public static TextureImporter Save(Texture2D texture, TexturePackerConfig config, string overwriteName = null, bool storeConfig = true)
         {
             config.RequireResolvedSources();
             string path;
@@ -410,7 +410,9 @@ namespace Thry.ThryEditor.TexturePacker
                     Config.Instance.texturePackerCompressionWithAlphaOverwrite : Config.Instance.texturePackerCompressionNoAlphaOverwrite;
                 importer.SetPlatformTextureSettings(new TextureImporterPlatformSettings
                 { name = "Standalone", overridden = format != TextureImporterFormat.Automatic, maxTextureSize = maximum, format = format });
-                config.SaveToImporter(importer);
+                if (storeConfig) config.SaveToImporter(importer);
+                // A channel export isn't the packed texture, so it must not reopen as that pack.
+                else if (importer.userData.StartsWith("ThryTexturePackerConfig:")) importer.userData = "";
                 importer.SaveAndReimport();
                 if (AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath) == null) throw new IOException("The exported texture could not be loaded at " + assetPath + ".");
                 return importer;
