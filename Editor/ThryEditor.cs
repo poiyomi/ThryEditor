@@ -1447,12 +1447,15 @@ namespace Thry
                     if (preset.MaterialProperty.hasMixedValue || preset.MaterialProperty.GetNumber() != pastedPreset) preset.FloatValue = pastedPreset;
                 }
 
-                foreach (var part in ShaderParts)
+                MaterialTextSerializer.KeepAnimatedTags(this, appliedNames, () =>
                 {
-                    // The text carries neither, so copying them would only put the shader's defaults back.
-                    if (part == _renderQueueProperty || part == _vRCFallbackProperty) continue;
-                    part.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames);
-                }
+                    foreach (var part in ShaderParts)
+                    {
+                        // The text carries neither, so copying them would only put the shader's defaults back.
+                        if (part == _renderQueueProperty || part == _vRCFallbackProperty) continue;
+                        part.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames);
+                    }
+                });
 
                 UnityEngine.Object.DestroyImmediate(scratch);
 

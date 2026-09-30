@@ -316,6 +316,25 @@ namespace Thry.ThryEditor
             return skip;
         }
 
+        // The text doesn't carry Animated tags and the scratch material has none, so the copy would clear the
+        // targets' tags on every pasted property. Put each target's own tags back afterwards.
+        public static void KeepAnimatedTags(ShaderEditor editor, HashSet<string> appliedNames, Action paste)
+        {
+            var saved = new List<(Material material, string tag, string value)>();
+            foreach (string name in appliedNames)
+            {
+                string tag = name + ShaderOptimizer.AnimatedTagSuffix;
+                foreach (Material m in editor.Materials) saved.Add((m, tag, m.GetTag(tag, false, "")));
+            }
+
+            paste();
+
+            foreach (var (m, tag, value) in saved)
+                if (m.GetTag(tag, false, "") != value) m.SetOverrideTag(tag, value);
+            foreach (string name in appliedNames)
+                if (editor.PropertyDictionary.TryGetValue(name, out var property)) property.RefreshRetainedAnimatedState();
+        }
+
         public static readonly HashSet<UnityEngine.Rendering.ShaderPropertyType> SkipTextures = new HashSet<UnityEngine.Rendering.ShaderPropertyType>
         {
             UnityEngine.Rendering.ShaderPropertyType.Texture

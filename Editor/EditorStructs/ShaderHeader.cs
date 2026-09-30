@@ -591,7 +591,8 @@ namespace Thry.ThryEditor
                 int applied = MaterialTextSerializer.ApplyToMaterial(data, scratch, appliedNames);
                 var skipNames = MaterialTextSerializer.GetUnpastedPropertyNames(property.MyShaderUI, appliedNames);
 
-                property.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames);
+                MaterialTextSerializer.KeepAnimatedTags(property.MyShaderUI, appliedNames,
+                    () => property.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames));
                 property.UpdateLinkedMaterials();
                 GlobalLinker.OnSectionChanged(property);
 
