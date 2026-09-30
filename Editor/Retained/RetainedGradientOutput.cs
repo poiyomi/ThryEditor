@@ -45,9 +45,9 @@ namespace Thry.ThryEditor
                     importer.maxTextureSize = Mathf.Clamp(Mathf.NextPowerOfTwo(Mathf.Max(texture.width, texture.height)), 32, 16384);
                     var format = Config.Instance.gradientEditorCompressionOverwrite;
                     if (format != TextureImporterFormat.Automatic)
-                        importer.SetPlatformTextureSettings(new TextureImporterPlatformSettings { name = "PC", overridden = true,
+                        importer.SetPlatformTextureSettings(new TextureImporterPlatformSettings { name = "Standalone", overridden = true,
                             maxTextureSize = importer.maxTextureSize, format = format });
-                    else importer.ClearPlatformTextureSettings("PC");
+                    else importer.ClearPlatformTextureSettings("Standalone");
                     importer.SaveAndReimport();
                     return importer;
                 });
