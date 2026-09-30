@@ -1,3 +1,6 @@
+/* CONTRIBUTORS: Please only use one declaration per line in order to keep things
+   organized within stylesheet formatting. */
+
 /* Shared retained UI stylesheet. Edit this file to experiment with the inspector
    and companion windows. Compatibility sheets only import this file.
    See ../UI_STYLING.md for scope and examples. */
@@ -177,6 +180,58 @@
 .thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
     --thry-button-pressed-background: #c4c4c4;
     --thry-button-selected-hover-background: #cfe0ec;
+}
+
+/* On state for ButtonVector, Vector4Toggles and multi-float tiles. The fill must
+   differ from the off buttons in brightness, not just hue, and the outline must
+   stand out from its surroundings, so the state reads without relying on color.
+   Keep white text at 4.5:1 or better on every fill. Light-skin outlines are dark
+   because a bright green edge disappears against light gray. */
+.thry-inspector {
+    --thry-toggle-on-background: #3d7a1c;
+    --thry-toggle-on-hover-background: #43841f;
+    --thry-toggle-on-pressed-background: #336816;
+    --thry-toggle-on-disabled-background: #445d33;
+    --thry-toggle-on-border-color: var(--thry-monokai-green);
+    --thry-toggle-on-disabled-border-color: #7f9c48;
+    --thry-toggle-on-border-width: var(--thry-border-width-strong);
+    --thry-toggle-on-text-color: #ffffff;
+    --thry-toggle-on-disabled-text-color: var(--thry-muted-color);
+}
+
+.thry-inspector.thry-light {
+    --thry-toggle-on-background: #2f6e14;
+    --thry-toggle-on-hover-background: #377d18;
+    --thry-toggle-on-pressed-background: #285e11;
+    --thry-toggle-on-disabled-background: #86a877;
+    --thry-toggle-on-border-color: #1e4a0a;
+    --thry-toggle-on-disabled-border-color: #3f5a33;
+    --thry-toggle-on-disabled-text-color: #3a3a3a;
+}
+
+/* Discarded UV tiles get the same treatment in the discard pink, with the same
+   contrast targets. The dark-skin outline is lighter than Monokai pink, which is
+   too dark to stand out as an edge against the gray tiles. */
+.thry-inspector {
+    --thry-uv-discard-background: #b3265f;
+    --thry-uv-discard-hover-background: #bf2b68;
+    --thry-uv-discard-pressed-background: #9c1f52;
+    --thry-uv-discard-disabled-background: #6e3d50;
+    --thry-uv-discard-border-color: #ffa1c5;
+    --thry-uv-discard-disabled-border-color: #b57a94;
+    --thry-uv-discard-border-width: var(--thry-border-width-strong);
+    --thry-uv-discard-text-color: #ffffff;
+    --thry-uv-discard-disabled-text-color: var(--thry-muted-color);
+}
+
+.thry-inspector.thry-light {
+    --thry-uv-discard-background: #b01e56;
+    --thry-uv-discard-hover-background: #bd245f;
+    --thry-uv-discard-pressed-background: #98194a;
+    --thry-uv-discard-disabled-background: #cf93aa;
+    --thry-uv-discard-border-color: #5a0c2b;
+    --thry-uv-discard-disabled-border-color: #83385a;
+    --thry-uv-discard-disabled-text-color: #3a3a3a;
 }
 
 .unity-button {
@@ -8471,14 +8526,6 @@
     color: var(--thry-animation-renamed-color);
 }
 
-.thry-inspector Button.thry-uv-cell.thry-uv-discarded {
-    --thry-button-background: var(--thry-monokai-pink-surface);
-    --thry-button-hover-background: var(--thry-monokai-pink-surface-hover);
-    --thry-button-pressed-background: var(--thry-monokai-pink-surface-pressed);
-    --thry-button-disabled-background: var(--thry-monokai-pink-surface-disabled);
-    border-color: var(--thry-monokai-pink-surface);
-}
-
 .thry-inspector Button.thry-uv-cell.thry-uv-mixed {
     border-color: var(--thry-monokai-purple);
 }
@@ -8510,20 +8557,36 @@
     --thry-button-disabled-background: var(--thry-disabled-background);
 }
 
-.thry-inspector.thry-light Button.thry-uv-cell.thry-uv-discarded {
-    --thry-button-background: #e3a9bd;
-    --thry-button-hover-background: #ebbccc;
-    --thry-button-pressed-background: #d696ac;
-    --thry-button-disabled-background: var(--thry-monokai-pink-surface-disabled);
-    border-color: var(--thry-monokai-pink);
+/* Discarded tiles for both skins, colored by the --thry-uv-discard-* tokens. Like
+   the multi-value on state, hover, focus and press keep the outline, and these
+   rules follow the light-skin tile rule to win the specificity tie. The outline
+   also wins over the mixed-animation purple edge; the Mixed badge still shows.
+   Padding gives back the extra side border so the label stays put. */
+.thry-inspector Button.thry-uv-cell.thry-uv-discarded {
+    --thry-button-background: var(--thry-uv-discard-background);
+    --thry-button-hover-background: var(--thry-uv-discard-hover-background);
+    --thry-button-pressed-background: var(--thry-uv-discard-pressed-background);
+    --thry-button-disabled-background: var(--thry-uv-discard-disabled-background);
+    border-width: var(--thry-uv-discard-border-width);
+    border-color: var(--thry-uv-discard-border-color);
+    padding: 0 var(--thry-space-3);
 }
 
-.thry-inspector.thry-light .thry-uv-cell.thry-uv-discarded > .thry-uv-caption {
-    color: #7d0d33;
+.thry-inspector Button.thry-uv-cell.thry-uv-discarded:hover,
+.thry-inspector Button.thry-uv-cell.thry-uv-discarded:focus,
+.thry-inspector Button.thry-uv-cell.thry-uv-discarded:enabled:active {
+    border-color: var(--thry-uv-discard-border-color);
 }
 
-.thry-inspector.thry-light Button.thry-uv-cell.thry-uv-discarded:hover {
-    border-color: var(--thry-monokai-cyan);
+.thry-inspector .thry-uv-cell.thry-uv-discarded > .thry-uv-coordinate,
+.thry-inspector .thry-uv-cell.thry-uv-discarded > .thry-uv-caption {
+    color: var(--thry-uv-discard-text-color);
+    -unity-font-style: bold;
+}
+
+.thry-inspector .thry-uv-cell.thry-uv-discarded:disabled > .thry-uv-coordinate,
+.thry-inspector .thry-uv-cell.thry-uv-discarded:disabled > .thry-uv-caption {
+    color: var(--thry-uv-discard-disabled-text-color);
 }
 
 .thry-inspector.thry-light Button.thry-uv-cell.thry-uv-discarded:focus {
@@ -8532,20 +8595,13 @@
 
 /* ButtonVector, Vector4Toggles and multi-float tiles: off reads as a field, on as a
    filled accent. Borders are redeclared for each state because these selectors
-   outrank the shared Button hover and focus rules. */
+   outrank the shared Button hover and focus rules. The on state follows below. */
 .thry-inspector.thry-light .thry-multi-value-controls > Button {
     --thry-button-background: var(--thry-field-background);
     --thry-button-hover-background: #e8e8e8;
     --thry-button-pressed-background: #cfcfcf;
     --thry-button-disabled-background: var(--thry-disabled-background);
     border-color: var(--thry-control-border-color);
-}
-
-.thry-inspector.thry-light .thry-multi-value-controls > Button.thry-selected {
-    --thry-button-background: #a9c7de;
-    --thry-button-hover-background: #b9d3e6;
-    --thry-button-pressed-background: #98bbd5;
-    border-color: var(--thry-accent-color);
 }
 
 .thry-inspector.thry-light .thry-multi-value-controls > Button.thry-tile-mixed {
@@ -8559,6 +8615,35 @@
 .thry-inspector.thry-light .thry-multi-value-controls > Button:focus,
 .thry-inspector.thry-light .thry-multi-value-controls > Button:enabled:active {
     border-color: var(--thry-focus-color);
+}
+
+/* On state for both skins, colored by the --thry-toggle-on-* tokens. Hover, focus
+   and press keep the outline so the state does not flicker away while clicking;
+   these rules come after the light-skin block to win the specificity ties.
+   Padding gives back the extra border width so the label does not move or clip
+   inside the fixed property height. Adjust both together. */
+.thry-inspector .thry-multi-value-controls > Button.thry-selected {
+    --thry-button-background: var(--thry-toggle-on-background);
+    --thry-button-hover-background: var(--thry-toggle-on-hover-background);
+    --thry-button-pressed-background: var(--thry-toggle-on-pressed-background);
+    --thry-button-disabled-background: var(--thry-toggle-on-disabled-background);
+    border-width: var(--thry-toggle-on-border-width);
+    border-color: var(--thry-toggle-on-border-color);
+    padding: var(--thry-space-1) var(--thry-space-3);
+    color: var(--thry-toggle-on-text-color);
+    -unity-font-style: bold;
+}
+
+.thry-inspector .thry-multi-value-controls > Button.thry-selected:hover,
+.thry-inspector .thry-multi-value-controls > Button.thry-selected:focus,
+.thry-inspector .thry-multi-value-controls > Button.thry-selected:enabled:active {
+    border-color: var(--thry-toggle-on-border-color);
+}
+
+/* Locked materials still show which channels are on. */
+.thry-inspector .thry-multi-value-controls > Button.thry-selected:disabled {
+    border-color: var(--thry-toggle-on-disabled-border-color);
+    color: var(--thry-toggle-on-disabled-text-color);
 }
 
 /* In-row actions (bake, mask picker, prefab spawner, positioning) are raised light

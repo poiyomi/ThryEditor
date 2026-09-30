@@ -12,7 +12,11 @@ Changes update attached inspectors, menus, and retained tool windows immediately
 
 Use `--thry-monokai-pink`, `-green`, `-yellow`, `-orange`, `-cyan`, `-purple`, and `-foreground` from `Resources/ThryTheme.uss` for shared accents. Each has a light-skin counterpart in the same palette block. Reuse the existing neutral surface, button-state, text, spacing, radius, and typography tokens for control styling.
 
-`--thry-animation-color` (A) and `--thry-animation-renamed-color` (RA) alias green and yellow. Preset, channel, toolbar, stencil, and UV-grid colors reference the same palette. UV discard uses the muted `--thry-monokai-pink-surface` tokens for its normal, hover, pressed, and disabled backgrounds, with normal theme text; mixed state uses purple. Legacy C# animation colors in `Styles.cs` still supply IMGUI and existing inline animation indicators; keep their skin equivalents aligned when changing the palette defaults.
+`--thry-animation-color` (A) and `--thry-animation-renamed-color` (RA) alias green and yellow. Preset, channel, toolbar, stencil, and UV-grid colors reference the same palette. Discarded UV tiles use their own pink `--thry-uv-discard-*` tokens, described below; mixed discard values use purple. Legacy C# animation colors in `Styles.cs` still supply IMGUI and existing inline animation indicators; keep their skin equivalents aligned when changing the palette defaults.
+
+ButtonVector, Vector4Toggles, and multi-float tile buttons show their on state through the `--thry-toggle-on-*` tokens: a green fill that differs from the off buttons in brightness, not just hue, white bold text, and a 2px outline. The outline is Monokai green in the dark skin and dark green in the light skin, where a bright edge would disappear against light gray. Hover, focus, and press keep the outline, and locked materials use the muted disabled variants. Keep white text at 4.5:1 or better on every fill. The on state reduces its padding by the extra border width so the label stays put, so change `--thry-toggle-on-border-width` and that padding together.
+
+Discarded UV tiles get the same treatment in pink through the `--thry-uv-discard-*` tokens: a bold pink fill, white bold labels, and a 2px outline that is light pink in the dark skin and dark wine in the light skin. Pink keeps the meaning "hidden", so discarded tiles do not look like enabled toggles. The same contrast targets, locked variants, and padding rule apply, and the discard outline takes precedence over the purple mixed-animation edge while the Mixed badge remains.
 
 ## Studio direction
 
