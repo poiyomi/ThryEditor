@@ -1748,7 +1748,7 @@ namespace Thry
             foreach (Material m in materials)
             {
                 Debug.Log("_______Removing Unbound Textures for " + m.name + "_______");
-                MaterialCleaner.RemoveAllUnusedProperties(MaterialCleaner.CleanPropertyType.Texture, m);
+                MaterialCleaner.RemoveUnusedProperties(MaterialCleaner.CleanPropertyType.Texture, m);
             }
         }
     }
