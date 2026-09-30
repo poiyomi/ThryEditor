@@ -527,65 +527,6 @@
     position: absolute;
 }
 
-.thry-dropdown-menu .unity-base-dropdown__container-outer {
-    position: absolute;
-    background-color: var(--thry-background-color);
-    border-color: #555555;
-    border-width: var(--thry-border-width);
-    border-radius: var(--thry-radius-card);
-    padding: 0;
-}
-
-.thry-dropdown-menu .unity-base-dropdown__container-inner {
-    background-color: var(--thry-background-color);
-    border-width: 0;
-    padding: var(--thry-space-4);
-    flex-shrink: 0;
-}
-
-.thry-dropdown-menu .unity-base-dropdown__item {
-    flex-direction: row;
-    align-items: center;
-    height: var(--thry-menu-item-height);
-    min-height: var(--thry-menu-item-height);
-    margin: 0;
-    padding: 0 var(--thry-space-8);
-    border-radius: var(--thry-radius-panel-small);
-}
-
-.thry-dropdown-menu .unity-base-dropdown__checkmark {
-    width: 16px;
-    height: 16px;
-    margin-right: var(--thry-space-6);
-}
-
-.thry-dropdown-menu .unity-base-dropdown__label {
-    color: #e4e4e4;
-    font-size: var(--thry-font-size);
-    -unity-text-align: middle-left;
-    flex-shrink: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.thry-dropdown-menu .unity-base-dropdown__item:hover, .thry-dropdown-menu .unity-base-dropdown__item:checked {
-    background-color: var(--thry-hover-color);
-}
-
-.thry-dropdown-menu.thry-light .unity-base-dropdown__container-outer, .thry-dropdown-menu.thry-light .unity-base-dropdown__container-inner {
-    background-color: var(--thry-surface-color);
-    border-color: var(--thry-border-color);
-}
-
-.thry-dropdown-menu.thry-light .unity-base-dropdown__label {
-    color: #252525;
-}
-
-.thry-dropdown-menu.thry-light .unity-base-dropdown__item:hover, .thry-dropdown-menu.thry-light .unity-base-dropdown__item:checked {
-    background-color: #eeeeee;
-}
-
 /* Native material controls share one responsive label/value grid. */
 .thry-material-controls {
     --thry-control-height: 18px;
@@ -1477,11 +1418,9 @@
     border-color: #b9b9b9;
 }
 
+/* Menu layout. Colors and the card radius are set by the .thry-dropdown-menu rules further down. */
 .thry-menu-card {
-    background-color: var(--thry-background-color);
-    border-color: #575757;
     border-width: var(--thry-border-width);
-    border-radius: var(--thry-radius-panel);
     padding: var(--thry-space-4);
 }
 
@@ -1495,7 +1434,6 @@
 }
 
 .thry-menu-item Label {
-    color: #dedede;
     font-size: var(--thry-font-size);
     -unity-text-align: middle-left;
     overflow: hidden;
@@ -1508,10 +1446,6 @@
     margin-right: var(--thry-space-4);
 }
 
-.thry-menu-selected {
-    background-color: #505050;
-}
-
 .thry-menu-disabled {
     opacity: .45;
 }
@@ -1519,20 +1453,6 @@
 .thry-menu-separator {
     height: 1px;
     margin: var(--thry-space-4) var(--thry-space-6);
-    background-color: #505050;
-}
-
-.thry-light .thry-menu-card {
-    background-color: var(--thry-surface-color);
-    border-color: #a8a8a8;
-}
-
-.thry-light .thry-menu-item Label {
-    color: #252525;
-}
-
-.thry-light .thry-menu-selected {
-    background-color: var(--thry-caption-color);
 }
 
 .thry-texture-summary {
@@ -2234,10 +2154,6 @@
 
 .thry-light .thry-switch-knob {
     background-color: #5d5d5d;
-}
-
-.thry-light .thry-menu-separator {
-    background-color: var(--thry-border-color);
 }
 
 .thry-light .thry-texture-summary {
