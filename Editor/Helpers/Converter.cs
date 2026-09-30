@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 
 namespace Thry.ThryEditor.Helpers
 {
@@ -297,26 +298,50 @@ namespace Thry.ThryEditor.Helpers
             }
             else
             {
-                Texture2D[] textures = paths.Where(p => AssetDatabase.GetMainAssetTypeAtPath(p).IsAssignableFrom(typeof(Texture2D))).Select(p => AssetDatabase.LoadAssetAtPath<Texture2D>(p)).ToArray();
+                Texture2D[] textures = paths.Where(p => AssetDatabase.GetMainAssetTypeAtPath(p)?.IsAssignableFrom(typeof(Texture2D)) == true)
+                    .Select(p => AssetDatabase.LoadAssetAtPath<Texture2D>(p)).Where(t => t != null).ToArray();
+                if (textures.Length == 0)
+                {
+                    EditorUtility.DisplayDialog("Texture Array", "Only textures can be combined into a texture array.", "OK");
+                    return null;
+                }
                 Array.Sort(textures, (UnityEngine.Object one, UnityEngine.Object two) => one.name.CompareTo(two.name));
                 Selection.objects = textures;
-                Texture2DArray texture2DArray = new Texture2DArray(textures[0].width, textures[0].height, textures.Length, textures[0].format, true);
 
                 string assetPath = AssetDatabase.GetAssetPath(textures[0]);
                 assetPath = assetPath.Remove(assetPath.LastIndexOf('/')) + "/Texture2DArray.asset";
 
-                for (int i = 0; i < textures.Length; i++)
+                Texture2DArray texture2DArray;
+                if (CanCopyFramesDirectly(textures))
                 {
-                    for (int m = 0; m < textures[i].mipmapCount; m++)
+                    texture2DArray = Textre2DArrayToAsset(textures);
+                }
+                else
+                {
+                    Texture2D[] frames = new Texture2D[textures.Length];
+                    try
                     {
-                        Graphics.CopyTexture(textures[i], 0, m, texture2DArray, i, m);
+                        TextureFormat format = ConvertedFrameFormat(textures[0].format);
+                        for (int i = 0; i < textures.Length; i++)
+                        {
+                            frames[i] = ReadableFrame(textures[i], textures[0].width, textures[0].height, format);
+                            if (frames[i].format != format)
+                            {
+                                EditorUtility.DisplayDialog("Texture Array", $"These images can't be converted to {format}. Change the compression of the first image and try again.", "OK");
+                                return null;
+                            }
+                        }
+                        frames[0].anisoLevel = textures[0].anisoLevel;
+                        frames[0].wrapModeU = textures[0].wrapModeU;
+                        frames[0].wrapModeV = textures[0].wrapModeV;
+                        texture2DArray = Textre2DArrayToAsset(frames);
+                    }
+                    finally
+                    {
+                        foreach (Texture2D frame in frames)
+                            if (frame != null) UnityEngine.Object.DestroyImmediate(frame);
                     }
                 }
-
-                texture2DArray.anisoLevel = textures[0].anisoLevel;
-                texture2DArray.wrapModeU = textures[0].wrapModeU;
-                texture2DArray.wrapModeV = textures[0].wrapModeV;
-                texture2DArray.Apply(false, true);
 
                 AssetDatabase.CreateAsset(texture2DArray, assetPath);
                 AssetDatabase.SaveAssets();
@@ -324,6 +349,52 @@ namespace Thry.ThryEditor.Helpers
                 Selection.activeObject = texture2DArray;
                 return texture2DArray;
             }
+        }
+
+        // Frames can be copied as they are only when their CPU data exists (imports have Read/Write off by default,
+        // and a GPU-only copy is lost when the array is saved) and they already match the array's size, format and mips.
+        // Crunched formats can't be used for an array, so those frames are converted too.
+        static bool CanCopyFramesDirectly(Texture2D[] textures)
+        {
+            Texture2D first = textures[0];
+            int fullMipCount = 1;
+            for (int size = Mathf.Max(first.width, first.height); size > 1; size >>= 1) fullMipCount++;
+            return textures.All(t => t.isReadable && t.width == first.width && t.height == first.height
+                && t.format == first.format && t.mipmapCount == fullMipCount) && !GraphicsFormatUtility.IsCrunchFormat(first.format);
+        }
+
+        static TextureFormat ConvertedFrameFormat(TextureFormat format)
+        {
+            switch (format)
+            {
+                case TextureFormat.DXT1Crunched: return TextureFormat.DXT1;
+                case TextureFormat.DXT5Crunched: return TextureFormat.DXT5;
+                case TextureFormat.ETC_RGB4Crunched: return TextureFormat.ETC_RGB4;
+                case TextureFormat.ETC2_RGBA8Crunched: return TextureFormat.ETC2_RGBA8;
+            }
+            return GraphicsFormatUtility.IsCompressedFormat(format) ? format : TextureFormat.RGBA32;
+        }
+
+        // Renders the frame into a readable copy at the array's size, with a full mip chain, in the array's format
+        static Texture2D ReadableFrame(Texture2D source, int width, int height, TextureFormat format)
+        {
+            bool srgb = GraphicsFormatUtility.IsSRGBFormat(source.graphicsFormat);
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture temp = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32,
+                srgb ? RenderTextureReadWrite.sRGB : RenderTextureReadWrite.Linear);
+            Texture2D frame = new Texture2D(width, height, TextureFormat.RGBA32, true);
+            try
+            {
+                Graphics.Blit(source, temp);
+                RenderTexture.active = temp;
+                frame.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+                frame.Apply(true);
+                if (format != TextureFormat.RGBA32)
+                    EditorUtility.CompressTexture(frame, format, TextureCompressionQuality.Normal);
+                return frame;
+            }
+            catch { UnityEngine.Object.DestroyImmediate(frame); throw; }
+            finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(temp); }
         }
 
         [MenuItem("Assets/Thry/Flipbooks/Gif 2 TextureArray", false, 303)]
