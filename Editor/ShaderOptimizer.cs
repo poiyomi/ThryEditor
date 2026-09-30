@@ -2317,6 +2317,20 @@ namespace Thry.ThryEditor
                             removeEndifStack.Push(false);
                         }
                     }
+                    else if (lineParsed.StartsWith("#elif", StringComparison.Ordinal))
+                    {
+                        // The #ifdef this belongs to was removed, so the #elif becomes the #if of what is left, and the
+                        // #endif stays.
+                        if (!isIncluded && ifStacking - 1 == isNotIncludedAtDepth && removeEndifStack.Count > 0 && removeEndifStack.Peek())
+                        {
+                            isIncluded = true;
+                            removeEndifStack.Pop();
+                            removeEndifStack.Push(false);
+                            int elif = fileLines[i].IndexOf("#elif", StringComparison.Ordinal);
+                            includedLines.Add(fileLines[i].Substring(0, elif) + "#if" + fileLines[i].Substring(elif + "#elif".Length));
+                            continue;
+                        }
+                    }
                     else if (lineParsed.StartsWith("#else"))
                     {
                         if (removeEndifStack.Count == 0)
