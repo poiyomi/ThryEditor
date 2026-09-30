@@ -184,6 +184,12 @@ namespace Thry.ThryEditor
                 ThryLogger.LogWarn("Tried to set a Localization entry with a null/empty id. Ignoring...");
                 return;
             }
+            if (SelectedLanguage < 0 || SelectedLanguage >= Languages.Length)
+            {
+                // The default language comes from the shader itself and has no column to write to.
+                ThryLogger.LogWarn("Select a translation language before editing labels.");
+                return;
+            }
             
             if (!_localizedStrings.ContainsKey(id))
             {
