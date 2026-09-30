@@ -3346,11 +3346,10 @@ namespace Thry.ThryEditor
         {
             if (shader == null) return;
 
-            if (!s_strippedSceneMaterialTrace.TryGetValue(shader.name, out var set))
-            {
-                set = new HashSet<string>();
-                s_strippedSceneMaterialTrace.Add(shader.name, set);
-            }
+            // Called for every snippet of the shader; the renderers only need scanning once per build.
+            if (s_strippedSceneMaterialTrace.ContainsKey(shader.name)) return;
+            var set = new HashSet<string>();
+            s_strippedSceneMaterialTrace.Add(shader.name, set);
 
             var renderers = Resources.FindObjectsOfTypeAll<Renderer>();
             foreach (var r in renderers)
@@ -3433,6 +3432,8 @@ namespace Thry.ThryEditor
 
                         ThryLogger.LogErr($"Unlocked shader, {shaderName}, found in\n" + string.Join("\n", entries.OrderBy(e => e)));
                     }
+                    // The next build reports only what it strips itself.
+                    s_strippedSceneMaterialTrace.Clear();
 
                     ThryLogger.LogErr($"Unlocked shaders were found and removed from the build. Materials will be pink. Please open the Console for instructions and traceback details.\n" + "Try using Thry -> Materials -> Lock All on hierarchy items to ensure all materials are locked. Some materials may get overlooked if you are doing material swap animations!\n" + "If this happens again, please take a full screenshot of the Console with the traceback messages printed here and report the issue via GitHub or Discord!");
 
