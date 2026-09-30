@@ -311,31 +311,7 @@ namespace Thry.ThryEditor
 
                 if(_isPropertyValueDefault == null)
                 {
-                    switch (MaterialProperty.GetPropertyType())
-                    {
-                        case ShaderPropertyType.Float:
-                        case ShaderPropertyType.Range:
-                            _isPropertyValueDefault = (float)PropertyDefaultValue == (float)PropertyValue;
-                            break;
-                        case ShaderPropertyType.Color:
-                            _isPropertyValueDefault = (Vector4)PropertyDefaultValue == (Vector4)((Color)PropertyValue);
-                            break;
-                        case ShaderPropertyType.Vector:
-                            _isPropertyValueDefault = (Vector4)PropertyDefaultValue == (Vector4)PropertyValue;
-                            break;
-                        case ShaderPropertyType.Texture:
-                            _isPropertyValueDefault = PropertyValue == null
-                                 || ((Texture)PropertyValue)?.name == (string)PropertyDefaultValue;
-                            //if(!_isPropertyValueDefault.Value) Debug.Log($"{MaterialProperty.name} {PropertyDefaultValue} {PropertyValue}");
-                            break;
-                        case ShaderPropertyType.Int:
-                            _isPropertyValueDefault = (int)PropertyDefaultValue == (int)PropertyValue;
-                            break;
-                        default:
-                            _isPropertyValueDefault = false;
-                            break;
-                    }
-                    _isPropertyValueDefault = _isPropertyValueDefault.Value && !MaterialProperty.hasMixedValue;
+                    _isPropertyValueDefault = IsDefaultValue(PropertyValue) && !MaterialProperty.hasMixedValue;
                     
                     // Check additional properties (for multi-property drawers like ThryMultiFloatButtons)
                     if (_isPropertyValueDefault.Value && AdditionalDefaultCheckProperties != null)
@@ -362,6 +338,27 @@ namespace Thry.ThryEditor
                     }
                 }
                 return _isPropertyValueDefault.Value;
+            }
+        }
+
+        bool IsDefaultValue(object value)
+        {
+            switch (MaterialProperty.GetPropertyType())
+            {
+                case ShaderPropertyType.Float:
+                case ShaderPropertyType.Range:
+                    return (float)PropertyDefaultValue == (float)value;
+                case ShaderPropertyType.Color:
+                    return (Vector4)PropertyDefaultValue == (Vector4)((Color)value);
+                case ShaderPropertyType.Vector:
+                    return (Vector4)PropertyDefaultValue == (Vector4)value;
+                case ShaderPropertyType.Texture:
+                    return value == null
+                         || ((Texture)value)?.name == (string)PropertyDefaultValue;
+                case ShaderPropertyType.Int:
+                    return (int)PropertyDefaultValue == (int)value;
+                default:
+                    return false;
             }
         }
 
@@ -511,13 +508,18 @@ namespace Thry.ThryEditor
             if (type == ShaderPropertyType.Color) type = ShaderPropertyType.Vector;
             if (type == ShaderPropertyType.Range) type = ShaderPropertyType.Float;
 
-            // Only fill the new property in while it still holds the shader default. A value the user
-            // (or a previous upgrade) already set must not be overwritten by the old property's value.
-            if (!IsPropertyValueDefault)
-                return;
-
-            foreach (Material m in ShaderEditor.Active.Materials)
+            // Each material carries its own old value, so read and write one material at a time. The shared
+            // property writes to every selected material, which would give all of them the last one's value.
+            bool copiedAny = false;
+            foreach (Material m in this.MaterialProperty.targets)
             {
+                MaterialProperty materialProp = MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { m }, this.MaterialProperty.name);
+
+                // Only fill the new property in while it still holds the shader default. A value the user
+                // (or a previous upgrade) already set must not be overwritten by the old property's value.
+                if (!IsDefaultValue(MaterialHelper.GetValue(materialProp)))
+                    continue;
+
                 // Material as serializedObject
                 SerializedObject serializedObject = new SerializedObject(m);
                 foreach (string alt in Options.alts)
@@ -551,22 +553,37 @@ namespace Thry.ThryEditor
                         continue;
 
                     if (type == ShaderPropertyType.Float)
-                    this.MaterialProperty.floatValue = valueProp.floatValue;
+                    materialProp.floatValue = valueProp.floatValue;
                     else if (type == ShaderPropertyType.Int)
-                        this.MaterialProperty.intValue = valueProp.intValue;
+                        materialProp.intValue = valueProp.intValue;
                     else if (type == ShaderPropertyType.Vector)
-                    this.MaterialProperty.colorValue = valueProp.colorValue;
+                    materialProp.colorValue = valueProp.colorValue;
                     else if (type == ShaderPropertyType.Texture)
                     {
                         var texProperty = valueProp.FindPropertyRelative("m_Texture").objectReferenceValue as Texture;
                         var scaleProperty = valueProp.FindPropertyRelative("m_Scale").vector2Value;
                         var offsetProperty = valueProp.FindPropertyRelative("m_Offset").vector2Value;
 
-                        this.MaterialProperty.textureValue = texProperty;
-                        this.MaterialProperty.textureScaleAndOffset = new Vector4(scaleProperty.x, scaleProperty.y, offsetProperty.x, offsetProperty.y);
+                        materialProp.textureValue = texProperty;
+                        materialProp.textureScaleAndOffset = new Vector4(scaleProperty.x, scaleProperty.y, offsetProperty.x, offsetProperty.y);
                     }
+                    copiedAny = true;
                 }
             }
+
+            if (!copiedAny)
+                return;
+
+            // The shared property still caches the values from before the copy. Re-read it so this frame's
+            // draw and default check see the upgraded values.
+            MaterialProperty refreshed = MaterialEditor.GetMaterialProperty(this.MaterialProperty.targets, this.MaterialProperty.name);
+            MaterialProperty[] editorProps = MyShaderUI.Properties;
+            if (editorProps != null && ThryPropertyIndex >= 0 && ThryPropertyIndex < editorProps.Length
+                && ReferenceEquals(editorProps[ThryPropertyIndex], this.MaterialProperty))
+                editorProps[ThryPropertyIndex] = refreshed;
+            this.MaterialProperty = refreshed;
+            this.PropertyValue = MaterialHelper.GetValue(refreshed);
+            SetIsPropertyValueDefaultDirty();
         }
 
         /// <summary>
