@@ -131,6 +131,7 @@ namespace Thry.ThryEditor
 
         public static void UnlinkAll(Material m)
         {
+            Load();
             List<(Material, string)> remove_keys = new List<(Material, string)>();
             foreach (KeyValuePair<(Material,string), List<Material>> link_cloud in linked_materials)
             {
