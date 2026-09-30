@@ -142,14 +142,17 @@ namespace Thry.ThryEditor
         }
         internal VisualElement Field(ShaderProperty property, bool inline = false)
         {
+            // Must run before the material property or its attributes are read, since those are what it rejects
+            if (!CanRenderProperty(property))
+            {
+                var hidden = new VisualElement { name = "property-" + property?.MaterialProperty?.name, userData = property };
+                hidden.AddToClassList("thry-property");
+                hidden.style.display = DisplayStyle.None;
+                return hidden;
+            }
             var attributes = property.MyShader.GetPropertyAttributes(property.ShaderPropertyIndex).Select(a => new DrawerAttribute(a)).ToArray();
             var root = new VisualElement { name = "property-" + property.MaterialProperty.name, userData = property, tooltip = property.TooltipText };
             root.AddToClassList("thry-property");
-            if (!CanRenderProperty(property))
-            {
-                root.style.display = DisplayStyle.None;
-                return root;
-            }
             Track(root, () => property.RefreshRetainedProjection(Model.Renderers));
             BindProperty(root, property);
             DecorateMultiMaterialProperty(root, property);
