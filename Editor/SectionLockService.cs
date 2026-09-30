@@ -10,7 +10,7 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
-#if VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3
+#if VRC_SDK_VRCSDK3
 using VRC.SDKBase.Editor.BuildPipeline;
 #endif
 
@@ -422,7 +422,7 @@ namespace Thry.ThryEditor
         }
     }
 
-#if VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3
+#if VRC_SDK_VRCSDK3
     public class SectionLockVRChatBuildGuard : IVRCSDKBuildRequestedCallback, IVRCSDKPostprocessAvatarCallback
     {
         public int callbackOrder => int.MinValue;

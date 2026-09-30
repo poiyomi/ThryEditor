@@ -44,11 +44,7 @@ using JetBrains.Annotations;
 using VRC.SDKBase;
 #endif
 
-#if VRC_SDK_VRCSDK2
-using VRCSDK2;
-#endif
-
-#if VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3
+#if VRC_SDK_VRCSDK3
 using VRC.SDKBase.Editor.BuildPipeline;
 #endif
 
@@ -3218,7 +3214,7 @@ namespace Thry.ThryEditor
 
 #region Animator Clip Checkers
 
-#if (VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3) && UNITY_EDITOR
+#if VRC_SDK_VRCSDK3 && UNITY_EDITOR
         private static IEnumerable<AnimationClip> GetClipsFromRuntimeController(RuntimeAnimatorController controller)
         {
             if (controller == null) yield break;
@@ -3261,7 +3257,7 @@ namespace Thry.ThryEditor
 
         //----VRChat Callback to force Locking on upload
 
-#if VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3
+#if VRC_SDK_VRCSDK3
         public class LockMaterialsOnUpload : IVRCSDKPreprocessAvatarCallback
         {
             public int callbackOrder => 100;
@@ -3297,7 +3293,7 @@ namespace Thry.ThryEditor
         }
 #endif
 
-#if VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3
+#if VRC_SDK_VRCSDK3
         public class LockMaterialsOnWorldUpload : IVRCSDKBuildRequestedCallback
         {
             public int callbackOrder => 100;

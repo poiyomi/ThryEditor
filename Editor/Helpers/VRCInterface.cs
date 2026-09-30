@@ -28,7 +28,6 @@ namespace Thry.ThryEditor.Helpers
         public enum VRC_SDK_Type
         {
             NONE = 0,
-            SDK_2 = 1,
             SDK_3_Avatar = 2,
             SDK_3_World = 3
         }
@@ -65,8 +64,6 @@ namespace Thry.ThryEditor.Helpers
             return VRC_SDK_Type.SDK_3_World;
 #elif VRC_SDK_VRCSDK3
             return VRC_SDK_Type.SDK_3_Avatar;
-#elif VRC_SDK_VRCSDK2
-            return VRC_SDK_Type.SDK_2;
 #else
             return VRC_SDK_Type.NONE;
 #endif
@@ -75,8 +72,6 @@ namespace Thry.ThryEditor.Helpers
         public static bool IsVRCSDKInstalled()
         {
 #if VRC_SDK_VRCSDK3
-            return true;
-#elif VRC_SDK_VRCSDK2
             return true;
 #else
             return false;
