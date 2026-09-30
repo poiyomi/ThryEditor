@@ -101,23 +101,22 @@ namespace Thry.ThryEditor.Helpers
             return customEditorName == typeof(ShaderEditor).FullName;
         }
 
-        internal static List<(string prop, List<string> keywords)> GetPropertyKeywordsForShader(Shader s)
+        internal static List<(string prop, List<string> keywords, bool inverted)> GetPropertyKeywordsForShader(Shader s)
         {
-            List<(string prop, List<string> keywords)> list = new List<(string prop, List<string> keywords)>();
+            List<(string prop, List<string> keywords, bool inverted)> list = new List<(string prop, List<string> keywords, bool inverted)>();
 
             for (int i = 0; i < s.GetPropertyCount(); i++)
             {
-                // Not Int: FixKeywords reads values with GetFloat
-                if (s.GetPropertyType(i) == ShaderPropertyType.Float || s.GetPropertyType(i) == ShaderPropertyType.Range)
+                if (s.GetPropertyType(i) == ShaderPropertyType.Float || s.GetPropertyType(i) == ShaderPropertyType.Range || s.GetPropertyType(i) == ShaderPropertyType.Int)
                 {
                     string prop = s.GetPropertyName(i);
                     List<string> keywords = null;
-                    keywords = GetKeywordsFromShaderProperty(s, prop);
+                    keywords = GetKeywordsFromShaderProperty(s, prop, out bool inverted);
 
                     if (keywords.Count == 0)
                         continue;
                     else
-                        list.Add((prop, keywords));
+                        list.Add((prop, keywords, inverted));
                 }
                 else if (s.GetPropertyType(i) == ShaderPropertyType.Texture)
                 {
@@ -126,7 +125,7 @@ namespace Thry.ThryEditor.Helpers
                     if (string.IsNullOrEmpty(textureKeyword) == false)
                     {
                         // Use a single-element list to mark texture keyword association
-                        list.Add((prop, new List<string> { textureKeyword }));
+                        list.Add((prop, new List<string> { textureKeyword }, false));
                     }
                 }
             }
@@ -136,8 +135,9 @@ namespace Thry.ThryEditor.Helpers
 
         // Logic Adapted from unity's reference implementation
         /// <summary> Returns a list of keywords for a given shader property. </summary>
-        internal static List<string> GetKeywordsFromShaderProperty(Shader shader, string propertyName)
+        internal static List<string> GetKeywordsFromShaderProperty(Shader shader, string propertyName, out bool inverted)
         {
+            inverted = false;
             List<string> keywords = new List<string>();
             if (string.IsNullOrEmpty(propertyName))
                 return keywords;
@@ -158,6 +158,12 @@ namespace Thry.ThryEditor.Helpers
                     keywords.Add(GetUnityKeywordName(propertyName, "ON"));
                     break;
                 }
+                if (attribute.Trim() == "ToggleOff")
+                {
+                    keywords.Add(GetUnityKeywordName(propertyName, "OFF"));
+                    inverted = true;
+                    break;
+                }
 
                 string args = "";
                 // Regex based on Unity's reference implementation: Match a string of the form Keyword(Argument) and capture its components
@@ -173,13 +179,18 @@ namespace Thry.ThryEditor.Helpers
                     string className = regexMatch.Groups[1].Value;
                     args = regexMatch.Groups[2].Value.Trim();
 
-                    // Note that we don't handle ToggleOff as it would require extra logic to differentiate
                     if (className == "Toggle") // Unity Toggle drawer, toggles a keyword directly if provided as [Toggle(KEYWORD)] and toggles PropertyName
                     {
                         if (string.IsNullOrEmpty(args))
                             keywords.Add(GetUnityKeywordName(propertyName, "ON"));
                         else
                             keywords.Add(args);
+                        break;
+                    }
+                    else if (className == "ToggleOff") // Unity ToggleOff drawer, enables the keyword while the value is 0
+                    {
+                        keywords.Add(string.IsNullOrEmpty(args) ? GetUnityKeywordName(propertyName, "OFF") : args);
+                        inverted = true;
                         break;
                     }
                     else if (className == "ThryToggle") // Thry Toggle drawer, toggles a keyword directly if provided as [Toggle(KEYWORD)]

@@ -1581,7 +1581,7 @@ namespace Thry
         }
 
         // Cache property->keyword lookup for performance
-        static Dictionary<Shader, List<(string prop, List<string> keywords)>> PropertyKeywordsByShader = new Dictionary<Shader, List<(string prop, List<string> keywords)>>();
+        static Dictionary<Shader, List<(string prop, List<string> keywords, bool inverted)>> PropertyKeywordsByShader = new Dictionary<Shader, List<(string prop, List<string> keywords, bool inverted)>>();
 
         /// <summary> Iterate through all materials to ensure keywords list matches properties. </summary>
         public static void FixKeywords(IEnumerable<Material> materialsToFix)
@@ -1619,7 +1619,7 @@ namespace Thry
                 List<string> keywordsInMaterial = m.shaderKeywords.ToList();
 
                 Shader source = SectionLock.GetSourceShader(m.shader);
-                foreach((string prop, List<string> keywords) in PropertyKeywordsByShader[source])
+                foreach((string prop, List<string> keywords, bool inverted) in PropertyKeywordsByShader[source])
                 {
                     switch(keywords.Count)
                     {
@@ -1638,14 +1638,15 @@ namespace Thry
                             }
                             else
                             {
-                                if(m.GetFloat(prop) == 1) m.EnableKeyword(keyword); else m.DisableKeyword(keyword);
+                                float value = GetKeywordPropertyValue(m, source, prop);
+                                if(inverted ? value == 0 : value == 1) m.EnableKeyword(keyword); else m.DisableKeyword(keyword);
                             }
                             break;
                         default: // KeywordEnum
                             for (int i = 0; i < keywords.Count; i++)
                             {
                                 keywordsInMaterial.Remove(keywords[i]);
-                                if (m.GetFloat(prop) == i)
+                                if (GetKeywordPropertyValue(m, source, prop) == i)
                                     m.EnableKeyword(keywords[i]);
                                 else
                                     m.DisableKeyword(keywords[i]);
@@ -1659,6 +1660,12 @@ namespace Thry
                     m.DisableKeyword(keyword);
             }
             if(count > 1) EditorUtility.ClearProgressBar();
+        }
+
+        static float GetKeywordPropertyValue(Material m, Shader source, string prop)
+        {
+            int index = source.FindPropertyIndex(prop);
+            return index >= 0 && source.GetPropertyType(index) == ShaderPropertyType.Int ? m.GetInteger(prop) : m.GetFloat(prop);
         }
 
         [MenuItem("Poi/Thry/Twitter", priority = -100)]
