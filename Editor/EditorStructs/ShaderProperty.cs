@@ -570,6 +570,8 @@ namespace Thry.ThryEditor
                 DrawAlignedProperty(r, content);
             }
 
+            if (drawAsMixedValue) EditorGUI.showMixedValue = false;
+
             if (_customDecorators != null && _doCustomDrawLogic)
             {
                 for (int i = 0; i < _customDecorators.Count; i++)
