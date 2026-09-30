@@ -161,7 +161,7 @@ namespace Thry.ThryEditor.Helpers
 
         public static Texture2D LoadTGA(string TGAFile, bool displayProgressbar = false)
         {
-            using (BinaryReader r = new BinaryReader(File.Open(TGAFile, FileMode.Open)))
+            using (BinaryReader r = new BinaryReader(File.Open(TGAFile, FileMode.Open, FileAccess.Read, FileShare.Read)))
             {
                 byte IDLength = r.ReadByte();
                 byte ColorMapType = r.ReadByte();
