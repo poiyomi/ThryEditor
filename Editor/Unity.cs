@@ -162,7 +162,7 @@ namespace Thry.ThryEditor
         public static float GetNumber(this Material mat, MaterialProperty prop)
         {
             if(prop.GetPropertyType() == ShaderPropertyType.Int)
-                return mat.GetInt(prop.name);
+                return mat.GetInteger(prop.name);
             else
                 return mat.GetFloat(prop.name);
         }
