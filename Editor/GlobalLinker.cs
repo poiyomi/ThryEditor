@@ -111,6 +111,7 @@ namespace Thry.ThryEditor
             // Establish the baseline after a domain reload before Unity restores an undo snapshot.
             Load();
             Undo.undoRedoPerformed += OnUndoRedoPerformed;
+            EditorApplication.projectChanged += s_singleMaterialFiles.Clear;
         }
 
         private static void OnUndoRedoPerformed()
@@ -196,9 +197,28 @@ namespace Thry.ThryEditor
             return s_data;
         }
 
+        private static readonly Dictionary<string, bool> s_singleMaterialFiles = new Dictionary<string, bool>();
+
+        // Links identify materials by asset GUID. A material that isn't saved as an asset has none, and several
+        // materials inside one file share it, so neither can be told apart from other materials and neither can be linked.
+        // A material that is the only one in its file (e.g. a sub-asset of a prefab) is still unique and resolves by path.
+        public static bool CanLink(Material material)
+        {
+            if (material == null || string.IsNullOrEmpty(UnityHelper.GetGUID(material))) return false;
+            if (AssetDatabase.IsMainAsset(material)) return true;
+            string path = AssetDatabase.GetAssetPath(material);
+            if (!s_singleMaterialFiles.TryGetValue(path, out bool single))
+            {
+                single = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Material>().Count() == 1;
+                s_singleMaterialFiles[path] = single;
+            }
+            return single;
+        }
+
         public static GlobalLink GetLinkForMaterial(Material material, string sectionPropertyName)
         {
             Load();
+            if (!CanLink(material)) return null;
             string guid = UnityHelper.GetGUID(material);
             return s_data.FirstOrDefault(l => l != null && l.sectionPropertyName == sectionPropertyName && l.subscribedMaterialGuids != null && l.subscribedMaterialGuids.Contains(guid));
         }
@@ -217,6 +237,8 @@ namespace Thry.ThryEditor
         public static GlobalLink CreateLink(string name, string sectionPropertyName, ShaderGroup section, IEnumerable<Material> materials, bool includeTextures = false)
         {
             Load();
+            materials = materials.Where(CanLink).ToArray();
+            if (!materials.Any()) return null;
 
             GlobalLink link = new GlobalLink();
             link.name = name;
@@ -227,7 +249,6 @@ namespace Thry.ThryEditor
             List<string> guids = link.subscribedMaterialGuids.ToList();
             foreach (Material m in materials)
             {
-                if (m == null) continue;
                 string guid = UnityHelper.GetGUID(m);
                 if (!guids.Contains(guid)) guids.Add(guid);
             }
@@ -273,7 +294,7 @@ namespace Thry.ThryEditor
             List<string> guids = link.subscribedMaterialGuids.ToList();
             foreach (Material material in materials)
             {
-                if (material == null) continue;
+                if (!CanLink(material)) continue;
 
                 // Force-switch: if this material is already in a different link for the same section, drop it from that link first.
                 GlobalLink existing = GetLinkForMaterial(material, link.sectionPropertyName);
@@ -482,6 +503,7 @@ namespace Thry.ThryEditor
         public static void ApplyAllLinksToMaterial(Material material)
         {
             Load();
+            if (!CanLink(material)) return;
             string guid = UnityHelper.GetGUID(material);
             foreach (GlobalLink link in s_data)
             {
@@ -842,6 +864,12 @@ namespace Thry.ThryEditor
                 var root=rootVisualElement;root.Clear();RetainedWindow.Style(root);minSize=new Vector2(340,300);
                 if(_section==null)return;RefreshState();
                 root.Add(new UnityEngine.UIElements.Label(_section.Content.text));
+                if(!_materials.Any(CanLink))
+                {
+                    root.Add(new UnityEngine.UIElements.HelpBox("Only saved materials can be linked, and each one needs an asset file with no other materials in it.",UnityEngine.UIElements.HelpBoxMessageType.Info));
+                    root.Add(new UnityEngine.UIElements.Button(Close){text="Done"});
+                    return;
+                }
                 if(_hasMixedState||_currentLink!=null)
                 {
                     root.Add(new UnityEngine.UIElements.HelpBox(_hasMixedState?$"Mixed: {_linkedCount} of {_materials.Length} materials linked.":"Linked to "+_currentLink.name,UnityEngine.UIElements.HelpBoxMessageType.Info));
