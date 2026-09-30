@@ -17,6 +17,9 @@ namespace Thry.ThryEditor.Drawers
         // edited has to be tracked per material or material B is shown (and saves) material A's curve.
         private static readonly Dictionary<string, AnimationCurve> s_curvesByMaterialProperty = new Dictionary<string, AnimationCurve>();
         private string _curveKey;
+        // Where the unsaved in-memory texture was assigned, so it can still be saved after the selection moves on.
+        private Object[] _pendingTargets;
+        private string _pendingPropertyName;
 
         public CurveDrawer()
         {
@@ -45,8 +48,9 @@ namespace Thry.ThryEditor.Drawers
         {
             string key = GetCurveKey(prop);
             if (key == _curveKey) return;
-            // A pending edit belongs to the previous material; it already holds the in-memory texture
-            // from UpdateCurveTexture. Saving it here would write it into the newly selected material.
+            // A pending edit belongs to the previous material, which only holds the in-memory texture from
+            // UpdateCurveTexture. Save it for that material, not the newly selected one, or the edit is lost.
+            if (!saved) SavePending();
             _curveKey = key;
             if (!s_curvesByMaterialProperty.TryGetValue(key, out curve))
             {
@@ -83,6 +87,8 @@ namespace Thry.ThryEditor.Drawers
             texture = Converter.CurveToTexture(curve, imageData);
             prop.textureValue = texture;
             saved = false;
+            _pendingTargets = prop.targets;
+            _pendingPropertyName = prop.name;
         }
 
         private void CheckWindowForCurveEditor()
@@ -102,6 +108,30 @@ namespace Thry.ThryEditor.Drawers
             Texture saved_texture = TextureHelper.SaveTextureAsPNG(texture, PATH.TEXTURES_DIR + "curves/" + curveKey + ".png", null);
             prop.textureValue = saved_texture;
             saved = true;
+        }
+
+        private void SavePending()
+        {
+            saved = true;
+            if (_pendingTargets == null || texture == null) return;
+            try
+            {
+                Texture saved_texture = TextureHelper.SaveTextureAsPNG(texture, PATH.TEXTURES_DIR + "curves/" + _curveKey + ".png", null);
+                foreach (Object target in _pendingTargets)
+                {
+                    Material material = target as Material;
+                    // Skip a material whose curve texture was changed some other way since the edit
+                    if (material == null || !material.HasProperty(_pendingPropertyName) || material.GetTexture(_pendingPropertyName) != texture) continue;
+                    Undo.RecordObject(material, "Save Curve");
+                    material.SetTexture(_pendingPropertyName, saved_texture);
+                    EditorUtility.SetDirty(material);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogException(e);
+            }
+            _pendingTargets = null;
         }
 
         public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
