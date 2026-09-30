@@ -16,6 +16,10 @@ namespace Thry.ThryEditor.TexturePacker
         int _retainedPreviewChannel;
         string _retainedError;
         DropdownField _retainedPreviewSelector;
+        // The settings the window last built or packed from, to tell its own undo steps apart from unrelated ones.
+        string _shownConfig;
+
+        void RememberShownConfig() => _shownConfig = _config == null ? null : JsonUtility.ToJson(_config);
 
         public void CreateGUI()
         {
@@ -38,6 +42,7 @@ namespace Thry.ThryEditor.TexturePacker
             BuildGraphWorkspace();
             UpdateRetainedPreview();
             if (_outputTexture == null) QueuePack();
+            RememberShownConfig();
         }
 
         static Label StudioHint(VisualElement root, string key, string text)
@@ -301,6 +306,7 @@ namespace Thry.ThryEditor.TexturePacker
 
         void QueuePack()
         {
+            RememberShownConfig();
             _graph?.ScheduleConnectionsRefresh();
             _pendingPack?.Pause();
             _pendingPack = rootVisualElement.schedule.Execute(() => TryStudioAction(Pack)).StartingIn(120);
@@ -320,6 +326,8 @@ namespace Thry.ThryEditor.TexturePacker
 
         void UpdateRetainedPreview()
         {
+            // Packing can fill in the output resolution.
+            RememberShownConfig();
             if (_retainedPreview == null) return;
             if (_retainedPreviewChannel > 0 && _outputTexture != null)
             {
