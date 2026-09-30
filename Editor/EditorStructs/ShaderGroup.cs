@@ -428,16 +428,26 @@ namespace Thry.ThryEditor
             // Draw Children
             if (IsExpanded)
             {
-                GUILib.SectionContentPadding = isSubsection ? GUILib.SectionContentPadding + 2 : 4;
-                GUILib.SectionContentRightPadding = isSubsection ? GUILib.SectionContentRightPadding + 2 : 2;
-                EditorGUI.BeginDisabledGroup(DoDisableChildren);
-                foreach (ShaderPart part in Children)
+                // Restore the previous padding afterwards: sections nest, and the outer section's remaining rows keep its inset.
+                // Restore it on ExitGUI too, or the stale inset would carry into every later frame.
+                float previousPadding = GUILib.SectionContentPadding;
+                float previousRightPadding = GUILib.SectionContentRightPadding;
+                GUILib.SectionContentPadding = isSubsection ? previousPadding + 2 : 4;
+                GUILib.SectionContentRightPadding = isSubsection ? previousRightPadding + 2 : 2;
+                try
                 {
-                    part.Draw();
+                    EditorGUI.BeginDisabledGroup(DoDisableChildren);
+                    foreach (ShaderPart part in Children)
+                    {
+                        part.Draw();
+                    }
+                    EditorGUI.EndDisabledGroup();
                 }
-                EditorGUI.EndDisabledGroup();
-                GUILib.SectionContentPadding = isSubsection ? GUILib.SectionContentPadding - 2 : 0;
-                GUILib.SectionContentRightPadding = isSubsection ? GUILib.SectionContentRightPadding - 2 : 0;
+                finally
+                {
+                    GUILib.SectionContentPadding = previousPadding;
+                    GUILib.SectionContentRightPadding = previousRightPadding;
+                }
                 if (!isSubsection) GUILayoutUtility.GetRect(0, 5);
             }
             EditorGUILayout.EndVertical();
