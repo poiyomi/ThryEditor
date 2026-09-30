@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -169,7 +170,7 @@ namespace Thry.ThryEditor.ShaderTranslations
                                 }
                                 break;
                             case ShaderModificationAction.ActionType.SetTargetPropertyValue:
-                                if(float.TryParse(action.targetValue, out float parsedFloat))
+                                if(TryParseNumber(action.targetValue, out float parsedFloat))
                                 {
                                     if(action.propertyName == ShaderEditor.PROPERTY_NAME_IN_SHADER_PRESETS)
                                     {
@@ -193,9 +194,16 @@ namespace Thry.ThryEditor.ShaderTranslations
             if(string.IsNullOrWhiteSpace(expression))
                 return value;
             // If we can parse the expression then our expression is just a number. Replace old value with ours
-            if(float.TryParse(expression, out float result))
+            if(TryParseNumber(expression, out float result))
                 return result;
             return Helper.SolveMath(expression, value);
+        }
+
+        // "0.5" reads the same on every system locale, like SolveMath. The system locale is still tried after that,
+        // so definitions written with that locale's format ("0,5", "1,000") keep their value.
+        static bool TryParseNumber(string s, out float value)
+        {
+            return float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out value) || float.TryParse(s, out value);
         }
 
         void SetPropertyValue(ShaderEditor editor, string propertyName, float value, Material only)

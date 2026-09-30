@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEditor;
@@ -10,12 +11,13 @@ namespace Thry.ThryEditor.Helpers
     public class Converter
     {
 
+        // Metadata values are written with '.' decimals, so they are parsed the same way on every system locale
         public static Color StringToColor(string s)
         {
             s = s.Trim(new char[] { '(', ')' });
             string[] split = s.Split(",".ToCharArray());
             float[] rgba = new float[4] { 1, 1, 1, 1 };
-            for (int i = 0; i < split.Length; i++) if (string.IsNullOrWhiteSpace(split[i]) == false) rgba[i] = float.Parse(split[i]);
+            for (int i = 0; i < split.Length; i++) if (string.IsNullOrWhiteSpace(split[i]) == false) rgba[i] = float.Parse(split[i], CultureInfo.InvariantCulture);
             return new Color(rgba[0], rgba[1], rgba[2], rgba[3]);
 
         }
@@ -25,7 +27,7 @@ namespace Thry.ThryEditor.Helpers
             s = s.Trim(new char[] { '(', ')' });
             string[] split = s.Split(",".ToCharArray());
             float[] xyzw = new float[4];
-            for (int i = 0; i < 4 && i < split.Length; i++) if (string.IsNullOrWhiteSpace(split[i]) == false) xyzw[i] = float.Parse(split[i]); else xyzw[i] = 0;
+            for (int i = 0; i < 4 && i < split.Length; i++) if (string.IsNullOrWhiteSpace(split[i]) == false) xyzw[i] = float.Parse(split[i], CultureInfo.InvariantCulture); else xyzw[i] = 0;
             return new Vector4(xyzw[0], xyzw[1], xyzw[2], xyzw[3]);
         }
 
