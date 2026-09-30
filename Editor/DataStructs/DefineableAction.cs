@@ -44,7 +44,6 @@ namespace Thry.ThryEditor
                         try
                         {
                             EditorWindow window = EditorWindow.GetWindow(t);
-                            window.titleContent = new GUIContent("TPS Setup Wizard");
                             window.Show();
                         }
                         catch (System.Exception e)
