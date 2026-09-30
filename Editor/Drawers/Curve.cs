@@ -103,7 +103,7 @@ namespace Thry.ThryEditor.Drawers
         {
             // Named per material and property. AnimationCurve.GetHashCode is the native handle of the
             // shared instance, so using it as the file name made every material overwrite the same PNG.
-            Texture saved_texture = TextureHelper.SaveTextureAsPNG(texture, PATH.TEXTURES_DIR + "curves/" + curveKey + ".png", null);
+            Texture saved_texture = TextureHelper.SaveTextureAsPNG(texture, PATH.TEXTURES_DIR + "/curves/" + curveKey + ".png", null);
             prop.textureValue = saved_texture;
             saved = true;
         }
@@ -114,7 +114,7 @@ namespace Thry.ThryEditor.Drawers
             if (_pendingTargets == null || texture == null) return;
             try
             {
-                Texture saved_texture = TextureHelper.SaveTextureAsPNG(texture, PATH.TEXTURES_DIR + "curves/" + _curveKey + ".png", null);
+                Texture saved_texture = TextureHelper.SaveTextureAsPNG(texture, PATH.TEXTURES_DIR + "/curves/" + _curveKey + ".png", null);
                 foreach (Object target in _pendingTargets)
                 {
                     Material material = target as Material;
