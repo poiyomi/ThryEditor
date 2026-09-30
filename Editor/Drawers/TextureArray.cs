@@ -27,7 +27,8 @@ namespace Thry.ThryEditor.Drawers
             ShaderProperty shaderProperty = (ShaderProperty)ShaderEditor.Active.CurrentProperty;
             GUILib.ConfigTextureProperty(position, prop, label, editor, true, true);
 
-            if ((ShaderEditor.Input.is_drag_drop_event) && position.Contains(ShaderEditor.Input.mouse_position))
+            // Scene objects have no asset path, so there is nothing to convert
+            if ((ShaderEditor.Input.is_drag_drop_event) && position.Contains(ShaderEditor.Input.mouse_position) && DragAndDrop.paths.Length > 0)
             {
                 DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
                 if (ShaderEditor.Input.is_drop_event)
@@ -49,6 +50,8 @@ namespace Thry.ThryEditor.Drawers
                 tex = Converter.PathsToTexture2DArray(paths, out fps);
             else
                 tex = AssetDatabase.LoadAssetAtPath<Texture2DArray>(paths[0]);
+            // Nothing could be converted; keep the current texture
+            if (tex == null) return;
             prop.textureValue = tex;
             UpdateFramesProperty(shaderProperty, tex);
             if (fps > 0)
