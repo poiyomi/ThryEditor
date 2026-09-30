@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -15,10 +16,11 @@ namespace Thry.ThryEditor
 
         public bool Execute(MaterialProperty p, Material[] targets)
         {
+            // Shader source writes numbers with a '.' decimal point whatever the editor's language is
             if (
-                (p.GetPropertyType() == ShaderPropertyType.Float && p.floatValue.ToString() == value) ||
-                (p.GetPropertyType() == ShaderPropertyType.Int && p.intValue.ToString() == value) ||
-                (p.GetPropertyType() == ShaderPropertyType.Range && p.floatValue.ToString() == value) ||
+                (p.GetPropertyType() == ShaderPropertyType.Float && p.floatValue.ToString(CultureInfo.InvariantCulture) == value) ||
+                (p.GetPropertyType() == ShaderPropertyType.Int && p.intValue.ToString(CultureInfo.InvariantCulture) == value) ||
+                (p.GetPropertyType() == ShaderPropertyType.Range && p.floatValue.ToString(CultureInfo.InvariantCulture) == value) ||
                 (p.GetPropertyType() == ShaderPropertyType.Color && p.colorValue.ToString() == value) ||
                 (p.GetPropertyType() == ShaderPropertyType.Vector && p.vectorValue.ToString() == value) ||
                 (p.GetPropertyType() == ShaderPropertyType.Texture && ((p.textureValue == null) == (value == "0"))) ||
