@@ -45,7 +45,6 @@ namespace Thry.ThryEditor
         Dictionary<Material,Shader> _targetShaders = new Dictionary<Material, Shader>();
         ShaderEditor _shaderEditor = null;
         MaterialEditor _materialEditor = null;
-        MaterialProperty[] _materialProperties = null;
         bool _showMaterials = true;
 
         public void UpdateTargets(IEnumerable<Material> materials, bool add = false)
@@ -84,7 +83,6 @@ namespace Thry.ThryEditor
             _shaderEditor = null;
             if (_materialEditor != null) DestroyImmediate(_materialEditor);
             _materialEditor = null;
-            _materialProperties = null;
         }
 
         private void PruneInvalidTargets()
@@ -226,7 +224,7 @@ namespace Thry.ThryEditor
             if (tree.End.HasValue) yield return tree.End.Value;
         }
 
-        private void CreateShaderEditor(bool collectProperties = true)
+        private void CreateShaderEditor()
         {
             PruneInvalidTargets();
             if (_targets.Count == 0) return;
@@ -234,7 +232,6 @@ namespace Thry.ThryEditor
 
             _shaderEditor = new ShaderEditor(){ IsCrossEditor = true };
             _materialEditor = Editor.CreateEditor(_targets.ToArray()) as MaterialEditor;
-            if (collectProperties) _materialProperties = CollectProperties(_shaderEditor, _targets.ToArray());
             _targetShaders.Clear();
             foreach (var material in _targets) _targetShaders[material] = SourceShader(material);
         }

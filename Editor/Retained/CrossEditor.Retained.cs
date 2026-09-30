@@ -46,7 +46,7 @@ namespace Thry.ThryEditor
             scroll.RegisterCallback<DragUpdatedEvent>(e => { if (DragAndDrop.objectReferences.OfType<Material>().Any()) DragAndDrop.visualMode = DragAndDropVisualMode.Copy; });
             scroll.RegisterCallback<DragPerformEvent>(e => { var added = DragAndDrop.objectReferences.OfType<Material>().ToArray(); if (added.Length == 0) return; DragAndDrop.AcceptDrag(); UpdateTargets(added, true); e.StopPropagation(); });
             if (_targets.Count == 0) return;
-            CreateShaderEditor(collectProperties: false);
+            CreateShaderEditor();
             if (_materialEditor == null || _shaderEditor == null) return;
             // Use the inspector's live value provider. The legacy snapshot does not
             // refresh after per-material edits, Undo or changes in another inspector.
