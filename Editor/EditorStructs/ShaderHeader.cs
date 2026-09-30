@@ -499,12 +499,11 @@ namespace Thry.ThryEditor
             menu.AddItem(new GUIContent("Copy"), false, delegate ()
             {
                 ThryLogger.LogDetail("ShaderHeader", $"Copying '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
-                Mediator.copy_material = new Material(materials[0]);
                 Mediator.copy_part = property;
             });
             menu.AddItem(new GUIContent("Paste"), false, delegate ()
             {
-                if (Mediator.copy_material != null || Mediator.copy_part != null)
+                if (Mediator.copy_part != null)
                 {
                     ThryLogger.LogDetail("ShaderHeader", $"Pasting '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
                     int undoGroup = Undo.GetCurrentGroup();
@@ -519,7 +518,7 @@ namespace Thry.ThryEditor
             });
             menu.AddItem(new GUIContent("Paste without Textures"), false, delegate ()
             {
-                if (Mediator.copy_material != null || Mediator.copy_part != null)
+                if (Mediator.copy_part != null)
                 {
                     ThryLogger.LogDetail("ShaderHeader", $"Pasting* '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
                     int undoGroup = Undo.GetCurrentGroup();
@@ -535,7 +534,7 @@ namespace Thry.ThryEditor
             });
             menu.AddItem(new GUIContent("Paste Special..."), false, () =>
             {
-                if(Mediator.copy_material == null || Mediator.copy_part == null) return;
+                if(Mediator.copy_part == null) return;
                 
                 ThryLogger.LogDetail("ShaderHeader", $"Pasting** '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
                 var popup = ScriptableObject.CreateInstance<PasteSpecialPopup>();
@@ -545,7 +544,7 @@ namespace Thry.ThryEditor
                 popup.OnPasteClicked += (disabledPartsList) =>
                 {
                     HashSet<string> ignoreProperties = new HashSet<string>(disabledPartsList.Select(p => p.MaterialProperty.name));
-                    if (Mediator.copy_material != null || Mediator.copy_part != null)
+                    if (Mediator.copy_part != null)
                     {
                         int undoGroup = Undo.GetCurrentGroup();
 
