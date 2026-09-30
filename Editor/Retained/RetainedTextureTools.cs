@@ -281,17 +281,29 @@ namespace Thry.ThryEditor.Drawers
                 fields.Model.Shader.ActivateRetained();
                 if (!fields.Model.CanEdit(property)) return;
                 var studio = TexturePacker.NodeGUI.Open(RetainedStudioConfig());
+                // The studio packs right before it saves, so this holds the configuration of the saved texture.
+                TexturePacker.TexturePackerConfig studioConfig = null;
+                studio.OnChange += (packed, config) => studioConfig = config;
                 // Preview stays in the studio; only a saved asset is assigned to the material.
                 studio.OnSave += texture =>
                 {
                     if (root.panel == null || !fields.Model.CanEdit(property)) return;
                     if (texture == null) return;
+                    var inputs = RetainedInputsFromStudio(studioConfig);
                     fields.Model.Edit(property, p =>
                     {
                         var material = p.targets.OfType<Material>().FirstOrDefault();
                         if (material == null) return;
                         Undo.RegisterCompleteObjectUndo(material, "Save texture channels");
-                        p.textureValue = texture; material.SetOverrideTag(SavedInputsTag, RetainedInputSignature(material));
+                        p.textureValue = texture;
+                        // The channel inputs must describe the assigned texture, or the next inline edit repacks
+                        // from the old inputs and silently replaces the studio result.
+                        if (inputs != null)
+                        {
+                            for (int i = 0; i < inputs.Length; i++) SaveRetainedChannel(material, i, inputs[i]);
+                            material.SetOverrideTag(SavedInputsTag, RetainedInputSignature(material));
+                        }
+                        else material.SetOverrideTag(SavedInputsTag, StudioOnlyInputs);
                         material.SetOverrideTag(PreviewStateTag, "");
                     }, true);
                     RefreshRetainedPacker();
@@ -304,6 +316,51 @@ namespace Thry.ThryEditor.Drawers
                 Undo.undoRedoEvent-=OnUndoRedo;
             });
             return root;
+        }
+
+        // Never equals an input signature, so the channel inputs show as not matching the saved texture.
+        const string StudioOnlyInputs = "texture-studio";
+
+        // Reads the studio's routing back into the channel inputs. Returns null when the studio uses something the
+        // inputs can't hold: several sources on one channel, combine modes, adjustments, filters, color or gradient sources.
+        InlinePackerChannelConfig[] RetainedInputsFromStudio(TexturePacker.TexturePackerConfig config)
+        {
+            if (config?.Sources == null || config.Targets == null || config.Targets.Length != 4 || config.Connections == null) return null;
+            if (config.KernelPreset != TexturePacker.KernelPreset.None) return null;
+            if (config.ImageAdjust != null && !config.ImageAdjust.Equals(new TexturePacker.ImageAdjust())) return null;
+            var outputs = new InlinePackerChannelConfig[4];
+            var sourceIndices = new int[4];
+            for (int output = 0; output < 4; output++)
+            {
+                var target = config.Targets[output];
+                if (target.BlendMode != TexturePacker.BlendMode.Add) return null;
+                var routes = config.Connections.Where(c => c.FromTextureIndex >= 0 && (int)c.ToChannel == output).ToArray();
+                if (routes.Length > 1) return null;
+                var input = new InlinePackerChannelConfig { Invert = target.Invert == TexturePacker.InvertMode.Invert, Fallback = target.Fallback };
+                sourceIndices[output] = -1;
+                if (routes.Length == 1)
+                {
+                    var route = routes[0];
+                    if (route.FromTextureIndex >= config.Sources.Length) return null;
+                    var source = config.Sources[route.FromTextureIndex];
+                    if (source != null && source.InputType != TexturePacker.InputType.Texture) return null;
+                    if (source != null) input.Source = source;
+                    input.Channel = route.FromChannel;
+                    input.Remapping = route.RemappingMode == TexturePacker.RemapMode.None ? s_RemappingDefault : route.Remapping;
+                    sourceIndices[output] = route.FromTextureIndex;
+                }
+                outputs[output] = CopyChannel(input);
+            }
+            if (!_firstTextureIsRGB) return outputs;
+            // One RGB input fills the first three outputs from its R, G and B channels, and the second input fills alpha.
+            for (int output = 0; output < 3; output++)
+            {
+                var channel = outputs[output];
+                if (sourceIndices[output] != sourceIndices[0] || channel.Invert != outputs[0].Invert || channel.Fallback != outputs[0].Fallback
+                    || channel.Remapping != outputs[0].Remapping) return null;
+                if (sourceIndices[output] >= 0 && channel.Channel != (TexturePacker.TextureChannelIn)output) return null;
+            }
+            return new[] { outputs[0], outputs[3] };
         }
 
         static string ChannelCaption(string label, string channel, int index)
