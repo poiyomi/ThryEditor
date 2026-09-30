@@ -308,6 +308,7 @@ namespace Thry.ThryEditor.Helpers
                     return null;
                 }
                 Array.Sort(textures, (UnityEngine.Object one, UnityEngine.Object two) => EditorUtility.NaturalCompare(one.name, two.name));
+                bool linear = !GraphicsFormatUtility.IsSRGBFormat(textures[0].graphicsFormat);
 
                 string assetPath = AssetDatabase.GetAssetPath(textures[0]);
                 assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath.Remove(assetPath.LastIndexOf('/')) + "/Texture2DArray.asset");
@@ -315,7 +316,7 @@ namespace Thry.ThryEditor.Helpers
                 Texture2DArray texture2DArray;
                 if (CanCopyFramesDirectly(textures))
                 {
-                    texture2DArray = Textre2DArrayToAsset(textures);
+                    texture2DArray = Textre2DArrayToAsset(textures, linear);
                 }
                 else
                 {
@@ -335,7 +336,7 @@ namespace Thry.ThryEditor.Helpers
                         frames[0].anisoLevel = textures[0].anisoLevel;
                         frames[0].wrapModeU = textures[0].wrapModeU;
                         frames[0].wrapModeV = textures[0].wrapModeV;
-                        texture2DArray = Textre2DArrayToAsset(frames);
+                        texture2DArray = Textre2DArrayToAsset(frames, linear);
                     }
                     finally
                     {
@@ -505,9 +506,9 @@ namespace Thry.ThryEditor.Helpers
             return gifFrames;
         }
 
-        private static Texture2DArray Textre2DArrayToAsset(Texture2D[] array)
+        private static Texture2DArray Textre2DArrayToAsset(Texture2D[] array, bool linear = false)
         {
-            Texture2DArray texture2DArray = new Texture2DArray(array[0].width, array[0].height, array.Length, array[0].format, true);
+            Texture2DArray texture2DArray = new Texture2DArray(array[0].width, array[0].height, array.Length, array[0].format, true, linear);
 
             for (int i = 0; i < array.Length; i++)
             {
