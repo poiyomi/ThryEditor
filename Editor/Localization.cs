@@ -1012,7 +1012,7 @@ namespace Thry.ThryEditor
                         string value = EditorGUILayout.DelayedTextField(key, locale._localizedStrings[key][_selectedLanguageIndex]);
                         if (GUILayout.Button("Remove", GUILayout.Width(65)))
                         {
-                            locale._localizedStrings[key][_selectedLanguageIndex] = "";
+                            value = "";
                         }
                         EditorGUILayout.EndHorizontal();
                         if (value != (locale._localizedStrings[key][_selectedLanguageIndex] ?? ""))
