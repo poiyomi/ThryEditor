@@ -6273,7 +6273,9 @@
 
 /* Appearance sliders: -20 to 20, with zero retaining the palette above.
    Foregrounds adapt at the
-   brighter dark-skin and darker light-skin ends to preserve text contrast. */
+   brighter dark-skin and darker light-skin ends to preserve text contrast.
+   Root section hovers stop at #757575 under white text; where that would leave
+   little difference from the resting color, the hover goes darker instead. */
 /* Dark skin: dark surfaces. */
 .thry-inspector.thry-dark.thry-gray-dark-n10, .thry-dropdown-menu.thry-dark.thry-gray-dark-n10 {
     --thry-background-color: #101010;
@@ -6757,13 +6759,13 @@
 
 .thry-inspector.thry-dark.thry-gray-light-p9, .thry-dropdown-menu.thry-dark.thry-gray-light-p9 {
     --thry-root-section-background: #6d6d6d;
-    --thry-root-section-hover-background: #737373;
+    --thry-root-section-hover-background: #626262;
     --thry-root-section-text-color: #ffffff;
 }
 
 .thry-inspector.thry-dark.thry-gray-light-p10, .thry-dropdown-menu.thry-dark.thry-gray-light-p10 {
     --thry-root-section-background: #6f6f6f;
-    --thry-root-section-hover-background: #737373;
+    --thry-root-section-hover-background: #646464;
     --thry-root-section-text-color: #ffffff;
 }
 
@@ -7753,13 +7755,13 @@
 
 .thry-inspector.thry-dark.thry-gray-light-p11, .thry-dropdown-menu.thry-dark.thry-gray-light-p11 {
     --thry-root-section-background: #717171;
-    --thry-root-section-hover-background: #757575;
+    --thry-root-section-hover-background: #666666;
     --thry-root-section-text-color: #ffffff;
 }
 
 .thry-inspector.thry-dark.thry-gray-light-p12, .thry-dropdown-menu.thry-dark.thry-gray-light-p12 {
     --thry-root-section-background: #747474;
-    --thry-root-section-hover-background: #757575;
+    --thry-root-section-hover-background: #696969;
     --thry-root-section-text-color: #ffffff;
 }
 
@@ -7823,7 +7825,7 @@
 
 .thry-inspector.thry-light.thry-gray-dark-n19, .thry-dropdown-menu.thry-light.thry-gray-dark-n19 {
     --thry-root-section-background: #6f6f6f;
-    --thry-root-section-hover-background: #757575;
+    --thry-root-section-hover-background: #646464;
     --thry-action-background: #676767;
     --thry-action-hover-background: #727272;
     --thry-button-pressed-background: #8b8b8b;
@@ -7833,7 +7835,7 @@
 
 .thry-inspector.thry-light.thry-gray-dark-n18, .thry-dropdown-menu.thry-light.thry-gray-dark-n18 {
     --thry-root-section-background: #727272;
-    --thry-root-section-hover-background: #757575;
+    --thry-root-section-hover-background: #676767;
     --thry-action-background: #6a6a6a;
     --thry-action-hover-background: #757575;
     --thry-button-pressed-background: #8e8e8e;
@@ -7843,7 +7845,7 @@
 
 .thry-inspector.thry-light.thry-gray-dark-n17, .thry-dropdown-menu.thry-light.thry-gray-dark-n17 {
     --thry-root-section-background: #757575;
-    --thry-root-section-hover-background: #757575;
+    --thry-root-section-hover-background: #6a6a6a;
     --thry-action-background: #6d6d6d;
     --thry-action-hover-background: #757575;
     --thry-button-pressed-background: #919191;
