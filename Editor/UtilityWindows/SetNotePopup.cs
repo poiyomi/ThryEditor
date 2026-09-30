@@ -22,44 +22,8 @@ namespace Thry.ThryEditor
                 position = rectOverride.Value;
         }
 
-        void OnGUI()
+        void UpdateNoteAndClose()
         {
-            if(rootVisualElement.childCount>0)return;
-            if(ShaderPart == null)
-            {
-                Close();
-                return;
-            }
-
-            GUI.SetNextControlName(nameof(TextFieldContent));
-            TextFieldContent = EditorGUILayout.TextField(TextFieldContent);
-            EditorGUI.FocusTextInControl(nameof(TextFieldContent));
-            
-            EditorGUILayout.BeginHorizontal();
-            if(GUILayout.Button("Cancel", GUILayout.Height(30))) 
-            {
-                Close();
-            }
-
-            if(Event.current.isKey)
-            {
-                if(Event.current.keyCode == KeyCode.Return)
-                    UpdateNoteAndClose(true);
-                else if(Event.current.keyCode == KeyCode.Escape)
-                    Close();
-            }
-
-            if(GUILayout.Button("Ok", GUILayout.Height(30)))
-                UpdateNoteAndClose(false);
-            
-            EditorGUILayout.EndHorizontal();
-        }
-
-        void UpdateNoteAndClose(bool enterPressed)
-        {
-            if(enterPressed)
-                Event.current.Use();
-            
             ShaderPart.Note = TextFieldContent;
             Close();
         }
@@ -69,8 +33,8 @@ namespace Thry.ThryEditor
             var text=new TextField {multiline=true,value=TextFieldContent};text.style.flexGrow=1;rootVisualElement.Add(text);
             text.RegisterValueChangedCallback(e=>TextFieldContent=e.newValue);
             var actions=new VisualElement();actions.AddToClassList("thry-components");actions.AddToClassList("thry-dialog-actions");rootVisualElement.Add(actions);
-            actions.Add(new Button(Close){text=RetainedText.Get("cancel","Cancel")});var save=new Button(()=>UpdateNoteAndClose(false)){text=RetainedText.Get("save","Save")};save.AddToClassList("thry-primary-action");actions.Add(save);
-            RetainedWindow.Shortcuts(rootVisualElement, Close, () => UpdateNoteAndClose(false), true);
+            actions.Add(new Button(Close){text=RetainedText.Get("cancel","Cancel")});var save=new Button(UpdateNoteAndClose){text=RetainedText.Get("save","Save")};save.AddToClassList("thry-primary-action");actions.Add(save);
+            RetainedWindow.Shortcuts(rootVisualElement, Close, UpdateNoteAndClose, true);
             text.schedule.Execute(text.Focus);
         }
     }

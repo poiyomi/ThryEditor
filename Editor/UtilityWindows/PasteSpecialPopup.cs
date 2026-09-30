@@ -46,49 +46,6 @@ namespace Thry.ThryEditor
                 }
             }
 
-            public void DrawUI()
-            {
-                if(ShaderPart == null)
-                    return;
-
-                using(new EditorGUILayout.VerticalScope(Styles.padding2pxHorizontal1pxVertical))
-                {
-                    if(!HasChildren)
-                    {
-                        float halfViewWidth = EditorGUIUtility.currentViewWidth * 0.5f; 
-                        EditorGUILayout.BeginHorizontal();
-                        IsEnabled = EditorGUILayout.ToggleLeft(ShaderPart.Content, IsEnabled, Styles.upperLeft_richText_wordWrap);
-                        DrawShaderProperty(ShaderPart.MaterialProperty, GUILayout.Width(halfViewWidth));
-                        EditorGUILayout.EndHorizontal();
-                        return;
-                    }
-
-                    EditorGUILayout.BeginHorizontal();
-                    var rect = EditorGUILayout.GetControlRect();
-
-                    var foldoutRect = new Rect(rect.x, rect.y, rect.width, rect.height);
-                    var toggleRect = new Rect(rect.x + 16f, rect.y, 14f, rect.height);
-                    var labelRect = new Rect(rect.x + 32f, rect.y, rect.width - 32f, rect.height);
-                    EditorGUI.LabelField(rect, GUIContent.none, Styles.flatHeader);
-                    
-                    IsEnabled = EditorGUI.Toggle(toggleRect, GUIContent.none, IsEnabled);
-                    IsExpanded = EditorGUI.Foldout(foldoutRect, IsExpanded, string.Empty, true);
-                    EditorGUI.LabelField(labelRect, ShaderPart.Content);
-                    if(GUILayout.Button("None", GUILayout.MaxWidth(40f)))
-                        SetChildrenEnabled(false);
-                    if(GUILayout.Button("All", GUILayout.MaxWidth(40f)))
-                        SetChildrenEnabled(true);
-                    EditorGUILayout.EndHorizontal();
-                    if(IsExpanded)
-                    {
-                        using (new GUILib.IndentScope(1))
-                        {
-                            foreach(var child in children)
-                                child.DrawUI();
-                        }
-                    }
-                }
-            }
             public VisualElement CreateView()
             {
                 var root=new VisualElement();
@@ -122,7 +79,6 @@ namespace Thry.ThryEditor
             }
         }
         
-        Vector2 scrollPosition = Vector2.zero;
         ShaderPartUIAdapter partAdapter;
         
         /// <summary>
@@ -143,34 +99,9 @@ namespace Thry.ThryEditor
 
         void OnGUI()
         {
-            if(rootVisualElement.childCount>0)return;
+            // The copied part isn't serialized, so after a domain reload there is nothing left to paste
             if(partAdapter?.ShaderPart == null)
-            {
                 Close();
-                return;
-            }
-
-            using(var scroll = new EditorGUILayout.ScrollViewScope(scrollPosition))
-            {
-                partAdapter.DrawUI();
-                scrollPosition = scroll.scrollPosition;
-            }
-
-            EditorGUILayout.BeginHorizontal();
-            if(GUILayout.Button("Cancel", GUILayout.Height(30))) 
-            {
-                Close();
-            }
-
-            if(GUILayout.Button("Paste Selected", GUILayout.Height(30)))
-            {
-                List<ShaderPart> disabledParts = new List<ShaderPart>();
-                partAdapter.AddDisabledShaderPartsToListRecursive(ref disabledParts);
-                OnPasteClicked?.Invoke(disabledParts);
-
-                Close();
-            }
-            EditorGUILayout.EndHorizontal();
         }
         
         public void CreateGUI()
@@ -180,35 +111,5 @@ namespace Thry.ThryEditor
             var actions=new VisualElement();actions.AddToClassList("thry-components");actions.AddToClassList("thry-dialog-actions");rootVisualElement.Add(actions);
             actions.Add(new Button(Close){text=RetainedText.Get("cancel","Cancel")});var paste=new Button(()=>{var disabled=new List<ShaderPart>();partAdapter.AddDisabledShaderPartsToListRecursive(ref disabled);OnPasteClicked?.Invoke(disabled);Close();}){text=RetainedText.Get("paste_selected","Paste Selected")};paste.AddToClassList("thry-primary-action");actions.Add(paste);
         }
-        static void DrawShaderProperty(MaterialProperty prop, GUILayoutOption propertyWidth)
-        {
-            using(new EditorGUI.DisabledScope(true))
-            {
-                switch(prop.GetPropertyType())
-                {
-                    case ShaderPropertyType.Color:
-                        EditorGUILayout.ColorField(prop.colorValue, propertyWidth);
-                        break;
-                    case ShaderPropertyType.Vector:
-                        EditorGUILayout.Vector4Field(GUIContent.none, prop.vectorValue, propertyWidth);
-                        break;
-                    case ShaderPropertyType.Int:
-                        EditorGUILayout.IntField(prop.intValue, propertyWidth);
-                        break;
-                    case ShaderPropertyType.Range:
-                        EditorGUILayout.Slider(GUIContent.none, prop.floatValue, prop.rangeLimits.x, prop.rangeLimits.y,
-                            propertyWidth);
-                        break;
-                    case ShaderPropertyType.Float:
-                        EditorGUILayout.FloatField(prop.floatValue, propertyWidth);
-                        break;
-                    case ShaderPropertyType.Texture:
-                        EditorGUILayout.ObjectField(prop.textureValue, typeof(Texture), true, propertyWidth);
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }        
     }
 }
