@@ -1,4 +1,4 @@
-#if (VRC_SDK_VRCSDK2 || VRC_SDK_VRCSDK3)
+#if VRC_SDK_VRCSDK3
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,11 +7,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using VRC.SDKBase.Editor.BuildPipeline;
-#if VRC_SDK_VRCSDK3
 using VRC.SDKBase;
-#else
-using VRCSDK2;
-#endif
 #if VRC_SDK_VRCSDK3 && !UDON
 using VRC.SDK3.Avatars.Components;
 #endif
