@@ -80,7 +80,7 @@ namespace Thry.ThryEditor
             get
             {
                 if (p_editor == null)
-                    p_editor = new EditorLocale(EDITOR_LOCALE_NAME);
+                    p_editor = new EditorLocale(EDITOR_LOCALE_NAME, Config.Instance.locale);
                 return p_editor;
             }
         }
