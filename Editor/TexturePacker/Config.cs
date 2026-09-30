@@ -48,7 +48,8 @@ namespace Thry.ThryEditor.TexturePacker
                 for (int i = 0; i < config.Sources.Length; i++)
                 {
                     var source = config.Sources[i];
-                    if (config.Version < 2 && source.ImageTexture != null) source.CaptureImageIdentity();
+                    // Older configs saved instance IDs, which point at unrelated objects after a restart. Ask for the texture again.
+                    if (config.Version < 2) source.ImageTexture = null;
                     if (!string.IsNullOrEmpty(source.ImageTextureGuid)) source.ResolveImageIdentity();
                     else if (legacy?.Sources != null && i < legacy.Sources.Length && legacy.Sources[i]?.ImageTexture?.instanceID != 0
                         && legacy.Sources[i]?.ImageTexture != null && source.ImageTexture == null) source.MissingImageReference = true;
