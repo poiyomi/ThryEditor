@@ -34,7 +34,8 @@ Shader "Hidden/Thry/MaskBake"
             float4 frag(v2f_img i) : SV_Target
             {
                 float4 value = tex2D(_MainTex, i.uv);
-                if (_DecodeSRGB > .5) value.rgb = GammaToLinearSpace(value.rgb);
+                // Exact curve, to match the hardware decode the live material gets and the exact encode on export
+                if (_DecodeSRGB > .5) value.rgb = float3(GammaToLinearSpaceExact(value.r), GammaToLinearSpaceExact(value.g), GammaToLinearSpaceExact(value.b));
                 if ((_Channels & 1) != 0) value.r = Adjust(value.r, 0);
                 if ((_Channels & 2) != 0) value.g = Adjust(value.g, 1);
                 if ((_Channels & 4) != 0) value.b = Adjust(value.b, 2);
