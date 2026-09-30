@@ -26,6 +26,8 @@ namespace Thry.ThryEditor
         public static async void CaptureActiveInspector(string saveDirectory)
         {
             var inspector = EditorWindow.focusedWindow;
+            if(inspector == null)
+                return;
             await Task.Delay(250);
             await CaptureWindow(inspector, saveDirectory);
         }
@@ -62,6 +64,8 @@ namespace Thry.ThryEditor
             InitReflections(window);
             
             List<Color> pixels = new List<Color>();
+            // Windows without an inspector scroll view (e.g. the Cross Shader Editor) only get their visible area captured
+            bool canScroll = GetScrollView(window) != null;
             float originalScroll = SetScroll(window);
 
             var baseHeight = window.position.height - (_tabsHeight + _footer);
@@ -69,22 +73,38 @@ namespace Thry.ThryEditor
             bool originalExpanded = GetPreviewExpanded(window) ?? false;
             SetPreviewExpanded(window, false);
 
-            for(int i = 0; i < 64; i++)
+            int width = (int)window.position.width;
+            int maxHeight = SystemInfo.maxTextureSize;
+            bool truncated = false;
+            for(int i = 0; ; i++)
             {
                 float desiredScroll = baseHeight * i;
                 float scroll = await ScrollTo(desiredScroll);
                 int offset = (int)(desiredScroll - scroll);
 
-                pixels.InsertRange(0, ReadWindowPixels(window, offset));
+                Color[] chunk = ReadWindowPixels(window, offset);
+                if(chunk.Length == 0)
+                    break;
+                // Rows are stored bottom to top, so the rows that still fit are at the end of the chunk
+                int remainingRows = maxHeight - pixels.Count / width;
+                if(chunk.Length / width > remainingRows)
+                {
+                    pixels.InsertRange(0, new ArraySegment<Color>(chunk, chunk.Length - remainingRows * width, remainingRows * width));
+                    truncated = true;
+                    break;
+                }
+                pixels.InsertRange(0, chunk);
 
-                if(offset > 0)
+                if(offset > 0 || !canScroll)
                     break;
             }
 
             SetScroll(window, originalScroll);
             SetPreviewExpanded(window, originalExpanded);
 
-            int width = (int)window.position.width;
+            if(truncated)
+                Debug.LogWarning($"The inspector is taller than the maximum texture size, so the screenshot only shows the top {maxHeight} pixels.");
+
             int height = pixels.Count / width;
             Texture2D texture = new Texture2D(width, height, TextureFormat.RGB24, false);
             texture.SetPixels(pixels.ToArray());
@@ -123,9 +143,15 @@ namespace Thry.ThryEditor
         /// <returns>the value passed in clamped to the min max scroll of the window</returns>
         static float SetScroll(EditorWindow inspector, float scroll = -1)
         {
-            var scrollView = ScrollViewField.GetValue(inspector) as ScrollView;
+            var scrollView = GetScrollView(inspector);
+            if(scrollView == null) return 0;
             if(scroll >= 0) scrollView.scrollOffset = new Vector2(0, scroll);
             return scrollView.scrollOffset.y;
+        }
+
+        static ScrollView GetScrollView(EditorWindow window)
+        {
+            return ScrollViewField?.GetValue(window) as ScrollView;
         }
 
         static FieldInfo PreviewResizerField;
@@ -139,19 +165,20 @@ namespace Thry.ThryEditor
             if(window.GetType() == lastWindowType)
                 return;
             
+            // Fields cached for a different window type can't be read from this one
             lastWindowType = window.GetType();
-            if(PreviewResizerField == null)
-                PreviewResizerField = lastWindowType.GetField("m_PreviewResizer", BindingFlags.NonPublic | BindingFlags.Instance);
+            PreviewResizerField = lastWindowType.GetField("m_PreviewResizer", BindingFlags.NonPublic | BindingFlags.Instance);
+            PreviewResizerGetExpandedMethod = null;
+            PreviewResizerSetExpandedMethod = null;
 
-            if(PreviewResizerField != null && (PreviewResizerGetExpandedMethod == null || PreviewResizerSetExpandedMethod == null))
+            if(PreviewResizerField != null)
             {
                 Type resizerType = PreviewResizerField.FieldType;
                 PreviewResizerGetExpandedMethod = resizerType.GetMethod("GetExpanded");
                 PreviewResizerSetExpandedMethod = resizerType.GetMethod("SetExpanded", new[] {typeof(bool)});
             }
             
-            if(ScrollViewField == null)
-                ScrollViewField = lastWindowType.GetField("m_ScrollView", BindingFlags.NonPublic | BindingFlags.Instance);
+            ScrollViewField = lastWindowType.GetField("m_ScrollView", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
         static bool? GetPreviewExpanded(EditorWindow window)
