@@ -162,11 +162,19 @@ namespace Thry.ThryEditor
 
             if (_mesh == null) throw new System.InvalidOperationException("The renderer has no mesh for decal positioning.");
 
-            int meshTriangleLength = _mesh.triangles.Length;
-            _uvTriangles = new Vector2[meshTriangleLength / 3][];
-            _worldTriangles = new Vector3[meshTriangleLength / 3][];
-            _worldNormals = new Vector3[meshTriangleLength / 3][];
-            int[] triangles = _mesh.triangles;
+            // Each material slot has its own UV layout, so only the submeshes drawn with this material count.
+            // Slots past the last submesh draw the last submesh again.
+            var subMeshes = new HashSet<int>();
+            Material[] slots = _renderer.sharedMaterials;
+            for (int i = 0; i < slots.Length && _mesh.subMeshCount > 0; i++)
+                if (slots[i] == _material) subMeshes.Add(Mathf.Min(i, _mesh.subMeshCount - 1));
+            if (subMeshes.Count == 0) throw new System.InvalidOperationException("The selected renderer doesn't use this material.");
+            int[] triangles = subMeshes.OrderBy(i => i)
+                .Where(i => _mesh.GetTopology(i) == MeshTopology.Triangles || _mesh.GetTopology(i) == MeshTopology.Quads)
+                .SelectMany(i => _mesh.GetTriangles(i)).ToArray();
+            _uvTriangles = new Vector2[triangles.Length / 3][];
+            _worldTriangles = new Vector3[triangles.Length / 3][];
+            _worldNormals = new Vector3[triangles.Length / 3][];
             Vector2[] uvs;
             if(_uvIndex == 1) uvs = _mesh.uv2;
             else if(_uvIndex == 2) uvs = _mesh.uv3;
