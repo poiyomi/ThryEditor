@@ -1,3 +1,4 @@
+using Thry.ThryEditor.DataStructs;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -72,5 +73,16 @@ namespace Thry.ThryEditor.Helpers
             int finalOutput = (opResult & stencilWriteMask) | (initialValue & ((~stencilWriteMask) & ByteMax));
             return finalOutput;
         }
+
+        internal static int GetMaterialValue(Material material, string propertyName, int fallback = ByteMin)
+            => material.HasProperty(propertyName) ? Mathf.Clamp((int)material.GetFloat(propertyName), ByteMin, ByteMax) : fallback;
+
+        internal static int ComputeFinalStencilOutput(Material material, StencilConfig c, out bool checkPassed)
+            => ComputeFinalStencilOutput(
+                GetMaterialValue(material, c.StencilBufferValuePropertyName), GetMaterialValue(material, c.StencilRefPropertyName),
+                GetMaterialValue(material, c.StencilReadMaskPropertyName, ByteMax), GetMaterialValue(material, c.StencilWriteMaskPropertyName, ByteMax),
+                (CompareFunction)GetMaterialValue(material, c.StencilCompareFunctionPropertyName, (int)CompareFunction.Always),
+                (StencilOp)GetMaterialValue(material, c.StencilPassOpPropertyName), (StencilOp)GetMaterialValue(material, c.StencilFailOpPropertyName),
+                (StencilOp)GetMaterialValue(material, c.StencilZFailOpPropertyName), GetMaterialValue(material, c.StencilIsOccludedPropertyName) != 0, out checkPassed);
     }
 }

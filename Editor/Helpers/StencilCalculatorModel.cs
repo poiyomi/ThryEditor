@@ -1,4 +1,6 @@
 using Thry.ThryEditor.DataStructs;
+using UnityEditor;
+using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace Thry.ThryEditor.Helpers
@@ -19,18 +21,13 @@ namespace Thry.ThryEditor.Helpers
             public int Value => StencilPropertyHelper.GetValueFromProperty(_propertyName, _defaultValue);
             public bool IsMixed => StencilPropertyHelper.HasMixedValue(_propertyName);
 
-            public void SaveIfDifferent(int newValue)
-            {
-                if (newValue == Value) return;
-                Save(newValue);
-            }
-
             public void Save(int newValue)
             {
                 StencilPropertyHelper.SaveValueToProperty(_propertyName, newValue);
             }
         }
 
+        private readonly StencilConfig _config;
         private readonly PropertyTracker _bufferValue;
         private readonly PropertyTracker _stencilRef;
         private readonly PropertyTracker _readMask;
@@ -39,11 +36,11 @@ namespace Thry.ThryEditor.Helpers
         private readonly PropertyTracker _passOp;
         private readonly PropertyTracker _failOp;
         private readonly PropertyTracker _zFailOp;
-        private readonly PropertyTracker _checkResult;
         private readonly PropertyTracker _isOccluded;
 
         public StencilCalculatorModel(StencilConfig config)
         {
+            _config = config;
             _bufferValue = new PropertyTracker(config.StencilBufferValuePropertyName, 0);
             _stencilRef = new PropertyTracker(config.StencilRefPropertyName, 0);
             _readMask = new PropertyTracker(config.StencilReadMaskPropertyName, StencilOperationsHelper.ByteMax);
@@ -52,7 +49,6 @@ namespace Thry.ThryEditor.Helpers
             _passOp = new PropertyTracker(config.StencilPassOpPropertyName, (int)StencilOp.Keep);
             _failOp = new PropertyTracker(config.StencilFailOpPropertyName, (int)StencilOp.Keep);
             _zFailOp = new PropertyTracker(config.StencilZFailOpPropertyName, (int)StencilOp.Keep);
-            _checkResult = new PropertyTracker(config.StencilCheckResultPropertyName, 0);
             _isOccluded = new PropertyTracker(config.StencilIsOccludedPropertyName, 0);
         }
 
@@ -100,10 +96,26 @@ namespace Thry.ThryEditor.Helpers
             return checkPassed;
         }
 
-        // Both stencil decorators call this; SaveIfDifferent makes repeated writes idempotent.
+        // Editor-only cache for the [Helpbox] conditions, not an edit
         public void UpdateCheckResult()
         {
-            _checkResult.SaveIfDifferent(ComputeCheckResult() ? 1 : 0);
+            Material[] materials = ShaderEditor.Active?.Materials;
+            if (materials == null) return;
+            string resultName = _config.StencilCheckResultPropertyName;
+            bool wrote = false;
+            foreach (Material material in materials)
+            {
+                if (material == null || !material.HasProperty(resultName)) continue;
+                bool passed;
+                StencilOperationsHelper.ComputeFinalStencilOutput(material, _config, out passed);
+                float result = passed ? 1 : 0;
+                if (material.GetFloat(resultName) == result) continue;
+                bool wasDirty = EditorUtility.IsDirty(material);
+                material.SetFloat(resultName, result);
+                if (!wasDirty) EditorUtility.ClearDirty(material);
+                wrote = true;
+            }
+            if (wrote) StencilPropertyHelper.RefreshProperty(resultName);
         }
 
         // Written by the host toggle's own drawer, so this side only reads it.

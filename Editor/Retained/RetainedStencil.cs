@@ -37,15 +37,10 @@ namespace Thry.ThryEditor
         }
 
         private static int StencilValue(Material material, string id, int fallback = 0)
-            => material.HasProperty(id) ? Mathf.Clamp((int)material.GetFloat(id), 0, 255) : fallback;
+            => StencilOperationsHelper.GetMaterialValue(material, id, fallback);
 
         private static int StencilOutput(Material material, StencilConfig c, out bool passed)
-            => StencilOperationsHelper.ComputeFinalStencilOutput(
-                StencilValue(material, c.StencilBufferValuePropertyName), StencilValue(material, c.StencilRefPropertyName),
-                StencilValue(material, c.StencilReadMaskPropertyName, 255), StencilValue(material, c.StencilWriteMaskPropertyName, 255),
-                (CompareFunction)StencilValue(material, c.StencilCompareFunctionPropertyName, (int)CompareFunction.Always),
-                (StencilOp)StencilValue(material, c.StencilPassOpPropertyName), (StencilOp)StencilValue(material, c.StencilFailOpPropertyName),
-                (StencilOp)StencilValue(material, c.StencilZFailOpPropertyName), StencilValue(material, c.StencilIsOccludedPropertyName) != 0, out passed);
+            => StencilOperationsHelper.ComputeFinalStencilOutput(material, c, out passed);
 
         private void StencilEdit(StencilConfig config, string id, Func<int, int> edit)
         {

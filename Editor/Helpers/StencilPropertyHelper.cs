@@ -27,6 +27,19 @@ namespace Thry.ThryEditor.Helpers
             MarkMaterialsDirty();
         }
 
+        // MaterialProperty caches the value it read
+        public static void RefreshProperty(string propertyName)
+        {
+            var property = GetRefreshedShaderProperty(propertyName);
+            MaterialProperty[] editorProps = ShaderEditor.Active?.Properties;
+            if (property?.MaterialProperty == null || editorProps == null) return;
+            int index = property.ThryPropertyIndex;
+            if (index < 0 || index >= editorProps.Length) return;
+            editorProps[index] = MaterialEditor.GetMaterialProperty(property.MaterialProperty.targets, propertyName);
+            property.UpdatedMaterialPropertyReference();
+            property.CheckForValueChange();
+        }
+
         public static MaterialProperty GetProperty(string propertyName)
         {
             return GetRefreshedMaterialProperty(propertyName);
