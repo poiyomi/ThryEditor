@@ -1372,11 +1372,19 @@ namespace Thry.ThryEditor
             if (selected.GetComponent<SkinnedMeshRenderer>()) rendererType = typeof(SkinnedMeshRenderer);
             if (selected.GetComponent<MeshRenderer>()) rendererType = typeof(MeshRenderer);
 
-            Type animationStateType = typeof(AnimationUtility).Assembly.GetType("UnityEditorInternal.AnimationWindowState");
-            Type animationKeyframeType = typeof(AnimationUtility).Assembly.GetType("UnityEditorInternal.AnimationWindowKeyframe");
-            Type animationCurveType = typeof(AnimationUtility).Assembly.GetType("UnityEditorInternal.AnimationWindowCurve");
+            // The Animation Window's internal types sit next to AnimationWindow, which newer Unity 6 versions
+            // moved out of the core editor module.
+            Assembly animationWindowAssembly = typeof(AnimationWindow).Assembly;
+            Type animationStateType = animationWindowAssembly.GetType("UnityEditorInternal.AnimationWindowState");
+            Type animationKeyframeType = animationWindowAssembly.GetType("UnityEditorInternal.AnimationWindowKeyframe");
+            Type animationCurveType = animationWindowAssembly.GetType("UnityEditorInternal.AnimationWindowCurve");
 
-            FieldInfo clipboardField = animationStateType.GetField("s_KeyframeClipboard", BindingFlags.NonPublic | BindingFlags.Static);
+            FieldInfo clipboardField = animationStateType?.GetField("s_KeyframeClipboard", BindingFlags.NonPublic | BindingFlags.Static);
+            if (clipboardField == null || animationKeyframeType == null || animationCurveType == null)
+            {
+                ThryLogger.LogWarn("Copy Keyframe: Unable to access the Animation Window clipboard via reflection.");
+                return;
+            }
 
             Type keyframeListType = typeof(List<>).MakeGenericType(animationKeyframeType);
             IList keyframeList = (IList)Activator.CreateInstance(keyframeListType);
@@ -1426,6 +1434,13 @@ namespace Thry.ThryEditor
                 keyframeList.Add(ClipToKeyFrame(animationCurveType, clip, path, ".y", rendererType));
                 keyframeList.Add(ClipToKeyFrame(animationCurveType, clip, path, ".z", rendererType));
                 keyframeList.Add(ClipToKeyFrame(animationCurveType, clip, path, ".w", rendererType));
+            }
+            for (int i = keyframeList.Count - 1; i >= 0; i--)
+                if (keyframeList[i] == null) keyframeList.RemoveAt(i);
+            if (keyframeList.Count == 0)
+            {
+                ThryLogger.LogWarn("Copy Keyframe: Unable to create Animation Window keyframes via reflection.");
+                return;
             }
             clipboardField.SetValue(null, keyframeList);
         }
@@ -1530,8 +1545,7 @@ namespace Thry.ThryEditor
 
         static object TryGetAnimationWindowState()
         {
-            Type animWindowType = typeof(Editor).Assembly.GetType("UnityEditor.AnimationWindow");
-            if (animWindowType == null) return null;
+            Type animWindowType = typeof(AnimationWindow);
             UnityEngine.Object[] windows = Resources.FindObjectsOfTypeAll(animWindowType);
             if (windows.Length == 0) return null;
             object window = windows[0];
@@ -1569,12 +1583,22 @@ namespace Thry.ThryEditor
         object ClipToKeyFrame(Type animationCurveType, AnimationClip clip, string path, string propertyPostFix, Type rendererType)
         {
             FieldInfo curvesField = animationCurveType.GetField("m_Keyframes", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            ConstructorInfo constructor = animationCurveType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 3);
+            if (curvesField == null || constructor == null) return null;
 
-            object windowCurve = Activator.CreateInstance(animationCurveType, clip,
-                EditorCurveBinding.FloatCurve(path, rendererType, "material." + GetAnimatedPropertyName() + propertyPostFix), typeof(float));
-            IEnumerator enumerator = (curvesField.GetValue(windowCurve) as IList).GetEnumerator();
-            enumerator.MoveNext();
-            return enumerator.Current;
+            // Unity 6 takes the clip through the Animation Window's own clip wrapper instead of the AnimationClip itself.
+            object windowClip = clip;
+            if (!constructor.GetParameters()[0].ParameterType.IsAssignableFrom(typeof(AnimationClip)))
+            {
+                Type windowClipType = animationCurveType.Assembly.GetType("UnityEditor.AnimationWindowBuiltin.AnimationWindowClip");
+                if (windowClipType == null) return null;
+                windowClip = Activator.CreateInstance(windowClipType, clip);
+            }
+
+            object windowCurve = constructor.Invoke(new object[] { windowClip,
+                EditorCurveBinding.FloatCurve(path, rendererType, "material." + GetAnimatedPropertyName() + propertyPostFix), typeof(float) });
+            IList keyframes = curvesField.GetValue(windowCurve) as IList;
+            return keyframes != null && keyframes.Count > 0 ? keyframes[0] : null;
         }
 
         internal virtual void EnsureAnimatedStateResolved() { }
