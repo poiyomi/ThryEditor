@@ -292,7 +292,7 @@ namespace Thry.ThryEditor.Drawers
             int propIdx = m.shader.FindPropertyIndex(id);
             if (propIdx >= 0)
             {
-                string defTexName = m.shader.GetPropertyTextureDefaultName(propIdx);
+                string defTexName = m.shader.GetPropertyTextureDefaultName(propIdx)?.ToLowerInvariant();
                 if (!string.IsNullOrEmpty(defTexName))
                 {
                     if (defTexName.Contains("black")) defaultFallback = "0";
