@@ -887,11 +887,20 @@ namespace Thry.ThryEditor
                 bool isLocking = lockState == 1;
 
                 // A section-locked material looks unlocked, but its shader only exists in memory. The full lock
-                // has to start from the original shader. A variant's shader is its parent's.
-                if (isLocking) SectionLock.RevertAll(materials.Where(m => m != null).Select(m => m.GetRoot()).Distinct());
+                // has to start from the original shader.
+                if (isLocking) SectionLock.RevertAll(materials.Where(m => m != null && !m.isVariant).Distinct());
+
+                // Locking the root would bake the root's values into every variant of it
+                if (isLocking)
+                {
+                    string[] skippedVariants = materials.Where(m => m != null && m.isVariant && !m.IsLocked() && !m.shader.IsBroken() && IsShaderUsingThryOptimizer(m.shader))
+                        .Distinct().Select(m => m.name).ToArray();
+                    if (skippedVariants.Length > 0)
+                        ThryLogger.LogErr($"Material variants can't be locked, so these were skipped: {string.Join(", ", skippedVariants)}. Clear their Parent to lock them.");
+                }
 
                 // Get cleaned material list
-                Material[] materialsToChangeLock = materials.Where(m => m != null)
+                Material[] materialsToChangeLock = materials.Where(m => m != null && !(isLocking && m.isVariant))
                     .Select(m => m.GetRoot()) // Material variants can't have their shader changed
                     .Where(m => !string.IsNullOrEmpty(AssetDatabase.GetAssetPath(m))
                         && m.IsLocked() != isLocking // only select materials that are being changed
