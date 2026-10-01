@@ -102,6 +102,7 @@ namespace Thry.ThryEditor
                 isInQuotes = true;
             }
             string trimmedStr = input.Substring(start, end - start);
+            if (isInQuotes) trimmedStr = Unescape(trimmedStr);
             
             switch
             (Type.GetTypeCode(t))
@@ -288,7 +289,7 @@ namespace Thry.ThryEditor
             bool isString = false;
             for (int i = start; i < end; i++)
             {
-                bool escaped = i != 0 && input[i - 1] == '\\';
+                bool escaped = IsEscaped(input, i);
                 if (input[i] == '\"' && !escaped)
                     isString = !isString;
                 if (!isString)
@@ -340,6 +341,7 @@ namespace Thry.ThryEditor
 
             int depth = 0;
             int variableStart = start;
+            bool isString = false;
 
             // A part only comes back null when it did not parse - a trailing comma, an unbalanced brace leaving a
             // stray chunk behind. Dropping it here keeps a malformed json from handing callers on an array of holes.
@@ -358,7 +360,12 @@ namespace Thry.ThryEditor
 
             for (int i = start; i < end; i++)
             {
-                if (depth == 0 && input[i] == ',' && (i == 0 || input[i - 1] != '\\'))
+                bool escaped = IsEscaped(input, i);
+                if (input[i] == '\"' && !escaped)
+                    isString = !isString;
+                if (isString)
+                    continue;
+                if (depth == 0 && input[i] == ',' && !escaped)
                 {
                     addPart(variableStart, i);
                     variableStart = i + 1;
@@ -371,6 +378,51 @@ namespace Thry.ThryEditor
                 else if (input[i] == '}' || input[i] == ']') depth--;
             }
             return list;
+        }
+
+        private static bool IsEscaped(string input, int index)
+        {
+            int backslashes = 0;
+            while (index - backslashes > 0 && input[index - backslashes - 1] == '\\')
+                backslashes++;
+            return (backslashes & 1) == 1;
+        }
+
+        private static string Unescape(string s)
+        {
+            if (s.IndexOf('\\') < 0) return s;
+            StringBuilder sb = new StringBuilder(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (c != '\\' || i == s.Length - 1)
+                {
+                    sb.Append(c);
+                    continue;
+                }
+                char n = s[++i];
+                switch (n)
+                {
+                    case '"': sb.Append('"'); break;
+                    case '\\': sb.Append('\\'); break;
+                    case '/': sb.Append('/'); break;
+                    case 'b': sb.Append('\b'); break;
+                    case 'f': sb.Append('\f'); break;
+                    case 'n': sb.Append('\n'); break;
+                    case 'r': sb.Append('\r'); break;
+                    case 't': sb.Append('\t'); break;
+                    case 'u':
+                        if (i + 4 < s.Length && ushort.TryParse(s.Substring(i + 1, 4), System.Globalization.NumberStyles.HexNumber, System.Globalization.CultureInfo.InvariantCulture, out ushort code))
+                        {
+                            sb.Append((char)code);
+                            i += 4;
+                        }
+                        else sb.Append('\\').Append(n);
+                        break;
+                    default: sb.Append('\\').Append(n); break;
+                }
+            }
+            return sb.ToString();
         }
         
         private static object ParseToEnum(string input, int start, int end, Type objtype)
@@ -499,8 +551,33 @@ namespace Thry.ThryEditor
         private static string SerializePrimitive(object obj)
         {
             if (obj.GetType() == typeof(string))
-                return "\"" + obj + "\"";
+                return Escape((string)obj);
             return obj.ToString().Replace(",", "."); ;
+        }
+
+        private static string Escape(string s)
+        {
+            StringBuilder sb = new StringBuilder(s.Length + 2);
+            sb.Append('"');
+            foreach (char c in s)
+            {
+                switch (c)
+                {
+                    case '"': sb.Append("\\\""); break;
+                    case '\\': sb.Append("\\\\"); break;
+                    case '\b': sb.Append("\\b"); break;
+                    case '\f': sb.Append("\\f"); break;
+                    case '\n': sb.Append("\\n"); break;
+                    case '\r': sb.Append("\\r"); break;
+                    case '\t': sb.Append("\\t"); break;
+                    default:
+                        if (c < ' ') sb.Append("\\u").Append(((int)c).ToString("x4"));
+                        else sb.Append(c);
+                        break;
+                }
+            }
+            sb.Append('"');
+            return sb.ToString();
         }
 #endregion
     }
