@@ -3242,13 +3242,18 @@ namespace Thry.ThryEditor
         //----VRChat Callback to force Locking on upload
 
 #if VRC_SDK_VRCSDK3
-        public class LockMaterialsOnUpload : IVRCSDKPreprocessAvatarCallback
+        public class LockMaterialsOnUpload : IVRCSDKPreprocessAvatarCallback, IVRCSDKPostprocessAvatarCallback
         {
+            // Holds the flattened variant copies the SDK's prefab save would otherwise drop
+            const string TempFolder = "Assets/__ThryUploadMaterials";
+            static readonly List<Material> s_uploadCopies = new List<Material>();
+
             public int callbackOrder => 100;
 
             public bool OnPreprocessAvatar(GameObject avatarGameObject)
             {
                 if (Application.isPlaying) return true;
+                FlattenVariants(avatarGameObject);
                 List<Material> materials = avatarGameObject.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).ToList();
 #if VRC_SDK_VRCSDK3 && !UDON
                 VRCAvatarDescriptor descriptor = avatarGameObject.GetComponent<VRCAvatarDescriptor>();
@@ -3273,6 +3278,52 @@ namespace Thry.ThryEditor
                 if (SetLockedForAllMaterialsInternal(materials, 1, showProgressbar: true, showDialog: PersistentData.Get<bool>("ShowLockInDialog", true), allowCancel: false) == false) return false;
                 //returning true all the time, because build process cant be stopped it seems
                 return true;
+            }
+
+            public void OnPostprocessAvatar()
+            {
+                foreach (Material copy in s_uploadCopies)
+                {
+                    if (copy == null) continue;
+                    string shaderPath = AssetDatabase.GetAssetPath(copy.shader);
+                    if (!LockedShaderCache.IsInCache(shaderPath)) continue;
+                    string entryDirectory = Path.GetDirectoryName(shaderPath).Replace('\\', '/');
+                    LockedShaderCache.DeregisterUser(entryDirectory, AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(copy)));
+                    s_cacheEntriesTouchedThisBatch.Add(entryDirectory);
+                }
+                s_uploadCopies.Clear();
+                ReconcileSharedShaderTags();
+                if (AssetDatabase.IsValidFolder(TempFolder)) AssetDatabase.DeleteAsset(TempFolder);
+            }
+
+            // Variants can't be locked, so the avatar clone gets flattened copies and the project keeps its variants
+            static void FlattenVariants(GameObject avatarGameObject)
+            {
+                Dictionary<Material, Material> copies = new Dictionary<Material, Material>();
+                foreach (Renderer renderer in avatarGameObject.GetComponentsInChildren<Renderer>(true))
+                {
+                    Material[] sharedMaterials = renderer.sharedMaterials;
+                    bool changed = false;
+                    for (int i = 0; i < sharedMaterials.Length; i++)
+                    {
+                        Material m = sharedMaterials[i];
+                        if (m == null || !m.isVariant || m.IsLocked() || m.shader.IsBroken() || !IsShaderUsingThryOptimizer(m.shader)) continue;
+                        if (!copies.TryGetValue(m, out Material copy))
+                        {
+                            if (!AssetDatabase.IsValidFolder(TempFolder)) AssetDatabase.CreateFolder("Assets", TempFolder.Substring("Assets/".Length));
+                            // One folder per copy, so the file name, and with it the rename suffix, stays the variant's name
+                            string folder = AssetDatabase.GUIDToAssetPath(AssetDatabase.CreateFolder(TempFolder, copies.Count.ToString()));
+                            copy = Object.Instantiate(m);
+                            AssetDatabase.CreateAsset(copy, folder + "/" + m.name + ".mat");
+                            copy.parent = null;
+                            s_uploadCopies.Add(copy);
+                            copies.Add(m, copy);
+                        }
+                        sharedMaterials[i] = copy;
+                        changed = true;
+                    }
+                    if (changed) renderer.sharedMaterials = sharedMaterials;
+                }
             }
         }
 #endif
