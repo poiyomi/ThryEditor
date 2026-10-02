@@ -187,20 +187,6 @@ namespace Thry.ThryEditor
                 }
             }
 
-            public ComparisonData(float value)
-            {
-                _type = DataType.FLOAT;
-                _floatData = value;
-                _isConstant = true;
-            }
-
-            public ComparisonData(DefineableCondition condition)
-            {
-                _type = DataType.CONDITION;
-                _condition = condition;
-                _isConstant = condition.IsConstant;
-            }
-
             public override string ToString()
             {
                 switch (_type)
@@ -233,6 +219,7 @@ namespace Thry.ThryEditor
             private bool _isErrorLogged = false;
 
             protected override bool IsConstant => _isConstant;
+            protected override bool ReadsSectionLockIgnoredValue => _left.IsIgnoredBySectionLock || _right.IsIgnoredBySectionLock;
 
             public Comparison(ComparisonData left, ComparisonData right, ComparisonType compareType)
             {
@@ -246,7 +233,7 @@ namespace Thry.ThryEditor
             public override bool Test()
             {
                 if (_isConstant) return _constant;
-                if (_left.IsIgnoredBySectionLock || _right.IsIgnoredBySectionLock) return false;
+                if (ReadsSectionLockIgnoredValue) return false;
                 return Evaluate();
             }
 
@@ -462,6 +449,7 @@ namespace Thry.ThryEditor
             private bool _constant;
 
             protected override bool IsConstant => _isConstant;
+            protected override bool ReadsSectionLockIgnoredValue => _condition1.ReadsSectionLockIgnoredValue || _condition2.ReadsSectionLockIgnoredValue;
 
             public Combination(CombinationType type, DefineableCondition condition1, DefineableCondition condition2)
             {
@@ -492,7 +480,33 @@ namespace Thry.ThryEditor
             }
         }
 
+        private class Inversion : DefineableCondition
+        {
+            private DefineableCondition _condition;
+
+            protected override bool IsConstant => _condition.IsConstant;
+            protected override bool ReadsSectionLockIgnoredValue => _condition.ReadsSectionLockIgnoredValue;
+
+            public Inversion(DefineableCondition condition)
+            {
+                _condition = condition;
+            }
+
+            public override bool Test()
+            {
+                // An ignored value never counts as met, and neither does its inverse
+                if (ReadsSectionLockIgnoredValue) return false;
+                return !_condition.Test();
+            }
+
+            public override string ToString()
+            {
+                return $"!{_condition}";
+            }
+        }
+
         protected abstract bool IsConstant { get; }
+        protected virtual bool ReadsSectionLockIgnoredValue => false;
         public abstract bool Test();
 
         /// <summary>True when the condition reads nothing from the material, like the '0==0' blocks.</summary>
@@ -525,12 +539,18 @@ namespace Thry.ThryEditor
             int bracketStart = -1;
             int bracketEnd = -1;
             bool allPreviousCharsAreEmpty = true;
+            bool isInverted = false;
             for (int i = start; i < end; i++)
             {
                 char c = s[i];
                 if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
                 {
-                    if (allPreviousCharsAreEmpty) start += 1;
+                    if (allPreviousCharsAreEmpty && !isInverted) start += 1;
+                    continue;
+                }
+                if (c == '!' && allPreviousCharsAreEmpty && !isInverted)
+                {
+                    isInverted = true;
                     continue;
                 }
                 if (c == '(')
@@ -570,9 +590,7 @@ namespace Thry.ThryEditor
                 }
                 allPreviousCharsAreEmpty = false;
             }
-
-
-            bool isInverted = IsInverted(s, ref start);
+            if (isInverted) start += 1;
 
             // if no AND or OR was found, check for brackets
             DefineableCondition con;
@@ -585,27 +603,7 @@ namespace Thry.ThryEditor
                 con = ParseSingle(s.Substring(start, end - start), materialRenference);
             }
 
-            if (isInverted)
-            {
-                return new Comparison(new ComparisonData(con), new ComparisonData(0), ComparisonType.EQUAL);
-            }
-
-            return con;
-        }
-
-        static bool IsInverted(string s, ref int start)
-        {
-            for (int i = start; i < s.Length; i++)
-            {
-                if (s[i] == '!')
-                {
-                    start += 1;
-                    return true;
-                }
-                if (s[i] != ' ')
-                    return false;
-            }
-            return false;
+            return isInverted ? new Inversion(con) : con;
         }
 
         private static readonly char[] ComparisonLiteralsToCheckFor = "!><=".ToCharArray();
