@@ -154,6 +154,8 @@ namespace Thry.ThryEditor.TexturePacker
             bool completed = false;
             ComputeBuffer connectionsBuffer = null;
             ComputeBuffer outputsBuffer = null;
+            Texture2D[] inputs = new Texture2D[config.Sources.Length];
+            FilterMode[] inputFilters = new FilterMode[inputs.Length];
 
             // Must wrap the following in a try/finally to prevent memory leaks. Otherwise,
             // connectionsBuffer and outputsBuffer are released into memory, which can
@@ -186,7 +188,13 @@ namespace Thry.ThryEditor.TexturePacker
                 string inputNameFormat = GetInputsNameFormat();
                 for (int i = 0; i < config.Sources.Length; i++)
                 {
-                    PackShader.SetTexture(0, string.Format(inputNameFormat, i), config.Sources[i].ComputeShaderTexture);
+                    Texture2D input = config.Sources[i].ComputeShaderTexture;
+                    if (input != null && input != Texture2D.whiteTexture)
+                    {
+                        inputs[i] = input; inputFilters[i] = input.filterMode;
+                        input.filterMode = config.Sources[i].FilterMode;
+                    }
+                    PackShader.SetTexture(0, string.Format(inputNameFormat, i), input);
                 }
                 for (int i = config.Sources.Length; i < 16; i++)
                 {
@@ -245,6 +253,7 @@ namespace Thry.ThryEditor.TexturePacker
             {
                 connectionsBuffer?.Release();
                 outputsBuffer?.Release();
+                for (int i = inputs.Length - 1; i >= 0; i--) if (inputs[i] != null) inputs[i].filterMode = inputFilters[i];
                 RenderTexture.active = previousActive;
                 if (!completed && atlas != null) UnityEngine.Object.DestroyImmediate(atlas);
                 if (ownedTarget != null) { ownedTarget.Release(); UnityEngine.Object.DestroyImmediate(ownedTarget); }
