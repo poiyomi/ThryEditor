@@ -7,19 +7,35 @@ namespace Thry.ThryEditor.UploadCallbacks // sry Pumkin for taking away your nam
 {
     public class VRCAutoAnchor : IVRCSDKPreprocessAvatarCallback
     {
+        internal static GameObject OptedOutAvatar;
+
         public int callbackOrder => 0;
 
         public bool OnPreprocessAvatar(GameObject avatarGameObject)
         {
             try
             {
-                if(!UploadAnchorOverrideSetter.ShouldSkipAvatar(avatarGameObject))
+                bool skip = avatarGameObject == OptedOutAvatar || UploadAnchorOverrideSetter.ShouldSkipAvatar(avatarGameObject);
+                OptedOutAvatar = null;
+                if(!skip)
                     UploadAnchorOverrideSetter.SetAnchorOverrides(avatarGameObject);
             }
             catch(Exception ex)
             {
                 Debug.LogException(ex);
             }
+            return true;
+        }
+    }
+
+    // Optimizers and the SDK's EditorOnly stripping can delete the empty opt-out object before order 0
+    public class VRCAutoAnchorOptOut : IVRCSDKPreprocessAvatarCallback
+    {
+        public int callbackOrder => int.MinValue;
+
+        public bool OnPreprocessAvatar(GameObject avatarGameObject)
+        {
+            VRCAutoAnchor.OptedOutAvatar = UploadAnchorOverrideSetter.ShouldSkipAvatar(avatarGameObject) ? avatarGameObject : null;
             return true;
         }
     }
