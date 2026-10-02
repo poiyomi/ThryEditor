@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Reflection;
-using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
 
@@ -13,11 +12,8 @@ namespace Thry.ThryEditor
         private Vector2Int _textureSizeMin;
         private Vector2Int _textureSizeMax;
         private Vector2Int _textureSize;
-        private bool _makeTextureVertical;
-        private Action<Gradient, Texture2D> _onGradientChanged;
         private object _gradientEditor;
         private object _gradientLibary;
-        private bool _retainedWasBuilt;
         private TextureData _outputSettings;
         private bool _fixedOutput;
         private Action<Gradient, TextureData, int> _onTextureApply;
@@ -39,26 +35,6 @@ namespace Thry.ThryEditor
             window.position = new Rect(100, 100, 420, fixedOutput ? 390 : 470);
             window.ShowUtility(); window.CreateGUI();
             return window;
-        }
-
-        public static void Open(Gradient gradient, Action<Gradient, Texture2D> onGradientChanged, bool textureVertical, bool allowSizeSelection, Vector2Int minTextureSize, Vector2Int maxTextureSize)
-        {
-            var window = CreateInstance<GradientEditor2>();
-            window._gradient = CopyGradient(gradient);
-            window._outputSettings = null; window._onTextureApply = null; window._canApply = null;
-            window._allowSizeSelection = allowSizeSelection;
-            window._textureSizeMin = minTextureSize;
-            window._textureSizeMax = maxTextureSize;
-            window._textureSize = minTextureSize;
-            window._makeTextureVertical = textureVertical;
-            window._onGradientChanged = onGradientChanged;
-            window.titleContent = new GUIContent("Gradient Editor");
-            // show in center of screen
-            float width = 500;
-            float height = 400;
-            window.position = new Rect(Screen.width / 2 - width / 2, Screen.height / 2 - height / 2, width, height);
-            window.Show();
-            window.CreateGUI();
         }
 
         static MethodInfo s_gradientEditorGUIMethodInfo = null;
@@ -146,55 +122,10 @@ namespace Thry.ThryEditor
             return preset_libary_editor;
         }
 
-        private void OnGUI()
-        {
-            if (rootVisualElement.childCount > 0) return;
-            if(_gradientEditor == null) _gradientEditor = GetGradientEditor(_gradient);
-            if(_gradientLibary == null) _gradientLibary = GetGradientLibary(PresetHasBeenSelected);
-
-            int settingsHeight = 70;
-            if(_allowSizeSelection) settingsHeight += 50;
-            
-            Rect mainUIRect = new Rect(20, 20, position.width - 40, position.height - settingsHeight);
-            Rect gradientRect = new Rect(mainUIRect.x, mainUIRect.y, mainUIRect.width, mainUIRect.height * 0.6f);
-            Rect presetRect = new Rect(mainUIRect.x, gradientRect.yMax + 10, mainUIRect.width, mainUIRect.height * 0.4f - 10);
-
-            GradientKeyColors.OnGUI(_gradientEditor, gradientRect);
-            PresetLibraryOnGUI.Invoke(_gradientLibary, new object[] { presetRect, _gradient });
-
-            Rect settingsRect = new Rect(20, position.height - settingsHeight, position.width - 40, settingsHeight);
-            Rect buttonRect = new Rect(settingsRect.x + 20, settingsRect.yMax - 40, settingsRect.width - 20, 30);
-            if(_allowSizeSelection)
-            {
-                Rect sizeRect = new Rect(settingsRect.x + 20, settingsRect.y + 30, settingsRect.width - 20, 30);
-                _textureSize = EditorGUI.Vector2IntField(sizeRect, "Texture Size", _textureSize);
-            }
-            if (GUI.Button(buttonRect, "Apply"))
-            {
-                Apply();
-            }
-        }
-
-        private void PresetHasBeenSelected(int index, object preset)
-        {
-            Gradient gradient = preset as Gradient;
-            if (gradient == null)
-                Debug.LogError("Incorrect object passed " + preset);
-            // copy the data from the preset to the gradient
-            _gradient.SetKeys(gradient.colorKeys, gradient.alphaKeys);
-            _gradient.mode = gradient.mode;
-            SetGradient(_gradientEditor, _gradient);
-            Apply();
-        }
-
         private void OnDestroy()
         {
             ReleaseGradientLibrary(_gradientLibary);
             _gradientLibary = null;
-            // The retained dialog stages edits until Apply; Cancel, Escape and the
-            // window close control must not manufacture a texture or change a material.
-            if (_retainedWasBuilt) return;
-            Apply();
         }
 
         private static Gradient CopyGradient(Gradient source)
@@ -209,16 +140,10 @@ namespace Thry.ThryEditor
             if (_gradient == null || (_canApply != null && !_canApply())) return;
             // Delegate bindings do not survive a script reload. Keep the draft
             // visible, but never create an unassigned texture from a stale tool.
-            if (_outputSettings != null && _onTextureApply == null) return;
-            if (_onTextureApply != null)
-            {
-                var settings = JsonUtility.FromJson<TextureData>(JsonUtility.ToJson(_outputSettings));
-                settings.width = _textureSize.x; settings.height = _textureSize.y;
-                _onTextureApply(CopyGradient(_gradient), settings, _outputDirection);
-                return;
-            }
-            Texture2D gradientTexture = Converter.GradientToTexture(_gradient, _textureSize.x, _textureSize.y, _makeTextureVertical);
-            _onGradientChanged?.Invoke(CopyGradient(_gradient), gradientTexture);
+            if (_onTextureApply == null) return;
+            var settings = JsonUtility.FromJson<TextureData>(JsonUtility.ToJson(_outputSettings));
+            settings.width = _textureSize.x; settings.height = _textureSize.y;
+            _onTextureApply(CopyGradient(_gradient), settings, _outputDirection);
         }
 
         internal static Texture2D CreateTexture(Gradient gradient, int width, int height, int direction)

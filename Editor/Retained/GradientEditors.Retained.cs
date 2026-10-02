@@ -13,57 +13,50 @@ namespace Thry.ThryEditor
         public void CreateGUI()
         {
             if (_gradient == null) return;
-            _retainedWasBuilt = true;
             var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
             root.AddToClassList("thry-dialog"); root.AddToClassList("thry-gradient-editor");
-            minSize = new Vector2(320, _outputSettings == null ? 180 : _fixedOutput ? 370 : 450);
-            var title = new Label(_outputSettings == null ? RetainedText.Get("gradient", "Gradient") : RetainedText.Get("create_gradient_texture", "Create gradient texture")); title.AddToClassList("thry-title"); root.Add(title);
+            minSize = new Vector2(320, _fixedOutput ? 370 : 450);
+            var title = new Label(RetainedText.Get("create_gradient_texture", "Create gradient texture")); title.AddToClassList("thry-title"); root.Add(title);
             var content = new ScrollView(ScrollViewMode.Vertical) { name = "gradient-content" };
             content.style.flexGrow = 1; content.style.flexShrink = 1; root.Add(content);
             content.Add(CreateGradientSurface());
-            if (_outputSettings != null)
+            var direction = new DropdownField(RetainedText.Get("direction", "Direction"), new[] { RetainedText.Get("horizontal", "Horizontal"), RetainedText.Get("vertical_up", "Vertical up"), RetainedText.Get("vertical_down", "Vertical down") }.ToList(), _outputDirection) { name = "gradient-direction" };
+            direction.tooltip = RetainedText.Get("gradient_direction_hint", "Direction from the first color stop to the last. Editable dimensions rotate with the gradient; shader-fixed dimensions stay unchanged.");
+            RetainedWindow.Dropdown(direction); content.Add(direction);
+            direction.RegisterValueChangedCallback(e =>
             {
-                var direction = new DropdownField(RetainedText.Get("direction", "Direction"), new[] { RetainedText.Get("horizontal", "Horizontal"), RetainedText.Get("vertical_up", "Vertical up"), RetainedText.Get("vertical_down", "Vertical down") }.ToList(), _outputDirection) { name = "gradient-direction" };
-                direction.tooltip = RetainedText.Get("gradient_direction_hint", "Direction from the first color stop to the last. Editable dimensions rotate with the gradient; shader-fixed dimensions stay unchanged.");
-                RetainedWindow.Dropdown(direction); content.Add(direction);
-                direction.RegisterValueChangedCallback(e =>
+                bool rotated = (_outputDirection == 0) != (direction.index == 0);
+                _outputDirection = direction.index;
+                if (rotated && _allowSizeSelection)
                 {
-                    bool rotated = (_outputDirection == 0) != (direction.index == 0);
-                    _outputDirection = direction.index;
-                    if (rotated && _allowSizeSelection)
-                    {
-                        _textureSize = new Vector2Int(_textureSize.y, _textureSize.x);
-                        root.Q<Vector2IntField>("gradient-size")?.SetValueWithoutNotify(_textureSize);
-                    }
-                });
-            }
+                    _textureSize = new Vector2Int(_textureSize.y, _textureSize.x);
+                    root.Q<Vector2IntField>("gradient-size")?.SetValueWithoutNotify(_textureSize);
+                }
+            });
             if (_allowSizeSelection)
             {
                 var size = new Vector2IntField(RetainedText.Get("texture_size", "Texture size")) { name = "gradient-size", value = _textureSize }; content.Add(size);
                 size.RegisterValueChangedCallback(e => { _textureSize = new Vector2Int(Mathf.Clamp(e.newValue.x, Mathf.Max(1, _textureSizeMin.x), Mathf.Max(1, _textureSizeMax.x)), Mathf.Clamp(e.newValue.y, Mathf.Max(1, _textureSizeMin.y), Mathf.Max(1, _textureSizeMax.y))); size.SetValueWithoutNotify(_textureSize); });
             }
-            if (_outputSettings != null)
+            if (_fixedOutput)
             {
-                if (_fixedOutput)
-                {
-                    var summary = new Label(_textureSize.x + " × " + _textureSize.y + " · " + _outputSettings.filterMode + " · " + _outputSettings.wrapMode);
-                    summary.name = "gradient-fixed-settings"; summary.AddToClassList("thry-muted"); content.Add(summary);
-                    var hint = new Label(RetainedText.Get("gradient_fixed_settings", "Texture settings are fixed by this shader.")); hint.AddToClassList("thry-muted"); content.Add(hint);
-                }
-                else
-                {
-                    var filter = new DropdownField(RetainedText.Get("filtering", "Filtering"), Enum.GetNames(typeof(FilterMode)).Select(name => RetainedText.EnumCaption(typeof(FilterMode), name)).ToList(), (int)_outputSettings.filterMode) { name = "gradient-filter" };
-                    RetainedWindow.Dropdown(filter); content.Add(filter);
-                    filter.RegisterValueChangedCallback(e => _outputSettings.filterMode = (FilterMode)filter.index);
-                    var wrap = new DropdownField(RetainedText.Get("wrap", "Wrap"), Enum.GetNames(typeof(TextureWrapMode)).Select(name => RetainedText.EnumCaption(typeof(TextureWrapMode), name)).ToList(), (int)_outputSettings.wrapMode) { name = "gradient-wrap" };
-                    RetainedWindow.Dropdown(wrap); content.Add(wrap);
-                    wrap.RegisterValueChangedCallback(e => _outputSettings.wrapMode = (TextureWrapMode)wrap.index);
-                    var aniso = new SliderInt(RetainedText.Get("anisotropy", "Anisotropy"), 0, 16) { name = "gradient-anisotropy", value = _outputSettings.ansioLevel, showInputField = true };
-                    aniso.tooltip = RetainedText.Get("anisotropy_help", "Texture filtering quality at oblique viewing angles."); content.Add(aniso);
-                    aniso.RegisterValueChangedCallback(e => _outputSettings.ansioLevel = e.newValue);
-                }
+                var summary = new Label(_textureSize.x + " × " + _textureSize.y + " · " + _outputSettings.filterMode + " · " + _outputSettings.wrapMode);
+                summary.name = "gradient-fixed-settings"; summary.AddToClassList("thry-muted"); content.Add(summary);
+                var hint = new Label(RetainedText.Get("gradient_fixed_settings", "Texture settings are fixed by this shader.")); hint.AddToClassList("thry-muted"); content.Add(hint);
             }
-            bool missingTarget = _outputSettings != null && _onTextureApply == null;
+            else
+            {
+                var filter = new DropdownField(RetainedText.Get("filtering", "Filtering"), Enum.GetNames(typeof(FilterMode)).Select(name => RetainedText.EnumCaption(typeof(FilterMode), name)).ToList(), (int)_outputSettings.filterMode) { name = "gradient-filter" };
+                RetainedWindow.Dropdown(filter); content.Add(filter);
+                filter.RegisterValueChangedCallback(e => _outputSettings.filterMode = (FilterMode)filter.index);
+                var wrap = new DropdownField(RetainedText.Get("wrap", "Wrap"), Enum.GetNames(typeof(TextureWrapMode)).Select(name => RetainedText.EnumCaption(typeof(TextureWrapMode), name)).ToList(), (int)_outputSettings.wrapMode) { name = "gradient-wrap" };
+                RetainedWindow.Dropdown(wrap); content.Add(wrap);
+                wrap.RegisterValueChangedCallback(e => _outputSettings.wrapMode = (TextureWrapMode)wrap.index);
+                var aniso = new SliderInt(RetainedText.Get("anisotropy", "Anisotropy"), 0, 16) { name = "gradient-anisotropy", value = _outputSettings.ansioLevel, showInputField = true };
+                aniso.tooltip = RetainedText.Get("anisotropy_help", "Texture filtering quality at oblique viewing angles."); content.Add(aniso);
+                aniso.RegisterValueChangedCallback(e => _outputSettings.ansioLevel = e.newValue);
+            }
+            bool missingTarget = _onTextureApply == null;
             if (missingTarget)
             {
                 var hint = new Label(RetainedText.Get("gradient_reopen", "Scripts reloaded. Reopen Gradient from the texture card to create its texture."));
@@ -72,7 +65,7 @@ namespace Thry.ThryEditor
             var error = new HelpBox("", HelpBoxMessageType.Error) { name = "gradient-error" };
             error.style.display = DisplayStyle.None; root.Add(error);
             var actions = new VisualElement(); actions.AddToClassList("thry-components"); actions.AddToClassList("thry-dialog-actions"); root.Add(actions);
-            var apply = new Button { text = _outputSettings == null ? RetainedText.Get("apply_gradient", "Apply gradient") : RetainedText.Get("create_texture", "Create texture"), name = "apply-gradient" }; apply.AddToClassList("thry-primary-action"); actions.Add(apply);
+            var apply = new Button { text = RetainedText.Get("create_texture", "Create texture"), name = "apply-gradient" }; apply.AddToClassList("thry-primary-action"); actions.Add(apply);
             apply.clicked += () =>
             {
                 if (_canApply != null && !_canApply()) return;
@@ -98,40 +91,37 @@ namespace Thry.ThryEditor
 
         VisualElement CreateGradientSurface()
         {
-            if (_outputSettings != null)
+            try
             {
-                try
+                _gradientEditor = GetGradientEditor(_gradient);
+                _gradientLibary = GetGradientLibary((index, preset) =>
                 {
-                    _gradientEditor = GetGradientEditor(_gradient);
-                    _gradientLibary = GetGradientLibary((index, preset) =>
-                    {
-                        var selected = preset as Gradient;
-                        if (selected == null) return;
-                        _gradient.SetKeys(selected.colorKeys, selected.alphaKeys); _gradient.mode = selected.mode;
-                        SetGradient(_gradientEditor, _gradient); Repaint();
-                    });
-                    if (GradientEditorGUI != null && PresetLibraryOnGUI != null)
-                    {
-                        var surface = new VisualElement { name = "gradient-creation-surface" };
-                        // Unity owns the stop handles, color/opacity editing and preset
-                        // library. Keep these inside the same window as output settings.
-                        var stops = new IMGUIContainer(() => GradientKeyColors.OnGUI(_gradientEditor,
-                            GUILayoutUtility.GetRect(0, 10000, 130, 130))) { name = "gradient-stop-editor" };
-                        stops.style.height = 130; stops.style.flexShrink = 0; surface.Add(stops);
-                        var library = new Foldout { text = RetainedText.Get("presets", "Presets"), name = "gradient-presets", value = false };
-                        RetainedUiState.Bind(library, "GradientEditor", "presets"); surface.Add(library);
-                        var presets = new IMGUIContainer(() => DrawNativeGradient(PresetLibraryOnGUI, _gradientLibary,
-                            GUILayoutUtility.GetRect(0, 10000, 150, 150), _gradient)) { name = "gradient-preset-library" };
-                        presets.style.height = 150; presets.style.flexShrink = 0; library.Add(presets);
-                        return surface;
-                    }
-                }
-                catch (Exception e) when (e is MemberAccessException || e is ArgumentException || e is TargetInvocationException || e is NullReferenceException)
+                    var selected = preset as Gradient;
+                    if (selected == null) return;
+                    _gradient.SetKeys(selected.colorKeys, selected.alphaKeys); _gradient.mode = selected.mode;
+                    SetGradient(_gradientEditor, _gradient); Repaint();
+                });
+                if (GradientEditorGUI != null && PresetLibraryOnGUI != null)
                 {
-                    // Unity's internal editor can vary by version. The supported field
-                    // remains available if that editor cannot be embedded.
-                    _gradientEditor = null; _gradientLibary = null;
+                    var surface = new VisualElement { name = "gradient-creation-surface" };
+                    // Unity owns the stop handles, color/opacity editing and preset
+                    // library. Keep these inside the same window as output settings.
+                    var stops = new IMGUIContainer(() => GradientKeyColors.OnGUI(_gradientEditor,
+                        GUILayoutUtility.GetRect(0, 10000, 130, 130))) { name = "gradient-stop-editor" };
+                    stops.style.height = 130; stops.style.flexShrink = 0; surface.Add(stops);
+                    var library = new Foldout { text = RetainedText.Get("presets", "Presets"), name = "gradient-presets", value = false };
+                    RetainedUiState.Bind(library, "GradientEditor", "presets"); surface.Add(library);
+                    var presets = new IMGUIContainer(() => DrawNativeGradient(PresetLibraryOnGUI, _gradientLibary,
+                        GUILayoutUtility.GetRect(0, 10000, 150, 150), _gradient)) { name = "gradient-preset-library" };
+                    presets.style.height = 150; presets.style.flexShrink = 0; library.Add(presets);
+                    return surface;
                 }
+            }
+            catch (Exception e) when (e is MemberAccessException || e is ArgumentException || e is TargetInvocationException || e is NullReferenceException)
+            {
+                // Unity's internal editor can vary by version. The supported field
+                // remains available if that editor cannot be embedded.
+                _gradientEditor = null; _gradientLibary = null;
             }
             var field = new ThryGradientField { value = _gradient };
             field.AddToClassList("thry-gradient-preview");
