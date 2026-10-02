@@ -1,5 +1,3 @@
-using System;
-
 namespace Thry.ThryEditor.Drawers
 {
     public class ThryToggleUIDrawer : ThryToggleDrawer
@@ -8,18 +6,12 @@ namespace Thry.ThryEditor.Drawers
         {
         }
 
-        //the reason for weird string thing here is that you cant have bools as params for drawers
-        public ThryToggleUIDrawer(string keywordLeft)
+        public ThryToggleUIDrawer(string keywordLeft) : base(keywordLeft)
         {
-            if (keywordLeft.Equals("true", StringComparison.OrdinalIgnoreCase)) left = true;
-            else if (keywordLeft.Equals("false", StringComparison.OrdinalIgnoreCase)) left = false;
-            else keyword = keywordLeft;
         }
 
-        public ThryToggleUIDrawer(string keyword, string left)
+        public ThryToggleUIDrawer(string keyword, string left) : base(keyword, left)
         {
-            this.keyword = keyword;
-            this.left = left.Equals("true", StringComparison.OrdinalIgnoreCase);
         }
     }
 
