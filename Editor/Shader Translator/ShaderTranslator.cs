@@ -376,19 +376,6 @@ namespace Thry.ThryEditor.ShaderTranslations
             }
         }
 
-        public static void TranslationSelectionGUI(Rect r, ShaderEditor editor)
-        {
-            if (GUILib.ButtonWithCursor(r, Icons.shaders, "Shader Translation"))
-            {
-                EditorUtility.DisplayCustomMenu(r, TranslationDefinitions.Select(t => new GUIContent(t.Name)).ToArray(), -1, ConfirmTranslationSelection, editor);
-            }
-        }
-
-        static void ConfirmTranslationSelection(object userData, string[] options, int selected)
-        {
-            TranslationDefinitions[selected].Apply(userData as ShaderEditor);
-        }
-
         [MenuItem("Assets/Thry/Shaders/New Translator Definition", priority = 380)]
         static void CreateNewTranslationDefinition()
         {
