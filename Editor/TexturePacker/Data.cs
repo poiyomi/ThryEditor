@@ -384,6 +384,44 @@ namespace Thry.ThryEditor.TexturePacker
             finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(temp); UnityEngine.Object.DestroyImmediate(read); }
         }
 
+        // The source's own import may be sRGB, compressed or downscaled, so a temporary copy is imported without any of that
+        static Texture2D RawImportCopy(Texture2D source, string path)
+        {
+            if (!(AssetImporter.GetAtPath(path) is TextureImporter)) return null;
+            string tempPath = AssetDatabase.GenerateUniqueAssetPath("Assets/ThryPackerSource" + System.IO.Path.GetExtension(path));
+            try
+            {
+                System.IO.File.Copy(FileUtil.GetPhysicalPath(path), tempPath);
+                AssetDatabase.ImportAsset(tempPath, ImportAssetOptions.ForceSynchronousImport);
+                if (!(AssetImporter.GetAtPath(tempPath) is TextureImporter importer)) return null;
+                importer.textureType = TextureImporterType.Default;
+                importer.textureShape = TextureImporterShape.Texture2D;
+                importer.sRGBTexture = false;
+                importer.alphaSource = TextureImporterAlphaSource.FromInput;
+                importer.mipmapEnabled = false;
+                importer.isReadable = true;
+                importer.npotScale = TextureImporterNPOTScale.None;
+                importer.maxTextureSize = 16384;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+                Texture2D imported = AssetDatabase.LoadAssetAtPath<Texture2D>(tempPath);
+                if (imported == null || !imported.isReadable) return null;
+                var copy = new Texture2D(imported.width, imported.height, imported.format, false, true) { hideFlags = HideFlags.HideAndDontSave, filterMode = source.filterMode };
+                try
+                {
+                    copy.LoadRawTextureData(imported.GetRawTextureData<byte>());
+                    copy.Apply(false);
+                }
+                catch { UnityEngine.Object.DestroyImmediate(copy); throw; }
+                return copy;
+            }
+            catch (Exception e) when (e is System.IO.IOException || e is UnauthorizedAccessException || e is UnityException || e is ArgumentException) { return null; }
+            finally
+            {
+                if (System.IO.File.Exists(tempPath)) AssetDatabase.DeleteAsset(tempPath);
+            }
+        }
+
         public Texture2D UncompressedTexture
         {
             get
@@ -418,7 +456,7 @@ namespace Thry.ThryEditor.TexturePacker
                         else if (GraphicsFormatUtility.IsSRGBFormat(Texture.graphicsFormat)) decoded = FileValueCopy(Texture);
                         else decoded = Texture;
                     }
-                    else decoded = Texture;
+                    else decoded = RawImportCopy(Texture, path) ?? Texture;
                     RemoveDecodedTexture(Texture);
                     _cachedUncompressedTextures[Texture] = decoded;
                     _cachedTextureLastModifiedTime[Texture] = TextureHelper.GetLastModifiedTime(Texture);
