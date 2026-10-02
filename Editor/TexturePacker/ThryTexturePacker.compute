@@ -143,7 +143,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 	for(int i = 0; i < ConnectionCount; i++)
 	{
 		Connection conn = Connections[i];
-		if(conn.FromTextureIndex >= 0 && InputTextureIsValid[conn.FromTextureIndex].x == 1)
+		if(conn.FromTextureIndex >= 0 && conn.FromChannel != 5 && InputTextureIsValid[conn.FromTextureIndex].x == 1) // 5 = None
 		{
 			float value = SampleTexture(conn.FromTextureIndex, conn.FromChannel, uv);
 			if(conn.RemapMode == 1) // Range to Range
