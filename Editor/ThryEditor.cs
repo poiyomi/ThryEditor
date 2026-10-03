@@ -777,7 +777,8 @@ namespace Thry
         public override void ValidateMaterial(Material material)
         {
             base.ValidateMaterial(material);
-            TextureKeywords.Sync(material);
+            // Also runs while packages import, when a texture they reference may not exist yet
+            TextureKeywords.Sync(material, disable: false);
             WatchForMaterialReset(material, Undo.GetCurrentGroup());
         }
 

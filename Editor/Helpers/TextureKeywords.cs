@@ -60,28 +60,40 @@ namespace Thry.ThryEditor.Helpers
 
         internal static (int Id, string Property, string[] Keywords)[] Textures(Shader shader) => Get(shader).Textures;
 
-        /// <summary>Sets the material's texture keywords from its textures. Locked materials are left alone.</summary>
-        internal static void Sync(Material material, string property = null)
+        static bool s_syncing;
+
+        // Locked materials are left alone. Without disable, only keywords of assigned textures are turned on.
+        internal static void Sync(Material material, string property = null, bool disable = true)
         {
-            if (material == null) return;
+            // Changing a keyword can make Unity validate the material, which would sync it again
+            if (material == null || s_syncing) return;
             Shader source = SectionLock.GetSourceShader(material);
             if (source == null) return;
             var textures = Get(source).Textures;
             if (textures.Length == 0 || material.IsLocked()) return;
-            string[] enabled = null;
-            foreach (var texture in textures)
+            s_syncing = true;
+            try
             {
-                if (property != null && texture.Property != property) continue;
-                if (!material.HasProperty(texture.Id)) continue;
-                bool assigned = material.GetTexture(texture.Id) != null;
-                foreach (string keyword in texture.Keywords)
+                string[] enabled = null;
+                foreach (var texture in textures)
                 {
-                    // shaderKeywords also lists keywords a section shader doesn't declare
-                    if (enabled == null) enabled = material.shaderKeywords;
-                    if (Array.IndexOf(enabled, keyword) >= 0 == assigned) continue;
-                    if (assigned) material.EnableKeyword(keyword);
-                    else material.DisableKeyword(keyword);
+                    if (property != null && texture.Property != property) continue;
+                    if (!material.HasProperty(texture.Id)) continue;
+                    bool assigned = material.GetTexture(texture.Id) != null;
+                    if (!assigned && !disable) continue;
+                    foreach (string keyword in texture.Keywords)
+                    {
+                        // shaderKeywords also lists keywords a section shader doesn't declare
+                        if (enabled == null) enabled = material.shaderKeywords;
+                        if (Array.IndexOf(enabled, keyword) >= 0 == assigned) continue;
+                        if (assigned) material.EnableKeyword(keyword);
+                        else material.DisableKeyword(keyword);
+                    }
                 }
+            }
+            finally
+            {
+                s_syncing = false;
             }
         }
 
@@ -113,11 +125,14 @@ namespace Thry.ThryEditor.Helpers
             var changed = new List<Material>();
             foreach (string path in paths)
             {
-                if (!NeedsSync(path)) continue;
+                string[] properties = Mismatched(path);
+                if (properties == null) continue;
                 var material = AssetDatabase.LoadAssetAtPath<Material>(path);
                 if (material == null) continue;
                 int dirty = EditorUtility.GetDirtyCount(material);
-                TextureKeywords.Sync(material);
+                if (properties.Length == 0) TextureKeywords.Sync(material);
+                // A slot whose texture isn't imported yet reads as empty, so only the slots that disagree are synced
+                else foreach (string property in properties) TextureKeywords.Sync(material, property);
                 if (EditorUtility.GetDirtyCount(material) != dirty && AssetDatabase.IsOpenForEdit(material)) changed.Add(material);
             }
             if (changed.Count == 0) return;
@@ -127,30 +142,33 @@ namespace Thry.ThryEditor.Helpers
         }
 
         // Reads the file, so materials whose keywords already match never load their textures.
-        static bool NeedsSync(string path)
+        // Returns the texture properties whose keywords disagree, an empty array when all of them need a check, or null.
+        static string[] Mismatched(string path)
         {
             string text;
             try { text = File.ReadAllText(path); }
-            catch (IOException) { return false; }
-            catch (UnauthorizedAccessException) { return false; }
+            catch (IOException) { return null; }
+            catch (UnauthorizedAccessException) { return null; }
             var guid = ShaderGuid.Match(text);
-            if (!guid.Success) return false;
+            if (!guid.Success) return null;
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(AssetDatabase.GUIDToAssetPath(guid.Groups[1].Value));
-            if (shader == null) return false;
+            if (shader == null) return null;
             var textures = TextureKeywords.Textures(shader);
-            if (textures.Length == 0 || ShaderOptimizer.IsShaderLocked(shader)) return false;
+            if (textures.Length == 0 || ShaderOptimizer.IsShaderLocked(shader)) return null;
             // A variant's file only holds its overrides
             var parent = Parent.Match(text);
-            if (parent.Success && parent.Groups[1].Value != "0") return true;
+            if (parent.Success && parent.Groups[1].Value != "0") return Array.Empty<string>();
             // Older files list keywords in m_ShaderKeywords, newer ones in m_ValidKeywords and m_InvalidKeywords
             int start = text.IndexOf("m_ValidKeywords:", StringComparison.Ordinal);
             if (start < 0) start = text.IndexOf("m_ShaderKeywords:", StringComparison.Ordinal);
             int end = start < 0 ? -1 : text.IndexOf("m_LightmapFlags:", start, StringComparison.Ordinal);
             int properties = text.IndexOf("m_SavedProperties:", StringComparison.Ordinal);
-            if (end < 0 || properties < 0) return true;
+            if (end < 0 || properties < 0) return Array.Empty<string>();
             var keywords = new HashSet<string>(Word.Matches(text.Substring(start, end - start)).Cast<Match>().Select(m => m.Value));
             var assigned = new HashSet<string>(Slot.Matches(text, properties).Cast<Match>().Where(m => m.Groups[2].Value != "0").Select(m => m.Groups[1].Value));
-            return textures.Any(texture => texture.Keywords.Any(keyword => keywords.Contains(keyword) != assigned.Contains(texture.Property)));
+            string[] mismatched = textures.Where(texture => texture.Keywords.Any(keyword => keywords.Contains(keyword) != assigned.Contains(texture.Property)))
+                .Select(texture => texture.Property).ToArray();
+            return mismatched.Length == 0 ? null : mismatched;
         }
     }
 }
