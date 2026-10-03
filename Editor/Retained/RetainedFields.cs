@@ -827,27 +827,12 @@ namespace Thry.ThryEditor
             var preview = new Image { name = "texture-asset-thumbnail", scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             tile.Add(preview);
             var mixedIcon = RetainedTextureCard.CreateMixedIcon(); tile.Add(mixedIcon);
-            VisualElement add = null;
+            VisualElement empty = null;
             if (square)
             {
-                // Clicking an empty square opens the picker; a faint plus shows that and brightens on hover.
-                add = new VisualElement { name = "texture-slot-add", pickingMode = PickingMode.Ignore };
-                add.AddToClassList("thry-texture-slot-add"); tile.Add(add);
-                bool addHovered = false;
-                display.RegisterCallback<PointerEnterEvent>(_ => { addHovered = true; add.MarkDirtyRepaint(); });
-                display.RegisterCallback<PointerLeaveEvent>(_ => { addHovered = false; add.MarkDirtyRepaint(); });
-                add.generateVisualContent += context =>
-                {
-                    var center = add.contentRect.center; float arm = Mathf.Round(add.contentRect.height * .14f);
-                    var painter = context.painter2D;
-                    var color = add.resolvedStyle.color;
-                    if (!addHovered) color.a *= .4f;
-                    painter.strokeColor = color; painter.lineWidth = 1f;
-                    painter.BeginPath();
-                    painter.MoveTo(center - new Vector2(arm, 0)); painter.LineTo(center + new Vector2(arm, 0));
-                    painter.MoveTo(center - new Vector2(0, arm)); painter.LineTo(center + new Vector2(0, arm));
-                    painter.Stroke();
-                };
+                // Empty slots use the shared surface color; clicking opens the picker.
+                empty = new VisualElement { name = "texture-slot-empty", pickingMode = PickingMode.Ignore };
+                empty.AddToClassList("thry-texture-slot-empty"); tile.Add(empty);
             }
             var normalPreview = new RetainedTexturePreview();
             bool normalMap = false;
@@ -863,7 +848,7 @@ namespace Thry.ThryEditor
                 bool assigned = texture != null && !mixed;
                 tile.style.display = square || assigned || mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 mixedIcon.style.display = mixed ? DisplayStyle.Flex : DisplayStyle.None;
-                if (add != null) add.style.display = texture == null && !mixed ? DisplayStyle.Flex : DisplayStyle.None;
+                if (empty != null) empty.style.display = texture == null && !mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 clear.style.display = texture != null || mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 clear.SetEnabled(canEdit());
                 if (assigned) size.style.display = StyleKeyword.Null;

@@ -19,6 +19,7 @@
     --thry-border-width: 1px;
     --thry-border-width-strong: 2px;
     --thry-control-height: 22px;
+    --thry-texture-slot-size: 21px;
     --thry-button-height: 24px;
     --thry-toolbar-height: 26px;
     --thry-window-control-height: 28px;
@@ -530,21 +531,25 @@
 /* Native material controls share one responsive label/value grid. */
 .thry-material-controls {
     --thry-control-height: 18px;
+    --thry-texture-slot-size: 17px;
     --thry-property-checkbox-size: 16px;
     margin: 0 var(--thry-space-3);
 }
 
 .thry-property-height-18 .thry-material-controls {
     --thry-control-height: 18px;
+    --thry-texture-slot-size: 17px;
 }
 
 .thry-property-height-20 .thry-material-controls {
     --thry-control-height: 20px;
+    --thry-texture-slot-size: 19px;
     --thry-property-checkbox-size: 18px;
 }
 
 .thry-property-height-22 .thry-material-controls {
     --thry-control-height: 22px;
+    --thry-texture-slot-size: 21px;
     --thry-property-checkbox-size: 18px;
 }
 
@@ -1916,12 +1921,12 @@
 .thry-inspector .thry-material-controls .thry-texture-slot .unity-object-field-display {
     flex-grow: 0;
     flex-shrink: 0;
-    width: var(--thry-control-height);
-    min-width: var(--thry-control-height);
-    height: var(--thry-control-height);
+    width: var(--thry-texture-slot-size);
+    min-width: var(--thry-texture-slot-size);
+    height: var(--thry-texture-slot-size);
     background-color: var(--thry-field-background);
     border-width: var(--thry-border-width);
-    border-color: var(--thry-control-border-color);
+    border-color: var(--thry-surface-color);
     border-radius: var(--thry-radius-control);
     overflow: hidden;
 }
@@ -1940,6 +1945,7 @@
 
 .thry-texture-slot .thry-asset-tile {
     flex-grow: 1;
+    align-self: stretch;
     width: auto;
     min-width: 0;
     height: auto;
@@ -1965,18 +1971,13 @@
     -unity-background-image-tint-color: var(--thry-value-color);
 }
 
-.thry-texture-slot-add {
+.thry-texture-slot-empty {
     position: absolute;
     left: 0;
     top: 0;
     right: 0;
     bottom: 0;
-    color: var(--thry-muted-color);
-    opacity: 0;
-}
-
-.thry-texture-slot .unity-object-field-display:enabled:hover .thry-texture-slot-add {
-    opacity: 1;
+    background-color: var(--thry-surface-color);
 }
 
 /* A locked texture's square is already dimmed with its foldout. */
