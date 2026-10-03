@@ -830,14 +830,19 @@ namespace Thry.ThryEditor
             VisualElement add = null;
             if (square)
             {
-                // Clicking an empty square opens the picker; a plus appears on hover to show that.
+                // Clicking an empty square opens the picker; a faint plus shows that and brightens on hover.
                 add = new VisualElement { name = "texture-slot-add", pickingMode = PickingMode.Ignore };
                 add.AddToClassList("thry-texture-slot-add"); tile.Add(add);
+                bool addHovered = false;
+                display.RegisterCallback<PointerEnterEvent>(_ => { addHovered = true; add.MarkDirtyRepaint(); });
+                display.RegisterCallback<PointerLeaveEvent>(_ => { addHovered = false; add.MarkDirtyRepaint(); });
                 add.generateVisualContent += context =>
                 {
-                    var center = add.contentRect.center; float arm = Mathf.Round(add.contentRect.height * .22f);
+                    var center = add.contentRect.center; float arm = Mathf.Round(add.contentRect.height * .14f);
                     var painter = context.painter2D;
-                    painter.strokeColor = add.resolvedStyle.color; painter.lineWidth = 1.5f;
+                    var color = add.resolvedStyle.color;
+                    if (!addHovered) color.a *= .4f;
+                    painter.strokeColor = color; painter.lineWidth = 1f;
                     painter.BeginPath();
                     painter.MoveTo(center - new Vector2(arm, 0)); painter.LineTo(center + new Vector2(arm, 0));
                     painter.MoveTo(center - new Vector2(0, arm)); painter.LineTo(center + new Vector2(0, arm));
