@@ -81,9 +81,9 @@ namespace Thry.ThryEditor
 
         /// <summary>Tooltip for the inspector toolbar switch, with its current state.</summary>
         public static string ToolbarTooltip => (Enabled
-                ? RetainedText.Get("section_lock_on", "Strip Disabled Sections While Editing: On")
-                : RetainedText.Get("section_lock_off", "Strip Disabled Sections While Editing: Off"))
-            + "\n\n" + RetainedText.Get("sectionLockWhileEditing_tooltip", "While you edit a material, it uses a copy of its shader without the sections you have turned off, so switching sections compiles faster. The material file keeps the normal shader, and uploads lock as usual.");
+                ? RetainedText.Get("section_lock_on", "Fast Material Editing: On")
+                : RetainedText.Get("section_lock_off", "Fast Material Editing: Off"))
+            + "\n\n" + RetainedText.Get("sectionLockWhileEditing_tooltip", "Reduces shader compilation time when turning material features on or off. Only affects editing—your materials still save and upload normally.");
 
         /// <summary>True when section shaders may be put on materials right now.</summary>
         public static bool IsActive => Enabled && EditorApplication.timeSinceStartup >= s_suspendedUntil
