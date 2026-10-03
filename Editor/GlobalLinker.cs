@@ -756,6 +756,7 @@ namespace Thry.ThryEditor
                 if (pv.hasAnimatedTag)
                     material.SetOverrideTag(pv.name + ShaderOptimizer.AnimatedTagSuffix, pv.animatedTag ?? "");
             }
+            TextureKeywords.Sync(material);
             EditorUtility.SetDirty(material);
             MaterialEditor.ApplyMaterialPropertyDrawers(material);
         }
