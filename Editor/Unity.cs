@@ -255,9 +255,12 @@ namespace Thry.ThryEditor
         {
             if (importedAssets.Length > 0) RepairLockedShaderRefs(importedAssets);
             // A shader's property attributes can change on reimport, and ShaderEditor caches which of them
-            // carry [ThryHideInInspector] to keep material selection fast.
+            // carry [ThryHideInInspector] to keep material selection fast, and which keywords they set.
             if (ContainsShader(importedAssets) || ContainsShader(deletedAssets))
+            {
                 ShaderEditor.ClearThryHiddenPropertyCache();
+                ShaderEditor.ClearPropertyKeywordCache();
+            }
         }
 
         private static bool ContainsShader(string[] assets)

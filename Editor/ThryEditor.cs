@@ -1606,6 +1606,8 @@ namespace Thry
         // Cache property->keyword lookup for performance
         static Dictionary<Shader, List<(string prop, List<string> keywords, bool inverted)>> PropertyKeywordsByShader = new Dictionary<Shader, List<(string prop, List<string> keywords, bool inverted)>>();
 
+        internal static void ClearPropertyKeywordCache() => PropertyKeywordsByShader.Clear();
+
         /// <summary> Iterate through all materials to ensure keywords list matches properties. </summary>
         public static void FixKeywords(IEnumerable<Material> materialsToFix)
         {
