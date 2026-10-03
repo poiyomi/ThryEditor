@@ -3247,6 +3247,19 @@ namespace Thry.ThryEditor
         //----VRChat Callback to force Locking on upload
 
 #if VRC_SDK_VRCSDK3
+        // Avatar optimizers such as d4rk's run before the lock and bake unlocked materials as their keywords say,
+        // so texture keywords have to be right before they do.
+        public class SyncTextureKeywordsOnUpload : IVRCSDKPreprocessAvatarCallback
+        {
+            public int callbackOrder => -1026;
+
+            public bool OnPreprocessAvatar(GameObject avatarGameObject)
+            {
+                foreach (Material material in LockMaterialsOnUpload.GetAvatarMaterials(avatarGameObject)) TextureKeywords.Sync(material);
+                return true;
+            }
+        }
+
         public class LockMaterialsOnUpload : IVRCSDKPreprocessAvatarCallback, IVRCSDKPostprocessAvatarCallback
         {
             // Holds the flattened variant copies the SDK's prefab save would otherwise drop
@@ -3259,6 +3272,14 @@ namespace Thry.ThryEditor
             {
                 if (Application.isPlaying) return true;
                 FlattenVariants(avatarGameObject);
+                List<Material> materials = GetAvatarMaterials(avatarGameObject);
+                if (SetLockedForAllMaterialsInternal(materials, 1, showProgressbar: true, showDialog: PersistentData.Get<bool>("ShowLockInDialog", true), allowCancel: false) == false) return false;
+                //returning true all the time, because build process cant be stopped it seems
+                return true;
+            }
+
+            internal static List<Material> GetAvatarMaterials(GameObject avatarGameObject)
+            {
                 List<Material> materials = avatarGameObject.GetComponentsInChildren<Renderer>(true).SelectMany(r => r.sharedMaterials).ToList();
 #if VRC_SDK_VRCSDK3 && !UDON
                 VRCAvatarDescriptor descriptor = avatarGameObject.GetComponent<VRCAvatarDescriptor>();
@@ -3280,9 +3301,7 @@ namespace Thry.ThryEditor
                 materials.AddRange(GetMaterialsReferencedByClips(animatorClips));
 #endif
 #endif
-                if (SetLockedForAllMaterialsInternal(materials, 1, showProgressbar: true, showDialog: PersistentData.Get<bool>("ShowLockInDialog", true), allowCancel: false) == false) return false;
-                //returning true all the time, because build process cant be stopped it seems
-                return true;
+                return materials;
             }
 
             public void OnPostprocessAvatar()
