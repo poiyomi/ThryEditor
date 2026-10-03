@@ -24,8 +24,7 @@ namespace Thry.ThryEditor
                 {
                     if (source.StartsWith("DoNotAnimate", StringComparison.Ordinal)
                         || source.StartsWith("ThryStencil", StringComparison.Ordinal)
-                        || source.StartsWith("ThryShaderOptimizer", StringComparison.Ordinal)
-                        || source.StartsWith("TextureKeyword", StringComparison.Ordinal)) IsAnimatable = false;
+                        || source.StartsWith("ThryShaderOptimizer", StringComparison.Ordinal)) IsAnimatable = false;
                     if (source.StartsWith("ThryToggle(", StringComparison.Ordinal)
                         || source.StartsWith("ThryToggleUI(", StringComparison.Ordinal))
                     {
