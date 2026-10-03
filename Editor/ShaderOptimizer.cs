@@ -917,6 +917,9 @@ namespace Thry.ThryEditor
                 // Make sure keywords are set correctly for materials to be locked. If unlocking, do this after the shaders are unlocked
                 if (isLocking && Config.Instance.fixKeywordsWhenLocking)
                     ShaderEditor.FixKeywords(materialsToChangeLock);
+                // Texture keywords only follow the textures, so they are fixed whatever the option says
+                if (isLocking)
+                    foreach (Material m in materialsToChangeLock) TextureKeywords.Sync(m);
 
                 float i = 0;
                 float length = materialsToChangeLock.Length;
@@ -1035,6 +1038,8 @@ namespace Thry.ThryEditor
                 // In case any keywords were messed up in the material following unlock, fix them now
                 if (!isLocking && Config.Instance.fixKeywordsWhenLocking)
                     ShaderEditor.FixKeywords(materialsToChangeLock);
+                if (!isLocking)
+                    foreach (Material m in materialsToChangeLock) TextureKeywords.Sync(m);
 
                 if (!isLocking)
                 {
