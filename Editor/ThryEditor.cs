@@ -777,6 +777,7 @@ namespace Thry
         public override void ValidateMaterial(Material material)
         {
             base.ValidateMaterial(material);
+            TextureKeywords.Sync(material);
             WatchForMaterialReset(material, Undo.GetCurrentGroup());
         }
 
