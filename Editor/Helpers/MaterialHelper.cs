@@ -162,6 +162,7 @@ namespace Thry.ThryEditor.Helpers
             {
                 prev = p.textureValue;
                 p.textureValue = AssetDatabase.LoadAssetAtPath<Texture>(value);
+                TextureKeywords.Sync(p.targets, p.name);
             }
             else if (p.GetPropertyType() == ShaderPropertyType.Float || p.GetPropertyType() == ShaderPropertyType.Range)
             {
@@ -216,6 +217,7 @@ namespace Thry.ThryEditor.Helpers
                     Vector2 offset = source.GetTextureOffset(target.name);
                     Vector2 scale = source.GetTextureScale(target.name);
                     target.textureScaleAndOffset = new Vector4(scale.x, scale.y, offset.x, offset.y);
+                    TextureKeywords.Sync(target.targets, target.name);
                     break;
             }
             if (target.applyPropertyCallback != null)
@@ -248,6 +250,7 @@ namespace Thry.ThryEditor.Helpers
                     prev = target.textureValue;
                     target.textureValue = source.textureValue;
                     target.textureScaleAndOffset = source.textureScaleAndOffset;
+                    TextureKeywords.Sync(target.targets, target.name);
                     break;
             }
             if (target.applyPropertyCallback != null)
