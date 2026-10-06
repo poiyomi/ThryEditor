@@ -1217,6 +1217,11 @@
     border-width: var(--thry-border-width);
     border-radius: var(--thry-radius-button);
     margin: 0 var(--thry-space-2) 0 0;
+    /* Yoga clamps flex-basis to padding + border; keep both at 0 so the row splits evenly. */
+    padding-left: 0;
+    padding-right: 0;
+    border-left-width: 0;
+    border-right-width: 0;
 }
 
 .thry-rendering-mode .thry-property-row {
@@ -1225,15 +1230,22 @@
     margin: 0;
 }
 
-.thry-rendering-mode .unity-base-popup-field {
+/* Outranks the shared .thry-material-controls popup sizing so it matches the Presets button. */
+.thry-material-actions .thry-rendering-mode .unity-base-popup-field {
     height: var(--thry-section-height);
     min-height: var(--thry-section-height);
+    max-height: var(--thry-section-height);
+    margin: 0;
+}
+
+.thry-material-actions .thry-rendering-mode .unity-base-popup-field__input {
+    height: var(--thry-section-height);
+    min-height: var(--thry-section-height);
+    max-height: var(--thry-section-height);
     margin: 0;
 }
 
 .thry-rendering-mode .unity-base-popup-field__input {
-    height: var(--thry-section-height);
-    min-height: var(--thry-section-height);
     background-color: #505050;
     border-color: #606060;
     padding-left: var(--thry-space-10);
