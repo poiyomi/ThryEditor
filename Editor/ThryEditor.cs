@@ -786,11 +786,15 @@ namespace Thry
         // Unity has named the group by the tick after ValidateMaterial in some resets and later in others,
         // so a single deferred check misses it. A short watch covers both without polling indefinitely.
         private const int RESET_WATCH_FRAMES = 20;
-        private static readonly HashSet<int> _watchedResetGroups = new HashSet<int>();
+        // Every material a watched group validated, and whether it was locked at the time
+        private static readonly Dictionary<int, Dictionary<Material, bool>> _watchedResetGroups = new Dictionary<int, Dictionary<Material, bool>>();
+        private static readonly System.Reflection.MethodInfo _getUndoRecords = typeof(Undo).GetMethod("GetRecords",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic, null, new[] { typeof(List<string>), typeof(List<string>) }, null);
         private static int _lastHandledResetGroup = -1;
 
         /// <summary>
-        /// Runs OnReset when the undo group this ValidateMaterial belongs to turns out to be a material reset.
+        /// Runs OnReset and unlocks the reset materials when the undo group this ValidateMaterial belongs to turns
+        /// out to be a material reset. Every material in the group is collected, so a multi-material reset is too.
         ///
         /// Unity names that group "Reset Material" only after ValidateMaterial has already run, so reading the
         /// name during the call returns whatever the previous action left behind - typically one of ThryEditor's
@@ -805,29 +809,60 @@ namespace Thry
         private void WatchForMaterialReset(Material material, int group)
         {
             if (group == _lastHandledResetGroup) return;
-            if (!_watchedResetGroups.Add(group)) return; // already watching this group
+            if (_watchedResetGroups.TryGetValue(group, out Dictionary<Material, bool> watched))
+            {
+                if (!watched.ContainsKey(material)) watched[material] = material.IsLocked();
+                return;
+            }
+            watched = new Dictionary<Material, bool> { { material, material.IsLocked() } };
+            _watchedResetGroups[group] = watched;
 
             int framesLeft = RESET_WATCH_FRAMES;
+            int undoSteps = UndoStepNames().Count;
             EditorApplication.CallbackFunction watcher = null;
             watcher = () =>
             {
-                bool isReset = Undo.GetCurrentGroup() == group
-                    && Undo.GetCurrentGroupName() == RESET_MATERIAL_UNDO_NAME;
+                // TextCore's Reset menu, the one materials get, starts a new group before the name is readable, so
+                // the steps added since are checked too
+                bool isReset = Undo.GetCurrentGroup() == group && Undo.GetCurrentGroupName() == RESET_MATERIAL_UNDO_NAME
+                    || UndoStepNames().Skip(undoSteps).Contains(RESET_MATERIAL_UNDO_NAME);
 
                 if (isReset && group != _lastHandledResetGroup)
                 {
                     _lastHandledResetGroup = group;
-                    if (Active != null && Active.Materials.Length > 0 && Active.Materials[0] == material)
+                    if (Active != null && Active.Materials.Any(watched.ContainsKey))
                         Active.OnReset();
+                    UnlockResetMaterials(watched.Where(p => p.Value && p.Key != null).Select(p => p.Key).ToArray(), group);
                 }
 
-                if (isReset || --framesLeft <= 0 || material == null)
+                if (isReset || --framesLeft <= 0 || watched.Keys.All(m => m == null))
                 {
                     EditorApplication.update -= watcher;
                     _watchedResetGroups.Remove(group);
                 }
             };
             EditorApplication.update += watcher;
+        }
+
+        private static List<string> UndoStepNames()
+        {
+            List<string> undo = new List<string>();
+            _getUndoRecords?.Invoke(null, new object[] { undo, new List<string>() });
+            return undo;
+        }
+
+        // A reset material should be a fresh one on the original shader. Unlocking brings back the stripped
+        // textures and keywords, so the reset is repeated afterwards.
+        private static void UnlockResetMaterials(Material[] materials, int group)
+        {
+            if (materials.Length == 0) return;
+            Undo.RegisterCompleteObjectUndo(materials, RESET_MATERIAL_UNDO_NAME);
+            ShaderOptimizer.UnlockMaterials(materials.Where(m => m.IsLocked()));
+            foreach (Material material in materials)
+            {
+                if (!material.IsLocked()) Unsupported.SmartReset(material);
+            }
+            Undo.CollapseUndoOperations(group);
         }
 
         private void OnReset()
