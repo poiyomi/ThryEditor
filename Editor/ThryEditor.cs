@@ -1177,7 +1177,23 @@ namespace Thry
 
         internal void CollapseCategories()
         {
-            foreach (var group in RootCategories) group.SetExpandedFromView(false);
+            ActivateRetained();
+            var groups = RootCategories.ToList();
+            // Walk the model, including children whose UI has not been built yet.
+            for (int i = 0; i < groups.Count; i++)
+                groups.AddRange(groups[i].Children.OfType<ShaderGroup>());
+
+            var expanded = groups.Where(group => group.RetainedExpanded
+                || (group.PersistsExpanded && group.MaterialProperty.hasMixedValue)).ToList();
+            bool writesMaterial = !IsInSearchMode && !AnimationMode.InAnimationMode()
+                && expanded.Any(group => group.PersistsExpanded);
+            if (writesMaterial) Editor.RegisterPropertyChangeUndo("Collapse All");
+            foreach (var group in expanded) group.SetExpandedFromView(false);
+            if (writesMaterial)
+            {
+                Undo.SetCurrentGroupName("Collapse All");
+                Editor.PropertiesChanged();
+            }
         }
 
         internal void OpenToolsFromView(Rect anchor) => PopupTools(anchor);
