@@ -40,7 +40,10 @@ namespace Thry.ThryEditor
         /// <returns>Task completed when the process finishes</returns>
         public static async Task CaptureWindow(EditorWindow window, string saveDirectory)
         {
-            var bytes = (await ScreenshotAsync(window)).EncodeToPNG();
+            var texture = await ScreenshotAsync(window);
+            if(texture == null)
+                return;
+            var bytes = texture.EncodeToPNG();
             var filename = $"{window.GetType().Name}_{DateTime.Now.ToString("HH-mm-ss")}.png";
             var finalPath = $"{saveDirectory}/{filename}";
             if(Directory.Exists(saveDirectory))
@@ -61,27 +64,33 @@ namespace Thry.ThryEditor
         /// <returns>A texture containing the editor window</returns>
         static async Task<Texture2D> ScreenshotAsync(EditorWindow window)
         {
+            int width = (int)window.position.width;
+            int viewHeight = (int)window.position.height - (_tabsHeight + _footer);
+            if(width <= 0 || viewHeight <= 0)
+                return null;
+
             InitReflections(window);
-            
+
             List<Color> pixels = new List<Color>();
             bool canScroll = GetScrollView(window) != null;
             float originalScroll = SetScroll(window);
 
-            var baseHeight = window.position.height - (_tabsHeight + _footer);
-
             bool originalExpanded = GetPreviewExpanded(window) ?? false;
             SetPreviewExpanded(window, false);
 
-            int width = (int)window.position.width;
             int maxHeight = SystemInfo.maxTextureSize;
             bool truncated = false;
-            for(int i = 0; ; i++)
+            while(true)
             {
-                float desiredScroll = baseHeight * i;
-                float scroll = await ScrollTo(desiredScroll);
-                int offset = (int)(desiredScroll - scroll);
+                int captured = pixels.Count / width;
+                float scroll = await ScrollTo(captured);
+                // Rows at the top of the view that are already captured. Content can change mid-capture, so the scroll may land anywhere
+                float skip = captured - scroll;
+                if(!(skip >= 0 && skip < viewHeight))
+                    break;
+                int offset = (int)skip;
 
-                Color[] chunk = ReadWindowPixels(window, offset);
+                Color[] chunk = ReadWindowPixels(window, width, offset, viewHeight - offset);
                 if(chunk.Length == 0)
                     break;
                 // Rows are bottom to top, so keep the end of the chunk
@@ -105,6 +114,8 @@ namespace Thry.ThryEditor
                 Debug.LogWarning($"Inspector is taller than the maximum texture size. Only the top {maxHeight} pixels were captured.");
 
             int height = pixels.Count / width;
+            if(height == 0)
+                return null;
             Texture2D texture = new Texture2D(width, height, TextureFormat.RGB24, false);
             texture.SetPixels(pixels.ToArray());
 
@@ -113,9 +124,9 @@ namespace Thry.ThryEditor
             // wraps scrolling and delayedCall in a Task as scrolling requires a frame to update 
             Task<float> ScrollTo(float scroll)
             {
-                float result = SetScroll(window, scroll);
+                SetScroll(window, scroll);
                 var tcs = new TaskCompletionSource<float>();
-                EditorApplication.delayCall += () => tcs.TrySetResult(result);
+                EditorApplication.delayCall += () => tcs.TrySetResult(SetScroll(window));
                 return tcs.Task;
             }
         }
@@ -124,12 +135,12 @@ namespace Thry.ThryEditor
         /// Captures a section of the window
         /// </summary>
         /// <param name="window">Window to capture</param>
-        /// <param name="offset">an optional vertical offset from the bottom</param>
+        /// <param name="width">Width to capture</param>
+        /// <param name="offset">Vertical offset below the tabs</param>
+        /// <param name="height">Height to capture, must be positive</param>
         /// <returns></returns>
-        private static Color[] ReadWindowPixels(EditorWindow window, int offset = 0)
+        private static Color[] ReadWindowPixels(EditorWindow window, int width, int offset, int height)
         {
-            int width = (int)window.position.width;
-            int height = (int)window.position.height - (_tabsHeight + _footer + offset);
             return UnityEditorInternal.InternalEditorUtility.ReadScreenPixel(
                 window.position.position + new Vector2(0, _tabsHeight + offset), width, height);
         }
