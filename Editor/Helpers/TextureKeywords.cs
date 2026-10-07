@@ -35,7 +35,11 @@ namespace Thry.ThryEditor.Helpers
             {
                 if (stream.GetEventType(i) != ObjectChangeKind.ChangeAssetObjectProperties) continue;
                 stream.GetChangeAssetObjectPropertiesEvent(i, out var change);
+#if UNITY_6000_5_OR_NEWER
+                if (EditorUtility.EntityIdToObject(change.entityId) is Material material) Sync(material);
+#else
                 if (EditorUtility.InstanceIDToObject(change.instanceId) is Material material) Sync(material);
+#endif
             }
         }
 
