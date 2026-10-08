@@ -5606,6 +5606,11 @@
     background-color: transparent;
 }
 
+/* Row margins alone leave a nested header touching the field above it. */
+.thry-inspector .thry-subsection-panel.thry-section-after-property {
+    margin-top: var(--thry-space-2);
+}
+
 .thry-inspector .thry-subsection-panel > .thry-section-header,
 .thry-inspector .thry-positioning-panel > .thry-section-header {
     background-color: var(--thry-subsection-background);

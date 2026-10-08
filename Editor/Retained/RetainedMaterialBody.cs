@@ -244,6 +244,7 @@ namespace Thry.ThryEditor
             Action update = () => {
                 bool category = depth != 0 || Model.Shader.FocusedCategory == null || group.MaterialProperty.name == Model.Shader.FocusedCategory;
                 root.style.display = category && group.RetainedVisible ? DisplayStyle.Flex : DisplayStyle.None;
+                root.EnableInClassList("thry-section-after-property", depth > 0 && !positioning && FollowsProperty(root));
                 header.EnableInClassList("thry-excluded", SectionEditing.IsExcluded?.Invoke(group) == true);
                 root.EnableInClassList("thry-section-open", group.RetainedExpanded);
                 children.SetEnabled(group.RetainedChildrenEnabled && (group.Options.condition_enable == null || group.Options.condition_enable.Test()));
@@ -290,6 +291,18 @@ namespace Thry.ThryEditor
                 expand(); e.StopPropagation();
             });
             _fields.Track(root,update); parent.Add(root);
+        }
+        private static bool FollowsProperty(VisualElement section)
+        {
+            var parent = section.parent;
+            if (parent == null) return false;
+            for (int i = parent.IndexOf(section) - 1; i >= 0; i--)
+            {
+                var sibling = parent[i];
+                if (sibling.style.display == DisplayStyle.None) continue;
+                return !sibling.ClassListContains("thry-section");
+            }
+            return false;
         }
         /// <summary>
         /// Builds hover text out of the parts that are worth showing, in reading order: the label,

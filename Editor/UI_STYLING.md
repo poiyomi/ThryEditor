@@ -34,7 +34,7 @@ Discarded UV tiles get the same treatment in pink through the `--thry-uv-discard
 - Footer icons use their own 32px image and 36px button tokens. They stay centered at full size and wrap on narrow inspectors instead of shrinking with compact controls.
 - Shared surface and interaction colors for Pathing, retained menus, and companion windows.
 
-The last section of the stylesheet defines this treatment. Palette, shape, and density tokens remain shared. Default inspector text is 12px, top-level headers default to 22px, nested headers default to 20px, and section gaps are 2px. Text size is independent of the 24px collapsed top-level spacing interval; ordinary material input hit targets default to 18px, with a 20px row interval including margins. Small captions, preview dimensions, and explicit drawer font sizes retain their own settings. `RetainedMaterialBody` exposes expansion through `thry-section-open`. Toolbar icons retain their original Monokai artwork and colors.
+The last section of the stylesheet defines this treatment. Palette, shape, and density tokens remain shared. Default inspector text is 12px, top-level headers default to 22px, nested headers default to 20px, and section gaps are 2px, including above a nested header that directly follows a field. Text size is independent of the 24px collapsed top-level spacing interval; ordinary material input hit targets default to 18px, with a 20px row interval including margins. Small captions, preview dimensions, and explicit drawer font sizes retain their own settings. `RetainedMaterialBody` exposes expansion through `thry-section-open`. Toolbar icons retain their original Monokai artwork and colors.
 
 ## Shared controls
 
