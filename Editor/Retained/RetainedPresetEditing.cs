@@ -23,20 +23,23 @@ namespace Thry.ThryEditor
                         tooltip = "Is part of preset"
                     };
                     indicator.AddToClassList("thry-preset-indicator");
-                    row.Insert(0, indicator);
+                    // In headers the marker follows the title, so it never opens a gap after the checkbox.
+                    indicator.EnableInClassList("thry-preset-indicator-header", header);
+                    row.Insert(header ? row.IndexOf(row.Q(className: "thry-section-title")) + 1 : 0, indicator);
                 }
                 // Read the persisted flag so reloads and external tag edits agree
                 // with the preset contents, without relying on cached IsPreset.
-                // Keep the marker gutter on unmarked rows too, so toggling inclusion
-                // does not move labels, controls, or section titles.
+                // Property rows keep the marker gutter when unmarked, so toggling inclusion
+                // does not move labels or controls; header markers trail the title and collapse.
                 var mode = Presets.GetPropertyMode(Model.Shader.Materials[0], part);
                 bool animationOnly = mode == Presets.PropertyMode.AnimationOnly;
                 indicator.text = animationOnly ? "PA" : "P";
                 indicator.EnableInClassList("thry-preset-animation-only", animationOnly);
                 indicator.tooltip = animationOnly
                     ? "Preset: animation only. Keeps each material's value." : "Is part of preset";
-                indicator.style.visibility = mode != Presets.PropertyMode.Excluded
-                    ? Visibility.Visible : Visibility.Hidden;
+                bool included = mode != Presets.PropertyMode.Excluded;
+                if (header) indicator.style.display = included ? DisplayStyle.Flex : DisplayStyle.None;
+                else indicator.style.visibility = included ? Visibility.Visible : Visibility.Hidden;
             });
         }
     }

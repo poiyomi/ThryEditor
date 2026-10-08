@@ -2161,6 +2161,11 @@
     margin-right: var(--thry-space-4);
 }
 
+.thry-preset-indicator.thry-preset-indicator-header {
+    margin-left: var(--thry-space-4);
+    margin-right: 0;
+}
+
 .thry-preset-indicator.thry-preset-animation-only {
     color: var(--thry-preset-animation-color);
 }
