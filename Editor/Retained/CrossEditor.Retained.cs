@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -43,6 +44,7 @@ namespace Thry.ThryEditor
             actions.Add(new Button(() => { _materialList.Add(null); UpdateTargets(); }) { text = "Add material" });
             actions.Add(new Button(() => UpdateTargets(Selection.objects.OfType<Material>(), true)) { text = "Add selected" });
             actions.Add(new Button(() => { _materialList.Clear(); UpdateTargets(); }) { text = "Clear" });
+            var groups = new Button { text = "Groups" }; groups.clicked += () => ShowGroups(groups); actions.Add(groups);
             scroll.RegisterCallback<DragUpdatedEvent>(e => { if (DragAndDrop.objectReferences.OfType<Material>().Any()) DragAndDrop.visualMode = DragAndDropVisualMode.Copy; });
             scroll.RegisterCallback<DragPerformEvent>(e => { var added = DragAndDrop.objectReferences.OfType<Material>().ToArray(); if (added.Length == 0) return; DragAndDrop.AcceptDrag(); UpdateTargets(added, true); e.StopPropagation(); });
             if (_targets.Count == 0) return;
@@ -64,6 +66,22 @@ namespace Thry.ThryEditor
                     UpdateTargets(); return;
                 }
             }).Every(250);
+        }
+
+        void ShowGroups(VisualElement anchor)
+        {
+            var groups = LoadGroups().groups;
+            var items = new List<RetainedMenu.Item> { new RetainedMenu.Item { Text = "Save group…",
+                Action = _materialList.Any(m => m != null) ? () => RetainedTextPrompt.Open("Save group", _groupName ?? "", SaveGroup) : (Action)null } };
+            if (groups.Count > 0) items.Add(new RetainedMenu.Item { Separator = true });
+            foreach (var group in groups)
+                items.Add(new RetainedMenu.Item { Text = group.name, Checked = group.name == _groupName, Action = () => LoadGroup(group) });
+            if (groups.Count > 0) items.Add(new RetainedMenu.Item { Separator = true });
+            foreach (var group in groups)
+                items.Add(new RetainedMenu.Item { Text = "Rename/" + group.name, Action = () => RetainedTextPrompt.Open("Rename group", group.name, name => RenameGroup(group.name, name)) });
+            foreach (var group in groups)
+                items.Add(new RetainedMenu.Item { Text = "Delete/" + group.name, Action = () => DeleteGroup(group.name) });
+            RetainedMenu.Open(anchor.worldBound, anchor, items);
         }
     }
 }

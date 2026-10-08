@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
@@ -46,6 +47,57 @@ namespace Thry.ThryEditor
         ShaderEditor _shaderEditor = null;
         MaterialEditor _materialEditor = null;
         bool _showMaterials = true;
+        string _groupName;
+
+        [Serializable] class MaterialGroup { public string name; public List<string> materials = new List<string>(); }
+        [Serializable] class MaterialGroups { public List<MaterialGroup> groups = new List<MaterialGroup>(); }
+
+        static MaterialGroups LoadGroups()
+        {
+            try { return JsonUtility.FromJson<MaterialGroups>(File.ReadAllText(PATH.CROSS_EDITOR_GROUPS_FILE)) ?? new MaterialGroups(); }
+            catch (Exception e) when (e is IOException || e is ArgumentException) { return new MaterialGroups(); }
+        }
+
+        static void SaveGroups(MaterialGroups data) => FileHelper.WriteStringToFile(JsonUtility.ToJson(data, true), PATH.CROSS_EDITOR_GROUPS_FILE);
+
+        void SaveGroup(string name)
+        {
+            name = name?.Trim();
+            if (string.IsNullOrEmpty(name)) return;
+            var data = LoadGroups();
+            var group = data.groups.Find(g => g.name == name);
+            if (group == null) data.groups.Add(group = new MaterialGroup { name = name });
+            group.materials = _materialList.Where(m => m != null && EditorUtility.IsPersistent(m))
+                .Select(m => GlobalObjectId.GetGlobalObjectIdSlow(m).ToString()).ToList();
+            SaveGroups(data);
+            _groupName = name;
+        }
+
+        void LoadGroup(MaterialGroup group)
+        {
+            var ids = group.materials.Select(s => GlobalObjectId.TryParse(s, out var id) ? (GlobalObjectId?)id : null).OfType<GlobalObjectId>().ToArray();
+            var materials = new UnityEngine.Object[ids.Length];
+            GlobalObjectId.GlobalObjectIdentifiersToObjectsSlow(ids, materials);
+            _groupName = group.name;
+            UpdateTargets(materials.OfType<Material>());
+        }
+
+        void RenameGroup(string from, string to)
+        {
+            to = to?.Trim();
+            var data = LoadGroups();
+            if (string.IsNullOrEmpty(to) || data.groups.Any(g => g.name == to)) return;
+            data.groups.ForEach(g => { if (g.name == from) g.name = to; });
+            SaveGroups(data);
+            if (_groupName == from) _groupName = to;
+        }
+
+        void DeleteGroup(string name)
+        {
+            var data = LoadGroups();
+            data.groups.RemoveAll(g => g.name == name);
+            SaveGroups(data);
+        }
 
         public void UpdateTargets(IEnumerable<Material> materials, bool add = false)
         {

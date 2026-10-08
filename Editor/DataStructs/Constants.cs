@@ -12,6 +12,7 @@ namespace Thry.ThryEditor
 
         public const string LINKED_MATERIALS_FILE = "Thry/linked_materials.json";
         public const string GLOBAL_LINKS_FILE = "Thry/global_links.json";
+        public const string CROSS_EDITOR_GROUPS_FILE = "Thry/cross_editor_groups.json";
     }
 
     public class RESOURCE_GUID
