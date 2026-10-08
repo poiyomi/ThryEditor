@@ -136,6 +136,21 @@ namespace Thry.ThryEditor
             }
         }
 
+        private void AddDecalBakeAll(VisualElement root, ShaderProperty property)
+        {
+            if (!DecalBakeBridge.BakeAllAvailable) return;
+            var bake = new Button(() =>
+            {
+                if (!RetainedMaterialModel.HasValidTargets(Model.Editor) || Model.Shader.Materials.Length != 1 || !Model.CanEdit(property)) return;
+                var material = Model.Shader.Materials[0];
+                EditorApplication.delayCall += () => { if (material != null) { DecalBakeBridge.BakeAll(material); Model.Notify(); } };
+            }) { text = "Bake Active Decals", name = "decal-bake-all",
+                tooltip = "Bake the active decals into one new main texture and disable them. Use Undo to restore them." };
+            bake.AddToClassList("thry-action-button"); root.Add(bake);
+            Track(bake, () => bake.SetEnabled(RetainedMaterialModel.HasValidTargets(Model.Editor) && Model.Shader.Materials.Length == 1
+                && Model.CanEdit(property) && DecalBakeBridge.HasEnabledDecals(Model.Shader.Materials[0])));
+        }
+
         private static Button PositioningButton(string text, bool raycast, Action action)
         {
             var button = new Button(action); button.AddToClassList("thry-positioning-button"); button.AddToClassList("thry-action-button");
