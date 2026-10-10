@@ -612,6 +612,7 @@ namespace Thry.ThryEditor
         private Shader[] _retainedProjectionShaders;
         private int[] _retainedProjectionVersions;
         private int _retainedProjectionRevision;
+        private bool _retainedProjectionPrepared;
 
         internal ShaderProperty CreateRetainedProjection(ShaderPart owner, Material[] targets)
         {
@@ -651,7 +652,12 @@ namespace Thry.ThryEditor
                 changed |= _retainedProjectionVersions[i] != dirty;
                 _retainedProjectionVersions[i] = dirty;
             }
-            if (changed || AnimationMode.InAnimationMode())
+            // Animation previews and play-mode animators write property blocks without
+            // dirtying the material. Re-read while one is active and once after it ends.
+            bool prepare = AnimationMode.InAnimationMode() || (renderers != null && RetainedAnimation.RequiresPreparation(renderers));
+            bool wasPrepared = _retainedProjectionPrepared;
+            _retainedProjectionPrepared = prepare;
+            if (changed || prepare || wasPrepared)
             {
                 var value = MaterialEditor.GetMaterialProperty(_retainedProjectionOwners, MaterialProperty.name);
                 if (renderers != null) RetainedAnimation.Prepare(new[] { value }, renderers);
