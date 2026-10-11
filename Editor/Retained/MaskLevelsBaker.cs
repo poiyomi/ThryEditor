@@ -60,19 +60,37 @@ namespace Thry.ThryEditor
             }
             if (stage.values[6] != Vector4.zero)
                 MaskLevelsData.Measure(material.GetTexture(property), out stage.values[7], out stage.values[8]);
+            var sourced = VertexSourced(material, property);
+            for (int c = 0; c < 4; c++) if (sourced[c]) stage.values[5][c] = 0;
             return stage;
         }
 
         internal static void Reset(Material material, string property, int channels)
         {
+            var sourced = VertexSourced(material, property);
             for (int i = 0; i < MaskLevelsData.Suffixes.Length; i++)
             {
                 string name = MaskLevelsData.Name(property, i);
                 if (!material.HasProperty(name)) continue;
                 var value = material.GetVector(name);
-                for (int c = 0; c < 4; c++) if ((channels & (1 << c)) != 0) value[c] = MaskLevelsData.Defaults[i][c];
+                for (int c = 0; c < 4; c++)
+                    if ((channels & (1 << c)) != 0 && !(i == 5 && sourced[c])) value[c] = MaskLevelsData.Defaults[i][c];
                 material.SetVector(name, value);
             }
+        }
+
+        // The shader applies Invert after the vertex color on these channels, so it stays out of the bake.
+        static bool[] VertexSourced(Material material, string property)
+        {
+            var sourced = new bool[4];
+            string name = property + "VertexMask";
+            int index = material.shader.FindPropertyIndex(name);
+            if (index < 0) return sourced;
+            var sources = material.GetVector(name);
+            string attribute = material.shader.GetPropertyAttributes(index).FirstOrDefault(a => a.StartsWith("ThryMaskSources"));
+            bool single = attribute == null || !attribute.Contains(",");
+            for (int c = 0; c < 4; c++) sourced[c] = (single ? sources.x : sources[c]) >= .5f;
+            return sourced;
         }
 
         internal static Dictionary<Material, Texture2D> Export(Material[] materials, string property, int channels)
