@@ -138,6 +138,56 @@ namespace Thry.ThryEditor
                     });
                     root.Add(button);
                 }
+                if (attribute.Name == "PoiBakeOutlineCurvature")
+                {
+                    var bakerType = AppDomain.CurrentDomain.GetAssemblies()
+                        .Select(assembly => assembly.GetType("Poi.Tools.PoiBakeOutlineCurvatureDecorator")).FirstOrDefault(type => type != null);
+                    var bake = bakerType?.GetMethod("BakeAndAssign", BindingFlags.Static | BindingFlags.NonPublic, null,
+                        new[] { typeof(Renderer), typeof(Material[]), typeof(string) }, null);
+                    bool pending = false;
+                    Func<Renderer> renderer = () => Model.Renderers.FirstOrDefault(candidate => candidate != null) ?? Model.Shader.ActiveRenderer;
+                    Func<bool> canEdit = () => Model.CanEdit(property)
+                        && !PresentationTargets(property).Any(material => ShaderOptimizer.IsShaderLocked(material.shader));
+                    Func<bool> hasMesh = () =>
+                    {
+                        var candidate = renderer();
+                        if (candidate is SkinnedMeshRenderer skinned) return skinned.sharedMesh != null;
+                        return candidate != null && candidate.GetComponent<MeshFilter>()?.sharedMesh != null;
+                    };
+                    var button = new Button(() =>
+                    {
+                        if (pending || bake == null || !RetainedMaterialModel.HasValidTargets(Model.Editor) || !hasMesh() || !canEdit()) return;
+                        var targetRenderer = renderer();
+                        var materials = PresentationTargets(property);
+                        pending = true;
+                        // Defer modal dialogs and asset imports until after UI event dispatch.
+                        EditorApplication.delayCall += () =>
+                        {
+                            try
+                            {
+                                if (targetRenderer == null || root.panel == null || !RetainedMaterialModel.HasValidTargets(Model.Editor)
+                                    || !canEdit() || materials.Any(material => material == null || !PresentationTargets(property).Contains(material))) return;
+                                string path = EditorUtility.SaveFilePanelInProject("Save Outline UV Texture",
+                                    targetRenderer.name + "_OutlineUVs", "asset", "Save outline UV texture");
+                                // The bake writes the materials directly; assign through the property too so the slot shows it now.
+                                if (!string.IsNullOrEmpty(path) && bake.Invoke(null, new object[] { targetRenderer, materials, path }) is Texture texture)
+                                    Model.Edit(property, p => p.textureValue = texture);
+                            }
+                            catch (TargetInvocationException exception) { Debug.LogException(exception.InnerException ?? exception); }
+                            finally { pending = false; Model.Notify(); }
+                        };
+                    }) { name = "bake-outline-curvature", text = "Bake Outline UVs" };
+                    Track(button, () =>
+                    {
+                        bool ready = hasMesh();
+                        button.tooltip = bake == null ? "The outline UV baker is unavailable."
+                            : !canEdit() ? "Unlock the materials before baking outline UVs."
+                            : ready ? "Reads the selected object's mesh and saves a small texture that lays Outline Texture along the outline. The mesh itself is not changed."
+                            : "Select the object that uses this material to bake its outline UVs.";
+                        button.SetEnabled(!pending && bake != null && ready && canEdit());
+                    });
+                    root.Add(button);
+                }
                 if (attribute.Name == "sRGBWarning")
                 {
                     bool shouldHaveSRGB = attribute.Args.Any(a => a.Equals("gamma", StringComparison.OrdinalIgnoreCase) || a.Equals("true", StringComparison.OrdinalIgnoreCase));
