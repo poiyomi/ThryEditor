@@ -2761,7 +2761,8 @@ namespace Thry.ThryEditor
                             // Skip basic declarations of unity shader properties i.e. "uniform float4 _Color;"
                             if (!declarationFound && t > 0)
                             {
-                                if (ValidPropertyDataTypes.Contains(tokens[t-1]) && lines[i].Substring(constantIndex + constant.name.Length).TrimStart().StartsWith(";", StringComparison.Ordinal))
+                                if (ValidPropertyDataTypes.Contains(tokens[t-1]) && lines[i].Substring(constantIndex + constant.name.Length).TrimStart().StartsWith(";", StringComparison.Ordinal)
+                                    && lines[i].Substring(0, constantIndex).TrimEnd().EndsWith(tokens[t-1], StringComparison.Ordinal))
                                 {
                                     constant.lastDeclarationType = tokens[t-1];
                                     declarationFound = true;
