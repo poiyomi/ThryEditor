@@ -134,7 +134,7 @@ namespace Thry.ThryEditor
             }
 
             /// <summary>
-            /// SectionLock only follows section switches. A slider, color, vector or texture is a value, not a
+            /// SectionLock only follows section switches. A slider, number, color, vector or texture is a value, not a
             /// switch, and its code has to stay in so dragging it never needs a new shader.
             /// </summary>
             public bool IsIgnoredBySectionLock
@@ -145,7 +145,10 @@ namespace Thry.ThryEditor
                     MaterialProperty prop = _materialReference.GetMaterialProperty(_key);
                     if (prop == null) return false;
                     ShaderPropertyType type = prop.GetPropertyType();
-                    return type != ShaderPropertyType.Float && type != ShaderPropertyType.Int;
+                    if (type != ShaderPropertyType.Float && type != ShaderPropertyType.Int) return true;
+                    Shader shader = _materialReference.Material.shader;
+                    int index = shader.FindPropertyIndex(_key);
+                    return index >= 0 && !SectionLock.IsSwitchProperty(shader, index);
                 }
             }
 

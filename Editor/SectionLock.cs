@@ -146,9 +146,10 @@ namespace Thry.ThryEditor
             // Properties that can be baked, sorted, with what reading and writing their value needs: the property ID,
             // whether it is an Int property, and whether the code declares it as an integer (then it's written as an
             // integer literal, otherwise as a float one). These are the switch-like properties the program code uses,
-            // plus anything used in code that only exists with OPTIMIZER_ENABLED, which expects constants there
-            // (e.g. Fur's [instance(_FurLayerCount + 1)]). Those are always baked (SwitchMustBake). Properties the
-            // full lock leaves live ([DoNotLock]) are only baked when they must be (SwitchExempt).
+            // plus anything that code only existing with OPTIMIZER_ENABLED uses where it needs a constant: in an
+            // attribute, a macro or an index (e.g. Fur's [instance(_FurLayerCount + 1)]). Those are always baked
+            // (SwitchMustBake). Properties the full lock leaves live ([DoNotLock]) are only baked when they must be
+            // (SwitchExempt).
             public string[] SwitchProperties;
             public int[] SwitchIds;
             public bool[] SwitchIsInt;
@@ -158,6 +159,10 @@ namespace Thry.ThryEditor
             // Used as an index ("x[_Channel]"). A constant index outside the vector fails to compile even in code that
             // never runs, so those are only baked for values 0-3.
             public bool[] SwitchIndexes;
+            // For a slider only attributes need as a constant, the top of its range, NaN otherwise. Once the user
+            // changes it, the attributes get this bound and the code reads the live value, like the unlocked
+            // shader's [instance(32)].
+            public float[] SwitchBound;
             public Dictionary<string, int> SwitchIndex = new Dictionary<string, int>(StringComparer.Ordinal);
             public Dictionary<string, string> DeclaredTypes = new Dictionary<string, string>(StringComparer.Ordinal);
             // Textures whose PROP_ define the code checks and that aren't shader keywords.
@@ -305,6 +310,7 @@ namespace Thry.ThryEditor
             public int[] Ids;
             public bool[] IsSwitch;
             public bool[] Exempt;
+            public float[] RangeMax;
             // First index of each property name, like Shader.FindPropertyIndex.
             public Dictionary<string, int> Index = new Dictionary<string, int>(StringComparer.Ordinal);
         }
@@ -320,6 +326,7 @@ namespace Thry.ThryEditor
                 Ids = new int[count],
                 IsSwitch = new bool[count],
                 Exempt = new bool[count],
+                RangeMax = new float[count],
             };
             for (int i = 0; i < count; i++)
             {
@@ -330,6 +337,7 @@ namespace Thry.ThryEditor
                 facts.Ids[i] = Shader.PropertyToID(name);
                 facts.IsSwitch[i] = IsSwitchProperty(shader, i);
                 facts.Exempt[i] = IsExemptFromLocking(shader, i);
+                facts.RangeMax[i] = type == ShaderPropertyType.Range ? shader.GetPropertyRangeLimits(i).y : float.NaN;
                 if (!facts.Index.ContainsKey(name)) facts.Index[name] = i;
                 facts.PropertyVariables.Add(name);
                 if (type == ShaderPropertyType.Texture)
@@ -343,7 +351,7 @@ namespace Thry.ThryEditor
             return facts;
         }
 
-        static bool IsSwitchProperty(Shader shader, int index)
+        internal static bool IsSwitchProperty(Shader shader, int index)
         {
             ShaderPropertyType type = shader.GetPropertyType(index);
             if (type != ShaderPropertyType.Float && type != ShaderPropertyType.Int) return false;
@@ -514,8 +522,10 @@ namespace Thry.ThryEditor
             bool[] inProperties = new bool[lines.Length];
             Stack<int> open = new Stack<int>();
             HashSet<string> referenced = new HashSet<string>(StringComparer.Ordinal);
-            // Properties referenced in code that only exists when OPTIMIZER_ENABLED is defined.
+            // Properties that code only existing when OPTIMIZER_ENABLED is defined needs as constants.
             HashSet<string> referencedWithOptimizer = new HashSet<string>(StringComparer.Ordinal);
+            // The ones among them that a macro or an index needs, not only attributes.
+            HashSet<string> constantOutsideAttributes = new HashSet<string>(StringComparer.Ordinal);
             // Properties that a #define uses as its name or a parameter. Replacing those would break the macro.
             HashSet<string> macroNames = new HashSet<string>(StringComparer.Ordinal);
             // Properties used inside [ ] as an index.
@@ -656,16 +666,28 @@ namespace Thry.ThryEditor
                         bool needsOptimizer = false;
                         foreach (var branch in optimizerBranches)
                             if (branch.inElse ? branch.elseNeeds : branch.ifNeeds) { needsOptimizer = true; break; }
+                        bool isAttribute = trimmed.StartsWith("[", StringComparison.Ordinal);
+                        bool needsConstants = needsOptimizer && (isAttribute || trimmed.StartsWith("#define", StringComparison.Ordinal));
                         foreach (Match reference in s_propertyReferenceRegex.Matches(lines[i]))
                         {
                             referenced.Add(reference.Value);
-                            if (needsOptimizer) referencedWithOptimizer.Add(reference.Value);
+                            if (!needsConstants) continue;
+                            referencedWithOptimizer.Add(reference.Value);
+                            if (!isAttribute) constantOutsideAttributes.Add(reference.Value);
                         }
                         // Attributes like [instance(...)] also use brackets, but only at the start of a line.
-                        if (!trimmed.StartsWith("[", StringComparison.Ordinal))
+                        if (!isAttribute)
                         {
                             foreach (Match index in s_indexRegex.Matches(lines[i]))
-                                foreach (Match reference in s_propertyReferenceRegex.Matches(index.Groups[1].Value)) indexes.Add(reference.Value);
+                            {
+                                foreach (Match reference in s_propertyReferenceRegex.Matches(index.Groups[1].Value))
+                                {
+                                    indexes.Add(reference.Value);
+                                    if (!needsOptimizer) continue;
+                                    referencedWithOptimizer.Add(reference.Value);
+                                    constantOutsideAttributes.Add(reference.Value);
+                                }
+                            }
                         }
                         Match define = s_defineRegex.Match(trimmed);
                         if (define.Success)
@@ -751,6 +773,7 @@ namespace Thry.ThryEditor
             info.SwitchMustBake = new bool[switches.Count];
             info.SwitchExempt = new bool[switches.Count];
             info.SwitchIndexes = new bool[switches.Count];
+            info.SwitchBound = new float[switches.Count];
             for (int s = 0; s < switches.Count; s++)
             {
                 string name = switches[s];
@@ -762,6 +785,7 @@ namespace Thry.ThryEditor
                 info.SwitchMustBake[s] = referencedWithOptimizer.Contains(name);
                 info.SwitchExempt[s] = facts.Exempt[index];
                 info.SwitchIndexes[s] = indexes.Contains(name);
+                info.SwitchBound[s] = info.SwitchMustBake[s] && !constantOutsideAttributes.Contains(name) ? facts.RangeMax[index] : float.NaN;
             }
             info.PresenceTextures = textures.ToArray();
             return info;
@@ -899,6 +923,8 @@ namespace Thry.ThryEditor
             public bool Enabled;
             // Property -> the literal written into the code.
             public SortedDictionary<string, string> Values = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            // Property -> the bound written into attributes, for changed sliders that stay live elsewhere (SwitchBound).
+            public SortedDictionary<string, string> Bounds = new SortedDictionary<string, string>(StringComparer.Ordinal);
             // Textures treated as assigned: PROP_ defined, so their code stays.
             public SortedSet<string> Present = new SortedSet<string>(StringComparer.Ordinal);
             // Enabled shader_feature keywords, written as #defines.
@@ -993,7 +1019,11 @@ namespace Thry.ThryEditor
         static string Literal(Material material, int switchIndex, SourceInfo info)
         {
             int id = info.SwitchIds[switchIndex];
-            float value = info.SwitchIsInt[switchIndex] ? material.GetInteger(id) : material.GetFloat(id);
+            return Literal(info.SwitchIsInt[switchIndex] ? material.GetInteger(id) : material.GetFloat(id), switchIndex, info);
+        }
+
+        static string Literal(float value, int switchIndex, SourceInfo info)
+        {
             // Integer literals only where the code declares an integer, so float expressions keep float division.
             string literal = info.SwitchDeclaredInt[switchIndex]
                 ? ((int)value).ToString(CultureInfo.InvariantCulture)
@@ -1011,6 +1041,11 @@ namespace Thry.ThryEditor
             {
                 string property = info.SwitchProperties[i];
                 if (ShaderOptimizer.IsAnimated(material, property)) continue;
+                if (!float.IsNaN(info.SwitchBound[i]) && touched.Contains(property))
+                {
+                    bake.Bounds[property] = Literal(info.SwitchBound[i], i, info);
+                    continue;
+                }
                 if (!info.SwitchMustBake[i] && (touched.Contains(property) || info.SwitchExempt[i])) continue;
                 if (!info.SwitchMustBake[i] && info.SwitchIndexes[i])
                 {
@@ -1043,8 +1078,9 @@ namespace Thry.ThryEditor
             int before = touched.Count;
             foreach (KeyValuePair<string, string> baked in current.Values)
             {
-                // Values that must be constants stay baked, so changing them simply makes a new shader.
-                if (!info.SwitchIndex.TryGetValue(baked.Key, out int index) || info.SwitchMustBake[index]) continue;
+                // Values that must be constants stay baked, so changing them simply makes a new shader. Those only
+                // attributes need get their bound instead.
+                if (!info.SwitchIndex.TryGetValue(baked.Key, out int index) || (info.SwitchMustBake[index] && float.IsNaN(info.SwitchBound[index]))) continue;
                 if (Literal(material, index, info) != baked.Value) touched.Add(baked.Key);
             }
             foreach (string texture in info.PresenceTextures)
@@ -1099,6 +1135,7 @@ namespace Thry.ThryEditor
             foreach (int b in removedBlocks) sb.Append(b).Append(',');
             sb.Append('|').Append(bake.Enabled ? "baked" : "plain");
             foreach (KeyValuePair<string, string> value in bake.Values) sb.Append('|').Append(value.Key).Append('=').Append(value.Value);
+            foreach (KeyValuePair<string, string> bound in bake.Bounds) sb.Append('|').Append(bound.Key).Append('<').Append(bound.Value);
             sb.Append('|');
             foreach (string texture in bake.Present) sb.Append(texture).Append(',');
             sb.Append('|');
@@ -1126,6 +1163,7 @@ namespace Thry.ThryEditor
                 programDefines = GetKeywordDefines(info, removedBlocks, bake, defines);
             }
             MatchEvaluator replaceValue = reference => bake.Values.TryGetValue(reference.Value, out string literal) ? literal : reference.Value;
+            MatchEvaluator replaceInAttribute = reference => bake.Bounds.TryGetValue(reference.Value, out string bound) ? bound : replaceValue(reference);
 
             int next = 0;
             for (int i = 0; i < lines.Length; i++)
@@ -1153,7 +1191,11 @@ namespace Thry.ThryEditor
                         sb.Append(info.Rewritten[i]);
                         break;
                     default:
-                        if (bake.Values.Count > 0 && info.Bakeable[i]) sb.Append(s_propertyReferenceRegex.Replace(lines[i], replaceValue));
+                        if ((bake.Values.Count > 0 || bake.Bounds.Count > 0) && info.Bakeable[i])
+                        {
+                            bool isAttribute = lines[i].TrimStart().StartsWith("[", StringComparison.Ordinal);
+                            sb.Append(s_propertyReferenceRegex.Replace(lines[i], isAttribute ? replaceInAttribute : replaceValue));
+                        }
                         else sb.Append(lines[i]);
                         break;
                 }
