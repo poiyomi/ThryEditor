@@ -2497,6 +2497,75 @@
     color: #aaaaaa;
 }
 
+.thry-decal-canvas-window {
+    padding: var(--thry-space-8);
+}
+
+.thry-decal-canvas-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-shrink: 0;
+    margin-bottom: var(--thry-space-6);
+}
+
+.thry-decal-canvas-spacer {
+    flex-grow: 1;
+}
+
+.thry-decal-canvas-toolbar > Toggle {
+    margin-right: var(--thry-space-6);
+}
+
+.thry-decal-canvas {
+    flex-grow: 1;
+    min-height: 200px;
+    overflow: hidden;
+    --thry-decal-canvas-box: var(--thry-monokai-cyan);
+    --thry-decal-canvas-pivot: var(--thry-monokai-yellow);
+    --thry-decal-canvas-ghost: var(--thry-monokai-purple);
+}
+
+.thry-decal-canvas-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.thry-decal-canvas-group {
+    flex-direction: row;
+    align-items: center;
+    margin-right: var(--thry-space-8);
+}
+
+.thry-decal-canvas-group > Label {
+    margin-right: 0;
+}
+
+.thry-decal-canvas-field {
+    width: 66px;
+    margin: var(--thry-space-1) 0 var(--thry-space-1) var(--thry-space-4);
+}
+
+.thry-decal-canvas-field > .unity-base-field__label {
+    min-width: 0;
+    width: auto;
+    padding-left: 0;
+    margin-right: var(--thry-space-3);
+}
+
+#decal-canvas-rotation {
+    width: 110px;
+}
+
+.thry-decal-canvas-hint {
+    flex-shrink: 0;
+    white-space: normal;
+    margin-top: var(--thry-space-2);
+}
+
 .thry-light .thry-subsection-panel > .thry-section-header, .thry-light .thry-positioning-panel > .thry-section-header {
     background-color: var(--thry-subsection-background);
     border-color: var(--thry-subsection-background);

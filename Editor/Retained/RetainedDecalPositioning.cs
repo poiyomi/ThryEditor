@@ -47,6 +47,15 @@ namespace Thry.ThryEditor
                     return "The selected mesh does not contain this UV channel.";
                 return null;
             };
+            Func<string> canvasUnavailable = () =>
+            {
+                if (!RetainedMaterialModel.HasValidTargets(Model.Editor)) return "Select a material to use positioning tools.";
+                if (Model.Shader.Materials.Length != 1) return "Select one material to position its decal on the canvas.";
+                if (args.Length != 6 || args.Skip(1).Any(a => !Model.Shader.PropertyDictionary.ContainsKey(a))) return "Positioning properties are unavailable for this shader.";
+                if (args.Skip(2).Any(a => !Model.CanEdit(Model.Shader.PropertyDictionary[a]))) return "Unlock the positioning properties to use the canvas.";
+                return null;
+            };
+            Func<bool> canvasOpen = () => Model.Shader.Materials.Length == 1 && DecalCanvasWindow.IsOpen(Model.Shader.Materials[0], args[2]);
             Action<bool> stop = cancel =>
             {
                 var previous = tool; tool = null; tools.userData = null;
@@ -59,6 +68,7 @@ namespace Thry.ThryEditor
                 var mode = raycast ? DecalSceneTool.Mode.Raycast : DecalSceneTool.Mode.Handles;
                 if (tool != null && tool.GetMode() == mode) { stop(raycast); Model.Notify(); update(); return; }
                 stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast);
+                DecalCanvasWindow.CloseFor(Model.Shader.Materials[0], args[2]);
                 Model.Shader.ActivateRetained();
                 var properties = Model.Shader.PropertyDictionary;
                 activeRenderer = findRenderer(); activeMaterial = Model.Shader.Materials[0];
@@ -78,11 +88,26 @@ namespace Thry.ThryEditor
                 if (raycast) tool.StartRaycastMode(); else tool.StartHandleMode();
                 SceneView.RepaintAll(); update();
             };
-            var raycastButton = PositioningButton("Raycast", true, () => begin(true));
+            Action toggleCanvas = () =>
+            {
+                if (canvasUnavailable() != null) return;
+                var material = Model.Shader.Materials[0];
+                if (canvasOpen()) { DecalCanvasWindow.CloseFor(material, args[2]); update(); return; }
+                stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast);
+                Model.Notify();
+                var group = property.Parent?.Parent ?? property.Parent;
+                DecalCanvasWindow.Open(material, args, group?.UnmarkedLabel.Trim() ?? property.UnmarkedLabel, findRenderer(),
+                    name => Model.Shader.PropertyDictionary.TryGetValue(name, out var p) ? p.MaterialProperty : null);
+                update();
+            };
+            var raycastButton = PositioningButton("Raycast", PositioningIcon.Raycast, () => begin(true));
             raycastButton.name = "decal-raycast-" + property.MaterialProperty.name; buttons.Add(raycastButton);
-            var handlesButton = PositioningButton("Scene Tools", false, () => begin(false));
+            var handlesButton = PositioningButton("Scene Tools", PositioningIcon.Handles, () => begin(false));
             handlesButton.AddToClassList("thry-positioning-secondary");
             handlesButton.name = "decal-handles-" + property.MaterialProperty.name; buttons.Add(handlesButton);
+            var canvasButton = PositioningButton("Canvas", PositioningIcon.Canvas, toggleCanvas);
+            canvasButton.AddToClassList("thry-positioning-secondary");
+            canvasButton.name = "decal-canvas-" + property.MaterialProperty.name; buttons.Add(canvasButton);
             update = () =>
             {
                 string reason = unavailable();
@@ -90,16 +115,22 @@ namespace Thry.ThryEditor
                     || activeRenderer != findRenderer() || activeMaterial != Model.Shader.Materials.FirstOrDefault()
                     || activeUv != (int)Model.Shader.PropertyDictionary[args[1]].MaterialProperty.GetNumber())) stop(tool.GetMode() == DecalSceneTool.Mode.Raycast);
                 var mode = tool == null ? DecalSceneTool.Mode.None : tool.GetMode();
+                string canvasReason = canvasUnavailable();
+                bool canvas = canvasReason == null && canvasOpen();
                 raycastButton.Q<Label>().text = mode == DecalSceneTool.Mode.Raycast ? "Cancel Raycast" : "Raycast";
                 handlesButton.Q<Label>().text = mode == DecalSceneTool.Mode.Handles ? "Finish Scene Tools" : "Scene Tools";
+                canvasButton.Q<Label>().text = canvas ? "Close Canvas" : "Canvas";
                 raycastButton.EnableInClassList("thry-positioning-active", mode == DecalSceneTool.Mode.Raycast);
                 handlesButton.EnableInClassList("thry-positioning-active", mode == DecalSceneTool.Mode.Handles);
-                buttons.SetEnabled(reason == null);
+                canvasButton.EnableInClassList("thry-positioning-active", canvas);
+                raycastButton.SetEnabled(reason == null); handlesButton.SetEnabled(reason == null); canvasButton.SetEnabled(canvasReason == null);
                 raycastButton.tooltip = reason ?? "Place the decal on the mesh in the Scene view. Click to apply; Escape cancels.";
                 handlesButton.tooltip = reason ?? "Move, rotate, or scale the decal with scene handles. Use W, E, R, or T; Escape cancels.";
-                status.text = reason ?? (mode == DecalSceneTool.Mode.Raycast ? "Click the mesh to place · Esc to cancel"
+                canvasButton.tooltip = canvasReason ?? "Move, scale, and rotate the decal on a flat UV canvas.";
+                status.text = mode == DecalSceneTool.Mode.Raycast ? "Click the mesh to place · Esc to cancel"
                     : mode == DecalSceneTool.Mode.Handles ? "W Move · E Rotate · R Scale · T Edges · Esc to cancel"
-                    : "Place on the mesh or adjust the values below.");
+                    : canvas ? "Drag the decal in the Decal Canvas window."
+                    : reason ?? "Place on the mesh or adjust the values below.";
                 if (tool != null)
                 {
                     var p = Model.Shader.PropertyDictionary;
@@ -107,6 +138,10 @@ namespace Thry.ThryEditor
                 }
             };
             Track(tools, update);
+            Action canvasChanged = () => update();
+            tools.RegisterCallback<AttachToPanelEvent>(e => { if (e.target == tools) { DecalCanvasWindow.StateChanged -= canvasChanged; DecalCanvasWindow.StateChanged += canvasChanged; } });
+            tools.RegisterCallback<DetachFromPanelEvent>(e => { if (e.target == tools) DecalCanvasWindow.StateChanged -= canvasChanged; });
+            if (tools.panel != null) DecalCanvasWindow.StateChanged += canvasChanged;
             root.RegisterCallback<DetachFromPanelEvent>(e => { if (e.target == root) stop(tool != null && tool.GetMode() == DecalSceneTool.Mode.Raycast); });
             root.RegisterCallback<KeyDownEvent>(e => { if (e.keyCode == KeyCode.Escape && tool != null) { stop(true); Model.Notify(); update(); e.StopPropagation(); } });
         }
@@ -151,7 +186,9 @@ namespace Thry.ThryEditor
                 && Model.CanEdit(property) && DecalBakeBridge.HasEnabledDecals(Model.Shader.Materials[0])));
         }
 
-        private static Button PositioningButton(string text, bool raycast, Action action)
+        private enum PositioningIcon { Raycast, Handles, Canvas }
+
+        private static Button PositioningButton(string text, PositioningIcon kind, Action action)
         {
             var button = new Button(action); button.AddToClassList("thry-positioning-button"); button.AddToClassList("thry-action-button");
             var icon = new VisualElement { pickingMode = PickingMode.Ignore }; icon.AddToClassList("thry-positioning-icon"); button.Add(icon);
@@ -159,10 +196,18 @@ namespace Thry.ThryEditor
             {
                 var p = context.painter2D; p.strokeColor = icon.resolvedStyle.color; p.lineWidth = 1.5f;
                 p.BeginPath();
-                if (raycast) { p.Arc(new Vector2(8, 8), 4, 0, 360); p.Stroke(); p.BeginPath(); }
+                if (kind == PositioningIcon.Canvas)
+                {
+                    p.MoveTo(new Vector2(3, 3)); p.LineTo(new Vector2(13, 3)); p.LineTo(new Vector2(13, 13)); p.LineTo(new Vector2(3, 13)); p.ClosePath(); p.Stroke();
+                    p.fillColor = icon.resolvedStyle.color;
+                    foreach (var corner in new[] { new Vector2(3, 3), new Vector2(13, 3), new Vector2(13, 13), new Vector2(3, 13) })
+                    { p.BeginPath(); p.MoveTo(corner + new Vector2(-2, -2)); p.LineTo(corner + new Vector2(2, -2)); p.LineTo(corner + new Vector2(2, 2)); p.LineTo(corner + new Vector2(-2, 2)); p.ClosePath(); p.Fill(); }
+                    return;
+                }
+                if (kind == PositioningIcon.Raycast) { p.Arc(new Vector2(8, 8), 4, 0, 360); p.Stroke(); p.BeginPath(); }
                 p.MoveTo(new Vector2(8, 1)); p.LineTo(new Vector2(8, 15));
                 p.MoveTo(new Vector2(1, 8)); p.LineTo(new Vector2(15, 8));
-                if (!raycast)
+                if (kind == PositioningIcon.Handles)
                 {
                     p.MoveTo(new Vector2(5, 4)); p.LineTo(new Vector2(8, 1)); p.LineTo(new Vector2(11, 4));
                     p.MoveTo(new Vector2(12, 5)); p.LineTo(new Vector2(15, 8)); p.LineTo(new Vector2(12, 11));

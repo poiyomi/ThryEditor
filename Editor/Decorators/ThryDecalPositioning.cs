@@ -26,6 +26,7 @@ namespace Thry.ThryEditor.Decorators
         bool CreateSceneTool()
         {
             DiscardSceneTool();
+            DecalCanvasWindow.CloseFor(ShaderEditor.Active.Materials[0], _positionPropertyName);
             try
             {
                 _sceneTool = DecalSceneTool.Create(
@@ -79,12 +80,15 @@ namespace Thry.ThryEditor.Decorators
                     }
             }
             bool isInScene = SelectedRenderer() != null;
-            if (isInScene)
+            if (!isInScene) ButtonCanvas(position);
+            else
             {
-                position.width /= 2;
+                position.width /= 3;
                 ButtonRaycast(position);
                 position.x += position.width;
                 ButtonSceneTools(position);
+                position.x += position.width;
+                ButtonCanvas(position);
                 if (_sceneTool != null)
                 {
                     _sceneTool.SetMaterialProperties(
@@ -129,6 +133,28 @@ namespace Thry.ThryEditor.Decorators
                 }
             }
             if (_sceneTool != null && _sceneTool.GetMode() == DecalSceneTool.Mode.Handles)
+                GUI.DrawTexture(r, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0, new Color(0.5f, 0.5f, 0.5f, 0.5f), 0, 3);
+        }
+
+        void ButtonCanvas(Rect r)
+        {
+            var material = ShaderEditor.Active.Materials[0];
+            bool open = DecalCanvasWindow.IsOpen(material, _positionPropertyName);
+            using (new EditorGUI.DisabledScope(ShaderEditor.Active.Materials.Length != 1))
+                if (GUI.Button(r, open ? "Close Canvas" : "Canvas"))
+                {
+                    if (open) DecalCanvasWindow.CloseFor(material, _positionPropertyName);
+                    else
+                    {
+                        DiscardSceneTool(_sceneTool != null && _sceneTool.GetMode() == DecalSceneTool.Mode.Raycast);
+                        var properties = ShaderEditor.Active.PropertyDictionary;
+                        var group = properties[_positionPropertyName].Parent?.Parent ?? properties[_positionPropertyName].Parent;
+                        DecalCanvasWindow.Open(material, new[] { _texturePropertyName, _uvIndexPropertyName, _positionPropertyName, _rotationPropertyName, _scalePropertyName, _offsetPropertyName },
+                            group?.UnmarkedLabel.Trim() ?? "Decal", SelectedRenderer(),
+                            name => ShaderEditor.Active != null && ShaderEditor.Active.PropertyDictionary.TryGetValue(name, out var p) ? p.MaterialProperty : null);
+                    }
+                }
+            if (open)
                 GUI.DrawTexture(r, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0, new Color(0.5f, 0.5f, 0.5f, 0.5f), 0, 3);
         }
 
