@@ -1016,6 +1016,25 @@ namespace Thry.ThryEditor
             return false;
         }
 
+        // VRC Light Volumes sets its globals only when its package is in the project, so without it a section shader
+        // leaves Light Volumes out like a switched-off section.
+        const string LightVolumesToggle = "_LightingEnableLightVolumes";
+        static bool? s_lightVolumesInstalled;
+
+        static Dictionary<string, float> GetValueOverrides(Material material)
+        {
+            if (s_lightVolumesInstalled == null)
+            {
+                s_lightVolumesInstalled = false;
+                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (assembly.GetName().Name == "red.sim.LightVolumes") { s_lightVolumesInstalled = true; break; }
+                }
+            }
+            if (s_lightVolumesInstalled.Value || Shader.GetGlobalFloat("_UdonLightVolumeEnabled") != 0 || !material.HasProperty(LightVolumesToggle)) return null;
+            return new Dictionary<string, float>(StringComparer.Ordinal) { { LightVolumesToggle, 0 } };
+        }
+
         static string Literal(Material material, int switchIndex, SourceInfo info)
         {
             int id = info.SwitchIds[switchIndex];
@@ -1031,7 +1050,7 @@ namespace Thry.ThryEditor
             return value < 0 ? "(" + literal + ")" : literal;
         }
 
-        static Bake GetBake(Material material, SourceInfo info)
+        static Bake GetBake(Material material, SourceInfo info, Dictionary<string, float> overrides)
         {
             Bake bake = new Bake();
             if (IsBakingDisabled(material)) return bake;
@@ -1041,6 +1060,11 @@ namespace Thry.ThryEditor
             {
                 string property = info.SwitchProperties[i];
                 if (ShaderOptimizer.IsAnimated(material, property)) continue;
+                if (overrides != null && overrides.TryGetValue(property, out float overridden))
+                {
+                    bake.Values[property] = Literal(overridden, i, info);
+                    continue;
+                }
                 if (!float.IsNaN(info.SwitchBound[i]) && touched.Contains(property))
                 {
                     bake.Bounds[property] = Literal(info.SwitchBound[i], i, info);
@@ -1076,11 +1100,13 @@ namespace Thry.ThryEditor
             if (current == null) return;
             HashSet<string> touched = GetTouched(material);
             int before = touched.Count;
+            Dictionary<string, float> overrides = GetValueOverrides(material);
             foreach (KeyValuePair<string, string> baked in current.Values)
             {
                 // Values that must be constants stay baked, so changing them simply makes a new shader. Those only
                 // attributes need get their bound instead.
                 if (!info.SwitchIndex.TryGetValue(baked.Key, out int index) || (info.SwitchMustBake[index] && float.IsNaN(info.SwitchBound[index]))) continue;
+                if (overrides != null && overrides.ContainsKey(baked.Key)) continue;
                 if (Literal(material, index, info) != baked.Value) touched.Add(baked.Key);
             }
             foreach (string texture in info.PresenceTextures)
@@ -1098,7 +1124,7 @@ namespace Thry.ThryEditor
         /// Works out which //ifex blocks the material switches off, outermost first, as indices into the
         /// source's block list. Blocks inside a removed block are not evaluated, exactly like the full lock.
         /// </summary>
-        static List<int> GetRemovedBlocks(Material material, SourceInfo info)
+        static List<int> GetRemovedBlocks(Material material, SourceInfo info, Dictionary<string, float> overrides)
         {
             List<int> removed = new List<int>();
             sbyte[] results = new sbyte[info.Conditions.Length]; // 0 unknown, 1 removes, -1 keeps
@@ -1110,7 +1136,7 @@ namespace Thry.ThryEditor
                 int c = info.ConditionIndex[b];
                 if (results[c] == 0)
                 {
-                    DefineableCondition condition = DefineableCondition.ParseForSectionLock(info.Conditions[c], material);
+                    DefineableCondition condition = DefineableCondition.ParseForSectionLock(info.Conditions[c], material, overrides);
                     // A condition that reads nothing from the material, like '0==0', only exists to drop
                     // unlocked-only lines (#pragma skip_optimizations). The section shader keeps them, as unlocked.
                     results[c] = (sbyte)(!condition.IsConstantCondition && condition.Test() ? 1 : -1);
@@ -1351,8 +1377,9 @@ namespace Thry.ThryEditor
             SourceInfo info = GetSourceInfo(source);
             if (info == null) return null;
 
-            List<int> removed = GetRemovedBlocks(material, info);
-            Bake bake = GetBake(material, info);
+            Dictionary<string, float> overrides = GetValueOverrides(material);
+            List<int> removed = GetRemovedBlocks(material, info, overrides);
+            Bake bake = GetBake(material, info, overrides);
             KeepWrittenKeywords(info, removed, bake);
             string name = ComputeName(info, removed, bake);
             timings.KeyMs = sw.Elapsed.TotalMilliseconds;

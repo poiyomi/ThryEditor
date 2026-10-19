@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
@@ -22,13 +23,16 @@ namespace Thry.ThryEditor
 
             // Set when evaluating for SectionLock, which only removes sections that are switched off.
             public bool SectionsOnly { get; private set; }
+            // Values SectionLock reads instead of the material's.
+            public IReadOnlyDictionary<string, float> Overrides { get; private set; }
 
             static MaterialRenference _defaultMaterialRenference = new MaterialRenference(null);
             public static MaterialRenference Default => _defaultMaterialRenference;
 
-            public MaterialRenference(Material useThisMaterialInsteadOfOpenEditor, bool sectionsOnly) : this(useThisMaterialInsteadOfOpenEditor)
+            public MaterialRenference(Material useThisMaterialInsteadOfOpenEditor, bool sectionsOnly, IReadOnlyDictionary<string, float> overrides = null) : this(useThisMaterialInsteadOfOpenEditor)
             {
                 SectionsOnly = sectionsOnly;
+                Overrides = overrides;
             }
 
             public MaterialRenference(Material useThisMaterialInsteadOfOpenEditor)
@@ -90,6 +94,7 @@ namespace Thry.ThryEditor
                     }
                     if (_type == DataType.MATERIAL_PROPERTY)
                     {
+                        if (_materialReference.Overrides != null && _materialReference.Overrides.TryGetValue(_key, out float overridden)) return overridden;
                         MaterialProperty prop = _materialReference.GetMaterialProperty(_key);
                         if (prop == null)
                         {
@@ -529,9 +534,9 @@ namespace Thry.ThryEditor
         /// Parses an //ifex condition for SectionLock. Comparisons on sliders, colors, vectors and textures
         /// never count as met, so only section switches, enums, animated tags and the render queue remove code.
         /// </summary>
-        public static DefineableCondition ParseForSectionLock(string s, Material material)
+        public static DefineableCondition ParseForSectionLock(string s, Material material, IReadOnlyDictionary<string, float> overrides = null)
         {
-            return ParseInternal(s, new MaterialRenference(material, sectionsOnly: true));
+            return ParseInternal(s, new MaterialRenference(material, sectionsOnly: true, overrides));
         }
 
         protected static DefineableCondition ParseInternal(string s, MaterialRenference materialRenference, int start = 0, int end = -1)
