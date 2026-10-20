@@ -2660,6 +2660,19 @@
     padding-right: var(--thry-space-3);
 }
 
+.thry-component > .unity-base-popup-field__input {
+    min-width: 0;
+    flex-shrink: 1;
+    padding-left: var(--thry-space-3);
+    padding-right: var(--thry-space-1);
+}
+
+.thry-component > .unity-base-popup-field__input > .unity-base-popup-field__arrow {
+    width: 9px;
+    flex-shrink: 0;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
 /* The texture row and its revealed controls form one continuous disclosure. */
 .thry-texture-property.thry-texture-expanded {
     background-color: var(--thry-panel-background);
