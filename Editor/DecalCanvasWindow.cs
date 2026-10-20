@@ -33,7 +33,7 @@ namespace Thry.ThryEditor
         static readonly Vector2[] Handles8 = { new Vector2(-1, -1), new Vector2(1, -1), new Vector2(1, 1), new Vector2(-1, 1),
             new Vector2(0, -1), new Vector2(1, 0), new Vector2(0, 1), new Vector2(-1, 0) };
         const float HandleSize = 9;
-        const float MainTextureOpacity = .4f;
+        const float MainTextureOpacity = 0.5f;
 
         internal static event Action StateChanged;
 
