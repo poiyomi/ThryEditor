@@ -456,7 +456,7 @@ namespace Thry.ThryEditor
             // an undo entry for them would put an empty step on the stack.
             if (!group.PersistsExpanded || Shader.IsInSearchMode || Shader.IsInAnimationMode)
             { group.RetainedExpanded = expanded; return; }
-            Editor.RegisterPropertyChangeUndo(group.Content.text);
+            // The property's native setter records the undo step and names it.
             group.RetainedExpanded = expanded;
             Editor.PropertiesChanged();
             RecordEdit();
