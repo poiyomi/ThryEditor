@@ -33,6 +33,7 @@ namespace Thry.ThryEditor
         static readonly Vector2[] Handles8 = { new Vector2(-1, -1), new Vector2(1, -1), new Vector2(1, 1), new Vector2(-1, 1),
             new Vector2(0, -1), new Vector2(1, 0), new Vector2(0, 1), new Vector2(-1, 0) };
         const float HandleSize = 9;
+        const float MainTextureOpacity = .4f;
 
         internal static event Action StateChanged;
 
@@ -234,7 +235,9 @@ namespace Thry.ThryEditor
             if (!Valid) return null;
             var s = Read();
             var texture = _material.HasProperty(_properties[0]) ? _material.GetTexture(_properties[0]) : null;
+            var main = MainTexture(out var mainCoords);
             return string.Join("|", F(s.Position), F(s.Scale), F(s.Sides), s.Rotation.ToString("R"), UVChannel, texture != null ? texture.GetInstanceID() : 0,
+                main != null ? main.GetInstanceID() : 0, F(new Vector4(mainCoords.x, mainCoords.y, mainCoords.width, mainCoords.height)),
                 Option("AspectRatioMode"), Option("SymmetryMode"), _material.IsLocked(), _material.shader != null ? _material.shader.GetInstanceID() : 0);
         }
 
@@ -578,7 +581,13 @@ namespace Thry.ThryEditor
                 var unit = Rect.MinMaxRect(ToPixel(rect, new Vector2(0, 1)).x, ToPixel(rect, new Vector2(0, 1)).y, ToPixel(rect, new Vector2(1, 0)).x, ToPixel(rect, new Vector2(1, 0)).y);
                 EditorGUI.DrawRect(unit, InspectorTheme.Background);
                 var main = MainTexture(out var mainCoords);
-                if (main != null) GUI.DrawTextureWithTexCoords(unit, main, mainCoords, true);
+                if (main != null)
+                {
+                    var tint = GUI.color;
+                    GUI.color = new Color(tint.r, tint.g, tint.b, tint.a * MainTextureOpacity);
+                    GUI.DrawTextureWithTexCoords(unit, main, mainCoords, true);
+                    GUI.color = tint;
+                }
                 Handles.BeginGUI();
                 var prior = Handles.color;
                 try
