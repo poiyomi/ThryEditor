@@ -119,6 +119,10 @@ are using Poiyomi Shaders, this folder is very important!
 
             /// <summary>GUIDs of the materials known to use this entry. Drives the shared-shader tag.</summary>
             public List<string> UserGuids = new List<string>();
+
+            /// <summary>Hash of the generated text with the shader's own name masked, so materials whose
+            /// settings hash differently but generate the same code can share the entry.</summary>
+            public string ContentHash;
         }
 
         static string GetSidecarPath(string entryDirectory)
@@ -144,6 +148,8 @@ are using Poiyomi Shaders, this folder is very important!
                         info.StrippedTextures.Add(line.Substring(6));
                     else if (line.StartsWith("user ", StringComparison.Ordinal))
                         info.UserGuids.Add(line.Substring(5));
+                    else if (line.StartsWith("content ", StringComparison.Ordinal))
+                        info.ContentHash = line.Substring(8);
                 }
                 return info;
             }
@@ -168,6 +174,8 @@ are using Poiyomi Shaders, this folder is very important!
                     sb.Append("strip ").AppendLine(tex);
                 foreach (string guid in info.UserGuids.Where(g => !string.IsNullOrEmpty(g)).Distinct())
                     sb.Append("user ").AppendLine(guid);
+                if (!string.IsNullOrEmpty(info.ContentHash))
+                    sb.Append("content ").AppendLine(info.ContentHash);
 
                 File.WriteAllText(GetSidecarPath(entryDirectory), sb.ToString());
             }

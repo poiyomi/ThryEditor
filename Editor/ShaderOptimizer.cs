@@ -853,6 +853,13 @@ namespace Thry.ThryEditor
 
         // Per batch only: the dependency hash misses included files
         private static readonly Dictionary<string, IfexConditions> s_ifexConditionsThisBatch = new Dictionary<string, IfexConditions>();
+        private static readonly Dictionary<string, TextReferences> s_textReferencesThisBatch = new Dictionary<string, TextReferences>();
+
+        // Settings whose generated text matched a cached shader, keyed by the locked shader name their hash
+        // would have had, so later materials in the batch with the same settings skip generating it again
+        private static readonly Dictionary<string, (string directory, string shaderName)> s_textMatchesThisBatch = new Dictionary<string, (string, string)>();
+        // Per original shader: content hash -> entry directory
+        private static readonly Dictionary<string, Dictionary<string, string>> s_contentIndexThisBatch = new Dictionary<string, Dictionary<string, string>>();
 
         private static readonly List<Material> s_materialsToVerifyLock = new List<Material>();
 
@@ -873,6 +880,9 @@ namespace Thry.ThryEditor
             s_lockedShaderNamesThisBatch.Clear();
             s_cacheEntriesTouchedThisBatch.Clear();
             s_ifexConditionsThisBatch.Clear();
+            s_textReferencesThisBatch.Clear();
+            s_textMatchesThisBatch.Clear();
+            s_contentIndexThisBatch.Clear();
             // Not s_materialsToVerifyLock: an earlier batch may still need it
             
             // First the shaders are created. compiling is suppressed with start asset editing.
@@ -964,6 +974,11 @@ namespace Thry.ThryEditor
                             string hash = MaterialToShaderPropertyHash(m, materialProps);
                             string lockedShaderName = LockedShaderCache.GetLockedShaderName(m.shader.name, hash);
                             string entryDirectory = LockedShaderCache.GetEntryDirectory(m.shader.name, hash);
+                            if (s_textMatchesThisBatch.TryGetValue(lockedShaderName, out var textMatch))
+                            {
+                                lockedShaderName = textMatch.shaderName;
+                                entryDirectory = textMatch.directory;
+                            }
 
                             // Three ways to get the shader, cheapest first:
                             //  1. one generated earlier in this same batch. We are inside
@@ -992,7 +1007,8 @@ namespace Thry.ThryEditor
                                 // A failed generate must not register this material as a user of a shader
                                 // that does not exist, or a same-hash sibling later in the batch would try
                                 // to reuse it. The catch below reports the error and aborts the batch.
-                                if (!Lock(m, materialProps, hash, applyShaderLater: true))
+                                // Lock can hand back a cached shader whose generated text is identical
+                                if (!Lock(m, materialProps, hash, out entryDirectory, out lockedShaderName, applyShaderLater: true))
                                     throw new InvalidOperationException($"The locked shader for \"{m.name}\" could not be generated.");
                                 s_lockedShaderNamesThisBatch.Add(lockedShaderName);
                             }
@@ -1269,6 +1285,11 @@ namespace Thry.ThryEditor
                     stringBuilder.Append(DefineableCondition.Parse(condition, m).Test() ? '1' : '0');
             }
 
+            // Values the generated text can't contain (stencil and blend state, inspector state, DoNotLock
+            // values outside //ifex) don't change the shader, so they must not split the cache
+            TextReferences textReferences = GetTextReferences(m.shader);
+            if (!textReferences.CoversAll) stringBuilder.Append("|text-references:1");
+
             List<string> animatedProperties = new List<string>();
 
             // Properties are passed in rather than fetched here: the caller already has them, and on a
@@ -1281,9 +1302,12 @@ namespace Thry.ThryEditor
 
                 if (PropertiesToSkipInMaterialEquallityComparission.Contains(propName)) continue;
 
-                stringBuilder.Append('|').Append(propName).Append(':');
-
                 string isAnimated = GetAnimatedTag(m, propName);
+
+                // Renaming rewrites the Properties block too, so animated properties always count
+                if (isAnimated != "1" && isAnimated != "2" && !textReferences.CanChangeText(prop, ifexConditions)) continue;
+
+                stringBuilder.Append('|').Append(propName).Append(':');
 
                 if (isAnimated == "1")
                 {
@@ -1437,6 +1461,142 @@ namespace Thry.ThryEditor
                 }
             }
         }
+
+        // The names Lock can write a value for: tokens in code, in //ifex lines and in the Cull and ColorMask
+        // lines it bakes. Other ShaderLab state keeps its [_Property] references, and the Properties block
+        // only declares names, so neither is read here.
+        class TextReferences
+        {
+            // //KSOEvaluateMacro can paste names together at lock time, and an unreadable file hides its
+            // names, so then every value counts
+            public bool CoversAll;
+            public readonly HashSet<string> Identifiers = new HashSet<string>(StringComparer.Ordinal);
+            public readonly HashSet<string> Exempt = new HashSet<string>(StringComparer.Ordinal);
+
+            public bool CanChangeText(MaterialProperty prop, IfexConditions ifexConditions)
+            {
+                string name = prop.name;
+                // Textures always count: an assigned one keeps a PROP_<NAME> define that is matched by substring
+                if (CoversAll || prop.GetPropertyType() == ShaderPropertyType.Texture || ifexConditions.ByIdentifier.ContainsKey(name)) return true;
+                if (Exempt.Contains(name)) return false;
+                return Identifiers.Contains(name)
+                    || name == DisabledLightModesPropertyName || name == TessellationMaxFactorPropertyName
+                    || name.StartsWith(GeometryShaderEnabledPropertyName, StringComparison.Ordinal)
+                    || name.StartsWith(TessellationEnabledPropertyName, StringComparison.Ordinal);
+            }
+        }
+
+        static readonly Regex s_shaderLabPropertyReferenceRegex = new Regex(@"\[\s*[A-Za-z_][A-Za-z0-9_]*\s*\]", RegexOptions.Compiled);
+
+        static TextReferences GetTextReferences(Shader shader)
+        {
+            string shaderPath = AssetDatabase.GetAssetPath(shader);
+            if (s_textReferencesThisBatch.TryGetValue(shaderPath, out TextReferences cached)) return cached;
+
+            TextReferences result = new TextReferences();
+            CollectTextReferences(shaderPath, result, new HashSet<string>(), false);
+            for (int i = 0; i < shader.GetPropertyCount(); i++)
+            {
+                if (shader.GetPropertyDescription(i).EndsWith(ExemptFromLockingSuffix, StringComparison.Ordinal)
+                    || (shader.GetPropertyType(i) != ShaderPropertyType.Texture && shader.GetPropertyFlags(i).HasFlag(ShaderPropertyFlags.NonModifiableTextureData))
+                    || shader.GetPropertyAttributes(i).Contains("DoNotLock"))
+                    result.Exempt.Add(shader.GetPropertyName(i));
+            }
+
+            s_textReferencesThisBatch[shaderPath] = result;
+            return result;
+        }
+
+        static void CollectTextReferences(string filePath, TextReferences result, HashSet<string> visited, bool isInclude)
+        {
+            if (!visited.Add(filePath)) return;
+            if (!File.Exists(filePath))
+            {
+                result.CoversAll = true;
+                return;
+            }
+
+            bool inCode = isInclude;
+            bool inProperties = false, propertiesOpened = false, inString = false;
+            int propertiesDepth = 0;
+            foreach (string line in File.ReadLines(filePath))
+            {
+                string lineParsed = line.TrimStart();
+                if (!inString && lineParsed.StartsWith("//", StringComparison.Ordinal))
+                {
+                    if (lineParsed.StartsWith("//KSOEvaluateMacro", StringComparison.Ordinal)) result.CoversAll = true;
+                    else if (lineParsed.StartsWith("//ifex", StringComparison.Ordinal)) AddIdentifiers(lineParsed, result);
+                    continue;
+                }
+                if (inProperties)
+                {
+                    int change = BraceDepthChange(lineParsed, ref inString);
+                    if (change > 0) propertiesOpened = true;
+                    propertiesDepth += change;
+                    if (propertiesOpened && propertiesDepth <= 0) inProperties = false;
+                    continue;
+                }
+                if (!inCode)
+                {
+                    if (lineParsed.StartsWith("CGINCLUDE", StringComparison.Ordinal) || lineParsed.StartsWith("HLSLINCLUDE", StringComparison.Ordinal)
+                        || IndexOfBlockStart(lineParsed, CodeBlockStart) >= 0)
+                    {
+                        inCode = true;
+                    }
+                    else if (lineParsed.StartsWith("Properties", StringComparison.Ordinal) && (lineParsed.Length == 10 || !char.IsLetterOrDigit(lineParsed[10])))
+                    {
+                        inProperties = true;
+                        propertiesDepth = BraceDepthChange(lineParsed, ref inString);
+                        propertiesOpened = propertiesDepth > 0;
+                    }
+                    else if (lineParsed.StartsWith("Cull", StringComparison.OrdinalIgnoreCase) || lineParsed.StartsWith("ColorMask", StringComparison.Ordinal))
+                    {
+                        AddIdentifiers(lineParsed, result);
+                    }
+                    else
+                    {
+                        AddIdentifiers(s_shaderLabPropertyReferenceRegex.Replace(lineParsed, " "), result);
+                    }
+                    continue;
+                }
+                if (!isInclude && (lineParsed.StartsWith("ENDCG", StringComparison.Ordinal) || lineParsed.StartsWith("ENDHLSL", StringComparison.Ordinal)))
+                {
+                    inCode = false;
+                    continue;
+                }
+                if (lineParsed.StartsWith("#include", StringComparison.Ordinal))
+                {
+                    int firstQuotation = lineParsed.IndexOf('\"');
+                    int lastQuotation = firstQuotation < 0 ? -1 : lineParsed.IndexOf('\"', firstQuotation + 1);
+                    if (lastQuotation > 0)
+                    {
+                        string includeFullpath = GetInlinedIncludePath(lineParsed.Substring(firstQuotation + 1, lastQuotation - firstQuotation - 1), filePath);
+                        if (includeFullpath != null) CollectTextReferences(includeFullpath, result, visited, true);
+                    }
+                }
+                AddIdentifiers(lineParsed, result);
+            }
+        }
+
+        static void AddIdentifiers(string text, TextReferences result)
+        {
+            foreach (Match identifier in s_ifexIdentifierRegex.Matches(text))
+                result.Identifiers.Add(identifier.Value);
+        }
+
+        // Braces inside quoted strings (display names, tooltips) don't count. A display name can run over
+        // several lines, so the string state carries over.
+        static int BraceDepthChange(string line, ref bool inString)
+        {
+            int depth = 0;
+            foreach (char c in line)
+            {
+                if (c == '"') inString = !inString;
+                else if (!inString && c == '{') depth++;
+                else if (!inString && c == '}') depth--;
+            }
+            return depth;
+        }
 #endregion
 #region Locking
         /// <summary>
@@ -1504,8 +1664,10 @@ namespace Thry.ThryEditor
 
             return applyStruct;
         }
-        private static bool Lock(Material material, MaterialProperty[] props, string hash, bool applyShaderLater = false)
+        private static bool Lock(Material material, MaterialProperty[] props, string hash, out string usedEntryDirectory, out string usedShaderName, bool applyShaderLater = false)
         {
+            usedEntryDirectory = LockedShaderCache.GetEntryDirectory(material.shader.name, hash);
+            usedShaderName = LockedShaderCache.GetLockedShaderName(material.shader.name, hash);
             RenderPipeline pipeline = GetActiveRenderPipeline();
             if (pipeline == RenderPipeline.Other)
             {
@@ -1705,6 +1867,7 @@ namespace Thry.ThryEditor
             Macro[] macrosArray = macros.ToArray();
 
             List<GrabPassReplacement> grabPassVariables = new List<GrabPassReplacement>();
+            List<(string fileName, string text)> outputs = new List<(string, string)>();
             // Loop back through and do macros, props, and all other things line by line as to save string ops
             // Will still be a massive n2 operation from each line * each property
             foreach (ParsedShaderFile psf in shaderFiles)
@@ -1880,38 +2043,52 @@ namespace Thry.ThryEditor
                 // This appendLine function is incompatible with the '\n's that are being added elsewhere
                 foreach (string line in psf.lines)
                     sb.AppendLine(line);
-                string output = sb.ToString();
-
-                //cull shader file path
-                string fileName = Path.GetFileName(psf.filePath);
-                // Write output to file
-                (new FileInfo(newShaderDirectory + fileName)).Directory.Create();
-                try
-                {
-                    using (StreamWriter sw = new StreamWriter(newShaderDirectory + fileName)) sw.Write(output);
-                    AssetDatabase.ImportAsset(newShaderDirectory + fileName);
-                }
-                catch (IOException e)
-                {
-                    ThryLogger.LogErr("Processed shader file " + newShaderDirectory + fileName + " could not be written.  " + e.ToString());
-                    return false;
-                }
+                outputs.Add((Path.GetFileName(psf.filePath), sb.ToString()));
             }
 
-            AssetDatabase.Refresh();
+            // Settings that hash differently can still generate the same text, for example values left
+            // behind in a disabled section. Such a material shares the cached shader instead of adding one.
+            string contentHash = HashGeneratedText(outputs, newShaderName);
+            if (TryFindTextMatch(shader, contentHash, stripTextures, out string matchDirectory))
+            {
+                usedEntryDirectory = matchDirectory;
+                usedShaderName = LockedShaderCache.GetLockedShaderName(shader.name, Path.GetFileName(matchDirectory));
+                s_textMatchesThisBatch[newShaderName] = (usedEntryDirectory, usedShaderName);
+            }
+            else
+            {
+                foreach ((string fileName, string output) in outputs)
+                {
+                    (new FileInfo(newShaderDirectory + fileName)).Directory.Create();
+                    try
+                    {
+                        using (StreamWriter sw = new StreamWriter(newShaderDirectory + fileName)) sw.Write(output);
+                        AssetDatabase.ImportAsset(newShaderDirectory + fileName);
+                    }
+                    catch (IOException e)
+                    {
+                        ThryLogger.LogErr("Processed shader file " + newShaderDirectory + fileName + " could not be written.  " + e.ToString());
+                        return false;
+                    }
+                }
 
-            // Record which textures were stripped. A later session that reuses this shader skips the
-            // parse entirely, so it has no other way to learn what to strip off the material - and
-            // without it, unlock could not restore them.
-            LockedShaderCache.EntryInfo entryInfo = LockedShaderCache.ReadEntry(entryDirectory) ?? new LockedShaderCache.EntryInfo();
-            entryInfo.StrippedTextures.Clear();
-            entryInfo.StrippedTextures.AddRange(stripTextures);
-            LockedShaderCache.WriteEntry(entryDirectory, entryInfo);
+                AssetDatabase.Refresh();
+
+                // Record which textures were stripped. A later session that reuses this shader skips the
+                // parse entirely, so it has no other way to learn what to strip off the material - and
+                // without it, unlock could not restore them.
+                LockedShaderCache.EntryInfo entryInfo = LockedShaderCache.ReadEntry(entryDirectory) ?? new LockedShaderCache.EntryInfo();
+                entryInfo.StrippedTextures.Clear();
+                entryInfo.StrippedTextures.AddRange(stripTextures);
+                entryInfo.ContentHash = contentHash;
+                LockedShaderCache.WriteEntry(entryDirectory, entryInfo);
+                GetContentIndex(shader)[contentHash] = entryDirectory;
+            }
 
             ApplyStruct applyStruct = new ApplyStruct();
             applyStruct.material = material;
             applyStruct.shader = shader;
-            applyStruct.newShaderName = newShaderName;
+            applyStruct.newShaderName = usedShaderName;
             applyStruct.animatedPropsToRename = animatedPropsToRename;
             applyStruct.animatedPropsToDuplicate = animatedPropsToDuplicate;
             applyStruct.animPropertySuffix = animPropertySuffix;
@@ -1929,6 +2106,51 @@ namespace Thry.ThryEditor
         private static bool LockApplyShader(Material material)
         {
             return s_applyStructsLater.TryGetValue(material, out var applyStruct) && LockApplyShader(applyStruct);
+        }
+
+        // The shader's own name carries the settings hash, so it is masked out
+        static string HashGeneratedText(List<(string fileName, string text)> outputs, string shaderName)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach ((string fileName, string text) in outputs)
+                sb.Append(fileName).Append('\n').Append(text.Replace(shaderName, "\u0001")).Append('\0');
+            using (var md5 = new MD5CryptoServiceProvider())
+                return BitConverter.ToString(md5.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString()))).Replace("-", "").ToLowerInvariant();
+        }
+
+        static bool TryFindTextMatch(Shader shader, string contentHash, List<string> stripTextures, out string entryDirectory)
+        {
+            entryDirectory = null;
+            if (!GetContentIndex(shader).TryGetValue(contentHash, out string candidate)) return false;
+
+            string candidateName = LockedShaderCache.GetLockedShaderName(shader.name, Path.GetFileName(candidate));
+            if (!s_lockedShaderNamesThisBatch.Contains(candidateName) && !LockedShaderCache.TryGetCachedShader(candidateName, out _)) return false;
+
+            // Unlock restores textures from this list, so it has to be the same one
+            LockedShaderCache.EntryInfo info = LockedShaderCache.ReadEntry(candidate);
+            if (info == null || !new HashSet<string>(info.StrippedTextures).SetEquals(stripTextures)) return false;
+
+            entryDirectory = candidate;
+            return true;
+        }
+
+        static Dictionary<string, string> GetContentIndex(Shader shader)
+        {
+            if (s_contentIndexThisBatch.TryGetValue(shader.name, out Dictionary<string, string> index)) return index;
+
+            index = new Dictionary<string, string>(StringComparer.Ordinal);
+            string root = LockedShaderCache.CacheRoot + "/" + LockedShaderCache.SanitizeFolderName(shader.name);
+            if (Directory.Exists(root))
+            {
+                foreach (string directory in Directory.GetDirectories(root))
+                {
+                    string entryDirectory = directory.Replace('\\', '/');
+                    LockedShaderCache.EntryInfo info = LockedShaderCache.ReadEntry(entryDirectory);
+                    if (info != null && !string.IsNullOrEmpty(info.ContentHash)) index[info.ContentHash] = entryDirectory;
+                }
+            }
+            s_contentIndexThisBatch[shader.name] = index;
+            return index;
         }
 
         public static void ApplyMaterialPropertyDrawersPatch(Material material) {}
