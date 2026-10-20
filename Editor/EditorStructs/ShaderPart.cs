@@ -188,7 +188,25 @@ namespace Thry.ThryEditor
         /// </summary>
         public string[] AdditionalDefaultCheckProperties { get; set; }
         public Shader MyShader { protected set; get; } = null;
-        public MaterialEditor MyMaterialEditor { protected set; get; } = null;
+
+        // Cross editing gives each owner set its own MaterialEditor, and creating one serializes every
+        // owner. Only IMGUI drawing and a few menu actions use it, so it is created on first use.
+        private MaterialEditor _myMaterialEditor;
+        private UnityEngine.Object[] _myMaterialEditorTargets;
+        public MaterialEditor MyMaterialEditor
+        {
+            protected set { _myMaterialEditor = value; _myMaterialEditorTargets = null; }
+            get
+            {
+                if (_myMaterialEditorTargets != null)
+                {
+                    _myMaterialEditor = MyShaderUI.GetMaterialEditor(_myMaterialEditorTargets);
+                    _myMaterialEditorTargets = null;
+                }
+                return _myMaterialEditor;
+            }
+        }
+        internal void UseMaterialEditorFor(UnityEngine.Object[] targets) { _myMaterialEditor = null; _myMaterialEditorTargets = targets; }
 
         protected bool has_not_searchedFor = false; //used for property search
         internal bool RetainedVisible => !SectionEditing.IsHidden(this) && !has_not_searchedFor &&
@@ -483,7 +501,7 @@ namespace Thry.ThryEditor
             this.ThryPropertyIndex = propertyIndex;
             if(shaderEditor.IsCrossEditor)
             {
-                this.MyMaterialEditor = shaderEditor.GetMaterialEditor(prop.targets);
+                UseMaterialEditorFor(prop.targets);
                 Shader shader = (prop.targets[0] as Material).shader;
                 this.MyShader = SectionLock.GetSourceShader(shader) ?? shader;
                 this.ShaderPropertyIndex = MyShader.FindPropertyIndex(prop.name);

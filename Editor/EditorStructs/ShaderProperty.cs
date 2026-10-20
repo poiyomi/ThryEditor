@@ -622,7 +622,7 @@ namespace Thry.ThryEditor
                 : new ShaderProperty(MyShaderUI, value, _content.text, XOffset, _optionsRaw, false, ThryPropertyIndex);
             projection.MyShader = SectionLock.GetSourceShader(targets[0].shader) ?? targets[0].shader;
             projection.ShaderPropertyIndex = projection.MyShader.FindPropertyIndex(value.name);
-            projection.MyMaterialEditor = MyShaderUI.GetMaterialEditor(targets);
+            projection.UseMaterialEditorFor(targets);
             projection.ThryPropertyIndex = -1;
             projection.SetParent(owner);
             projection.SetHidden(IsHidden);
