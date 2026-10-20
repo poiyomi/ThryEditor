@@ -177,6 +177,9 @@ namespace Thry.ThryEditor
         private readonly Dictionary<Material, int> _animatedMaterialVersions = new Dictionary<Material, int>();
         private readonly RetainedTextureKeywords _textureKeywords = new RetainedTextureKeywords();
         private readonly RetainedAnimationMetadata _animationMetadata = new RetainedAnimationMetadata();
+        private Material[] _editedTargets;
+        private int[] _editedVersions;
+        private double _editTime = double.NegativeInfinity;
         internal int AnimationRefreshCount { get; private set; }
         internal bool DeferSummaryRefresh { get; private set; }
         internal RetainedMaterialModel(MaterialEditor editor, ShaderEditor shader)
@@ -219,7 +222,8 @@ namespace Thry.ThryEditor
                 || _animatedMaterialVersions[m] != EditorUtility.GetDirtyCount(m)).ToArray();
             bool animationChanged;
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.AnimationMetadata))
-                animationChanged = (!DeferSummaryRefresh || rebuilt || forceAnimatedState) && _animationMetadata.Update(targets, Editor);
+                animationChanged = (rebuilt || forceAnimatedState || (!DeferSummaryRefresh && !IsSettlingEdit(targets)))
+                    && _animationMetadata.Update(targets, Editor);
             bool changed = rebuilt || forceAnimatedState || animationChanged || _animatedMaterialVersions.Count != targets.Length || changedTargets.Length > 0;
             if (!changed) { StampSnapshotsIfUnchanged(readTargets, readVersions); return; }
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.TextureKeywords))
@@ -238,6 +242,26 @@ namespace Thry.ThryEditor
             _animatedMaterialVersions.Clear();
             foreach (var material in targets) _animatedMaterialVersions[material] = EditorUtility.GetDirtyCount(material);
             StampSnapshotsIfUnchanged(readTargets, readVersions);
+        }
+
+        // Reading tags back serializes every property of each dirty target, so a drag across
+        // many materials stalled on every periodic refresh. After our own edits that read waits
+        // until the user pauses; a change from anywhere else is still read right away.
+        private void RecordEdit()
+        {
+            if (AnimationMode.InAnimationMode()) { _editedTargets = null; return; }
+            _editedTargets = Shader.Materials.Where(m => m != null).ToArray();
+            _editedVersions = _editedTargets.Select(EditorUtility.GetDirtyCount).ToArray();
+            _editTime = EditorApplication.timeSinceStartup;
+        }
+
+        private bool IsSettlingEdit(Material[] targets)
+        {
+            if (_editedTargets == null || targets.Length != _editedTargets.Length
+                || EditorApplication.timeSinceStartup - _editTime >= .5) return false;
+            for (int i = 0; i < targets.Length; i++)
+                if (targets[i] != _editedTargets[i] || EditorUtility.GetDirtyCount(targets[i]) != _editedVersions[i]) return false;
+            return true;
         }
 
         private void StampSnapshotsIfUnchanged(Material[] targets, int[] versions)
@@ -377,6 +401,7 @@ namespace Thry.ThryEditor
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.EditorInvalidation)) Editor.PropertiesChanged();
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.FinalRefresh)) Refresh();
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Synchronize)) Changed?.Invoke();
+                RecordEdit();
                 if (singleProperty && !perMaterial && !AnimationMode.InAnimationMode())
                     Shader.RecordRetainedHeaderValueEdit(Editor, SelectedMaterials);
             }
@@ -434,6 +459,7 @@ namespace Thry.ThryEditor
             Editor.RegisterPropertyChangeUndo(group.Content.text);
             group.RetainedExpanded = expanded;
             Editor.PropertiesChanged();
+            RecordEdit();
             Refresh();
             Changed?.Invoke();
         }
