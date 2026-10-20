@@ -593,7 +593,6 @@ namespace Thry.ThryEditor
                 try
                 {
                     Grid(rect, unit);
-                    if (_showMesh) Wire(rect);
                 }
                 finally { Handles.color = prior; Handles.EndGUI(); }
             }
@@ -607,6 +606,7 @@ namespace Thry.ThryEditor
             var prior = Handles.color;
             try
             {
+                if (_showMesh) Wire(rect);
                 var ghost = Ghost(Corners(box));
                 if (ghost != null)
                 {
