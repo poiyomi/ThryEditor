@@ -2062,7 +2062,13 @@ namespace Thry.ThryEditor
                     (new FileInfo(newShaderDirectory + fileName)).Directory.Create();
                     try
                     {
-                        using (StreamWriter sw = new StreamWriter(newShaderDirectory + fileName)) sw.Write(output);
+                        using (StreamWriter sw = new StreamWriter(newShaderDirectory + fileName))
+                        {
+                            sw.Write(output);
+                            // Unity otherwise scans the whole file for legacy syntax to upgrade on every import
+                            if (fileName.EndsWith(".shader", StringComparison.OrdinalIgnoreCase) && !output.Contains("UNITY_SHADER_NO_UPGRADE"))
+                                sw.WriteLine("// UNITY_SHADER_NO_UPGRADE");
+                        }
                         AssetDatabase.ImportAsset(newShaderDirectory + fileName);
                     }
                     catch (IOException e)
