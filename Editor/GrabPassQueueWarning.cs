@@ -30,8 +30,14 @@ namespace Thry.ThryEditor
                 string path = AssetDatabase.GetAssetPath(shader);
                 if (!string.IsNullOrEmpty(path) && path.EndsWith(".shader", System.StringComparison.OrdinalIgnoreCase) && File.Exists(path))
                 {
-                    foreach (Match match in Tokens.Matches(File.ReadAllText(path)))
-                        if (match.Groups["grab"].Success) { hasGrab = true; break; }
+                    // Paths past Windows' 260-character limit pass File.Exists but can't be opened.
+                    try
+                    {
+                        foreach (Match match in Tokens.Matches(File.ReadAllText(path)))
+                            if (match.Groups["grab"].Success) { hasGrab = true; break; }
+                    }
+                    catch (IOException) { }
+                    catch (System.UnauthorizedAccessException) { }
                 }
                 Cache[shader] = hasGrab;
             }
