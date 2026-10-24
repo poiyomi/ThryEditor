@@ -236,9 +236,9 @@ namespace Thry.ThryEditor
             var s = Read();
             var texture = _material.HasProperty(_properties[0]) ? _material.GetTexture(_properties[0]) : null;
             var main = MainTexture(out var mainCoords);
-            return string.Join("|", F(s.Position), F(s.Scale), F(s.Sides), s.Rotation.ToString("R"), UVChannel, texture != null ? texture.GetInstanceID() : 0,
-                main != null ? main.GetInstanceID() : 0, F(new Vector4(mainCoords.x, mainCoords.y, mainCoords.width, mainCoords.height)),
-                Option("AspectRatioMode"), Option("SymmetryMode"), _material.IsLocked(), _material.shader != null ? _material.shader.GetInstanceID() : 0);
+            return string.Join("|", F(s.Position), F(s.Scale), F(s.Sides), s.Rotation.ToString("R"), UVChannel, texture.GetObjectId(),
+                main.GetObjectId(), F(new Vector4(mainCoords.x, mainCoords.y, mainCoords.width, mainCoords.height)),
+                Option("AspectRatioMode"), Option("SymmetryMode"), _material.IsLocked(), _material.shader.GetObjectId());
         }
 
         static string F(Vector4 v) => v.x.ToString("R") + "," + v.y.ToString("R") + "," + v.z.ToString("R") + "," + v.w.ToString("R");
