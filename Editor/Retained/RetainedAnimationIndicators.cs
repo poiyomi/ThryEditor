@@ -116,6 +116,8 @@ namespace Thry.ThryEditor
                 {
                     labelContainer.style.paddingLeft = animated ? new StyleLength(HasMixedAnimation(property) ? 34 : 20) : originalPadding;
                     indicator.style.left = labelContainer.layout.x;
+                    indicator.style.top = Mathf.Max(0, labelContainer.layout.y + (labelContainer.layout.height - 16) * .5f);
+                    return;
                 }
                 indicator.style.top = Mathf.Max(0, (row.layout.height - 16) * .5f);
             });

@@ -225,6 +225,9 @@ namespace Thry.ThryEditor
                             Model.Edit(property,p=>p.SetNumber(enable?(int)p.GetNumber()|bit:(int)p.GetNumber()&~bit),true);
                         },maskButton);
                         handled=true; return;
+                    case "ThryBitGrid":
+                        BitGrid(parent, property, attribute);
+                        handled=true; return;
                     case "PoiPrefabSpawner":
                         Func<GameObject> findPrefab = () => attribute.Args.Length == 0 ? null : AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(attribute.Args[0]));
                         // An action describes itself on the button; a second caption
@@ -248,6 +251,107 @@ namespace Thry.ThryEditor
                 }
             }
         }
+        static readonly string[] BitOperators = { "|", "&", "~", "^" };
+        static readonly GUIContent[] BitOperatorNames = { new GUIContent("|  Or"), new GUIContent("&  And"), new GUIContent("~  Not"), new GUIContent("^  Xor") };
+
+        static int BitUnion(Vector4 v) => (int)v.x | (int)v.y | (int)v.z | (int)v.w;
+
+        static int BitOperator(Vector4 v, int mask)
+        {
+            for (int c = 0; c < 4; c++) if (((int)v[c] & mask) != 0) return c;
+            return -1;
+        }
+
+        // On a Vector property each component holds the bits that use one operator: x |, y &, z ~, w ^.
+        private void BitGrid(VisualElement parent, ShaderProperty property, DrawerAttribute attribute)
+        {
+            parent.parent.AddToClassList("thry-bit-grid-row");
+            int bits = attribute.Args.Length > 0 ? Mathf.Clamp((int)DrawerAttribute.Number(attribute.Args[0]), 1, 24) : 16;
+            int columns = attribute.Args.Length > 1 ? Mathf.Max(1, (int)DrawerAttribute.Number(attribute.Args[1])) : 4;
+            string name = property.MaterialProperty.name;
+            bool operators = property.MaterialProperty.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Vector;
+            var stock = Enumerable.Range(1, bits).Select(i => i.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var labels = new EnumLabels.Source(name, stock);
+            Func<Material, int> read = m => operators ? BitUnion(m.GetVector(name)) : ReadBitValue(m, property);
+            Action<Func<Vector4, Vector4>> write = change =>
+            {
+                if (!Model.CanEdit(property)) return;
+                Model.Edit(property, p =>
+                {
+                    if (operators) p.vectorValue = change(p.vectorValue);
+                    else p.SetNumber(change(new Vector4(p.GetNumber(), 0, 0, 0)).x);
+                }, true);
+                labels.Picked();
+            };
+            var grid = new VisualElement(); grid.AddToClassList("thry-bit-grid"); parent.Add(grid);
+            var picks = new Button[bits];
+            var ops = new Button[bits];
+            VisualElement line = null;
+            for (int bit = 0; bit < bits; bit++)
+            {
+                if (bit % columns == 0)
+                {
+                    line = new VisualElement(); line.AddToClassList("thry-components"); line.AddToClassList("thry-multi-value-controls");
+                    if (bit > 0) line.AddToClassList("thry-bit-grid-gap");
+                    grid.Add(line);
+                }
+                int mask = 1 << bit;
+                var pick = new Button(() =>
+                {
+                    bool enable = property.MaterialProperty.targets.OfType<Material>().Any(m => (read(m) & mask) == 0);
+                    write(v =>
+                    {
+                        if (enable) { if (BitOperator(v, mask) < 0) v.x = (int)v.x | mask; }
+                        else for (int c = 0; c < 4; c++) v[c] = (int)v[c] & ~mask;
+                        return v;
+                    });
+                }) { name = "bit-" + name + "-" + bit };
+                pick.AddToClassList("thry-bit-pick");
+                picks[bit] = pick; line.Add(pick);
+                if (bit % columns == 0) pick.AddToClassList("thry-bit-grid-start");
+                Button end = pick;
+                if (operators)
+                {
+                    Button op = null;
+                    op = new Button(() =>
+                    {
+                        if (!Model.CanEdit(property)) return;
+                        var current = property.MaterialProperty.targets.OfType<Material>().Select(m => BitOperator(m.GetVector(name), mask)).Distinct().ToList();
+                        _view.ShowMenu(op.worldBound, BitOperatorNames, current.Count == 1 && current[0] >= 0 ? new[] { current[0] } : new int[0], chosen =>
+                            write(v => { for (int c = 0; c < 4; c++) v[c] = (int)v[c] & ~mask; v[chosen] = (int)v[chosen] | mask; return v; }), op);
+                    }) { name = "bit-" + name + "-" + bit + "-operator" };
+                    op.AddToClassList("thry-bit-op");
+                    ops[bit] = op; line.Add(op);
+                    end = op;
+                }
+                if (bit % columns == columns - 1 || bit == bits - 1) end.AddToClassList("thry-bit-grid-end");
+            }
+            Track(grid, () =>
+            {
+                labels.Update(property.MaterialProperty.targets, Model.Renderers);
+                var materials = property.MaterialProperty.targets.OfType<Material>().Where(m => m != null && m.HasProperty(name)).ToArray();
+                bool editable = Model.CanEdit(property);
+                for (int bit = 0; bit < bits; bit++)
+                {
+                    int mask = 1 << bit;
+                    var values = materials.Select(m => (read(m) & mask) != 0).Distinct().ToList();
+                    bool on = values.Count == 1 && values[0], mixed = values.Count > 1;
+                    picks[bit].text = labels.Labels[bit];
+                    picks[bit].tooltip = labels.Labels[bit] == stock[bit] ? "Tag " + stock[bit] : "Tag " + stock[bit] + " · " + labels.Labels[bit];
+                    picks[bit].SetEnabled(editable);
+                    picks[bit].EnableInClassList("thry-selected", on);
+                    picks[bit].EnableInClassList("thry-tile-mixed", mixed);
+                    if (!operators) continue;
+                    var used = materials.Select(m => BitOperator(m.GetVector(name), mask)).Distinct().ToList();
+                    ops[bit].text = used.Count > 1 ? "–" : used[0] >= 0 ? BitOperators[used[0]] : "▾";
+                    ops[bit].SetEnabled(editable);
+                    ops[bit].EnableInClassList("thry-selected", on);
+                    ops[bit].EnableInClassList("thry-tile-mixed", mixed);
+                }
+            });
+            BindProperty(grid, property);
+        }
+
         private void MinMax(VisualElement parent,ShaderProperty property,int component,float min,float max,bool storedLimits=false)
         {
             var slider=new MinMaxSlider(min,max,min,max); parent.Add(slider);
