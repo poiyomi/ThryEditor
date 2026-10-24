@@ -143,7 +143,7 @@ namespace Thry.ThryEditor
         internal static bool IsSupported => PrepareMethod != null && !_failed;
 
         internal static bool RequiresPreparation(Renderer[] renderers) => renderers.Length > 0
-            && (AnimationMode.InAnimationMode() || (renderers[0] != null && renderers[0].HasPropertyBlock()));
+            && (AnimationMode.InAnimationMode() || RendererPreview.HasPropertyBlock(renderers[0]));
 
         internal static void Prepare(MaterialProperty[] properties, Renderer[] renderers)
         {
@@ -350,7 +350,7 @@ namespace Thry.ThryEditor
                     Shader.CurrentProperty = property;
                 }
                 var cachedProperties = PropertyProvider?.Target as RetainedCrossSelectionProperties;
-                bool patch = singleProperty && !Renderers.Any(r => r != null && r.HasPropertyBlock()) && cachedProperties != null
+                bool patch = singleProperty && !Renderers.Any(RendererPreview.HasPropertyBlock) && cachedProperties != null
                     && cachedProperties.CanPatchProperty(property.MaterialProperty);
                 var editVersions = patch || nativeUndo ? SelectedMaterials.Select(EditorUtility.GetDirtyCount).ToArray() : null;
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.Mutation))

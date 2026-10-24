@@ -618,6 +618,7 @@ namespace Thry.ThryEditor
                 menu.AddDisabledItem(new GUIContent("Set Note"));
                 //menu.AddDisabledItem(new GUIContent("Clear Note"));
             }
+            SectionExtensions.ExtendMenu(property.MaterialProperty?.name, materials, menu);
 
             return menu;
         }

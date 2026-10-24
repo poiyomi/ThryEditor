@@ -22,6 +22,12 @@ namespace Thry.ThryEditor
         public static Color Input => Skin(0x2c2c2c, 0xdddddd);
         public static Color Accent => Skin(0x7aadd6, 0x3b78a8);
         public static Color Excluded => Skin(0x3d3d3d, 0xcfcfcf);
+        public static Color MonokaiPink => Skin(0xf92672, 0xb9144c);
+        public static Color MonokaiGreen => Skin(0xa6e22e, 0x638f14);
+        public static Color MonokaiYellow => Skin(0xe6db74, 0x82721e);
+        public static Color MonokaiOrange => Skin(0xfd971f, 0xb86509);
+        public static Color MonokaiCyan => Skin(0x66d9ef, 0x16798b);
+        public static Color MonokaiPurple => Skin(0xae81ff, 0x7545b8);
         public static Color Skin(int dark, int light) => Hex(EditorGUIUtility.isProSkin ? dark : light);
         private static Color Hex(int rgb) => new Color(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f);
 

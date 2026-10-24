@@ -228,6 +228,24 @@ namespace Thry.ThryEditor
                 presets.AddToClassList("thry-header-action");
                 presets.Add(HeaderIcon("presets")); header.Add(presets);
             }
+            foreach (var extra in SectionExtensions.CreateHeaderButtons(group.MaterialProperty?.name, Model.Shader.Materials))
+            {
+                var current = extra;
+                Button button = null;
+                button = new Button(() => {
+                    if (current.Click != null) { try { current.Click(); } catch (Exception e) { Debug.LogException(e); } return; }
+                    GenericMenu built = null;
+                    try { built = current.Menu(); } catch (Exception e) { Debug.LogException(e); }
+                    if (built != null && built.GetItemCount() > 0) _view.ShowLegacyMenu(built, button);
+                }) { tooltip = current.Tooltip };
+                button.AddToClassList("thry-header-action");
+                if (!string.IsNullOrEmpty(current.Class)) button.AddToClassList(current.Class);
+                var icon = new Image { image = current.Icon, scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
+                icon.AddToClassList("thry-header-icon");
+                button.Add(icon);
+                header.Add(button);
+                if (current.Lit != null) _fields.TrackVisible(button, () => button.EnableInClassList("thry-linked", current.Lit()));
+            }
             var menu = HeaderAction("menu", "Section actions", () => {
                 var actions = ShaderHeader.RetainedHeaderMenu(group, Model.Shader.Materials);
                 actions.AddSeparator("");
@@ -264,6 +282,10 @@ namespace Thry.ThryEditor
                         (container, child) => AddPart(container, child, depth + 1)));
                     return;
                 }
+                string sectionName = group.MaterialProperty?.name;
+                var extension = _editing || !SectionExtensions.Has(sectionName) ? null
+                    : SectionExtensions.Create(sectionName, new SectionExtensions.Context(Model, _fields));
+                if (extension != null) children.Add(extension);
                 // Sections and subsections organize their parent header's preset; only
                 // headers own named preset collections (matching the legacy inspector).
                 if (group is ShaderHeader && Model.Shader.IsSectionedPresetEditor)
@@ -278,6 +300,7 @@ namespace Thry.ThryEditor
                     // The positioning toolbar provides contextual guidance in place of the legacy banner.
                     if (positioning && child is ShaderProperty help && help.Content.text.Contains("Raycast")
                         && help.MyShader.GetPropertyAttributes(help.ShaderPropertyIndex).Any(a => new DrawerAttribute(a).Name == "Helpbox")) continue;
+                    if (extension != null && SectionExtensions.IsHidden(sectionName, child.MaterialProperty?.name)) continue;
                     AddPart(children,child,depth+1);
                 }
             };

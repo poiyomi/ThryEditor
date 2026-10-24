@@ -79,6 +79,7 @@ namespace Thry.ThryEditor
                 {
                     _hasDrawableContent = Options.reference_property != null
                         || (Options.reference_properties != null && Options.reference_properties.Length > 0)
+                        || SectionExtensions.Has(MaterialProperty?.name)
                         || _children.Any(c => (c as ShaderGroup)?.HasDrawableContent ?? true);
                 }
                 return _hasDrawableContent.Value;

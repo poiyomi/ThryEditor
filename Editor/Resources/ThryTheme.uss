@@ -1706,14 +1706,16 @@
 }
 
 /* Keep the object picker inside the field, beside its single text surface. */
-.thry-material-controls .unity-object-field__input {
+.thry-material-controls .unity-object-field__input,
+.thry-contacts-fields .unity-object-field__input {
     flex-direction: row;
     align-items: center;
     padding-left: 0;
     padding-right: 0;
 }
 
-.thry-material-controls .unity-object-field-display {
+.thry-material-controls .unity-object-field-display,
+.thry-contacts-fields .unity-object-field-display {
     flex-grow: 1;
     flex-shrink: 1;
     min-width: 0;
@@ -1725,7 +1727,8 @@
     height: 20px;
 }
 
-.thry-material-controls .unity-object-field-display__icon {
+.thry-material-controls .unity-object-field-display__icon,
+.thry-contacts-fields .unity-object-field-display__icon {
     width: 20px;
     height: 20px;
     min-width: 20px;
@@ -1734,7 +1737,8 @@
     margin: 0;
 }
 
-.thry-material-controls .unity-object-field-display__label {
+.thry-material-controls .unity-object-field-display__label,
+.thry-contacts-fields .unity-object-field-display__label {
     flex-shrink: 1;
     min-width: 0;
     margin: 0 0 0 var(--thry-space-5);
@@ -1830,7 +1834,8 @@
     border-right-color: #aaaaaa;
 }
 
-.thry-material-controls .unity-object-field__selector {
+.thry-material-controls .unity-object-field__selector,
+.thry-contacts-fields .unity-object-field__selector {
     position: relative;
     left: auto;
     right: auto;
@@ -1849,7 +1854,8 @@
     border-bottom-right-radius: var(--thry-radius-compact);
 }
 
-.thry-texture-asset .unity-object-field__selector {
+.thry-texture-asset .unity-object-field__selector,
+.thry-contacts-fields .unity-object-field__selector {
     border-radius: 0;
     background-color: transparent;
     -unity-background-image-tint-color: var(--thry-value-color);
@@ -5737,6 +5743,12 @@
     --unity-image-tint-color: var(--thry-accent-color);
 }
 
+.thry-inspector .thry-header-orb .thry-header-icon,
+.thry-inspector .thry-header-orb:hover .thry-header-icon,
+.thry-inspector .thry-header-orb:focus .thry-header-icon {
+    --unity-image-tint-color: var(--thry-monokai-purple);
+}
+
 /* Header hover highlights the surface; only a directly hovered icon brightens.
    Keyboard focus and linked-state indicators keep their explicit feedback. */
 .thry-inspector .thry-section-header:hover,
@@ -8612,4 +8624,174 @@
 
 .thry-section-changed-dot {
     background-color: var(--thry-caption-color);
+}
+
+/* Poi Contacts: Scene View touch preview, look gallery, tag chips and status lines. */
+.thry-inspector.thry-contacts-overlay {
+    position: absolute;
+    right: var(--thry-space-12);
+    bottom: var(--thry-space-12);
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 280px;
+    max-width: 420px;
+    padding: var(--thry-space-8) var(--thry-space-12);
+    background-color: var(--thry-panel-background);
+    border-width: var(--thry-border-width);
+    border-color: var(--thry-panel-background);
+    border-radius: var(--thry-radius-panel);
+    color: var(--thry-value-color);
+    font-size: var(--thry-font-size);
+}
+.thry-contacts-overlay Button {
+    padding-left: var(--thry-space-10);
+    padding-right: var(--thry-space-10);
+    font-size: var(--thry-font-size);
+}
+
+.thry-inspector .thry-contacts-chip {
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--thry-control-height);
+    margin: 0 var(--thry-space-4) var(--thry-space-4) 0;
+    padding: 0 var(--thry-space-8) 0 var(--thry-space-4);
+    background-color: var(--thry-button-background);
+    border-width: var(--thry-border-width);
+    border-color: var(--thry-control-border-color);
+    border-radius: var(--thry-radius-round);
+    color: var(--thry-value-color);
+    font-size: var(--thry-font-size);
+}
+.thry-window.thry-contacts-fields .unity-object-field__input {
+    padding-right: 0;
+}
+.thry-contacts-fields .unity-base-field {
+    margin-top: var(--thry-space-2);
+    margin-bottom: var(--thry-space-2);
+}
+.thry-window.thry-contacts-fields {
+    padding: var(--thry-space-2) var(--thry-space-8);
+}
+.thry-contacts-fields .thry-contacts-card {
+    padding: var(--thry-space-6) var(--thry-space-8);
+}
+.thry-contacts-fields .thry-contacts-card-lead {
+    margin-top: var(--thry-space-2);
+}
+.thry-contacts-fields .thry-contacts-card-tail {
+    margin-bottom: var(--thry-space-2);
+}
+.thry-contacts-fields .thry-contacts-card .unity-base-field {
+    margin-left: 0;
+    margin-right: 0;
+}
+.thry-contacts-fields .thry-contacts-card .unity-composite-field__field {
+    margin: 0 0 0 var(--thry-space-6);
+}
+.thry-contacts-fields .thry-contacts-card .unity-composite-field__field--first {
+    margin-left: 0;
+}
+.thry-contacts-fields .unity-composite-field__field > .unity-base-field__label {
+    padding: 0 var(--thry-space-4) 0 0;
+    -unity-text-align: middle-left;
+}
+.thry-contacts-fields .unity-toggle {
+    min-height: var(--thry-control-height);
+    align-items: center;
+}
+.thry-contacts-quick-select {
+    margin-top: var(--thry-space-4);
+}
+.thry-window Button.thry-contacts-remove {
+    width: var(--thry-control-height);
+    min-width: 0;
+    height: var(--thry-control-height);
+    min-height: 0;
+    margin: 0 0 0 var(--thry-space-3);
+    padding: 0;
+    flex-shrink: 0;
+    font-size: var(--thry-type-small);
+    -unity-text-align: middle-center;
+}
+.thry-inspector .thry-contacts-chip:hover {
+    background-color: var(--thry-button-hover-background);
+    border-color: var(--thry-control-border-color);
+}
+.thry-inspector .thry-contacts-chip.thry-contacts-chip-on {
+    --thry-button-background: var(--thry-selection-background);
+    --thry-button-hover-background: var(--thry-button-selected-hover-background);
+    border-color: var(--thry-monokai-cyan);
+}
+.thry-contacts-chip-position {
+    min-width: 14px;
+    margin: 0 var(--thry-space-4) 0 0;
+    padding: 0 var(--thry-space-2);
+    border-radius: var(--thry-radius-compact);
+    background-color: var(--thry-input-background);
+    color: var(--thry-muted-color);
+    font-size: var(--thry-type-caption);
+    -unity-text-align: middle-center;
+}
+.thry-contacts-chip-on .thry-contacts-chip-position {
+    color: var(--thry-monokai-cyan);
+}
+
+.thry-contacts-issue {
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--thry-control-height);
+    margin: var(--thry-space-2) 0;
+    padding: var(--thry-space-2) var(--thry-space-4) var(--thry-space-2) var(--thry-space-8);
+    border-left-width: var(--thry-border-width-strong);
+    border-left-color: var(--thry-border-color);
+    white-space: normal;
+}
+.thry-contacts-issue > Label {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    white-space: normal;
+}
+.thry-contacts-issue-error {
+    border-left-color: var(--thry-monokai-pink);
+}
+.thry-contacts-issue-warning {
+    border-left-color: var(--thry-monokai-orange);
+}
+.thry-contacts-issue-link:hover {
+    background-color: var(--thry-hover-color);
+}
+.thry-contacts-issue-fixes {
+    margin-top: var(--thry-space-2);
+}
+
+.thry-contacts-status {
+    flex-direction: column;
+    align-items: stretch;
+    margin: var(--thry-space-2) 0 var(--thry-space-4) 0;
+    padding: var(--thry-space-6) var(--thry-space-8);
+    background-color: var(--thry-panel-background);
+    border-radius: var(--thry-radius-panel-small);
+}
+.thry-contacts-chain {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    min-height: var(--thry-control-height);
+    white-space: normal;
+}
+
+.thry-contacts-card {
+    flex-direction: column;
+    align-items: stretch;
+    margin: var(--thry-space-4) 0;
+    padding: var(--thry-space-8) var(--thry-space-10);
+    background-color: var(--thry-panel-background);
+    border-width: var(--thry-border-width);
+    border-color: var(--thry-control-border-color);
+    border-radius: var(--thry-radius-card);
+}
+.thry-contacts-card-title {
+    color: var(--thry-value-color);
+    -unity-font-style: bold;
 }
