@@ -158,15 +158,23 @@ namespace Thry.ThryEditor
         }
 
 
-        internal void UseInspectorMenu(DropdownField field, bool applyOnReselect = false)
+        internal void UseInspectorMenu(DropdownField field, bool applyOnReselect = false, Func<IEnumerable<EnumAction>> actions = null)
         {
             Action open = () => {
                 field.Focus();
-                ShowMenu(field.worldBound, field.choices.Select(s => new GUIContent(s)).ToArray(), new[] { field.index }, i =>
+                var items = field.choices.Select((choice, i) => new RetainedMenu.Item
                 {
-                    if (i < 0 || i >= field.choices.Count) return;
-                    RetainedWindow.SelectDropdownChoice(field, field.choices[i], applyOnReselect);
-                }, field);
+                    Text = choice,
+                    Checked = i == field.index,
+                    Action = () => { if (i < field.choices.Count) RetainedWindow.SelectDropdownChoice(field, field.choices[i], applyOnReselect); }
+                }).ToList();
+                var extra = actions?.Invoke()?.ToList();
+                if (extra != null && extra.Count > 0)
+                {
+                    items.Add(new RetainedMenu.Item { Separator = true });
+                    items.AddRange(extra.Select(a => new RetainedMenu.Item { Text = a.Text, Action = a.Run }));
+                }
+                RetainedMenu.Open(field.worldBound, field, items);
             };
             field.RegisterCallback<PointerDownEvent>(evt => {
                 if (evt.button != 0) return;

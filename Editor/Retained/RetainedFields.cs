@@ -468,10 +468,14 @@ namespace Thry.ThryEditor
                 || property.MaterialProperty.name == "_PathSourceDirB" || property.MaterialProperty.name == "_PathSourceDirA")
                 names = names.Select(n => n == "UV X Axis" ? "X axis" : n == "UV Y Axis" ? "Y axis" : n).ToArray();
             names = names.Select(n => Model.Shader.Locale.Get(n,n)).ToArray();
+            var labels = new EnumLabels.Source(property.MaterialProperty.name, names);
             var field = new DropdownField(names.ToList(), 0); field.AddToClassList("thry-input"); field.name = "value-" + property.MaterialProperty.name;
             BindProperty(field, property);
-            _view.UseInspectorMenu(field, property.Options.on_value_actions?.Length > 0);
-            TrackVisible(field, () => { int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber()); SynchronizeValue(field, selected < 0 ? "—" : names[selected], property.MaterialProperty.hasMixedValue); });
+            _view.UseInspectorMenu(field, property.Options.on_value_actions?.Length > 0, () => labels.Actions(property.MaterialProperty.GetNumber()));
+            TrackVisible(field, () => {
+                if (labels.Update(property.MaterialProperty.targets, Model.Renderers)) { names = labels.Labels; field.choices = names.ToList(); }
+                int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber()); SynchronizeValue(field, selected < 0 ? "—" : names[selected], property.MaterialProperty.hasMixedValue);
+            });
             field.RegisterValueChangedCallback(e => { int index = Array.IndexOf(names, e.newValue); if(index >= 0) Model.Number(property, values[index]); }); parent.Add(field);
         }
         private static readonly Dictionary<string,Type> EnumTypes = new Dictionary<string,Type>();

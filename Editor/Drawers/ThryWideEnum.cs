@@ -22,6 +22,10 @@ namespace Thry.ThryEditor.Drawers
         public static bool RenderLabel = true;
         internal static GUIStyle PopupStyle;
         private readonly InspectorPopup _popup = new InspectorPopup();
+        private EnumLabels.Source _labels;
+        private GUIContent[] _labelStock, _labelNames;
+        private Renderer _labelRenderer;
+        private Renderer[] _labelRenderers = Array.Empty<Renderer>();
 
         private static readonly Dictionary<string, Type> s_enumTypes = new Dictionary<string, Type>();
 
@@ -132,7 +136,7 @@ namespace Thry.ThryEditor.Drawers
             }
 
             EditorGUI.BeginChangeCheck();
-            int selIndex = _popup.Draw(position, RenderLabel ? label : GUIContent.none, selectedIndex, names, PopupStyle);
+            int selIndex = _popup.Draw(position, RenderLabel ? label : GUIContent.none, selectedIndex, Labels(prop), PopupStyle);
             EditorGUI.showMixedValue = false;
             if (EditorGUI.EndChangeCheck() && selIndex >= 0)
             {
@@ -140,6 +144,23 @@ namespace Thry.ThryEditor.Drawers
                 GUI.changed = true;
                 prop.SetNumber(values[selIndex]);
             }
+        }
+
+        private GUIContent[] Labels(MaterialProperty prop)
+        {
+            if (_labels == null || _labelStock != names)
+            {
+                _labelStock = _labelNames = names;
+                _labels = new EnumLabels.Source(prop.name, names.Select(n => n.text).ToArray());
+            }
+            var renderer = ShaderEditor.Active?.ActiveRenderer;
+            if (!ReferenceEquals(renderer, _labelRenderer))
+            {
+                _labelRenderer = renderer;
+                _labelRenderers = renderer != null ? new[] { renderer } : Array.Empty<Renderer>();
+            }
+            if (_labels.Update(prop.targets, _labelRenderers)) _labelNames = _labels.Labels.Select(l => new GUIContent(l)).ToArray();
+            return _labelNames;
         }
 
         public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
