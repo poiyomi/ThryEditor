@@ -18,13 +18,15 @@ namespace Thry.ThryEditor
             internal List<Item> Children;
         }
         readonly List<VisualElement> _rows = new List<VisualElement>();
+        readonly List<Label> _captions = new List<Label>();
         readonly Stack<Item[]> _parents = new Stack<Item[]>();
         Item[] _items;
         readonly VisualElement _target, _panelRoot;
         readonly ScrollView _scroll;
         readonly Rect _anchor;
         int _selected = -1;
-        bool _closed, _populating;
+        bool _closed, _populating, _pressedInside, _dragged;
+        Vector2? _firstMove;
         string _typed = "";
         double _typedAt;
 
@@ -104,7 +106,7 @@ namespace Thry.ThryEditor
             _scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             _scroll.verticalScrollerVisibility = ScrollerVisibility.Auto;
             _scroll.contentContainer.focusable = true; Add(_scroll); Populate();
-            RegisterCallback<PointerDownEvent>(e => { if (e.target == this) Close(); e.StopPropagation(); });
+            RegisterCallback<PointerDownEvent>(e => { if (e.target == this) Close(); else _pressedInside = true; e.StopPropagation(); });
             RegisterCallback<NavigationMoveEvent>(e => {
                 if (e.direction == NavigationMoveEvent.Direction.Right) { if (_selected >= 0 && _items[_selected].Children != null) Commit(_selected); }
                 else if (e.direction == NavigationMoveEvent.Direction.Left) Back();
@@ -135,7 +137,7 @@ namespace Thry.ThryEditor
         void Populate()
         {
             _populating = true;
-            _scroll.Clear(); _rows.Clear(); _selected = -1; _typed = "";
+            _scroll.Clear(); _rows.Clear(); _captions.Clear(); _selected = -1; _typed = "";
             if (_parents.Count > 0)
             {
                 var back = new Button(Back) { text = "\u2039 " + RetainedText.Get("back", "Back"), name = "thry-menu-back" };
@@ -148,11 +150,12 @@ namespace Thry.ThryEditor
                 if (!item.Separator)
                 {
                     var check = new Label(item.Checked ? "\u2713" : ""); check.AddToClassList("thry-menu-check"); row.Add(check);
-                    var caption = new Label(item.Text) { tooltip = item.Text }; caption.style.flexGrow = 1; row.Add(caption);
+                    var caption = new Label(item.Text) { tooltip = item.Text }; caption.style.flexGrow = 1; row.Add(caption); _captions.Add(caption);
                     if (item.Children != null) row.Add(new Label("\u203a"));
                     row.EnableInClassList("thry-menu-disabled", !Enabled(item));
-                    row.RegisterCallback<PointerMoveEvent>(e => Select(index));
-                    row.RegisterCallback<PointerUpEvent>(e => { if (e.button != 0 || !Enabled(item)) return; e.StopPropagation(); Commit(index); });
+                    row.RegisterCallback<PointerMoveEvent>(e => { Track(e.position); Select(index); });
+                    // A tall menu can open under the pointer; the release of the opening press must not pick a row.
+                    row.RegisterCallback<PointerUpEvent>(e => { if (e.button != 0 || !Enabled(item) || !_pressedInside && !_dragged) return; e.StopPropagation(); Commit(index); });
                 }
                 _rows.Add(row); _scroll.Add(row);
             }
@@ -166,6 +169,29 @@ namespace Thry.ThryEditor
             if (selected < 0) selected = Array.FindIndex(_items, Enabled);
             if (selected >= 0) Select(selected, false);
             _scroll.contentContainer.Focus(); _populating = false;
+            schedule.Execute(FitWidth);
+        }
+        // Rows start at the minimum width; once styled, widen the card so no label needs an ellipsis.
+        void FitWidth()
+        {
+            if (_closed || _captions.Count == 0 || _captions[0].panel == null) return;
+            float text = 0;
+            foreach (var caption in _captions)
+                text = Mathf.Max(text, caption.MeasureTextSize(caption.text, 0, MeasureMode.Undefined, 0, MeasureMode.Undefined).x);
+            var first = _captions[0];
+            float row = first.parent.layout.width - first.layout.width;
+            float card = _scroll.layout.width - first.parent.layout.width;
+            if (float.IsNaN(row) || float.IsNaN(card)) return;
+            float width = Mathf.Min(Mathf.Max(Mathf.Max(_anchor.width, 220), Mathf.Ceil(text + row + card + 12)), Mathf.Max(0, _panelRoot.layout.width - 8));
+            if (Mathf.Abs(width - _scroll.layout.width) < 1) return;
+            var local = _panelRoot.WorldToLocal(_anchor.position);
+            _scroll.style.width = width;
+            _scroll.style.left = Mathf.Clamp(local.x, 4, Mathf.Max(4, _panelRoot.layout.width - width - 4));
+        }
+        void Track(Vector2 position)
+        {
+            if (_firstMove == null) _firstMove = position;
+            else if ((position - _firstMove.Value).sqrMagnitude > 16) _dragged = true;
         }
         void Back() { if (_parents.Count == 0) return; _items = _parents.Pop(); Populate(); }
         void FindTyped(char character)
