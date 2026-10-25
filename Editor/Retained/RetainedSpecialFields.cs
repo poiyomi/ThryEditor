@@ -9,6 +9,11 @@ namespace Thry.ThryEditor
 {
     internal sealed partial class RetainedFields
     {
+        static readonly (string Key, Vector4 Value)[] Curve4Presets = {
+            ("Linear", new Vector4(0, 1f / 3, 2f / 3, 1)), ("Ease in", new Vector4(0, 0, 1f / 3, 1)),
+            ("Ease out", new Vector4(0, 2f / 3, 1, 1)), ("Smooth", new Vector4(0, 0, 1, 1)),
+            ("Reverse", new Vector4(1, 2f / 3, 1f / 3, 0)), ("Smooth reverse", new Vector4(1, 1, 0, 0)),
+        };
         private static int ReadBitValue(Material material, ShaderProperty property)
         {
             if (property.MaterialProperty.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Int) return material.GetInteger(property.MaterialProperty.name);
@@ -183,10 +188,23 @@ namespace Thry.ThryEditor
                             toggle.RegisterValueChangedCallback(e=>Model.Edit(property,p=>{int value=Mathf.Clamp((int)p.GetNumber(),0,255);p.SetNumber(e.newValue?value|mask:value&~mask);},true)); bitrow.Add(toggle); }
                         handled=true; return;
                     case "Curve4":
-                        var curve = new CurveField(); parent.Add(curve); Vector4 last=new Vector4(float.NaN,0,0,0);
-                        Track(curve,()=>{ curve.showMixedValue=property.MaterialProperty.hasMixedValue; var v=property.MaterialProperty.vectorValue; if(last==v) return; last=v; var c=new AnimationCurve(new Keyframe(0,v.x),new Keyframe(1f/3,v.y),new Keyframe(2f/3,v.z),new Keyframe(1,v.w));
-                            for(int i=0;i<4;i++){AnimationUtility.SetKeyLeftTangentMode(c,i,AnimationUtility.TangentMode.Linear); AnimationUtility.SetKeyRightTangentMode(c,i,AnimationUtility.TangentMode.Linear);} curve.SetValueWithoutNotify(c); curve.showMixedValue=property.MaterialProperty.hasMixedValue; });
-                        curve.RegisterValueChangedCallback(e=>Model.Edit(property,p=>p.vectorValue=new Vector4(Mathf.Clamp01(e.newValue.Evaluate(0)),Mathf.Clamp01(e.newValue.Evaluate(1f/3)),Mathf.Clamp01(e.newValue.Evaluate(2f/3)),Mathf.Clamp01(e.newValue.Evaluate(1)))));
+                        var curveGesture = new RetainedPropertyGesture(Model, property);
+                        var curve=new RetainedCurve4(()=>property.MaterialProperty.vectorValue,(value,mask)=>Model.Edit(property,p=>
+                        {
+                            var owned = p.vectorValue;
+                            for (int axis = 0; axis < 4; axis++) if ((mask & (1 << axis)) != 0) owned[axis] = value[axis];
+                            p.vectorValue = owned;
+                        },true),mask=>curveGesture.Begin(mask),curveGesture.Cancel,curveGesture.End);
+                        parent.Add(curve); Track(curve,()=> { curve.SetEnabled(Model.CanEdit(property)); curve.MarkDirtyRepaint(); });
+                        BindProperty(curve, property, menu => {
+                            menu.AddSeparator("");
+                            foreach (var preset in Curve4Presets)
+                            {
+                                var value = preset.Value;
+                                if (Model.CanEdit(property)) menu.AddItem(new GUIContent("Presets/" + preset.Key), false, () => Model.Edit(property, p => p.vectorValue = value));
+                                else menu.AddDisabledItem(new GUIContent("Presets/" + preset.Key));
+                            }
+                        });
                         handled=true; return;
                     case "Ramp4":
                         var rampGesture = new RetainedPropertyGesture(Model, property);
@@ -500,6 +518,134 @@ namespace Thry.ThryEditor
             var v=_read(); var p=context.painter2D;p.lineWidth=_strokeWidth;p.strokeColor=_lineColor;p.BeginPath();p.MoveTo(Point(0,v.x,v));p.LineTo(Point(v.z,v.x,v));p.LineTo(Point(v.w,v.y,v));p.LineTo(Point(Mathf.Max(1,v.w),v.y,v));p.Stroke();
             var points=new[]{Point(v.z,v.x,v),Point(v.w,v.y,v)};
             for(int i=0;i<points.Length;i++){p.fillColor=focusController?.focusedElement==this&&i==_focusedHandle?_lineColor:_handleColor;p.BeginPath();p.Arc(points[i],_handleRadius,0,360);p.Fill();}
+        }
+    }
+
+    // Edits a Curve4 Bezier (start, handle at 1/3, handle at 2/3, end). Handles are drawn at a fixed length along
+    // the curve's direction; dragging one sets its height within Curve4Drawer's handle range.
+    internal sealed class RetainedCurve4 : VisualElement
+    {
+        const float HandleLength = 32;
+        // Parts: start point, start handle, end handle, end point.
+        static readonly int[] PartMasks = { 1 | 2, 2, 4, 4 | 8 };
+        static readonly CustomStyleProperty<float> Stroke = new CustomStyleProperty<float>("--ramp-stroke-width");
+        static readonly CustomStyleProperty<float> HandleRadius = new CustomStyleProperty<float>("--ramp-handle-radius");
+        static readonly CustomStyleProperty<Color> LineColor = new CustomStyleProperty<Color>("--ramp-line-color");
+        static readonly CustomStyleProperty<Color> HandleColor = new CustomStyleProperty<Color>("--ramp-handle-color");
+        private readonly Func<Vector4> _read; private readonly Action<Vector4,int> _write;
+        private readonly Action<int> _begin; private readonly Action _cancel, _end;
+        private int _part = -1, _focusedPart, _pointerId = -1;
+        private Vector4 _original;
+        float _strokeWidth = 2, _handleRadius = 4;
+        Color _lineColor = new Color(.48f, .68f, .84f), _handleColor = new Color(.8f, .8f, .8f);
+        float PlotInset => Mathf.Max(6, _handleRadius + _strokeWidth);
+        float PlotWidth => Mathf.Max(1, contentRect.width - 2 * PlotInset);
+        float PlotHeight => Mathf.Max(1, contentRect.height - 2 * PlotInset);
+
+        internal RetainedCurve4(Func<Vector4> read, Action<Vector4,int> write, Action<int> begin, Action cancel, Action end)
+        {
+            _read=read;_write=write;_begin=begin;_cancel=cancel;_end=end;
+            AddToClassList("thry-ramp"); AddToClassList("thry-curve4"); focusable=true; generateVisualContent+=Draw;
+            RegisterCallback<CustomStyleResolvedEvent>(e => {
+                if (e.target != this) return;
+                float number; Color color;
+                _strokeWidth = customStyle.TryGetValue(Stroke, out number) ? Mathf.Max(0, number) : 2;
+                _handleRadius = customStyle.TryGetValue(HandleRadius, out number) ? Mathf.Max(1, number) : 4;
+                _lineColor = customStyle.TryGetValue(LineColor, out color) ? color : new Color(.48f, .68f, .84f);
+                _handleColor = customStyle.TryGetValue(HandleColor, out color) ? color : new Color(.8f, .8f, .8f);
+                MarkDirtyRepaint();
+            });
+            tooltip="Drag an end point or its handle. Right-click for presets. Escape cancels the drag; up and down arrows nudge the last point you touched.";
+            RegisterCallback<PointerDownEvent>(e =>
+            {
+                if (e.button != 0 || !enabledInHierarchy) return;
+                var v = _read(); var points = Points(v); Focus();
+                int nearest = -1; float best = 14;
+                for (int i = 0; i < points.Length; i++) { float d = Vector2.Distance(e.localPosition, points[i]); if (d < best) { best = d; nearest = i; } }
+                if (nearest < 0) return;
+                _part = _focusedPart = nearest; _original = v; _pointerId = e.pointerId; _begin?.Invoke(PartMasks[_part]);
+                this.CapturePointer(e.pointerId); e.StopPropagation(); MarkDirtyRepaint();
+            });
+            RegisterCallback<PointerMoveEvent>(e =>
+            {
+                if (_part < 0 || !this.HasPointerCapture(e.pointerId)) return;
+                var v = _read(); Vector2 mouse = e.localPosition;
+                if (_part == 1 || _part == 2) v[_part] = HandleHeight(v, _part == 2, mouse);
+                else
+                {
+                    float value = Mathf.Clamp01(1 - (mouse.y - PlotInset) / PlotHeight);
+                    int point = _part == 0 ? 0 : 3, handle = _part == 0 ? 1 : 2;
+                    v[point] = value; v[handle] = Drawers.Curve4Drawer.ClampHandle(_original[handle] + value - _original[point]);
+                }
+                _write(v, PartMasks[_part]); MarkDirtyRepaint(); e.StopPropagation();
+            });
+            RegisterCallback<PointerUpEvent>(e => Finish());
+            RegisterCallback<PointerCaptureOutEvent>(e => { _part = -1; _pointerId = -1; _end?.Invoke(); MarkDirtyRepaint(); });
+            RegisterCallback<DetachFromPanelEvent>(e => { _part = -1; _pointerId = -1; _end?.Invoke(); });
+            RegisterCallback<FocusInEvent>(e => MarkDirtyRepaint());
+            RegisterCallback<FocusOutEvent>(e => MarkDirtyRepaint());
+            RegisterCallback<KeyDownEvent>(e =>
+            {
+                if (!enabledInHierarchy) return;
+                if (e.keyCode == KeyCode.Escape && _part >= 0)
+                {
+                    if (_cancel != null) _cancel(); else _write(_original, PartMasks[_part]);
+                    Finish(); e.StopPropagation(); e.PreventDefault(); return;
+                }
+                if (_part >= 0 || (e.keyCode != KeyCode.UpArrow && e.keyCode != KeyCode.DownArrow)) return;
+                var v = _read(); float step = (e.shiftKey ? .1f : e.altKey ? .001f : .01f) * (e.keyCode == KeyCode.UpArrow ? 1 : -1);
+                v[_focusedPart] = _focusedPart == 1 || _focusedPart == 2 ? Drawers.Curve4Drawer.ClampHandle(v[_focusedPart] + step) : Mathf.Clamp01(v[_focusedPart] + step);
+                if (_focusedPart == 0) v[1] = Drawers.Curve4Drawer.ClampHandle(v[1] + step);
+                if (_focusedPart == 3) v[2] = Drawers.Curve4Drawer.ClampHandle(v[2] + step);
+                _write(v, PartMasks[_focusedPart]); MarkDirtyRepaint(); e.StopPropagation(); e.PreventDefault();
+            });
+        }
+        private void Finish()
+        {
+            _part = -1;
+            if (_pointerId >= 0 && this.HasPointerCapture(_pointerId)) this.ReleasePointer(_pointerId);
+            _pointerId = -1; _end?.Invoke(); MarkDirtyRepaint();
+        }
+        private Vector2 Point(float t, float value) => new Vector2(PlotInset + t * PlotWidth, PlotInset + (1 - value) * PlotHeight);
+        private Vector2 Tip(Vector4 v, bool end)
+        {
+            Vector2 key = end ? Point(1, v.w) : Point(0, v.x), control = end ? Point(2f / 3, v.z) : Point(1f / 3, v.y);
+            return key + (control - key).normalized * HandleLength;
+        }
+        private Vector2[] Points(Vector4 v) => new[] { Point(0, v.x), Tip(v, false), Tip(v, true), Point(1, v.w) };
+        // The handle's direction from its point sets the slope there; past vertical it holds the steepest slope.
+        private float HandleHeight(Vector4 v, bool end, Vector2 mouse)
+        {
+            Vector2 key = end ? Point(1, v.w) : Point(0, v.x);
+            float run = (end ? key.x - mouse.x : mouse.x - key.x) / PlotWidth, rise = (key.y - mouse.y) / PlotHeight;
+            return run > 1e-4f ? Drawers.Curve4Drawer.ClampHandle((end ? v.w : v.x) + rise / run / 3)
+                : rise >= 0 ? Drawers.Curve4Drawer.HandleMax : Drawers.Curve4Drawer.HandleMin;
+        }
+        private void Draw(MeshGenerationContext context)
+        {
+            var v = _read(); var p = context.painter2D;
+            p.lineWidth = _strokeWidth; p.strokeColor = _lineColor; p.BeginPath();
+            for (int i = 0; i <= 48; i++)
+            {
+                float t = i / 48f, u = 1 - t;
+                var point = Point(t, Mathf.Clamp01(u * u * u * v.x + 3 * t * u * u * v.y + 3 * t * t * u * v.z + t * t * t * v.w));
+                if (i == 0) p.MoveTo(point); else p.LineTo(point);
+            }
+            p.Stroke();
+            var points = Points(v);
+            int active = _part >= 0 ? _part : focusController?.focusedElement == this ? _focusedPart : -1;
+            p.lineWidth = Mathf.Max(1, _strokeWidth * .75f);
+            for (int i = 1; i <= 2; i++)
+            {
+                p.strokeColor = i == active ? _lineColor : _handleColor;
+                p.BeginPath(); p.MoveTo(points[i == 1 ? 0 : 3]); p.LineTo(points[i]); p.Stroke();
+                p.BeginPath(); p.Arc(points[i], _handleRadius, 0, 360); p.Stroke();
+            }
+            foreach (int i in new[] { 0, 3 })
+            {
+                p.fillColor = i == active ? _lineColor : _handleColor;
+                p.BeginPath(); p.Arc(points[i], _handleRadius, 0, 360); p.Fill();
+            }
         }
     }
 }

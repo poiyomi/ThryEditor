@@ -29,6 +29,7 @@
     --thry-footer-icon-size: 32px;
     --thry-footer-button-size: 36px;
     --thry-ramp-height: 54px;
+    --thry-curve4-height: 96px;
     /* Unitless values are read by the custom Painter2D ramp control. */
     --thry-ramp-stroke-width: 2;
     --thry-ramp-handle-radius: 4;
@@ -5466,6 +5467,10 @@
     --ramp-handle-radius: var(--thry-ramp-handle-radius);
     --ramp-line-color: var(--thry-ramp-line-color);
     --ramp-handle-color: var(--thry-ramp-handle-color);
+}
+
+.thry-curve4 {
+    height: var(--thry-curve4-height);
 }
 
 .thry-filter-pending {
