@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Thry.ThryEditor.Helpers;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -23,7 +24,7 @@ namespace Thry.ThryEditor
                 if (dependency == null) return;
                 var menu = new UnityEditor.GenericMenu();
                 menu.AddItem(new GUIContent(RetainedText.Get(part.MyShaderUI, "find_controller", "Find controlling property") + ": " + RetainedMaterialBody.SectionCaption(dependency)), false, () => view.SearchProperty(dependency));
-                e.PreventDefault(); e.StopImmediatePropagation();
+                e.PreventDefaultHandling(); e.StopImmediatePropagation();
                 view.ShowLegacyMenu(menu, target, new Rect(e.position, Vector2.zero));
             }, TrickleDown.TrickleDown);
             // Listen on the enabled inspector so disabled descendants can still explain

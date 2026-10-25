@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -88,7 +89,7 @@ namespace Thry.ThryEditor
                     if(e.keyCode!=KeyCode.LeftArrow&&e.keyCode!=KeyCode.RightArrow)return;
                     int step=e.keyCode==KeyCode.RightArrow?1:-1;
                     for(int next=index+step;next>=0&&next<tabs.Count;next+=step)if(TabShown(tabChannels[next])){index=next;break;}
-                    channel=tabChannels[index];RefreshControls();Render();tabs[index].Focus();e.StopPropagation();e.PreventDefault();
+                    channel=tabChannels[index];RefreshControls();Render();tabs[index].Focus();e.StopPropagation();e.PreventDefaultHandling();
                 });
                 tabs.Add(button);tabChannels.Add(c);toolbar.Add(button);
             }

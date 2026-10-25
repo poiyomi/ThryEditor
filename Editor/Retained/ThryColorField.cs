@@ -75,7 +75,7 @@ namespace Thry.ThryEditor
             RegisterCallback<NavigationSubmitEvent>(e =>
             {
                 if (!CanRequest()) return;
-                e.PreventDefault(); e.StopPropagation();
+                e.PreventDefaultHandling(); e.StopPropagation();
                 OpenRequested?.Invoke(this);
             });
             _swatch.RegisterCallback<GeometryChangedEvent>(e =>

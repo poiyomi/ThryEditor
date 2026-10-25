@@ -646,7 +646,9 @@ namespace Thry.ThryEditor
             Vector2 scale = texture != null ? _material.GetTextureScale(_properties[0]) : Vector2.one;
             Vector2 offset = texture != null ? _material.GetTextureOffset(_properties[0]) : Vector2.zero;
             var tint = texture != null ? new Color(1, 1, 1, alpha) : new Color(_boxColor.r, _boxColor.g, _boxColor.b, .35f * alpha);
+#if !UNITY_6000_0_OR_NEWER
             var region = mesh.uvRegion;
+#endif
             var points = corners.Select(c => ToPixel(rect, c)).ToArray();
             for (int i = 0; i < 4; i++)
             {
@@ -655,7 +657,11 @@ namespace Thry.ThryEditor
                 {
                     position = new Vector3(points[i].x, points[i].y, Vertex.nearZ),
                     tint = tint,
+#if UNITY_6000_0_OR_NEWER
+                    uv = uv,
+#else
                     uv = region.position + Vector2.Scale(uv, region.size),
+#endif
                 });
             }
             bool clockwise = (points[1].x - points[0].x) * (points[2].y - points[0].y) - (points[1].y - points[0].y) * (points[2].x - points[0].x) > 0;

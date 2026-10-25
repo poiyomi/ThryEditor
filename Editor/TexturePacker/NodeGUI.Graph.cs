@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEditor.UIElements;
@@ -310,7 +311,7 @@ namespace Thry.ThryEditor.TexturePacker
                         if (target.ClassListContains("unity-base-field")) return;
                     var selectedWires = selection.OfType<Edge>().ToList();
                     if (selectedWires.Count == 0) return;
-                    DeleteElements(selectedWires); e.StopPropagation(); e.PreventDefault();
+                    DeleteElements(selectedWires); e.StopPropagation(); e.PreventDefaultHandling();
                 });
                 for (int i = 0; i < owner._config.Sources.Length; i++)
                 {
@@ -388,7 +389,7 @@ namespace Thry.ThryEditor.TexturePacker
                 port.RegisterCallback<MouseDownEvent>(e => {
                     if (e.button != 0 || !e.altKey) return;
                     port.GetFirstAncestorOfType<TextureStudioGraph>()?.DisconnectPin(port);
-                    e.StopImmediatePropagation(); e.PreventDefault();
+                    e.StopImmediatePropagation(); e.PreventDefaultHandling();
                 }, TrickleDown.TrickleDown);
                 return port;
             }

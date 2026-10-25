@@ -346,7 +346,7 @@ namespace Thry.ThryEditor
             }
             _state.SetHsv(hsv);
             MarkDirtyRepaint(); _changed?.Invoke();
-            e.PreventDefault(); e.StopPropagation();
+            e.PreventDefaultHandling(); e.StopPropagation();
         }
 
         void Draw(MeshGenerationContext context)
@@ -436,8 +436,10 @@ namespace Thry.ThryEditor
         {
 #if UNITY_6000_0_OR_NEWER
             element.focusController?.IgnoreEvent(e);
+#else
+            e.PreventDefault();
 #endif
-            e.PreventDefault(); e.StopPropagation();
+            e.StopPropagation();
         }
 
         static ushort Fringe(Vector2 corner, Vector2 center, float px, Color32 color)
@@ -641,7 +643,7 @@ namespace Thry.ThryEditor
             if (direction == 0) return;
             float step = _unit == ColorSliderUnit.Floats ? .01f : _unit == ColorSliderUnit.Stops ? .1f : 1f;
             Changed?.Invoke(ClampArgument((_value + direction * step * (e.shiftKey ? 10 : 1)) / Scale));
-            e.PreventDefault(); e.StopPropagation();
+            e.PreventDefaultHandling(); e.StopPropagation();
         }
 
         void DrawTrack(MeshGenerationContext context)

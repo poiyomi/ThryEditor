@@ -264,8 +264,10 @@ namespace Thry.ThryEditor.Helpers
         { TextureImporterFormat.ETC2_RGB4 , 4 },
         { TextureImporterFormat.ETC2_RGBA8 , 8 },
         { TextureImporterFormat.ETC2_RGB4_PUNCHTHROUGH_ALPHA , 4 },
+#if !UNITY_6000_1_OR_NEWER
         { TextureImporterFormat.PVRTC_RGB2 , 2 },
         { TextureImporterFormat.PVRTC_RGB4 , 4 },
+#endif
         { TextureImporterFormat.ARGB32 , 32 },
         { TextureImporterFormat.ARGB16 , 16 },
         { TextureImporterFormat.RGBA64 , 64 },

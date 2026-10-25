@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -104,7 +105,7 @@ namespace Thry.ThryEditor
                 else if (evt.keyCode == KeyCode.DownArrow || evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
                 {
                     if (_searchPending) ApplySearchNow();
-                    if (_propertySearch.FocusFirst()) { evt.PreventDefault(); evt.StopImmediatePropagation(); }
+                    if (_propertySearch.FocusFirst()) { evt.PreventDefaultHandling(); evt.StopImmediatePropagation(); }
                 }
             }, TrickleDown.TrickleDown);
             RegisterCallback<KeyDownEvent>(HandleFilterEscape);
@@ -178,10 +179,10 @@ namespace Thry.ThryEditor
             };
             field.RegisterCallback<PointerDownEvent>(evt => {
                 if (evt.button != 0) return;
-                evt.PreventDefault(); evt.StopImmediatePropagation(); open();
+                evt.PreventDefaultHandling(); evt.StopImmediatePropagation(); open();
             }, TrickleDown.TrickleDown);
             field.RegisterCallback<NavigationSubmitEvent>(evt => {
-                evt.PreventDefault(); evt.StopImmediatePropagation(); open();
+                evt.PreventDefaultHandling(); evt.StopImmediatePropagation(); open();
             }, TrickleDown.TrickleDown);
         }
 
@@ -331,7 +332,7 @@ namespace Thry.ThryEditor
                     for (var type = element.GetType(); type != null; type = type.BaseType)
                         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(TextInputBaseField<>)) return;
             }
-            ClearSearch(); evt.PreventDefault(); evt.StopPropagation();
+            ClearSearch(); evt.PreventDefaultHandling(); evt.StopPropagation();
         }
         private void UpdateSearch()
         {

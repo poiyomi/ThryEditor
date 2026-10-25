@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -157,7 +158,7 @@ namespace Thry.ThryEditor
         static Button ActionButton(Action action)
         {
             var button = new Button(action);
-            button.RegisterCallback<NavigationSubmitEvent>(e => { e.PreventDefault(); e.StopImmediatePropagation(); action(); }, TrickleDown.TrickleDown);
+            button.RegisterCallback<NavigationSubmitEvent>(e => { e.PreventDefaultHandling(); e.StopImmediatePropagation(); action(); }, TrickleDown.TrickleDown);
             return button;
         }
 

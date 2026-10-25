@@ -381,14 +381,14 @@ namespace Thry.ThryEditor.ShaderTranslations
         {
             // This allows you to name your asset before creating it
             Texture2D icon = EditorGUIUtility.IconContent("ScriptableObject Icon").image as Texture2D;
-#if UNITY_6000_5_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
             ProjectWindowUtil.StartNameEditingIfProjectWindowExists(EntityId.None, CreateInstance<DoCreateNewTranslationDefinition>(), "New Translation Definition.asset", icon, null);
 #else
             ProjectWindowUtil.StartNameEditingIfProjectWindowExists(0, CreateInstance<DoCreateNewTranslationDefinition>(), "New Translation Definition.asset", icon, null);
 #endif
         }
 
-#if UNITY_6000_5_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
         class DoCreateNewTranslationDefinition : AssetCreationEndAction
         {
             public override void Action(EntityId instanceId, string pathName, string resourceFile)

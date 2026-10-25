@@ -1482,7 +1482,7 @@ namespace Thry.ThryEditor
         // The start of Unity's handler key, "<id>_<property>", for the shader. Unity 6.5 uses the EntityId there.
         static string HandlerKeyPrefix(Shader shader)
         {
-#if UNITY_6000_5_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
             return shader.GetEntityId().ToString() + "_";
 #else
             return shader.GetInstanceID().ToString(CultureInfo.InvariantCulture) + "_";
@@ -1725,7 +1725,7 @@ namespace Thry.ThryEditor
         {
             SerializedProperty shaderProperty = new SerializedObject(material).FindProperty("m_Shader");
             if (shaderProperty == null) return false;
-#if UNITY_6000_5_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
             EntityId id = shaderProperty.objectReferenceEntityIdValue;
             return id == EntityId.None || string.IsNullOrEmpty(AssetDatabase.GetAssetPath(id));
 #else

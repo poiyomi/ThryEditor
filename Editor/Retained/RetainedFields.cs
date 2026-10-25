@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -535,7 +536,7 @@ namespace Thry.ThryEditor
                     DragAndDrop.visualMode = objectField.enabledInHierarchy && Model.CanEdit(property)
                         && EditorUtility.IsPersistent(render) && render.dimension == dimension
                         ? DragAndDropVisualMode.Copy : DragAndDropVisualMode.Rejected;
-                    e.PreventDefault(); e.StopImmediatePropagation();
+                    e.PreventDefaultHandling(); e.StopImmediatePropagation();
                 }, TrickleDown.TrickleDown);
                 objectField.RegisterCallback<DragPerformEvent>(e =>
                 {
@@ -544,7 +545,7 @@ namespace Thry.ThryEditor
                     if (objectField.enabledInHierarchy && Model.CanEdit(property)
                         && EditorUtility.IsPersistent(render) && render.dimension == dimension)
                     { DragAndDrop.AcceptDrag(); objectField.value = render; }
-                    e.PreventDefault(); e.StopImmediatePropagation();
+                    e.PreventDefaultHandling(); e.StopImmediatePropagation();
                 }, TrickleDown.TrickleDown);
             }
             var assetDetails = new VisualElement(); assetDetails.AddToClassList("thry-texture-meta"); value.Add(assetDetails);
@@ -801,7 +802,7 @@ namespace Thry.ThryEditor
                     || !field.enabledInHierarchy || !canEdit()) return;
                 // Use the field's native selector so picking preserves its type filter,
                 // change callback, material Undo, and animation recording behavior.
-                e.PreventDefault(); e.StopImmediatePropagation();
+                e.PreventDefaultHandling(); e.StopImmediatePropagation();
                 display.Focus();
                 // Native keyboard activation is independent of mouse capture from
                 // the click which opened this field.
@@ -823,7 +824,7 @@ namespace Thry.ThryEditor
             clearIcon.AddToClassList("thry-texture-clear-icon"); clear.Add(clearIcon);
             clear.RegisterCallback<PointerDownEvent>(e => e.StopPropagation());
             clear.RegisterCallback<PointerUpEvent>(e => e.StopPropagation());
-            clear.RegisterCallback<NavigationSubmitEvent>(e => { e.PreventDefault(); e.StopImmediatePropagation(); clearValue(); }, TrickleDown.TrickleDown);
+            clear.RegisterCallback<NavigationSubmitEvent>(e => { e.PreventDefaultHandling(); e.StopImmediatePropagation(); clearValue(); }, TrickleDown.TrickleDown);
             Texture measuredTexture = null; int measuredVersion = -1, measuredProjectVersion = -1;
             nativeIcon.style.display = DisplayStyle.None;
             var tile = new VisualElement { pickingMode = PickingMode.Ignore };

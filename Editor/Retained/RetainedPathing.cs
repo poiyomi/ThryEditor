@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -491,7 +492,7 @@ namespace Thry.ThryEditor
             root.tooltip = "Click for property options and Animated / Renamed marking. This float4 contains all four paths.";
             root.RegisterCallback<PointerDownEvent>(e => {
                 if (e.button != 0) return;
-                e.PreventDefault(); e.StopImmediatePropagation(); ShowPropertyMenu(root, property, e.position);
+                e.PreventDefaultHandling(); e.StopImmediatePropagation(); ShowPropertyMenu(root, property, e.position);
             }, TrickleDown.TrickleDown);
             DecorateAnimation(root, property, false); BindProperty(root, property);
             DecoratePreset(root, property);

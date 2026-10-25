@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -130,7 +131,7 @@ namespace Thry.ThryEditor
             {
                 if (!(e.ctrlKey || e.commandKey) || (e.keyCode != KeyCode.Z && e.keyCode != KeyCode.Y)) return;
                 if (e.keyCode == KeyCode.Y || e.shiftKey) RedoDraft(); else UndoDraft();
-                e.PreventDefault(); e.StopImmediatePropagation();
+                e.PreventDefaultHandling(); e.StopImmediatePropagation();
             }, TrickleDown.TrickleDown);
             RetainedWindow.Shortcuts(root, Close);
             var availability = _applyButton.schedule.Execute(UpdateAvailability).Every(200);

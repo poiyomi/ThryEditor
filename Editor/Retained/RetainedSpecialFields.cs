@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -478,11 +479,11 @@ namespace Thry.ThryEditor
                 if(e.keyCode==KeyCode.Escape && _handle>=0)
                 {
                     if(_cancel!=null) _cancel(); else _write(_handle,_original,(1<<_handle)|(1<<(_handle+2)));
-                    Finish(); e.StopPropagation(); e.PreventDefault(); return;
+                    Finish(); e.StopPropagation(); e.PreventDefaultHandling(); return;
                 }
                 if(_handle>=0) return;
                 if(e.keyCode==KeyCode.Home || e.keyCode==KeyCode.End)
-                { _focusedHandle=e.keyCode==KeyCode.Home?0:1;MarkDirtyRepaint();e.StopPropagation();e.PreventDefault();return; }
+                { _focusedHandle=e.keyCode==KeyCode.Home?0:1;MarkDirtyRepaint();e.StopPropagation();e.PreventDefaultHandling();return; }
                 bool time=e.keyCode==KeyCode.LeftArrow||e.keyCode==KeyCode.RightArrow;
                 bool value=e.keyCode==KeyCode.UpArrow||e.keyCode==KeyCode.DownArrow;
                 if(!time&&!value) return;
@@ -494,7 +495,7 @@ namespace Thry.ThryEditor
                     else {float max=_unclampedW?bounds.x:1;v.w=Mathf.Clamp(next,Mathf.Clamp(v.z,0,max),max);}
                 }
                 else v[_focusedHandle]=Mathf.Clamp(v[_focusedHandle]+(e.keyCode==KeyCode.UpArrow?step:-step)*(bounds.z-bounds.y),bounds.y,bounds.z);
-                _write(_focusedHandle,v,1<<(_focusedHandle+(time?2:0)));MarkDirtyRepaint();e.StopPropagation();e.PreventDefault();
+                _write(_focusedHandle,v,1<<(_focusedHandle+(time?2:0)));MarkDirtyRepaint();e.StopPropagation();e.PreventDefaultHandling();
             });
         }
         private void Finish()
@@ -590,14 +591,14 @@ namespace Thry.ThryEditor
                 if (e.keyCode == KeyCode.Escape && _part >= 0)
                 {
                     if (_cancel != null) _cancel(); else _write(_original, PartMasks[_part]);
-                    Finish(); e.StopPropagation(); e.PreventDefault(); return;
+                    Finish(); e.StopPropagation(); e.PreventDefaultHandling(); return;
                 }
                 if (_part >= 0 || (e.keyCode != KeyCode.UpArrow && e.keyCode != KeyCode.DownArrow)) return;
                 var v = _read(); float step = (e.shiftKey ? .1f : e.altKey ? .001f : .01f) * (e.keyCode == KeyCode.UpArrow ? 1 : -1);
                 v[_focusedPart] = _focusedPart == 1 || _focusedPart == 2 ? Drawers.Curve4Drawer.ClampHandle(v[_focusedPart] + step) : Mathf.Clamp01(v[_focusedPart] + step);
                 if (_focusedPart == 0) v[1] = Drawers.Curve4Drawer.ClampHandle(v[1] + step);
                 if (_focusedPart == 3) v[2] = Drawers.Curve4Drawer.ClampHandle(v[2] + step);
-                _write(v, PartMasks[_focusedPart]); MarkDirtyRepaint(); e.StopPropagation(); e.PreventDefault();
+                _write(v, PartMasks[_focusedPart]); MarkDirtyRepaint(); e.StopPropagation(); e.PreventDefaultHandling();
             });
         }
         private void Finish()

@@ -268,7 +268,9 @@ namespace Thry.ThryEditor.TexturePacker
                 case UnityEngine.Rendering.GraphicsDeviceType.Metal:
                 case UnityEngine.Rendering.GraphicsDeviceType.Vulkan:
                 case UnityEngine.Rendering.GraphicsDeviceType.OpenGLCore:
+#if !UNITY_2023_1_OR_NEWER
                 case UnityEngine.Rendering.GraphicsDeviceType.OpenGLES2:
+#endif
                 case UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3:
                     return "Inputs_{0}_";
                 default:

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -47,7 +48,7 @@ namespace Thry.ThryEditor
                 {
                     if (!ContextHandlers.TryGetValue(owner, out _)) continue;
                     if (owner != element) return;
-                    e.PreventDefault(); e.StopImmediatePropagation();
+                    e.PreventDefaultHandling(); e.StopImmediatePropagation();
                     handler.Open(e.position);
                     return;
                 }
@@ -113,10 +114,10 @@ namespace Thry.ThryEditor
                 else if (e.direction == NavigationMoveEvent.Direction.Down || e.direction == NavigationMoveEvent.Direction.Up)
                     Move(e.direction == NavigationMoveEvent.Direction.Down ? 1 : -1);
                 else return;
-                e.PreventDefault(); e.StopPropagation();
+                e.PreventDefaultHandling(); e.StopPropagation();
             });
-            RegisterCallback<NavigationSubmitEvent>(e => { if (e.target is Button) return; Commit(_selected); e.PreventDefault(); e.StopPropagation(); });
-            RegisterCallback<NavigationCancelEvent>(e => { Close(); e.PreventDefault(); e.StopPropagation(); });
+            RegisterCallback<NavigationSubmitEvent>(e => { if (e.target is Button) return; Commit(_selected); e.PreventDefaultHandling(); e.StopPropagation(); });
+            RegisterCallback<NavigationCancelEvent>(e => { Close(); e.PreventDefaultHandling(); e.StopPropagation(); });
             RegisterCallback<KeyDownEvent>(e => {
                 if (e.keyCode == KeyCode.Home || e.keyCode == KeyCode.End)
                 {
@@ -128,7 +129,7 @@ namespace Thry.ThryEditor
                 else if (e.keyCode == KeyCode.LeftArrow || e.keyCode == KeyCode.Backspace) Back();
                 else if (!e.ctrlKey && !e.commandKey && !e.altKey && !char.IsControl(e.character)) FindTyped(e.character);
                 else return;
-                e.PreventDefault(); e.StopPropagation();
+                e.PreventDefaultHandling(); e.StopPropagation();
             });
             RegisterCallback<FocusOutEvent>(e => { var next = e.relatedTarget as VisualElement; if (!_populating && (next == null || !Contains(next))) Close(false); });
             panelRoot.RegisterCallback<GeometryChangedEvent>(OnPanelGeometry);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -26,7 +27,7 @@ namespace Thry.ThryEditor
                 var state = new WindowShortcuts();
                 element.RegisterCallback<KeyDownEvent>(e =>
                 {
-                    if (e.isDefaultPrevented) return;
+                    if (e.IsHandled()) return;
                     if (e.keyCode == KeyCode.Escape && state.Cancel != null) state.Cancel();
                     else if ((e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) && state.Confirm != null
                         && (!state.ModifiedEnter || e.ctrlKey || e.commandKey))
@@ -38,7 +39,7 @@ namespace Thry.ThryEditor
                         state.Confirm();
                     }
                     else return;
-                    e.PreventDefault(); e.StopPropagation();
+                    e.PreventDefaultHandling(); e.StopPropagation();
                 });
                 return state;
             });
@@ -68,8 +69,8 @@ namespace Thry.ThryEditor
                 RetainedMenu.Open(field.worldBound, field, field.choices.Select((choice, index) => new RetainedMenu.Item
                 { Text = choice, Checked = field.index == index, Action = () => SelectDropdownChoice(field, choice) }));
             };
-            field.RegisterCallback<PointerDownEvent>(e=>{if(e.button!=0)return;e.PreventDefault();e.StopImmediatePropagation();show();},TrickleDown.TrickleDown);
-            field.RegisterCallback<NavigationSubmitEvent>(e=>{e.PreventDefault();e.StopImmediatePropagation();show();},TrickleDown.TrickleDown);
+            field.RegisterCallback<PointerDownEvent>(e=>{if(e.button!=0)return;e.PreventDefaultHandling();e.StopImmediatePropagation();show();},TrickleDown.TrickleDown);
+            field.RegisterCallback<NavigationSubmitEvent>(e=>{e.PreventDefaultHandling();e.StopImmediatePropagation();show();},TrickleDown.TrickleDown);
         }
 
         internal static void SelectDropdownChoice(DropdownField field, string value, bool applyOnReselect = false)

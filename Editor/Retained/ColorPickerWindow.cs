@@ -679,12 +679,12 @@ namespace Thry.ThryEditor
             var target = e.target as VisualElement;
             // An open dropdown or context menu handles its own Escape and Enter.
             if (root.Q<RetainedMenu>() != null || target?.GetFirstAncestorOfType<RetainedMenu>() != null) return;
-            if (e.isDefaultPrevented || _ended) return;
+            if (e.IsHandled() || _ended) return;
             if (e.keyCode == KeyCode.Escape)
             {
                 if (ThryEyeDropper.IsActive) ThryEyeDropper.Cancel();
                 else CancelAndClose();
-                e.PreventDefault(); e.StopPropagation();
+                e.PreventDefaultHandling(); e.StopPropagation();
             }
             else if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)
             {
@@ -695,7 +695,7 @@ namespace Thry.ThryEditor
                     root.schedule.Execute(() => { if (!_ended && InTextInput(root.focusController?.focusedElement as VisualElement)) root.Focus(); });
                     return;
                 }
-                e.PreventDefault(); e.StopPropagation();
+                e.PreventDefaultHandling(); e.StopPropagation();
                 Close();
             }
         }

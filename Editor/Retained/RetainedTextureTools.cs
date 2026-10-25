@@ -199,7 +199,7 @@ namespace Thry.ThryEditor.Drawers
                 var caption=new Label(channelCaption) {pickingMode=PickingMode.Ignore};caption.AddToClassList("thry-texture-caption");disclosure.Add(caption);
                 disclosure.tooltip = labels[i] + " · " + outputChannel + " output. Click to edit fallback, inversion, and remapping.";
                 sourceRow.Insert(0,disclosure);
-                disclosure.RegisterCallback<NavigationSubmitEvent>(e=>{e.PreventDefault();e.StopImmediatePropagation();detail.value=!detail.value;},TrickleDown.TrickleDown);
+                disclosure.RegisterCallback<NavigationSubmitEvent>(e=>{e.PreventDefaultHandling();e.StopImmediatePropagation();detail.value=!detail.value;},TrickleDown.TrickleDown);
                 detail.RegisterValueChangedCallback(e=>{if(e.target==detail)caret.image=Resources.Load<Texture2D>("ThryToolbar/header-caret-"+(e.newValue?"down":"right"));});
                 var texture=new ObjectField {objectType=typeof(Texture2D),allowSceneObjects=false,name="packer-source-"+i};value.Add(texture);
                 value.AddToClassList("thry-packer-source-value");

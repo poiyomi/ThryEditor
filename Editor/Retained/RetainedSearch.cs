@@ -66,7 +66,7 @@ namespace Thry.ThryEditor
             _summary = new Label { name = "thry-filter-summary" }; _summary.AddToClassList("thry-search-summary"); toolbar.Add(_summary);
             var clearButton = new Button(clear) { name = "thry-clear-filter", text = "Clear filters", tooltip = "Clear the text, type, and changed filters to show the full inspector again." };
             _clearButton = clearButton;
-            clearButton.RegisterCallback<NavigationSubmitEvent>(e => { e.PreventDefault(); e.StopImmediatePropagation(); clear(); }, TrickleDown.TrickleDown);
+            clearButton.RegisterCallback<NavigationSubmitEvent>(e => { e.PreventDefaultHandling(); e.StopImmediatePropagation(); clear(); }, TrickleDown.TrickleDown);
             toolbar.Add(clearButton);
             _results = new VisualElement(); _results.AddToClassList("thry-search-matches"); _results.AddToClassList("thry-material-controls"); Add(_results);
             _results.RegisterCallback<GeometryChangedEvent>(e => {
@@ -563,7 +563,7 @@ namespace Thry.ThryEditor
                         var entry = textures.GetArrayElementAtIndex(i);
                         var texture = entry.FindPropertyRelative("second.m_Texture");
                         if (texture != null && texture.objectReferenceValue == null
-#if UNITY_6000_5_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
                             && texture.objectReferenceEntityIdValue != EntityId.None)
 #else
                             && texture.objectReferenceInstanceIDValue != 0)

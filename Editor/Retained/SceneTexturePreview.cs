@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Thry.ThryEditor.Helpers;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -204,7 +205,7 @@ namespace Thry.ThryEditor
         {
             Renderers.Clear();
             if (!Active) return;
-            foreach (var renderer in UnityEngine.Object.FindObjectsOfType<Renderer>(true))
+            foreach (var renderer in ObjectExtensions.FindObjects<Renderer>(true))
                 if ((renderer is MeshRenderer || renderer is SkinnedMeshRenderer)
                     && !EditorUtility.IsPersistent(renderer)
                     && StageUtility.GetStageHandle(renderer.gameObject) == StageUtility.GetCurrentStageHandle())
