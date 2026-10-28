@@ -276,14 +276,19 @@ namespace Thry.ThryEditor
         // Builds a property name -> child lookup for name-based copy matching. Children without a backing
         // MaterialProperty (e.g. labels) carry no value and are skipped; on duplicate names, the first wins.
         // 
-        // Pairs each source child with the target child it should copy to. Matching is done in two passes:
+        // Pairs each source child with the target child it should copy to. Matching is done in three passes:
         //   1. Exact property-name match. This keeps copies between shader versions correct even when a
         //      module has added/removed/reordered properties, so values never land on the wrong property.
-        //   2. Positional fallback for source children whose name has no counterpart in the target. Each
-        //      is paired with the next still-unmatched target child of the same structural kind (group vs.
-        //      leaf) and property type, in order. This restores copying between structurally parallel
-        //      sections whose properties differ only by a slot suffix (e.g. Poiyomi's Emission slots:
-        //      _EmissionColor -> _EmissionColor1), which pure name matching silently dropped.
+        //   2. Slot-insensitive name match: names compared with their digits removed, so structurally
+        //      parallel sections whose properties differ only by a slot number still pair up by name
+        //      (e.g. Poiyomi's Emission slots: _EmissionColor -> _EmissionColor1,
+        //      _EmissionAL0Enabled -> _EmissionAL1Enabled).
+        //   3. Positional fallback for whatever is still unmatched. Each is paired with the next
+        //      still-unmatched target child of the same structural kind (group vs. leaf) and property type,
+        //      in order. Running this last matters: a property that exists in only one slot (Emission 0's
+        //      _EmissionFallbackHelp, an Int and so Float-backed) would otherwise consume the first Float of
+        //      the other slot and shift every later Float by one, turning _EmissionBaseColorAsMap into
+        //      _EmissionReplace1.
         // Children without a backing MaterialProperty (e.g. labels) carry no value and are skipped.
         private static List<KeyValuePair<ShaderPart, ShaderPart>> BuildCopyPairs(IList<ShaderPart> sourceChildren, IList<ShaderPart> targetChildren)
         {
@@ -315,17 +320,46 @@ namespace Thry.ThryEditor
                 }
             }
 
-            // Pass 2: positional fallback, constrained to the same kind and property type so a value is
-            // never copied onto an incompatible property.
+            // Pass 2: slot-insensitive name matches. Several children can share a slotless name; those pair
+            // up in order. Unmatched source children are collected for the positional pass.
+            string[] targetSlotlessNames = new string[targetChildren.Count];
+            for (int i = 0; i < targetChildren.Count; i++)
+            {
+                if (targetChildren[i].MaterialProperty != null) targetSlotlessNames[i] = RemoveSlotNumbers(targetChildren[i].MaterialProperty.name);
+            }
+
+            var positionalSource = new List<ShaderPart>();
             foreach (ShaderPart srcChild in unmatchedSource)
+            {
+                string slotlessName = RemoveSlotNumbers(srcChild.MaterialProperty.name);
+                int match = -1;
+                for (int i = 0; i < targetChildren.Count; i++)
+                {
+                    if (targetConsumed[i] || targetSlotlessNames[i] != slotlessName) continue;
+                    if (!AreCopyCompatible(srcChild, targetChildren[i])) continue;
+                    match = i;
+                    break;
+                }
+
+                if (match < 0)
+                {
+                    positionalSource.Add(srcChild);
+                    continue;
+                }
+                targetConsumed[match] = true;
+                pairs.Add(new KeyValuePair<ShaderPart, ShaderPart>(srcChild, targetChildren[match]));
+            }
+
+            // Pass 3: positional fallback, constrained to the same kind and property type so a value is
+            // never copied onto an incompatible property.
+            foreach (ShaderPart srcChild in positionalSource)
             {
                 for (int i = 0; i < targetChildren.Count; i++)
                 {
                     if (targetConsumed[i]) continue;
                     ShaderPart targetChild = targetChildren[i];
                     if (targetChild.MaterialProperty == null) continue;
-                    if ((srcChild is ShaderGroup) != (targetChild is ShaderGroup)) continue;
-                    if (srcChild.MaterialProperty.GetPropertyType() != targetChild.MaterialProperty.GetPropertyType()) continue;
+                    if (!AreCopyCompatible(srcChild, targetChild)) continue;
 
                     targetConsumed[i] = true;
                     pairs.Add(new KeyValuePair<ShaderPart, ShaderPart>(srcChild, targetChild));
@@ -334,6 +368,24 @@ namespace Thry.ThryEditor
             }
 
             return pairs;
+        }
+
+        // Same structural kind (group vs. leaf) and property type.
+        private static bool AreCopyCompatible(ShaderPart a, ShaderPart b)
+        {
+            if ((a is ShaderGroup) != (b is ShaderGroup)) return false;
+            return a.MaterialProperty.GetPropertyType() == b.MaterialProperty.GetPropertyType();
+        }
+
+        // _EmissionReplace0 / _EmissionReplace1 -> _EmissionReplace, _EmissionAL0Enabled -> _EmissionALEnabled
+        private static string RemoveSlotNumbers(string propertyName)
+        {
+            var sb = new System.Text.StringBuilder(propertyName.Length);
+            foreach (char c in propertyName)
+            {
+                if (c < '0' || c > '9') sb.Append(c);
+            }
+            return sb.ToString();
         }
 
         protected override void DrawInternal(GUIContent content, Rect? rect = null, bool useEditorIndent = false, bool isInHeader = false)
