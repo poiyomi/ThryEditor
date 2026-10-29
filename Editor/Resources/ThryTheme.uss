@@ -8849,3 +8849,65 @@
     color: var(--thry-value-color);
     -unity-font-style: bold;
 }
+
+.thry-inspector .thry-module-offer > .thry-section-header,
+.thry-inspector .thry-module-offer > .thry-section-header:hover {
+    border-left-width: var(--thry-border-width-strong);
+    border-left-color: var(--thry-monokai-purple);
+}
+.thry-inspector .thry-module-offer-blocked > .thry-section-header,
+.thry-inspector .thry-module-offer-blocked > .thry-section-header:hover {
+    border-left-color: var(--thry-monokai-pink);
+}
+.thry-inspector .thry-module-offer-rebuild > .thry-section-header,
+.thry-inspector .thry-module-offer-rebuild > .thry-section-header:hover {
+    border-left-color: var(--thry-monokai-orange);
+}
+.thry-inspector .thry-module-offer-update > .thry-section-header,
+.thry-inspector .thry-module-offer-update > .thry-section-header:hover {
+    border-left-color: var(--thry-monokai-cyan);
+}
+.thry-inspector .thry-module-offer-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    margin: 0 var(--thry-space-2);
+}
+.thry-inspector .thry-module-offer-byline {
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0 0 0 var(--thry-space-5);
+    color: var(--thry-muted-color);
+    font-size: var(--thry-type-body-small);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.thry-inspector .thry-module-offer-blocked .thry-module-offer-byline {
+    color: var(--thry-monokai-pink);
+}
+.thry-inspector .thry-module-offer-button {
+    height: 16px;
+    margin: 0 0 0 var(--thry-space-4);
+    padding: 0 var(--thry-space-6);
+    border-width: var(--thry-border-width);
+    border-radius: var(--thry-radius-round);
+    border-color: var(--thry-monokai-green);
+    background-color: transparent;
+    color: var(--thry-monokai-green);
+    -unity-font-style: bold;
+}
+.thry-inspector .thry-module-offer-button:hover {
+    border-color: var(--thry-monokai-green);
+    background-color: var(--thry-hover-color);
+}
+.thry-inspector .thry-module-offer-rebuild .thry-module-offer-button,
+.thry-inspector .thry-module-offer-rebuild .thry-module-offer-button:hover {
+    border-color: var(--thry-monokai-orange);
+    color: var(--thry-monokai-orange);
+}
+.thry-inspector .thry-module-offer-update .thry-module-offer-button,
+.thry-inspector .thry-module-offer-update .thry-module-offer-button:hover {
+    border-color: var(--thry-monokai-cyan);
+    color: var(--thry-monokai-cyan);
+}
