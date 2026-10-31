@@ -3493,6 +3493,7 @@ namespace Thry.ThryEditor
         {
             // Holds the flattened variant copies the SDK's prefab save would otherwise drop
             const string TempFolder = "Assets/__ThryUploadMaterials";
+            const string MeshStrippingDisabledKey = "MeshStrippingDisabledForUpload";
             static readonly List<Material> s_uploadCopies = new List<Material>();
 
             public int callbackOrder => 100;
@@ -3503,6 +3504,7 @@ namespace Thry.ThryEditor
                 FlattenVariants(avatarGameObject);
                 List<Material> materials = GetAvatarMaterials(avatarGameObject);
                 if (SetLockedForAllMaterialsInternal(materials, 1, showProgressbar: true, showDialog: PersistentData.Get<bool>("ShowLockInDialog", true), allowCancel: false) == false) return false;
+                DisableMeshStripping();
                 //returning true all the time, because build process cant be stopped it seems
                 return true;
             }
@@ -3535,6 +3537,7 @@ namespace Thry.ThryEditor
 
             public void OnPostprocessAvatar()
             {
+                RestoreMeshStripping();
                 foreach (Material copy in s_uploadCopies)
                 {
                     if (copy == null) continue;
@@ -3547,6 +3550,24 @@ namespace Thry.ThryEditor
                 s_uploadCopies.Clear();
                 ReconcileSharedShaderTags();
                 if (AssetDatabase.IsValidFolder(TempFolder)) AssetDatabase.DeleteAsset(TempFolder);
+            }
+
+            // Unity would strip mesh channels that only animated material swaps read. The SDK skips postprocess
+            // when a build fails, so the delay call restores the setting then.
+            static void DisableMeshStripping()
+            {
+                if (!PlayerSettings.stripUnusedMeshComponents) return;
+                PlayerSettings.stripUnusedMeshComponents = false;
+                PersistentData.Set(MeshStrippingDisabledKey, true);
+                EditorApplication.delayCall += RestoreMeshStripping;
+            }
+
+            [InitializeOnLoadMethod]
+            static void RestoreMeshStripping()
+            {
+                if (!PersistentData.Get(MeshStrippingDisabledKey, false)) return;
+                PersistentData.Set(MeshStrippingDisabledKey, false);
+                PlayerSettings.stripUnusedMeshComponents = true;
             }
 
             // Variants can't be locked, so the avatar clone gets flattened copies and the project keeps its variants
