@@ -829,7 +829,7 @@ namespace Thry.ThryEditor
             nativeIcon.style.display = DisplayStyle.None;
             var tile = new VisualElement { pickingMode = PickingMode.Ignore };
             tile.AddToClassList("thry-asset-tile"); display.Insert(0, tile);
-            var preview = new Image { name = "texture-asset-thumbnail", scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
+            var preview = new Image { name = "texture-asset-thumbnail", scaleMode = ScaleMode.StretchToFill, pickingMode = PickingMode.Ignore };
             tile.Add(preview);
             var mixedIcon = RetainedTextureCard.CreateMixedIcon(); tile.Add(mixedIcon);
             VisualElement empty = null;
