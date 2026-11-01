@@ -25,6 +25,9 @@ namespace Thry.ThryEditor
         private readonly Func<MaterialProperty[]> _propertyProvider;
         private readonly VisualElement _chrome, _tools;
         private readonly Label _title, _version, _state, _placeholder;
+        private readonly Button _versionUpdate;
+        const string UpdateVersionKey = "Poiyomi.PackageManager.UpdateVersion";
+        const string UpdateMenuItem = "Poi/Pro/Update to Latest";
         private readonly ToolbarSearchField _search;
         private readonly DropdownField _typeFilter;
         private readonly DropdownField _statusFilter;
@@ -66,7 +69,19 @@ namespace Thry.ThryEditor
             var titleRow = new VisualElement(); titleRow.AddToClassList("thry-title-row");
             _title = new Label("Material"); _title.AddToClassList("thry-title");
             _version = new Label(); _version.AddToClassList("thry-version");
-            titleRow.Add(_title); titleRow.Add(_version);
+            _versionUpdate = new Button(() => EditorApplication.ExecuteMenuItem(UpdateMenuItem));
+            _versionUpdate.AddToClassList("thry-version-update");
+            _versionUpdate.generateVisualContent += context => {
+                var center = _versionUpdate.contentRect.center;
+                var painter = context.painter2D;
+                painter.lineWidth = 2f;
+                painter.lineCap = LineCap.Round;
+                painter.lineJoin = LineJoin.Round;
+                painter.strokeColor = _versionUpdate.resolvedStyle.color;
+                painter.BeginPath(); painter.MoveTo(center + new Vector2(0, 5)); painter.LineTo(center + new Vector2(0, -5)); painter.Stroke();
+                painter.BeginPath(); painter.MoveTo(center + new Vector2(-4, -1)); painter.LineTo(center + new Vector2(0, -5)); painter.LineTo(center + new Vector2(4, -1)); painter.Stroke();
+            };
+            titleRow.Add(_title); titleRow.Add(_version); titleRow.Add(_versionUpdate);
             _state = new Label(); _state.AddToClassList("thry-state");
             branding.Add(titleRow); branding.Add(_state); masthead.Add(branding);
             _tools = new VisualElement { name = "thry-tools" }; _tools.AddToClassList("thry-tools");
@@ -635,6 +650,13 @@ namespace Thry.ThryEditor
             _title.tooltip = mixedPoiyomi ? string.Join("\n", shaderNames) : shaderName ?? _title.text;
             _version.text = version.Value.Trim();
             _version.style.display = mixedPoiyomi ? DisplayStyle.None : DisplayStyle.Flex;
+            // The package manager in com.poiyomi.pro publishes this; installs without it never offer an update
+            string update = SessionState.GetString(UpdateVersionKey, "");
+            bool offerUpdate = update.Length > 0 && !mixedPoiyomi && shaderName != null && shaderName.Split('/').Last().StartsWith("Poiyomi", StringComparison.OrdinalIgnoreCase);
+            _version.EnableInClassList("thry-version-outdated", offerUpdate);
+            _version.tooltip = offerUpdate ? update + " is available" : "";
+            _versionUpdate.tooltip = "Update to " + update;
+            _versionUpdate.style.display = offerUpdate ? DisplayStyle.Flex : DisplayStyle.None;
             bool editing = _shader.RootCategories.Any(g => SectionEditing.IsEditing(g));
             int selectedCount = _retained.Model.SelectedMaterials.Length;
             _state.text = editing ? "Editing shader sections" : _shader.IsLockedMaterial ? "Optimized material"

@@ -8911,3 +8911,20 @@
     border-color: var(--thry-monokai-cyan);
     color: var(--thry-monokai-cyan);
 }
+.thry-inspector .thry-version.thry-version-outdated {
+    border-color: var(--thry-monokai-pink);
+    color: var(--thry-monokai-pink);
+}
+.thry-inspector .thry-version-update {
+    width: 18px;
+    height: 18px;
+    margin: 0 0 0 var(--thry-space-2);
+    padding: 0;
+    border-width: 0;
+    border-radius: var(--thry-radius-round);
+    background-color: transparent;
+    color: var(--thry-monokai-green);
+}
+.thry-inspector .thry-version-update:hover {
+    background-color: var(--thry-hover-color);
+}
