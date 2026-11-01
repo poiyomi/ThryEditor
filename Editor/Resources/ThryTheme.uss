@@ -340,7 +340,7 @@
 }
 
 .thry-version {
-    font-size: var(--thry-type-caption);
+    font-size: var(--thry-type-body-small);
     color: var(--thry-muted-color);
     margin-left: var(--thry-space-8);
     margin-top: 0;
@@ -5578,7 +5578,7 @@
 }
 
 .thry-inspector .thry-version {
-    color: var(--thry-muted-color);
+    color: var(--thry-value-color);
     background-color: transparent;
     border-radius: var(--thry-radius-round);
     border-width: 1px;
