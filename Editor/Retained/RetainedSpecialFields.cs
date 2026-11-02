@@ -373,13 +373,20 @@ namespace Thry.ThryEditor
 
         private void MinMax(VisualElement parent,ShaderProperty property,int component,float min,float max,bool storedLimits=false)
         {
-            var slider=new MinMaxSlider(min,max,min,max); parent.Add(slider);
-            bool synchronizing=false;
-            Track(slider,()=>{synchronizing=true;try { var v=property.MaterialProperty.vectorValue;
-                if(storedLimits) { float low=Mathf.Min(v.z,v.w),high=Mathf.Max(v.z,v.w); slider.highLimit=Mathf.Max(slider.lowLimit,high); slider.lowLimit=low; slider.highLimit=high; }
-                slider.SetValueWithoutNotify(new Vector2(v[component],v[component+1]));
-                slider.showMixedValue=property.MaterialProperty.targets.OfType<Material>().Select(m=>{var value=m.GetVector(property.MaterialProperty.name);return new Vector2(value[component],value[component+1]);}).Distinct().Skip(1).Any();} finally { synchronizing=false; }});
-            slider.RegisterValueChangedCallback(e=>{if(!synchronizing)Model.Edit(property,p=>{var v=p.vectorValue;float low=storedLimits?Mathf.Min(v.z,v.w):min, high=storedLimits?Mathf.Max(v.z,v.w):max;v[component]=Mathf.Clamp(e.newValue.x,low,high);v[component+1]=Mathf.Clamp(e.newValue.y,v[component],high);p.vectorValue=v;},true);});
+            Func<Vector4,Vector2> limits=v=>storedLimits?new Vector2(Mathf.Min(v.z,v.w),Mathf.Max(v.z,v.w)):new Vector2(min,max);
+            var gesture=new RetainedPropertyGesture(Model,property);
+            var slider=new RetainedRangeSlider(()=>{var v=property.MaterialProperty.vectorValue;return new Vector2(v[component],v[component+1]);},()=>limits(property.MaterialProperty.vectorValue),
+                (value,mask)=>Model.Edit(property,p=>
+                {
+                    var v=p.vectorValue;var bounds=limits(v);
+                    if((mask&1)!=0)v[component]=Mathf.Clamp(value.x,bounds.x,(mask&2)!=0?bounds.y:Mathf.Clamp(v[component+1],bounds.x,bounds.y));
+                    if((mask&2)!=0)v[component+1]=Mathf.Clamp(value.y,Mathf.Clamp(v[component],bounds.x,bounds.y),bounds.y);
+                    p.vectorValue=v;
+                },true),mask=>gesture.Begin(mask<<component),gesture.Cancel,gesture.End);
+            parent.Add(slider);
+            Track(slider,()=>{slider.SetEnabled(Model.CanEdit(property));
+                slider.Mixed=property.MaterialProperty.targets.OfType<Material>().Select(m=>{var value=m.GetVector(property.MaterialProperty.name);return new Vector2(value[component],value[component+1]);}).Distinct().Skip(1).Any();
+                slider.Refresh();});
             ComponentInputs(parent,property,new[]{"Min","Max"},component,(index,value)=>Model.Edit(property,p=>
             {
                 var v=p.vectorValue;float low=storedLimits?Mathf.Min(v.z,v.w):min, high=storedLimits?Mathf.Max(v.z,v.w):max;
@@ -400,6 +407,135 @@ namespace Thry.ThryEditor
                 entries.Add(field);
             }
         }
+    }
+
+    internal sealed class RetainedRangeSlider : VisualElement
+    {
+        const float GrabRadius = 6;
+        const string SelectedClass = "thry-range-slider__anchor--selected";
+        static readonly CustomStyleProperty<Color> FillStart = new CustomStyleProperty<Color>("--range-fill-start");
+        static readonly CustomStyleProperty<Color> FillEnd = new CustomStyleProperty<Color>("--range-fill-end");
+        private readonly Func<Vector2> _read, _limits;
+        private readonly Action<Vector2,int> _write;
+        private readonly Action<int> _begin;
+        private readonly Action _cancel, _end;
+        private readonly VisualElement _lane, _fill;
+        private readonly VisualElement[] _anchors = new VisualElement[2];
+        // Parts: 0 start anchor, 1 end anchor, 2 the span, 3 stacked anchors that the first move separates.
+        private int _part = -1, _focusedAnchor, _pointerId = -1;
+        private float _grabOffset;
+        private Vector2 _original, _dragLimits;
+        Color _fillStart = new Color(.36f, .61f, .82f), _fillEnd = new Color(.66f, .85f, .97f);
+        internal bool Mixed { get; set; }
+
+        internal RetainedRangeSlider(Func<Vector2> read,Func<Vector2> limits,Action<Vector2,int> write,Action<int> begin,Action cancel,Action end)
+        {
+            _read=read;_limits=limits;_write=write;_begin=begin;_cancel=cancel;_end=end;
+            AddToClassList("thry-range-slider"); AddToClassList("unity-slider"); AddToClassList("unity-base-slider--horizontal"); focusable=true;
+            var rail = new VisualElement { pickingMode = PickingMode.Ignore }; rail.AddToClassList("thry-range-slider__rail"); Add(rail);
+            var tracker = new VisualElement { pickingMode = PickingMode.Ignore }; tracker.AddToClassList("unity-base-slider__tracker"); rail.Add(tracker);
+            _lane = new VisualElement { pickingMode = PickingMode.Ignore }; _lane.AddToClassList("thry-range-slider__lane"); rail.Add(_lane);
+            _fill = new VisualElement { pickingMode = PickingMode.Ignore }; _fill.AddToClassList("thry-range-slider__fill"); _lane.Add(_fill);
+            _fill.generateVisualContent += context => ColorPickerDrawing.Gradient(context, _fill.contentRect, t => Color.Lerp(_fillStart, _fillEnd, t), 0, 1, 1);
+            _fill.RegisterCallback<CustomStyleResolvedEvent>(e => {
+                if (e.target != _fill) return;
+                if (_fill.customStyle.TryGetValue(FillStart, out Color start)) _fillStart = start;
+                if (_fill.customStyle.TryGetValue(FillEnd, out Color end)) _fillEnd = end;
+                _fill.MarkDirtyRepaint();
+            });
+            for (int i = 0; i < 2; i++)
+            {
+                _anchors[i] = new VisualElement { pickingMode = PickingMode.Ignore };
+                _anchors[i].AddToClassList("unity-base-slider__dragger"); _anchors[i].AddToClassList("thry-range-slider__anchor");
+                _lane.Add(_anchors[i]);
+            }
+            tooltip="Drag either end, or drag between them to move the range. Escape cancels the drag. Home/End selects an end; arrow keys adjust it. Shift moves faster, Alt moves slower.";
+            RegisterCallback<PointerDownEvent>(e =>
+            {
+                if (e.button != 0 || !enabledInHierarchy || _part >= 0) return;
+                var v = _read(); _original = v; _dragLimits = _limits(); Focus();
+                float x = _lane.WorldToLocal(e.position).x, press = Value(x);
+                float startX = Position(v.x), endX = Position(v.y), toStart = Mathf.Abs(x - startX), toEnd = Mathf.Abs(x - endX);
+                bool grabbed = Mathf.Min(toStart, toEnd) <= GrabRadius;
+                _part = grabbed && Mathf.Abs(endX - startX) < 1 ? 3 : grabbed || x <= startX || x >= endX ? (toStart < toEnd ? 0 : 1) : 2;
+                // Grabbing keeps the pointer's offset from the anchor; a click beside the anchors jumps the nearest one there.
+                _grabOffset = _part == 2 || grabbed ? press - Mathf.Clamp(_part == 1 ? v.y : v.x, _dragLimits.x, _dragLimits.y) : 0;
+                if (_part < 2) _focusedAnchor = _part;
+                _pointerId = e.pointerId; _begin?.Invoke(_part == 0 ? 1 : _part == 1 ? 2 : 3);
+                this.CapturePointer(e.pointerId);
+                if (_part < 2 && !grabbed) Drag(press); else Refresh();
+                e.StopPropagation();
+            });
+            RegisterCallback<PointerMoveEvent>(e =>
+            {
+                if (_part < 0 || e.pointerId != _pointerId || !this.HasPointerCapture(e.pointerId)) return;
+                float value = Value(_lane.WorldToLocal(e.position).x) - _grabOffset;
+                if (_part == 3)
+                {
+                    float stacked = Mathf.Clamp(_original.x, _dragLimits.x, _dragLimits.y);
+                    if (Mathf.Approximately(value, stacked)) return;
+                    _part = _focusedAnchor = value < stacked ? 0 : 1;
+                }
+                Drag(value); e.StopPropagation();
+            });
+            RegisterCallback<PointerUpEvent>(e => { if (e.pointerId != _pointerId) return; Finish(); e.StopPropagation(); });
+            RegisterCallback<PointerCaptureOutEvent>(e => Finish());
+            RegisterCallback<DetachFromPanelEvent>(e => Finish());
+            RegisterCallback<NavigationMoveEvent>(e =>
+            {
+                if (e.direction == NavigationMoveEvent.Direction.Left || e.direction == NavigationMoveEvent.Direction.Right) ColorWheel.KeepFocus(this, e);
+            });
+            RegisterCallback<KeyDownEvent>(e =>
+            {
+                if (!enabledInHierarchy) return;
+                if (e.keyCode == KeyCode.Escape && _part >= 0)
+                {
+                    if (_cancel != null) _cancel(); else _write(_original, 3);
+                    Finish(); e.StopPropagation(); e.PreventDefaultHandling(); return;
+                }
+                if (_part >= 0 || Mixed) return;
+                if (e.keyCode == KeyCode.Home || e.keyCode == KeyCode.End)
+                { _focusedAnchor = e.keyCode == KeyCode.Home ? 0 : 1; Refresh(); e.StopPropagation(); e.PreventDefaultHandling(); return; }
+                int direction = e.keyCode == KeyCode.RightArrow ? 1 : e.keyCode == KeyCode.LeftArrow ? -1 : 0;
+                if (direction == 0) return;
+                var v = _read(); var bounds = _limits();
+                float step = direction * (e.shiftKey ? .1f : e.altKey ? .001f : .01f) * (bounds.y - bounds.x);
+                if (_focusedAnchor == 0) v.x = Mathf.Clamp(v.x + step, bounds.x, Mathf.Clamp(v.y, bounds.x, bounds.y));
+                else v.y = Mathf.Clamp(v.y + step, Mathf.Clamp(v.x, bounds.x, bounds.y), bounds.y);
+                _write(v, 1 << _focusedAnchor); Refresh(); e.StopPropagation(); e.PreventDefaultHandling();
+            });
+        }
+        internal void Refresh()
+        {
+            var v = _read(); var bounds = _part >= 0 ? _dragLimits : _limits();
+            float start = Mathf.InverseLerp(bounds.x, bounds.y, v.x), end = Mathf.InverseLerp(bounds.x, bounds.y, v.y);
+            _anchors[0].style.left = Length.Percent(start * 100); _anchors[1].style.left = Length.Percent(end * 100);
+            _fill.style.left = Length.Percent(start * 100); _fill.style.width = Length.Percent(Mathf.Max(0, end - start) * 100);
+            var display = Mixed ? DisplayStyle.None : DisplayStyle.Flex;
+            _fill.style.display = display;
+            for (int i = 0; i < 2; i++) { _anchors[i].style.display = display; _anchors[i].EnableInClassList(SelectedClass, i == _focusedAnchor); }
+        }
+        private void Drag(float value)
+        {
+            var v = _original; var bounds = _dragLimits; int mask;
+            if (_part == 2)
+            {
+                float width = Mathf.Clamp(_original.y - _original.x, 0, bounds.y - bounds.x);
+                v.x = Mathf.Clamp(value, bounds.x, bounds.y - width); v.y = v.x + width; mask = 3;
+            }
+            else if (_part == 0) { v.x = Mathf.Clamp(value, bounds.x, Mathf.Clamp(v.y, bounds.x, bounds.y)); mask = 1; }
+            else { v.y = Mathf.Clamp(value, Mathf.Clamp(v.x, bounds.x, bounds.y), bounds.y); mask = 2; }
+            _write(v, mask); Refresh();
+        }
+        private void Finish()
+        {
+            if (_part < 0) return;
+            _part = -1;
+            if (_pointerId >= 0 && this.HasPointerCapture(_pointerId)) this.ReleasePointer(_pointerId);
+            _pointerId = -1; _end?.Invoke(); Refresh();
+        }
+        private float Value(float x) => Mathf.LerpUnclamped(_dragLimits.x, _dragLimits.y, x / Mathf.Max(1, _lane.contentRect.width));
+        private float Position(float value) => Mathf.InverseLerp(_dragLimits.x, _dragLimits.y, value) * _lane.contentRect.width;
     }
 
     internal sealed class RetainedRamp : VisualElement

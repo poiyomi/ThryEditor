@@ -102,6 +102,8 @@
     --thry-hover-color: #4c4c4c;
     --thry-border-color: #4b4b4b;
     --thry-accent-color: #7aadd6;
+    --thry-range-fill-start: #5c9bd0;
+    --thry-range-fill-end: #a6d6f7;
     --thry-preset-color: var(--thry-monokai-cyan);
     --thry-preset-animation-color: var(--thry-monokai-purple);
     --thry-panel-background: #333333;
@@ -128,6 +130,8 @@
     --thry-hover-color: #e8e8e8;
     --thry-border-color: #b5b5b5;
     --thry-accent-color: #3b78a8;
+    --thry-range-fill-start: #2e6a9c;
+    --thry-range-fill-end: #5aa2d8;
     --thry-preset-color: var(--thry-monokai-cyan);
     --thry-preset-animation-color: var(--thry-monokai-purple);
     --thry-panel-background: #c9c9c9;
@@ -5920,6 +5924,56 @@
 
 .thry-inspector .unity-slider:hover .unity-base-slider__dragger,
 .thry-inspector .unity-slider:focus .unity-base-slider__dragger {
+    background-color: var(--thry-value-color);
+}
+
+/* Range sliders put the same slim anchors at both ends of a light blue gradient span.
+   The rail matches a slider's drag container; the lane keeps anchors inside the track. */
+.thry-inspector .thry-range-slider {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    height: var(--thry-control-height);
+    min-height: var(--thry-control-height);
+    margin: 0;
+}
+
+.thry-inspector .thry-range-slider > .thry-range-slider__rail {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--thry-space-4);
+    right: var(--thry-space-4);
+}
+
+.thry-inspector .thry-range-slider .thry-range-slider__lane {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    right: 3px;
+}
+
+.thry-inspector .thry-range-slider .thry-range-slider__fill {
+    position: absolute;
+    top: 50%;
+    height: 4px;
+    margin-top: -2px;
+    /* Bind inherited theme variables locally for CustomStyleResolvedEvent. */
+    --range-fill-start: var(--thry-range-fill-start);
+    --range-fill-end: var(--thry-range-fill-end);
+}
+
+.thry-inspector .thry-range-slider .thry-range-slider__anchor {
+    translate: -50% 0;
+}
+
+/* Keyboard focus brightens only the anchor that the arrow keys move. */
+.thry-inspector .thry-range-slider:focus .thry-range-slider__anchor {
+    background-color: var(--thry-thumb-color);
+}
+
+.thry-inspector .thry-range-slider:focus .thry-range-slider__anchor--selected {
     background-color: var(--thry-value-color);
 }
 
