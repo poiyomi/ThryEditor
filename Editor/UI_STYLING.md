@@ -85,6 +85,10 @@ Output settings have subtle section dividers, aligned fields, and inset help tex
 
 Graph ports read the same Monokai RGBA tokens as Pathing through GraphView's `--port-color`, so connected wires follow those colors too. MAX uses the muted text color. The light skin uses the shared darker channel equivalents and softer section, field, and disabled surfaces.
 
+## Outline Bake
+
+The Outline Bake section replaces its property rows with goal cards, drawn by `PoiOutlineBakeArt` with Painter2D. Each goal sets `--thry-outline-bake-accent` to a Monokai color: cyan for Hard Edges, green for Smooth Normals, orange for Crevice Shrink, and purple for Texture UVs. The drawings read `--thry-outline-bake-band` and `--thry-outline-bake-shape` from USS. A goal's card shows its on state through its border, check badge, and bold title as well as its color. Cards wrap in pairs, four across or two by two. The bake button uses the Monokai pink surface while the bake is out of date.
+
 ## Pathing
 
 Pathing uses the shared panel, subsection, field, selection, focus, and RGBA channel roles. Its preview, headings, action buttons, drag grips, selected-column indicator, labels, and painted lane markers no longer define a separate palette. The Monokai channel colors (pink, green, cyan, and off-white, with darker light-skin equivalents) also style the existing texture-packer channel badges. Material-authored path colors remain preview data. Starting-look and copy-motion actions use the same retained popup menu as the inspector.
