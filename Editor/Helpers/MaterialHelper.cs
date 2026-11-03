@@ -293,9 +293,12 @@ namespace Thry.ThryEditor.Helpers
             SerializedObject serializedObject = new SerializedObject(material);
             SerializedProperty savedProperties = serializedObject.FindProperty("m_SavedProperties").FindPropertyRelative("m_Floats");
             string[] properties = new string[savedProperties.arraySize];
+            if (properties.Length == 0) return properties;
+            SerializedProperty element = savedProperties.GetArrayElementAtIndex(0);
             for (int i = 0; i < properties.Length; i++)
             {
-                properties[i] = savedProperties.GetArrayElementAtIndex(i).displayName;
+                properties[i] = element.displayName;
+                element.Next(false);
             }
             return properties;
         }

@@ -4,6 +4,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Thry.ThryEditor.Drawers;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
@@ -314,6 +315,8 @@ namespace Thry.ThryEditor
             // Find all materials
             string[] guids = AssetDatabase.FindAssets("t:material");
             IndexPresets(guids, "Creating Preset Cache", alwaysShowProgress: true);
+            // With no presets nothing else writes the file, and a missing file rebuilds on every reload
+            Save();
 
             KnownMaterials.SetCollection(guids);
             KnownMaterials.Save();
@@ -325,6 +328,32 @@ namespace Thry.ThryEditor
         static bool IsMaterialAssetPath(string path)
         {
             return !string.IsNullOrEmpty(path) && path.EndsWith(".mat", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Reads a .mat just far enough to see its tags, which is far cheaper than loading it.
+        // Binary files, variants (their tags can come from the parent) and unreadable files can't
+        // be ruled out this way. Runs off the main thread, so no Unity API in here.
+        static bool CouldBePreset(string path)
+        {
+            try
+            {
+                using (StreamReader reader = new StreamReader(path))
+                {
+                    string line = reader.ReadLine();
+                    if (line == null || !line.StartsWith("%YAML", StringComparison.Ordinal)) return true;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (line.StartsWith("    " + TAG_IS_MATERIAL_PRESET + ":", StringComparison.Ordinal)) return true;
+                        if (line.StartsWith("  m_Parent:", StringComparison.Ordinal) && !line.Contains("{fileID: 0}")) return true;
+                        if (line.StartsWith("  disabledShaderPasses:", StringComparison.Ordinal)) return false;
+                    }
+                }
+                return false;
+            }
+            catch (Exception)
+            {
+                return true;
+            }
         }
 
         // Loads the given material assets and folds any presets among them into the cache.
@@ -346,13 +375,19 @@ namespace Thry.ThryEditor
             bool showProgress = alwaysShowProgress || paths.Count > 25;
             try
             {
+                if (showProgress)
+                    EditorUtility.DisplayProgressBar(progressTitle, $"Scanning {paths.Count} materials", 0);
+                bool[] couldBePreset = new bool[paths.Count];
+                Parallel.For(0, paths.Count, i => couldBePreset[i] = CouldBePreset(paths[i]));
+                List<string> candidates = paths.Where((path, i) => couldBePreset[i]).ToList();
+
                 using (new BatchedCacheSave())
                 {
-                    for (int i = 0; i < paths.Count; i++)
+                    for (int i = 0; i < candidates.Count; i++)
                     {
                         if (showProgress)
-                            EditorUtility.DisplayProgressBar(progressTitle, $"Loading material {i + 1}/{paths.Count}", (float)i / paths.Count);
-                        Material material = AssetDatabase.LoadAssetAtPath<Material>(paths[i]);
+                            EditorUtility.DisplayProgressBar(progressTitle, $"Loading material {i + 1}/{candidates.Count}", (float)i / candidates.Count);
+                        Material material = AssetDatabase.LoadAssetAtPath<Material>(candidates[i]);
                         if (material != null && IsPreset(material)) AddPreset(material);
                     }
                 }
@@ -397,13 +432,9 @@ namespace Thry.ThryEditor
             RegisterMaterials(new[] { guid });
         }
 
-        static Dictionary<Shader, List<string>> s_headersInShader = new Dictionary<Shader, List<string>>();
-        static List<string> GetHeadersInShader(Material m)
-        {       
-            if(s_headersInShader.ContainsKey(m.shader))
-            {
-                return s_headersInShader[m.shader];
-            }
+        // Section presets are usually saved on Standard, so their headers only exist in the material's saved floats
+        static List<string> GetSavedHeaders(Material m)
+        {
             string[] props = MaterialHelper.GetFloatPropertiesFromSerializedObject(m);
             return props.Where(p => p.StartsWith("m_", StringComparison.Ordinal)).ToList();
         }
@@ -527,7 +558,7 @@ namespace Thry.ThryEditor
             if(IsMaterialSectionedPreset(material))
             {
                 // Find sections that are presets
-                List<string> headers = GetHeadersInShader(material);
+                List<string> headers = GetSavedHeaders(material);
                 foreach(string header in headers)
                 {
                     if(IsSectionPreset(material, header))
