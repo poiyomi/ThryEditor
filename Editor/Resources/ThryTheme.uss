@@ -8810,6 +8810,35 @@
 .thry-contacts-quick-select {
     margin-top: var(--thry-space-4);
 }
+.thry-contacts-mesh-group-next {
+    margin-top: var(--thry-space-12);
+}
+.thry-contacts-drop-zone {
+    border-width: var(--thry-border-width);
+    border-color: rgba(0, 0, 0, 0);
+    border-radius: var(--thry-radius-control);
+}
+.thry-contacts-drop-zone.thry-contacts-drop-target {
+    border-color: var(--thry-monokai-cyan);
+    background-color: var(--thry-selection-background);
+}
+.thry-contacts-grip {
+    width: 7px;
+    min-width: 7px;
+    height: var(--thry-control-height);
+    flex-shrink: 0;
+    align-self: center;
+    margin: 0 var(--thry-space-3) 0 0;
+    border-radius: var(--thry-radius-control);
+    background-color: var(--thry-control-border-color);
+    cursor: move-arrow;
+}
+.thry-contacts-grip:hover {
+    background-color: var(--thry-monokai-cyan);
+}
+.thry-contacts-dragged {
+    opacity: 0.5;
+}
 .thry-window Button.thry-contacts-remove {
     width: var(--thry-control-height);
     min-width: 0;
