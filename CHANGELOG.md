@@ -1,3 +1,7 @@
+# [2.74.4]
+## Changes
+- Added a guard to prevent the VRChat SDK from clearing the VRC Fallback Tag from our scripts unless a material is switched to a shader not using ThryEditor.
+
 # [2.74.3]
 ## Changes
 - Fixed an issue that caused `_BumpMap` and similar slots to no longer show a warning if the texture wasn't set as a Normal Map.

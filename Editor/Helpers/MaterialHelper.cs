@@ -10,10 +10,9 @@ namespace Thry.ThryEditor.Helpers
     {
         /// <summary>
         /// Override tags that describe the material rather than the shader it happens to use, so they have to survive
-        /// a shader swap. Assigning a new shader can drop the material's own tag map (the render queue has the same
-        /// problem), which silently resets the VRC Fallback Shader the user picked when a material is upgraded to
-        /// a newer shader version.
-        /// </summary>
+        /// a shader swap. Unity itself keeps them, but code that rebuilds a material during an upgrade can lose them,
+        /// and the VRChat SDK clears VRCFallback after any shader swap recorded for undo (see
+        /// KeepPastUndoRecordedSwap). Either way the VRC Fallback Shader the user picked silently resets.
         public static readonly string[] TagsPreservedAcrossShaderSwap = { "VRCFallback" };
 
         /// <summary>
@@ -54,6 +53,16 @@ namespace Thry.ThryEditor.Helpers
             {
                 material.SetOverrideTag(tag.Key, tag.Value);
             }
+#if VRC_UNDO_POSTPROCESSOR
+            // In VRChat SDK 3.10.6 and newer, VRCUndoPostProcessor clears VRC Fallback Tags from OUR MATERIALS on Undo.postprocessModifications
+            // whenever an undo-recorded change swaps a material's shader! Because of this, it breaks our ability to preserve VRC Fallback Tags
+            // whenever a user switches their Poiyomi shader to another Poiyomi shader or duplicates the material.
+            //
+            // I am left with no other choice but to add a guard to ensure this never happens on exclusively Poiyomi-only materials. I will only
+            // allow the SDK to clear the VRC Fallback tag IF ThryEditor isn't used. That way, the SDK can then clear the tag so that a fallback
+            // picked here doesn't carry over into a shader that has no way to show or change it.
+            KeepPastUndoRecordedSwap(material, tags);
+#endif
         }
 
         /// <summary>
@@ -277,6 +286,53 @@ namespace Thry.ThryEditor.Helpers
             }
             return properties;
         }
+
+#if VRC_UNDO_POSTPROCESSOR
+        static readonly Dictionary<Material, (Shader shader, Dictionary<string, string> tags)> s_tagsKeptPastUndo = new Dictionary<Material, (Shader shader, Dictionary<string, string> tags)>();
+        static void KeepPastUndoRecordedSwap(Material material, Dictionary<string, string> tags)
+        {
+            // Destroyed materials, e.g. the copies presets swap, never see an undo flush.
+            List<Material> gone = new List<Material>();
+            foreach (Material m in s_tagsKeptPastUndo.Keys) if (m == null) gone.Add(m);
+            foreach (Material m in gone) s_tagsKeptPastUndo.Remove(m);
+
+            Dictionary<string, string> kept = new Dictionary<string, string>();
+            foreach (string name in TagsPreservedAcrossShaderSwap)
+            {
+                if (tags.TryGetValue(name, out string value) && !string.IsNullOrEmpty(value)) kept[name] = value;
+            }
+            Shader shader = material.shader;
+            if (kept.Count == 0 || shader == null || !ShaderHelper.IsShaderUsingThryEditor(shader))
+            {
+                s_tagsKeptPastUndo.Remove(material);
+                return;
+            }
+            s_tagsKeptPastUndo[material] = (shader, kept);
+
+            // Undo runs these handlers in the order they subscribed. The SDK subscribes when scripts load, so
+            // subscribing again now puts this one after it.
+            Undo.postprocessModifications -= ReapplyAfterUndoRecordedSwap;
+            Undo.postprocessModifications += ReapplyAfterUndoRecordedSwap;
+        }
+        static UndoPropertyModification[] ReapplyAfterUndoRecordedSwap(UndoPropertyModification[] modifications)
+        {
+            if (modifications == null) return modifications;
+            foreach (UndoPropertyModification modification in modifications)
+            {
+                PropertyModification change = modification.currentValue;
+                if (change == null || change.propertyPath != "m_Shader") continue;
+                Material material = change.target as Material;
+                if (material == null || !s_tagsKeptPastUndo.TryGetValue(material, out var kept)) continue;
+
+                // The tags were kept for one swap. A later swap starts over from what the material has by then.
+                s_tagsKeptPastUndo.Remove(material);
+                if (material.shader != kept.shader) continue;
+                foreach (KeyValuePair<string, string> tag in kept.tags) material.SetOverrideTag(tag.Key, tag.Value);
+            }
+            if (s_tagsKeptPastUndo.Count == 0) Undo.postprocessModifications -= ReapplyAfterUndoRecordedSwap;
+            return modifications;
+        }
+#endif
     }
 
 }
