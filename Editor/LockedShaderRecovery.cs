@@ -96,8 +96,8 @@ namespace Thry.ThryEditor
             if (recoverable.Count == 0) return repaired;
 
             bool one = recoverable.Count == 1;
-            ThryLogger.Log($"Unlocking {recoverable.Count} locked material{(one ? "" : "s")} whose shader is missing from "
-                + $"{LockedShaderCache.CacheRoot}. Lock {(one ? "it" : "them")} again to rebuild the cache.");
+            ThryLogger.Log($"Unlocking {recoverable.Count} locked material{(one ? "" : "s")} whose locked shader is missing. "
+                + $"Lock {(one ? "it" : "them")} again to rebuild the shader.");
             
             ShaderOptimizer.UnlockMaterials(recoverable, showProgress ? ShaderOptimizer.ProgressBar.Uncancellable : ShaderOptimizer.ProgressBar.None);
             return repaired + recoverable.Count;
@@ -131,14 +131,23 @@ namespace Thry.ThryEditor
                     if (path.EndsWith(".mat", StringComparison.OrdinalIgnoreCase))
                         s_importedMaterialPaths.Add(path);
 
-                // Losing a cached shader does not necessarily re-import the materials that used it, so
-                // that case has to be caught from the deletion instead. The GC only deletes unused entries.
+                // Losing a locked shader does not necessarily re-import the materials that used it, so
+                // that case has to be caught from the deletion instead. The optimizer only deletes unused ones.
+                HashSet<string> ownerFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (string path in deletedAssets)
                 {
-                    if (!LockedShaderCache.IsInCache(path) || LockedShaderCache.WasCollected(path)) continue;
-                    s_needsFullScan = true;
-                    break;
+                    if (LockedShaderCache.WasCollected(path)) continue;
+                    if (LockedShaderCache.IsInCache(path))
+                    {
+                        s_needsFullScan = true;
+                        continue;
+                    }
+                    // A folder's locked shaders belong to the materials in it
+                    string owner = LockedShaderCache.GetOwnerFolder(path);
+                    if (owner != null && AssetDatabase.IsValidFolder(owner)) ownerFolders.Add(owner);
                 }
+                if (ownerFolders.Count > 0)
+                    s_importedMaterialPaths.AddRange(AssetDatabase.FindAssets("t:Material", ownerFolders.ToArray()).Select(AssetDatabase.GUIDToAssetPath));
 
                 if (s_importedMaterialPaths.Count == 0 && !s_needsFullScan) return;
                 if (s_queued) return;

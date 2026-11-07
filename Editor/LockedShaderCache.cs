@@ -10,19 +10,22 @@ using Thry.ThryEditor.Helpers;
 namespace Thry.ThryEditor
 {
     /// <summary>
-    /// Persistent, content-addressed store for the shaders the ShaderOptimizer generates.
+    /// Content-addressed store for the shaders the ShaderOptimizer generates.
     ///
-    /// Locked shaders used to be named after the material's GUID and written next to the material, so
-    /// two materials that optimize down to byte-identical code could never share one. Unlocking then
-    /// deleted the asset outright, which made every re-lock a fresh compile. Here a locked shader is
-    /// named and filed under a hash of everything that affects its generated source, so any material
-    /// hashing the same reuses it - across materials, and across editor sessions - and unlocking
-    /// leaves the asset in place for the next lock.
+    /// A locked shader is written to an OptimizedShaders folder next to its material, so exporting a
+    /// folder carries its locked shaders along. Inside it, shaders are filed under a hash of everything
+    /// that affects the generated source, so materials in the same folder that hash the same share one.
+    /// Unlocking deletes a shader once no material uses it any more.
+    ///
+    /// Materials outside Assets lock into CacheRoot instead. Shaders there are kept after unlocking and
+    /// trimmed by the garbage collector.
     /// </summary>
     public static class LockedShaderCache
     {
         public const string CacheRoot = "Assets/_LockedShaderCache";
+        public const string FolderName = "OptimizedShaders";
         public const string LockedShaderPrefix = "Hidden/Locked/";
+        internal const string UploadMaterialsFolder = "Assets/__ThryUploadMaterials";
         const string SidecarName = ".thrylock";
 
         const string ReadmeName = "README.txt";
@@ -39,22 +42,98 @@ are using Poiyomi Shaders, this folder is very important!
 
         #region Naming and Paths
 
-        /// <summary>Name of the locked shader for a given original shader name and content hash.</summary>
-        public static string GetLockedShaderName(string originalShaderName, string hash)
+        /// <summary>The folder a material's locked shaders are written to.</summary>
+        public static string GetRoot(Material material)
         {
-            return LockedShaderPrefix + originalShaderName + "/" + hash;
+            return GetRoot(AssetDatabase.GetAssetPath(material));
+        }
+
+        public static string GetRoot(string materialPath)
+        {
+            materialPath = (materialPath ?? string.Empty).Replace('\\', '/');
+            // Flattened variant copies are deleted after the upload, so their shaders go with them
+            if (materialPath.StartsWith(UploadMaterialsFolder + "/", StringComparison.OrdinalIgnoreCase))
+                return UploadMaterialsFolder + "/" + FolderName;
+            if (!materialPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                return CacheRoot;
+            return Path.GetDirectoryName(materialPath).Replace('\\', '/') + "/" + FolderName;
+        }
+
+        /// <summary>
+        /// Name of the locked shader for a given root, original shader name and content hash. Folders
+        /// can hold the same hash, so outside CacheRoot the name also carries the folder's GUID.
+        /// </summary>
+        public static string GetLockedShaderName(string root, string originalShaderName, string hash)
+        {
+            string name = LockedShaderPrefix + originalShaderName + "/" + hash;
+            return root.Equals(CacheRoot, StringComparison.OrdinalIgnoreCase) ? name : name + "/" + GetFolderKey(root);
+        }
+
+        static string GetFolderKey(string root)
+        {
+            string owner = Path.GetDirectoryName(root).Replace('\\', '/');
+            string guid = AssetDatabase.AssetPathToGUID(owner);
+            if (string.IsNullOrEmpty(guid))
+            {
+                using (var md5 = System.Security.Cryptography.MD5.Create())
+                    guid = BitConverter.ToString(md5.ComputeHash(Encoding.UTF8.GetBytes(owner))).Replace("-", "").ToLowerInvariant();
+            }
+            return guid.Substring(0, 8);
         }
 
         /// <summary>Folder holding one locked shader.</summary>
-        public static string GetEntryDirectory(string originalShaderName, string hash)
+        public static string GetEntryDirectory(string root, string originalShaderName, string hash)
         {
-            return CacheRoot + "/" + SanitizeFolderName(originalShaderName) + "/" + hash;
+            return root + "/" + SanitizeFolderName(originalShaderName) + "/" + hash;
         }
 
-        /// <summary>Outputs true if the given asset path lives inside the cache.</summary>
+        /// <summary>Path of the locked copy of <paramref name="originalShader"/> inside an entry.</summary>
+        public static string GetShaderPath(string entryDirectory, Shader originalShader)
+        {
+            return entryDirectory + "/" + Path.GetFileName(AssetDatabase.GetAssetPath(originalShader));
+        }
+
+        /// <summary>True if the given asset path lives inside CacheRoot, whose shaders outlive unlocking.</summary>
         public static bool IsInCache(string assetPath)
         {
             return !string.IsNullOrEmpty(assetPath) && assetPath.Replace('\\', '/').StartsWith(CacheRoot + "/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>True if the given asset path is inside an entry of an OptimizedShaders folder.</summary>
+        public static bool IsFolderEntry(string assetPath)
+        {
+            return GetOwnerFolder(assetPath) != null;
+        }
+
+        /// <summary>True for anything the optimizer generated, in CacheRoot or next to a material.</summary>
+        public static bool IsGenerated(string assetPath)
+        {
+            return IsInCache(assetPath) || IsFolderEntry(assetPath);
+        }
+
+        /// <summary>
+        /// The folder whose materials an OptimizedShaders entry belongs to, or null when the path is not
+        /// inside one. Shaders from before the cache sit one level higher, in a folder named after their
+        /// material, and are not entries.
+        /// </summary>
+        public static string GetOwnerFolder(string assetPath)
+        {
+            if (string.IsNullOrEmpty(assetPath)) return null;
+            string[] parts = assetPath.Replace('\\', '/').Split('/');
+            for (int i = parts.Length - 3; i >= 1; i--)
+            {
+                if (parts[i] == FolderName && IsHash(parts[i + 2]))
+                    return string.Join("/", parts, 0, i);
+            }
+            return null;
+        }
+
+        static bool IsHash(string name)
+        {
+            if (name.Length != 32) return false;
+            foreach (char c in name)
+                if (!(c >= '0' && c <= '9' || c >= 'a' && c <= 'f')) return false;
+            return true;
         }
 
         /// <summary>
@@ -85,11 +164,12 @@ are using Poiyomi Shaders, this folder is very important!
         #region Lookup
 
         /// <summary>
-        /// Finds an already-generated locked shader by name. Only sees shaders the AssetDatabase has
+        /// Finds an already-generated locked shader in an entry. Only sees shaders the AssetDatabase has
         /// imported, so callers still need their own book-keeping for shaders written earlier in the
-        /// same StartAssetEditing block.
+        /// same StartAssetEditing block. Looked up by path rather than name: a duplicated folder holds
+        /// copies with the same names.
         /// </summary>
-        public static bool TryGetCachedShader(string lockedShaderName, out Shader shader)
+        public static bool TryGetCachedShader(string entryDirectory, Shader originalShader, out Shader shader)
         {
             shader = null;
 
@@ -97,7 +177,7 @@ are using Poiyomi Shaders, this folder is very important!
             // changes inside included files. Never reuse in that case.
             if (Config.Instance.enableDeveloperMode) return false;
 
-            Shader found = Shader.Find(lockedShaderName);
+            Shader found = AssetDatabase.LoadAssetAtPath<Shader>(GetShaderPath(entryDirectory, originalShader));
             if (found == null || found.IsBroken()) return false;
 
             // A cached shader that failed to compile is worse than no cached shader.
@@ -243,17 +323,27 @@ are using Poiyomi Shaders, this folder is very important!
 
         #region Garbage Collection
 
-        /// <summary>Every cache entry folder, i.e. CacheRoot/&lt;shader&gt;/&lt;hash&gt;.</summary>
-        static List<string> GetAllEntryDirectories()
+        /// <summary>
+        /// Every entry folder, i.e. &lt;root&gt;/&lt;shader&gt;/&lt;hash&gt;. CacheRoot only, unless
+        /// <paramref name="includeFolders"/> also searches Assets for OptimizedShaders folders.
+        /// </summary>
+        static List<string> GetAllEntryDirectories(bool includeFolders = false)
         {
             List<string> entries = new List<string>();
-            if (!Directory.Exists(CacheRoot)) return entries;
+            List<string> roots = new List<string>();
+            if (Directory.Exists(CacheRoot)) roots.Add(CacheRoot);
+            if (includeFolders)
+                roots.AddRange(Directory.GetDirectories("Assets", FolderName, SearchOption.AllDirectories).Select(d => d.Replace('\\', '/')));
 
-            foreach (string shaderDir in Directory.GetDirectories(CacheRoot))
+            foreach (string root in roots)
             {
-                foreach (string entryDir in Directory.GetDirectories(shaderDir))
+                foreach (string shaderDir in Directory.GetDirectories(root))
                 {
-                    entries.Add(entryDir.Replace('\\', '/'));
+                    foreach (string entryDir in Directory.GetDirectories(shaderDir))
+                    {
+                        string entry = entryDir.Replace('\\', '/');
+                        if (root == CacheRoot || IsFolderEntry(entry)) entries.Add(entry);
+                    }
                 }
             }
 
@@ -291,7 +381,7 @@ are using Poiyomi Shaders, this folder is very important!
 
                 foreach (string dependency in AssetDatabase.GetDependencies(materialPath, false))
                 {
-                    if (IsInCache(dependency)) referenced.Add(dependency.Replace('\\', '/'));
+                    if (IsGenerated(dependency)) referenced.Add(dependency.Replace('\\', '/'));
                 }
             }
 
@@ -300,20 +390,20 @@ are using Poiyomi Shaders, this folder is very important!
             {
                 if (material == null || material.shader == null) continue;
                 string shaderPath = AssetDatabase.GetAssetPath(material.shader);
-                if (IsInCache(shaderPath)) referenced.Add(shaderPath.Replace('\\', '/'));
+                if (IsGenerated(shaderPath)) referenced.Add(shaderPath.Replace('\\', '/'));
             }
 
             return referenced;
         }
 
         /// <summary>
-        /// Deletes cache entries no material references. With <paramref name="budgetBytes"/> above zero
+        /// Deletes entries no material references. With <paramref name="budgetBytes"/> above zero
         /// it stops as soon as the cache fits the budget, oldest entry first; otherwise it removes every
         /// unreferenced entry. Returns the number of entries deleted.
         /// </summary>
-        public static int CollectGarbage(long budgetBytes = 0, ICollection<string> protectedEntries = null)
+        public static int CollectGarbage(long budgetBytes = 0, ICollection<string> protectedEntries = null, bool includeFolders = false)
         {
-            List<string> entries = GetAllEntryDirectories();
+            List<string> entries = GetAllEntryDirectories(includeFolders);
             if (entries.Count == 0) return 0;
 
             HashSet<string> referenced = GetReferencedCachePaths();
@@ -343,14 +433,10 @@ are using Poiyomi Shaders, this folder is very important!
             {
                 long entrySize = budgetBytes > 0 ? GetDirectorySizeBytes(entry) : 0;
 
-                if (DeleteCollected(entry))
+                if (DeleteEntry(entry))
                 {
                     deleted++;
                     total -= entrySize;
-                }
-                else
-                {
-                    ThryLogger.LogWarn("Could not delete unused locked shader cache entry " + entry);
                 }
 
                 if (budgetBytes > 0 && total <= budgetBytes) break;
@@ -358,28 +444,46 @@ are using Poiyomi Shaders, this folder is very important!
 
             if (deleted > 0)
             {
-                DeleteEmptyShaderFolders();
-                ThryLogger.LogDetail("Removed " + deleted + " unused locked shader" + (deleted == 1 ? "" : "s") + " from " + CacheRoot + ".");
+                PruneEmptyFolders();
+                ThryLogger.LogDetail("Removed " + deleted + " unused locked shader" + (deleted == 1 ? "" : "s") + ".");
             }
 
             return deleted;
         }
 
-        static void DeleteEmptyShaderFolders()
-        {
-            if (!Directory.Exists(CacheRoot)) return;
+        // Roots that lost an entry. Their emptied folders are removed once asset editing has stopped.
+        static readonly HashSet<string> s_rootsToPrune = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (string shaderDir in Directory.GetDirectories(CacheRoot))
-            {
-                if (Directory.GetDirectories(shaderDir).Length == 0 && Directory.GetFiles(shaderDir).Length == 0)
-                    DeleteCollected(shaderDir.Replace('\\', '/'));
-            }
+        /// <summary>Deletes an entry. Call PruneEmptyFolders outside StartAssetEditing afterwards.</summary>
+        public static bool DeleteEntry(string entryDirectory)
+        {
+            s_rootsToPrune.Add(Path.GetDirectoryName(Path.GetDirectoryName(entryDirectory)).Replace('\\', '/'));
+            if (DeleteCollected(entryDirectory)) return true;
+            ThryLogger.LogWarn("Could not delete unused locked shader " + entryDirectory);
+            return false;
         }
 
-        // Deleted by the GC, so recovery can skip them
+        /// <summary>Removes shader folders, and OptimizedShaders folders, left empty by DeleteEntry.</summary>
+        public static void PruneEmptyFolders()
+        {
+            foreach (string root in s_rootsToPrune)
+            {
+                if (!Directory.Exists(root)) continue;
+                foreach (string shaderDir in Directory.GetDirectories(root))
+                {
+                    if (Directory.GetFileSystemEntries(shaderDir).Length == 0)
+                        DeleteCollected(shaderDir.Replace('\\', '/'));
+                }
+                if (!root.Equals(CacheRoot, StringComparison.OrdinalIgnoreCase) && Directory.GetFileSystemEntries(root).Length == 0)
+                    DeleteCollected(root);
+            }
+            s_rootsToPrune.Clear();
+        }
+
+        // Deleted by the optimizer itself, so recovery can skip them
         static readonly HashSet<string> s_collectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        static bool DeleteCollected(string assetPath)
+        internal static bool DeleteCollected(string assetPath)
         {
             s_collectedPaths.Add(assetPath);
             if (!AssetDatabase.DeleteAsset(assetPath))
@@ -435,24 +539,185 @@ are using Poiyomi Shaders, this folder is very important!
             CollectGarbage(budgetBytes, protectedEntries);
         }
 
-        /// <summary>Total bytes on disk, and how many locked shaders that covers.</summary>
+        /// <summary>Total bytes on disk, and how many locked shaders that covers, in CacheRoot and every OptimizedShaders folder.</summary>
         public static void GetCacheStats(out long sizeBytes, out int entryCount)
         {
             sizeBytes = 0;
-            List<string> entries = GetAllEntryDirectories();
+            List<string> entries = GetAllEntryDirectories(includeFolders: true);
             entryCount = entries.Count;
             foreach (string entry in entries)
                 sizeBytes += GetDirectorySizeBytes(entry);
         }
 
-        /// <summary>Deletes the whole cache. The caller must run LockedShaderRecovery.</summary>
+        /// <summary>
+        /// Moves shaders that materials in Assets locked into CacheRoot to OptimizedShaders folders
+        /// beside those materials. An entry shared across folders is copied into each one under a new
+        /// name, and the materials there are switched to their copy. Returns how many entries moved.
+        /// </summary>
+        public static int MoveEntriesBesideMaterials()
+        {
+            if (GetAllEntryDirectories().Count == 0)
+            {
+                RemoveEmptyCacheRoot();
+                return 0;
+            }
+
+            // Locked shader path -> material paths using it, from the import database
+            Dictionary<string, List<string>> users = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (string guid in AssetDatabase.FindAssets("t:Material"))
+            {
+                string materialPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (string.IsNullOrEmpty(materialPath)) continue;
+                foreach (string dependency in AssetDatabase.GetDependencies(materialPath, false))
+                {
+                    if (!IsInCache(dependency) || !dependency.EndsWith(".shader", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!users.TryGetValue(dependency, out List<string> list)) users[dependency] = list = new List<string>();
+                    if (!list.Contains(materialPath)) list.Add(materialPath);
+                }
+            }
+
+            int moved = 0;
+            foreach (KeyValuePair<string, List<string>> pair in users)
+            {
+                string shaderPath = pair.Key;
+                string entry = Path.GetDirectoryName(shaderPath).Replace('\\', '/');
+                EntryInfo info = ReadEntry(entry) ?? new EntryInfo();
+                Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
+                if (shader == null) continue;
+
+                bool entryMoved = false;
+                foreach (IGrouping<string, string> group in pair.Value.GroupBy(p => GetRoot(p), StringComparer.OrdinalIgnoreCase))
+                {
+                    string root = group.Key;
+                    if (root.Equals(CacheRoot, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    string target = root + "/" + Path.GetFileName(Path.GetDirectoryName(entry)) + "/" + Path.GetFileName(entry);
+                    string targetShaderPath = target + "/" + Path.GetFileName(shaderPath);
+                    EntryInfo targetInfo = new EntryInfo { ContentHash = info.ContentHash };
+                    targetInfo.StrippedTextures.AddRange(info.StrippedTextures);
+                    targetInfo.UserGuids.AddRange(group.Select(AssetDatabase.AssetPathToGUID));
+
+                    if (!entryMoved && !Directory.Exists(target))
+                    {
+                        CreateFolders(Path.GetDirectoryName(target).Replace('\\', '/'));
+                        string error = AssetDatabase.MoveAsset(entry, target);
+                        if (!string.IsNullOrEmpty(error))
+                        {
+                            ThryLogger.LogWarn("Could not move locked shader " + entry + " to " + target + ": " + error);
+                            continue;
+                        }
+                        entryMoved = true;
+                        entry = target;
+                        shaderPath = targetShaderPath;
+                        WriteEntry(target, targetInfo);
+                        moved++;
+                        continue;
+                    }
+
+                    // Each folder's copy needs a name of its own
+                    if (!Directory.Exists(target)) CopyEntry(entry, target, shader.name, shader.name + "/" + GetFolderKey(root));
+                    Shader copy = AssetDatabase.LoadAssetAtPath<Shader>(targetShaderPath);
+                    if (copy == null || copy.IsBroken())
+                    {
+                        ThryLogger.LogWarn("Could not copy locked shader " + shaderPath + " to " + target);
+                        continue;
+                    }
+                    EntryInfo existing = ReadEntry(target);
+                    if (existing != null) targetInfo.UserGuids.AddRange(existing.UserGuids.Except(targetInfo.UserGuids));
+                    WriteEntry(target, targetInfo);
+
+                    string tag = string.Join(",", targetInfo.UserGuids);
+                    foreach (string materialPath in group)
+                    {
+                        Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+                        if (material == null || material.shader != shader) continue;
+                        ShaderOptimizer.SwapLockedShader(material, copy);
+                        material.SetOverrideTag(ShaderOptimizer.TAG_ALL_MATERIALS_GUIDS_USING_THIS_LOCKED_SHADER, tag);
+                        AssetDatabase.SaveAssetIfDirty(material);
+                    }
+                    moved++;
+                }
+            }
+
+            // Whatever is left in CacheRoot is used by nothing, or only by materials outside Assets
+            CollectGarbage();
+            RemoveEmptyCacheRoot();
+
+            if (moved > 0)
+                ThryLogger.Log("Moved " + moved + " locked shader" + (moved == 1 ? "" : "s") + " from " + CacheRoot + " to OptimizedShaders folders next to their materials.");
+            return moved;
+        }
+
+        static void RemoveEmptyCacheRoot()
+        {
+            if (!Directory.Exists(CacheRoot)) return;
+            s_rootsToPrune.Add(CacheRoot);
+            PruneEmptyFolders();
+            if (Directory.GetDirectories(CacheRoot).Length == 0) DeleteCollected(CacheRoot);
+        }
+
+        static void CopyEntry(string source, string target, string oldName, string newName)
+        {
+            CreateFolders(target);
+            foreach (string file in Directory.GetFiles(source))
+            {
+                string fileName = Path.GetFileName(file);
+                if (fileName == SidecarName || fileName.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) continue;
+                string text = File.ReadAllText(file);
+                if (fileName.EndsWith(".shader", StringComparison.OrdinalIgnoreCase))
+                    text = text.Replace("\"" + oldName + "\"", "\"" + newName + "\"");
+                File.WriteAllText(target + "/" + fileName, text);
+            }
+            AssetDatabase.ImportAsset(target, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceSynchronousImport);
+        }
+
+        static void CreateFolders(string folder)
+        {
+            if (AssetDatabase.IsValidFolder(folder)) return;
+            string parent = Path.GetDirectoryName(folder).Replace('\\', '/');
+            CreateFolders(parent);
+            AssetDatabase.CreateFolder(parent, Path.GetFileName(folder));
+        }
+
+        /// <summary>Deletes every locked shader. The caller must run LockedShaderRecovery.</summary>
         public static void Clear()
         {
-            foreach (string shaderDir in Directory.Exists(CacheRoot) ? Directory.GetDirectories(CacheRoot) : new string[0])
-                DeleteCollected(shaderDir.Replace('\\', '/'));
+            foreach (string entry in GetAllEntryDirectories(includeFolders: true))
+                DeleteEntry(entry);
+            PruneEmptyFolders();
         }
 
         #endregion
+    }
+
+    static class LockedShaderCacheMove
+    {
+        const string SessionKey = "Thry.LockedShaderCache.MovedBesideMaterials";
+
+        [InitializeOnLoadMethod]
+        static void Schedule()
+        {
+            if (SessionState.GetBool(SessionKey, false) || !Directory.Exists(LockedShaderCache.CacheRoot)) return;
+            EditorApplication.delayCall += Run;
+        }
+
+        static void Run()
+        {
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                EditorApplication.delayCall += Run;
+                return;
+            }
+            SessionState.SetBool(SessionKey, true);
+            try
+            {
+                LockedShaderCache.MoveEntriesBesideMaterials();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
     }
 
     static class LockedShaderCacheMenu
@@ -477,7 +742,7 @@ are using Poiyomi Shaders, this folder is very important!
                     "Remove Unused", "Cancel"))
                 return;
 
-            int deleted = LockedShaderCache.CollectGarbage();
+            int deleted = LockedShaderCache.CollectGarbage(includeFolders: true);
             EditorUtility.DisplayDialog("Optimized Shader Cache",
                 deleted == 0
                     ? "Nothing to remove - every locked shader is still in use."

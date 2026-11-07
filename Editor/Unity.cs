@@ -296,6 +296,11 @@ namespace Thry.ThryEditor
                 guids.Add(myGuid);
                 string newTag = string.Join(",", guids);
 
+                // Tags are rebuilt from the entry's user list, and unlocking deletes a folder's shader once that list is empty
+                string shaderPath = AssetDatabase.GetAssetPath(sharedShader);
+                if (LockedShaderCache.IsGenerated(shaderPath))
+                    LockedShaderCache.RegisterUser(Path.GetDirectoryName(shaderPath).Replace('\\', '/'), myGuid);
+
                 mat.SetOverrideTag(ShaderOptimizer.TAG_ALL_MATERIALS_GUIDS_USING_THIS_LOCKED_SHADER, newTag);
 
                 foreach (string g in guids)
