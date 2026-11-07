@@ -829,6 +829,31 @@
     -unity-background-image-tint-color: var(--thry-value-color);
 }
 
+/* Checkboxes with different values across the selected materials show a dash in place of
+   the tick, drawn like the texture slot dash. Unity marks the checkmark mixed-values. */
+.thry-toggle-dash > .unity-toggle__input > .unity-toggle__checkmark {
+    align-items: center;
+    justify-content: center;
+}
+
+.thry-toggle-dash > .unity-toggle__input > .unity-toggle__checkmark > .thry-toggle-mixed-dash {
+    display: none;
+    width: 8px;
+    height: 2px;
+    flex-shrink: 0;
+    border-radius: 1px;
+    background-color: var(--thry-value-color);
+    opacity: 0.75;
+}
+
+.thry-toggle-dash > .unity-toggle__input > .unity-toggle__checkmark.unity-toggle__mixed-values {
+    background-image: none;
+}
+
+.thry-toggle-dash > .unity-toggle__input > .unity-toggle__mixed-values > .thry-toggle-mixed-dash {
+    display: flex;
+}
+
 .thry-input, .thry-component {
     font-size: var(--thry-font-size);
 }

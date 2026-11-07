@@ -209,7 +209,7 @@ namespace Thry.ThryEditor
                 var field = new IntegerField { name = "stencil-value-" + id, isDelayed = true }; field.AddToClassList("thry-stencil-decimal"); valuesRow.Add(field);
                 field.RegisterValueChangedCallback(e => StencilEdit(config, id, old => e.newValue));
                 Track(field, () => {
-                    var values = Model.Shader.Materials.Select(read).Distinct().ToArray(); field.SetValueWithoutNotify(values.FirstOrDefault()); field.showMixedValue = values.Length > 1;
+                    var values = Model.Shader.Materials.Select(read).Distinct().ToArray(); SynchronizeValue(field, values.FirstOrDefault(), values.Length > 1);
                     ShaderProperty p; field.SetEnabled(Model.Shader.PropertyDictionary.TryGetValue(id, out p) && Model.CanEdit(p));
                 });
             }

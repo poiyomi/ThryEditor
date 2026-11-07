@@ -24,9 +24,9 @@ namespace Thry.ThryEditor
         {
             if(property is InstancingProperty || property is DSGIProperty)
             {
-                bool instancing=property is InstancingProperty;var field=new Toggle();parent.Add(field);
+                bool instancing=property is InstancingProperty;var field=new Toggle();MixedDash(field);parent.Add(field);
                 Func<Material,bool> read=m=>instancing?m.enableInstancing:m.doubleSidedGI;
-                Track(field,()=>{field.SetValueWithoutNotify(read(Model.Shader.Materials[0]));field.showMixedValue=Model.Shader.Materials.Select(read).Distinct().Skip(1).Any();});
+                Track(field,()=>SynchronizeValue(field,read(Model.Shader.Materials[0]),Model.Shader.Materials.Select(read).Distinct().Skip(1).Any()));
                 field.RegisterValueChangedCallback(e=>Model.Mutate(property.Content.text,m=>{if(instancing)m.enableInstancing=e.newValue;else m.doubleSidedGI=e.newValue;}));handled=true;return;
             }
             if(property is GIProperty)
@@ -59,8 +59,7 @@ namespace Thry.ThryEditor
                         {
                             float length = property.MaterialProperty.vectorValue.w;
                             bool mixed = Model.Shader.Materials.Where(m => m.HasProperty(property.MaterialProperty.name)).Select(m => m.GetVector(property.MaterialProperty.name).w).Distinct().Skip(1).Any();
-                            lengthSlider.SetValueWithoutNotify(length); lengthNumber.SetValueWithoutNotify(length);
-                            lengthSlider.showMixedValue = mixed; lengthNumber.showMixedValue = mixed;
+                            SynchronizeValue(lengthSlider, length, mixed); SynchronizeValue(lengthNumber, length, mixed);
                         });
                         lengthSlider.RegisterValueChangedCallback(e => Model.VectorComponent(property, 3, Mathf.Clamp(e.newValue, lengthMin, lengthMax)));
                         lengthNumber.RegisterValueChangedCallback(e => Model.VectorComponent(property, 3, unboundedLength ? e.newValue : Mathf.Clamp(e.newValue, lengthMin, lengthMax)));
@@ -92,7 +91,7 @@ namespace Thry.ThryEditor
                             group.Add(componentLabel); parent.Add(group);
                             if(pairs) MinMax(group,property,component*2,DrawerAttribute.Number(args[n+1]),DrawerAttribute.Number(args[n+2]));
                             else { var slider=new Slider(DrawerAttribute.Number(args[n+1]),DrawerAttribute.Number(args[n+2])) { showInputField=true, name="component-slider-"+component }; group.Add(slider);
-                                Track(slider,()=>{slider.SetValueWithoutNotify(property.MaterialProperty.vectorValue[component]); slider.showMixedValue=Model.Shader.Materials.Where(m=>m.HasProperty(property.MaterialProperty.name)).Select(m=>m.GetVector(property.MaterialProperty.name)[component]).Distinct().Skip(1).Any();});
+                                Track(slider,()=>SynchronizeValue(slider,property.MaterialProperty.vectorValue[component],Model.Shader.Materials.Where(m=>m.HasProperty(property.MaterialProperty.name)).Select(m=>m.GetVector(property.MaterialProperty.name)[component]).Distinct().Skip(1).Any()));
                                 slider.RegisterValueChangedCallback(e=>Model.VectorComponent(property,component,e.newValue)); }
                         }
                         handled=true; return;
@@ -173,7 +172,7 @@ namespace Thry.ThryEditor
                                 }
                                 multi.Add(button); }
                             else if(attribute.Args[0]=="1"||attribute.Args[0].Equals("true",StringComparison.OrdinalIgnoreCase))
-                            { var toggle=new Toggle(); Bind(toggle,target,p=>p.GetNumber()==1,(p,v)=>p.SetNumber(v?1:0));Track(toggle,()=>toggle.SetEnabled(Model.CanEdit(target)));multi.Add(toggle); }
+                            { var toggle=new Toggle(); MixedDash(toggle); Bind(toggle,target,p=>p.GetNumber()==1,(p,v)=>p.SetNumber(v?1:0));Track(toggle,()=>toggle.SetEnabled(Model.CanEdit(target)));multi.Add(toggle); }
                             else { var number=new FloatField(); Bind(number,target,p=>p.GetNumber(),(p,v)=>p.SetNumber(v)); multi.Add(number); }
                         }
                         handled=true; return;
@@ -184,8 +183,8 @@ namespace Thry.ThryEditor
                         var bits=new Foldout {text="Bits",value=false,name="byte-bits-"+property.MaterialProperty.name};bits.AddToClassList("thry-bit-options");parent.Add(bits);
                         RetainedUiState.Bind(bits, SectionLock.GetSourceShader(property.MyShader).name, bits.name);
                         var bitrow=new VisualElement();bitrow.AddToClassList("thry-bit-row");bits.Add(bitrow);
-                        for(int bit=7;bit>=0;bit--) { int mask=1<<bit; var toggle=new Toggle(bit.ToString()) {name="byte-bit-"+bit,tooltip="Bit "+bit+" · value "+mask};toggle.AddToClassList("thry-bit-cell");
-                            Track(toggle,()=>{toggle.SetValueWithoutNotify((Mathf.Clamp((int)property.MaterialProperty.GetNumber(),0,255)&mask)!=0);toggle.showMixedValue=property.MaterialProperty.targets.OfType<Material>().Select(m=>(Mathf.Clamp(ReadBitValue(m,property),0,255)&mask)!=0).Distinct().Skip(1).Any();});
+                        for(int bit=7;bit>=0;bit--) { int mask=1<<bit; var toggle=new Toggle(bit.ToString()) {name="byte-bit-"+bit,tooltip="Bit "+bit+" · value "+mask};toggle.AddToClassList("thry-bit-cell"); MixedDash(toggle);
+                            Track(toggle,()=>SynchronizeValue(toggle,(Mathf.Clamp((int)property.MaterialProperty.GetNumber(),0,255)&mask)!=0,property.MaterialProperty.targets.OfType<Material>().Select(m=>(Mathf.Clamp(ReadBitValue(m,property),0,255)&mask)!=0).Distinct().Skip(1).Any()));
                             toggle.RegisterValueChangedCallback(e=>Model.Edit(property,p=>{int value=Mathf.Clamp((int)p.GetNumber(),0,255);p.SetNumber(e.newValue?value|mask:value&~mask);},true)); bitrow.Add(toggle); }
                         handled=true; return;
                     case "Curve4":
@@ -400,7 +399,7 @@ namespace Thry.ThryEditor
             {
                 int index=start+i; var field=new FloatField(labels[i]) { name="component-"+index }; field.AddToClassList("thry-component");
                 field.style.flexGrow=1; field.style.flexBasis=0; field.style.minWidth=0;
-                Track(field,()=>{field.SetValueWithoutNotify(property.MaterialProperty.vectorValue[index]);field.showMixedValue=property.MaterialProperty.targets.OfType<Material>().Select(m=>m.GetVector(property.MaterialProperty.name)[index]).Distinct().Skip(1).Any();});
+                Track(field,()=>SynchronizeValue(field,property.MaterialProperty.vectorValue[index],property.MaterialProperty.targets.OfType<Material>().Select(m=>m.GetVector(property.MaterialProperty.name)[index]).Distinct().Skip(1).Any()));
                 var gesture = new RetainedPropertyGesture(Model, property);
                 gesture.Attach(field, () => 1 << index);
                 field.RegisterValueChangedCallback(e=> { if (!gesture.Cancelling) write(index,e.newValue); });

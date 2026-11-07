@@ -230,7 +230,7 @@ namespace Thry.ThryEditor
         void RefreshControls()
         {
             for(int i=0;i<numbers.Count;i++)
-            {numbers[i].SetValueWithoutNotify(Display(i,Current));numbers[i].showMixedValue=Mixed(PropertyIndex(i))||(i==1&&(Mixed(0)||Mixed(1)));numbers[i].SetEnabled(model.CanEdit(properties[PropertyIndex(i)]));}
+            {RetainedFields.SynchronizeValue(numbers[i],Display(i,Current),Mixed(PropertyIndex(i))||(i==1&&(Mixed(0)||Mixed(1))));numbers[i].SetEnabled(model.CanEdit(properties[PropertyIndex(i)]));}
             for(int i=0;i<tabs.Count;i++)tabs[i].EnableInClassList("thry-selected",tabChannels[i]==channel);
             input.SetEnabled(model.CanEdit(properties[0])&&model.CanEdit(properties[1])&&model.CanEdit(properties[2]));output.SetEnabled(model.CanEdit(properties[3])&&model.CanEdit(properties[4]));
             input.RefreshHandles();output.RefreshHandles();

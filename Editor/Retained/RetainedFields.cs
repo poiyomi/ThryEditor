@@ -260,7 +260,16 @@ namespace Thry.ThryEditor
             // Popup fields clear their value while mixed. Clear that state before
             // restoring a concrete value, so the first refresh is already correct.
             field.showMixedValue = mixed;
-            if (changed) field.SetValueWithoutNotify(value);
+            if (!changed) return;
+            field.SetValueWithoutNotify(value);
+            // Number, slider and popup fields write the new value's text over the mixed dash,
+            // so put the dash back. A focused text field refuses the mixed state, so leave it alone.
+            if (mixed && !HasFocus(field)) { field.showMixedValue = false; field.showMixedValue = true; }
+        }
+        static bool HasFocus(VisualElement field)
+        {
+            var focused = field.focusController?.focusedElement as VisualElement;
+            return focused != null && (focused == field || field.Contains(focused));
         }
         internal void Bind<T>(BaseField<T> field, ShaderProperty property, Func<MaterialProperty,T> read, Action<MaterialProperty,T> write)
         {
@@ -367,7 +376,15 @@ namespace Thry.ThryEditor
         }
         internal void Toggle(VisualElement parent, ShaderProperty property)
         {
-            var toggle = new Toggle(); Bind(toggle, property, p => Mathf.Abs(p.GetNumber()) > .001f, (p,v) => p.SetNumber(v ? 1 : 0)); TrackVisible(toggle,()=>toggle.SetEnabled(Model.CanEdit(property))); parent.Add(toggle);
+            var toggle = new Toggle(); MixedDash(toggle); Bind(toggle, property, p => Mathf.Abs(p.GetNumber()) > .001f, (p,v) => p.SetNumber(v ? 1 : 0)); TrackVisible(toggle,()=>toggle.SetEnabled(Model.CanEdit(property))); parent.Add(toggle);
+        }
+        // Property checkboxes replace Unity's checkmark art, which also hides Unity's mixed-value dash.
+        // This dash is shown only while Unity marks the checkmark as mixed.
+        internal static void MixedDash(Toggle toggle)
+        {
+            toggle.AddToClassList("thry-toggle-dash");
+            var dash = new VisualElement { pickingMode = PickingMode.Ignore }; dash.AddToClassList("thry-toggle-mixed-dash");
+            toggle.Q(className: UnityEngine.UIElements.Toggle.checkmarkUssClassName).Add(dash);
         }
         internal void Vector(VisualElement parent, ShaderProperty property, string[] labels, int start = 0, bool texture = false, bool link = false)
         {
