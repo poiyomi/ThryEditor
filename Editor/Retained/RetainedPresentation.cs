@@ -30,7 +30,8 @@ namespace Thry.ThryEditor
                     case "ThrySpace":
                         // Keep property rows contiguous when shaders request blank spacing.
                         break;
-                    case "ThrySeperator":
+                    case "ThrySeperator": // Legacy misspelling. Kept so shaders that still use it keep working.
+                    case "ThrySeparator":
                         root.Add(PresentationSeparator(args));
                         break;
                     case "Helpbox":
