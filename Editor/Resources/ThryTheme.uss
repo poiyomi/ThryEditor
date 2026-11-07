@@ -5899,7 +5899,7 @@
     top: 50%;
     left: 0;
     right: 0;
-    height: 2px;
+    height: 3px;
     margin: -1px 0 0;
     border-width: 0;
     border-radius: 1px;
@@ -5911,7 +5911,7 @@
     top: 50%;
     left: 0;
     width: 6px;
-    height: 10px;
+    height: 11px;
     margin: -5px 0 0;
     border-width: 0;
     border-radius: 2px;
