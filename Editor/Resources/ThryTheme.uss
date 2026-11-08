@@ -2784,6 +2784,17 @@
     font-size: var(--thry-type-small);
 }
 
+/* When the description does not fit on one line, each value gets its own line
+   (RetainedTextureCard.FitDescription) and the summary grows to show all of them. */
+.thry-texture-card.thry-texture-card-stacked .thry-texture-description {
+    white-space: normal;
+}
+
+.thry-texture-card-assigned.thry-texture-card-stacked .thry-texture-summary {
+    height: auto;
+    max-height: none;
+}
+
 .thry-texture-card .thry-texture-channels {
     margin-top: var(--thry-space-2);
     margin-left: var(--thry-space-2);

@@ -31,6 +31,7 @@ namespace Thry.ThryEditor
         uint _sourceUpdate;
         string _sourceName;
         string _assetGuid;
+        string[] _descriptionParts = Array.Empty<string>();
         TextureDimension _assetDimension;
         bool _previewReleased;
         double _nextLiveRefresh;
@@ -58,7 +59,7 @@ namespace Thry.ThryEditor
             frame.RegisterCallback<NavigationSubmitEvent>(e => { SelectAsset(); e.StopPropagation(); });
             InstallDropTarget(frame, frame, assignment, property.MaterialProperty.textureDimension, () => CanAssign, convertArray);
             _clear = ActionButton(() => Assign(null));
-            _clear.name = "clear-texture"; _clear.tooltip = Text("clearTexture", "Clear texture");
+            _clear.name = "clear-texture"; _clear.tooltip = Text("clearTexture", "Clear Texture");
             _clear.AddToClassList("thry-texture-clear");
             var clearIcon = new Image { image = Resources.Load<Texture2D>("ThryToolbar/texture-clear"), scaleMode = ScaleMode.ScaleToFit, pickingMode = PickingMode.Ignore };
             clearIcon.AddToClassList("thry-texture-clear-icon"); _clear.Add(clearIcon);
@@ -68,7 +69,7 @@ namespace Thry.ThryEditor
             var title = new VisualElement(); title.AddToClassList("thry-texture-title"); info.Add(title);
             title.Add(_clear);
             _name = new Label(); _name.AddToClassList("thry-texture-name"); title.Add(_name);
-            _sliceField = new IntegerField { name = "texture-preview-slice", tooltip = "Preview slice (1-based). This does not change the material." };
+            _sliceField = new IntegerField { name = "texture-preview-slice", tooltip = "Preview Slice (1-based). This does not change the material." };
             _sliceField.AddToClassList("thry-texture-slice");
             _sliceField.style.display = DisplayStyle.None; title.Add(_sliceField);
             _sliceField.RegisterValueChangedCallback(e =>
@@ -86,7 +87,7 @@ namespace Thry.ThryEditor
             _channels = new VisualElement(); _channels.AddToClassList("thry-texture-channels"); info.Add(_channels);
             string[] names = { "RGB", "RGBA", "R", "G", "B", "A" };
             int[] channels = { 0, 5, 1, 2, 3, 4 };
-            string[] hints = { Text("textureRGB", "Color without transparency"), Text("textureRGBA", "Color with transparency"), Text("textureRed", "Red channel"), Text("textureGreen", "Green channel"), Text("textureBlue", "Blue channel"), Text("textureAlpha", "Alpha channel") };
+            string[] hints = { Text("textureRGB", "Color without Transparency"), Text("textureRGBA", "Color with Transparency"), Text("textureRed", "Red Channel"), Text("textureGreen", "Green Channel"), Text("textureBlue", "Blue Channel"), Text("textureAlpha", "Alpha Channel") };
             for (int i = 0; i < names.Length; i++)
             {
                 int channel = channels[i];
@@ -142,6 +143,7 @@ namespace Thry.ThryEditor
             bool stretched = assigned && (_texture.width > _texture.height * 4f || _texture.height > _texture.width * 4f);
             _thumbnail.scaleMode = stretched ? ScaleMode.StretchToFill : ScaleMode.ScaleToFit;
             _aspectHint.style.display = stretched ? DisplayStyle.Flex : DisplayStyle.None;
+            FitDescription();
             float available = _summary.contentRect.width;
             if (float.IsNaN(available) || available <= 0) return;
             EnableInClassList("thry-texture-card-assigned", assigned);
@@ -149,10 +151,31 @@ namespace Thry.ThryEditor
             // A wide landscape thumbnail can use spare horizontal space without
             // making every expanded texture taller. Preserve room for all channels.
             float height = assigned ? (available >= 440 ? 66 : 64) : 40;
+            // Stacked description lines make the info column taller; grow the preview to fill that height.
+            float infoHeight = _description.parent?.layout.height ?? float.NaN;
+            if (assigned && ClassListContains("thry-texture-card-stacked") && infoHeight > height) height = infoHeight;
             float aspect = assigned && _texture.height > 0 ? Mathf.Clamp((float)_texture.width / _texture.height, 1, 1.8f) : 1;
             float width = Mathf.Min(height * aspect, Mathf.Max(40, available - (_gradient != null ? 255 : 190)));
             _frame.style.height = height;
             _frame.style.width = width;
+        }
+
+        // One line when every value fits; otherwise one value per line instead of cutting the last ones off.
+        void FitDescription()
+        {
+            string line = string.Join(" · ", _descriptionParts);
+            bool stack = false;
+            float available = _description.parent?.contentRect.width ?? float.NaN;
+            if (_descriptionParts.Length > 1 && available > 0)
+            {
+                var style = _description.resolvedStyle;
+                float room = available - style.marginLeft - style.marginRight - style.paddingLeft - style.paddingRight;
+                float needed = _description.MeasureTextSize(line, 0, MeasureMode.Undefined, 0, MeasureMode.Undefined).x;
+                stack = !float.IsNaN(room) && needed > room + .5f;
+            }
+            EnableInClassList("thry-texture-card-stacked", stack);
+            string text = stack ? string.Join("\n", _descriptionParts) : line;
+            if (_description.text != text) _description.text = text;
         }
 
         static Button ActionButton(Action action)
@@ -199,11 +222,11 @@ namespace Thry.ThryEditor
                 _thumbnail.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
                 _mixedIcon.style.display = mixed ? DisplayStyle.Flex : DisplayStyle.None;
                 _placeholder.style.display = assigned || mixed ? DisplayStyle.None : DisplayStyle.Flex;
-                _placeholder.text = Text("textureDrop", "Drop\ntexture");
+                _placeholder.text = Text("textureDrop", "Drop\nTexture");
                 _thumbnail.image = assigned ? PreviewSource() : null;
-                _name.text = mixed ? Text("multipleTextures", "Multiple textures") : assigned ? RetainedText.TextureCaption(texture) : Text("noTextureAssigned", "No texture assigned");
+                _name.text = mixed ? Text("multipleTextures", "Multiple Textures") : assigned ? RetainedText.TextureCaption(texture) : Text("noTextureAssigned", "No Texture Assigned");
                 if (assigned) RefreshDescription();
-                else _description.text = string.Empty;
+                else _descriptionParts = Array.Empty<string>();
                 _description.style.display = assigned ? DisplayStyle.Flex : DisplayStyle.None;
                 _name.tooltip = _name.text;
                 _description.tooltip = _description.text;
@@ -246,9 +269,11 @@ namespace Thry.ThryEditor
             string fileSize = !string.IsNullOrEmpty(path) && System.IO.File.Exists(path)
                 ? Text("textureFileSize", "File Size:") + " " + Helpers.TextureHelper.VRAM.ToByteString(new System.IO.FileInfo(path).Length)
                 : null;
-            string vram = Text("textureEstimatedVram", "VRAM:") + " " + Helpers.TextureHelper.VRAM.ToByteString(RetainedTexturePreview.EstimateMemory(_texture));
-            _description.text = string.Join(" · ", new[] { dimensions, RetainedTexturePreview.Format(_texture),
-                fileSize, vram }.Where(s => !string.IsNullOrEmpty(s)));
+            string vram = Text("textureEstimatedVram", "Estimated VRAM:") + " " + Helpers.TextureHelper.VRAM.ToByteString(RetainedTexturePreview.EstimateMemory(_texture));
+            // Resolution and format share a line even when the values stack. FitDescription sets the text.
+            string format = RetainedTexturePreview.Format(_texture);
+            string resolution = string.IsNullOrEmpty(format) ? dimensions : dimensions + " · " + format;
+            _descriptionParts = new[] { resolution, fileSize, vram }.Where(s => !string.IsNullOrEmpty(s)).ToArray();
             _sourceName = _texture.name; _sourceWidth = _texture.width; _sourceHeight = _texture.height;
             _sourceDirty = EditorUtility.GetDirtyCount(_texture); _sourceUpdate = _texture.updateCount;
             _projectRevision = RetainedTextureRevision.Version;

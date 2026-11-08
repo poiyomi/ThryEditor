@@ -53,9 +53,13 @@ namespace Thry.ThryEditor
             int width = texture.width, height = texture.height;
             int depth = texture.dimension == TextureDimension.Tex3D ? SliceCount(texture) : 1;
             int surfaces = texture.dimension == TextureDimension.Cube ? 6 : texture.dimension == TextureDimension.Tex2DArray ? SliceCount(texture) : 1;
+            var format = texture.graphicsFormat;
+            // Direct3D has no 24-bit texture format, so Unity pads uncompressed RGB (RGB24) to 4 bytes per pixel.
+            // Measured on Direct3D 11 in Unity 2022.3: an RGB24 texture takes the same GPU memory as RGBA32.
+            if (!GraphicsFormatUtility.IsCompressedFormat(format) && GraphicsFormatUtility.GetBlockSize(format) == 3) format = GraphicsFormat.R8G8B8A8_UNorm;
             for (int mip = 0; mip < Mathf.Max(1, texture.mipmapCount); mip++)
             {
-                bytes += (long)GraphicsFormatUtility.ComputeMipmapSize(width, height, texture.graphicsFormat) * depth * surfaces;
+                bytes += (long)GraphicsFormatUtility.ComputeMipmapSize(width, height, format) * depth * surfaces;
                 width = Mathf.Max(1, width / 2); height = Mathf.Max(1, height / 2); depth = Mathf.Max(1, depth / 2);
             }
             var render = texture as RenderTexture;
