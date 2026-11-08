@@ -86,7 +86,7 @@ namespace Thry.ThryEditor.Helpers
             DrawBits(layout, ref value, row.LitColor, editable, row.MaskBits, row.LabelProvider, row.HideLedBackground);
 
             if ((row.Options & BitRowOptions.ShowDecimal) != 0)
-                DrawDecimalValue(layout, ref value, labelStyle, row.Options, row.HasMixedValue);
+                DrawDecimalValue(layout, ref value, row.Options, row.HasMixedValue);
 
             GUI.color = previousGuiColor;
             return layout.YPos + layout.RowHeight;
@@ -186,22 +186,25 @@ namespace Thry.ThryEditor.Helpers
         private static void DrawDecimalValue(
             BitRowLayout layout,
             ref int value,
-            GUIStyle labelStyle,
             BitRowOptions options,
             bool hasMixedValue)
         {
             Rect decimalRect = layout.DecimalRect;
+            EditorGUI.showMixedValue = hasMixedValue;
+
             if ((options & BitRowOptions.DecimalEditable) != 0)
             {
-                EditorGUI.showMixedValue = hasMixedValue;
                 value = EditorGUI.IntField(decimalRect, value);
-                EditorGUI.showMixedValue = false;
                 value = Mathf.Clamp(value, StencilOperationsHelper.ByteMin, StencilOperationsHelper.ByteMax);
             }
             else
             {
-                GUI.Label(decimalRect, value.ToString(), labelStyle);
+                // A disabled field, not a label, so a derived value reads like the ones above it.
+                using (new EditorGUI.DisabledScope(true))
+                    EditorGUI.IntField(decimalRect, value);
             }
+
+            EditorGUI.showMixedValue = false;
         }
 
         public static float GetReadMaskBitRowsHeight(float rowHeight)

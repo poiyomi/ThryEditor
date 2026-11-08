@@ -241,6 +241,14 @@
                     <td></td>
                     <td>[ThryStencilSummary]<br />[ToggleUI(true)]_StencilIsOccluded("Simulate ZFail",Float)= 0</td>
                 </tr>
+                <tr>
+                    <td>[ThryButton]</td>
+                    <td>A button in the property list. The displayname has to be a ButtonData object, so any action a footer or header button can run works here.
+                        <br />The property only carries the json, so it cannot be animated.
+                        <br /><i>args</i> hands property names to the opened window, see IThryButtonTarget.</td>
+                    <td></td>
+                    <td>[ThryButton]stencil_debug_overlay("{text:Open the Stencil Debug Overlay,hover:Draws the stencil buffer over the Scene view,action:{type:OPEN_EDITOR,data:Thry.ThryEditor.StencilDebugOverlay}}",Float)= 0</td>
+                </tr>
             </table>
 
             <h2>Supported Default Unity Flags</h2>
@@ -438,7 +446,43 @@
                         <td>no</td>
                         <td></td>
                     </tr>
+                    <tr>
+                        <td>center_position</td>
+                        <td>bool</td>
+                        <td>no</td>
+                        <td>false</td>
+                    </tr>
+                    <tr>
+                        <td>args</td>
+                        <td>string[]</td>
+                        <td>no</td>
+                        <td></td>
+                    </tr>
                 </table>
+                <i>args</i> holds property names passed to the window the action opens. The button
+                is greyed out while any name is missing from the shader. Only [ThryButton] passes
+                them on, and only to a window implementing IThryButtonTarget.
+            </div>
+            <div>
+                <h3>IThryButtonTarget</h3>
+                An EditorWindow opened by an OPEN_EDITOR action can implement this to be told what
+                it was opened for:
+                <br /><br />
+                <code>void SetButtonContext(string[] propertyNames, Material[] materials)</code>
+                <br /><br />
+                Called once as the window opens, with the button's <i>args</i> and the inspected
+                materials. Names, not MaterialProperty references, because those go stale when the
+                inspector rebuilds. Two things to get right in the window:
+                <ul>
+                    <li>Read values off the Material, not off
+                        ShaderEditor.Active.PropertyDictionary - the MaterialProperty behind each
+                        entry there is only refreshed while the inspector draws, so the window would
+                        report the inspector's last frame.</li>
+                    <li>Nothing repaints the window when a material changes. Call Repaint from
+                        OnInspectorUpdate or the values freeze.</li>
+                </ul>
+                Example: Editor/Examples/ThryButtonTargetExample.cs, opened by a button in
+                Examples/Example3.shader.
             </div>
             <div>
                 <h3>PropertyValueAction</h3>
