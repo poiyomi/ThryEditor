@@ -244,10 +244,11 @@ namespace Thry.ThryEditor
             _name.text = RetainedText.TextureCaption(_texture);
             string path = AssetDatabase.GetAssetPath(_texture);
             string fileSize = !string.IsNullOrEmpty(path) && System.IO.File.Exists(path)
-                ? Text("textureFileSize", "File size") + " " + Helpers.TextureHelper.VRAM.ToByteString(new System.IO.FileInfo(path).Length)
+                ? Text("textureFileSize", "File Size:") + " " + Helpers.TextureHelper.VRAM.ToByteString(new System.IO.FileInfo(path).Length)
                 : null;
+            string vram = Text("textureEstimatedVram", "VRAM:") + " " + Helpers.TextureHelper.VRAM.ToByteString(RetainedTexturePreview.EstimateMemory(_texture));
             _description.text = string.Join(" · ", new[] { dimensions, RetainedTexturePreview.Format(_texture),
-                fileSize }.Where(s => !string.IsNullOrEmpty(s)));
+                fileSize, vram }.Where(s => !string.IsNullOrEmpty(s)));
             _sourceName = _texture.name; _sourceWidth = _texture.width; _sourceHeight = _texture.height;
             _sourceDirty = EditorUtility.GetDirtyCount(_texture); _sourceUpdate = _texture.updateCount;
             _projectRevision = RetainedTextureRevision.Version;
