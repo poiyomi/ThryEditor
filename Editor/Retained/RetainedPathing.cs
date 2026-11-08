@@ -64,8 +64,8 @@ namespace Thry.ThryEditor
             fields.Track(sampling, () => sampling.style.display = Number("_PathSource") == 0 ? DisplayStyle.Flex : DisplayStyle.None);
             BuildMatrix();
             var actions = Row(); actions.AddToClassList("pathing-actions");
-            var presets = new Button { name = "pathing-presets", text = "Channel preset", tooltip = "Apply a motion recipe to the selected path. Keeps its color, masks and AudioLink settings." };
-            presets.clicked += () => ShowPresets(presets); actions.Add(presets); var copy = new Button { name = "pathing-copy", text = "Copy channel", tooltip = "Copy the selected path's shape and timing to another path. Keeps destination color and masks." }; copy.clicked += () => ShowCopy(copy); actions.Add(copy);
+            var presets = new Button { name = "pathing-presets", text = "Channel Preset", tooltip = "Apply a motion recipe to the selected path. Keeps its color, masks and AudioLink settings." };
+            presets.clicked += () => ShowPresets(presets); actions.Add(presets); var copy = new Button { name = "pathing-copy", text = "Copy Channel", tooltip = "Copy the selected path's shape and timing to another path. Keeps destination color and masks." }; copy.clicked += () => ShowCopy(copy); actions.Add(copy);
             fields.Track(actions, () => { bool editable = MotionEditable(selected); presets.SetEnabled(editable); copy.SetEnabled(editable); });
             visual.Add(actions);
             BuildRanges();
