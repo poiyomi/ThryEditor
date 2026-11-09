@@ -215,8 +215,7 @@ namespace Thry.ThryEditor.Drawers
                 channel.AddToClassList("thry-packer-source-channel"); view.UseInspectorMenu(channel); value.Add(channel);
                 channel.SetEnabled(!rgbSource);
                 fields.Track(channel,()=> {
-                    channel.SetValueWithoutNotify(rgbSource ? "RGB" : RetainedText.EnumCaption(typeof(TexturePacker.TextureChannelIn), input.Channel.ToString()));
-                    channel.showMixedValue = !rgbSource && RetainedChannelMixed(channelIndex, c => c.Channel);
+                    RetainedFields.SynchronizeValue(channel, rgbSource ? "RGB" : RetainedText.EnumCaption(typeof(TexturePacker.TextureChannelIn), input.Channel.ToString()), !rgbSource && RetainedChannelMixed(channelIndex, c => c.Channel));
                     channel.style.display = input.Source.Texture != null ? DisplayStyle.Flex : DisplayStyle.None;
                 });
                 channel.RegisterValueChangedCallback(e=>{ if (!rgbSource && channel.index >= 0 && channel.index < channelValues.Length) change(channelIndex, c => c.Channel=channelValues[channel.index]); });

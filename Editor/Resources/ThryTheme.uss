@@ -2784,6 +2784,17 @@
     font-size: var(--thry-type-small);
 }
 
+/* When the description does not fit on one line, each value gets its own line
+   (RetainedTextureCard.FitDescription) and the summary grows to show all of them. */
+.thry-texture-card.thry-texture-card-stacked .thry-texture-description {
+    white-space: normal;
+}
+
+.thry-texture-card-assigned.thry-texture-card-stacked .thry-texture-summary {
+    height: auto;
+    max-height: none;
+}
+
 .thry-texture-card .thry-texture-channels {
     margin-top: var(--thry-space-2);
     margin-left: var(--thry-space-2);
@@ -5918,8 +5929,10 @@
     color: var(--thry-muted-color);
 }
 
-/* Slim instrument-like slider handles; the native drag and keyboard behavior stays intact. */
-.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__tracker {
+/* Slim instrument-like slider handles; the native drag and keyboard behavior stays intact.
+   Integer sliders (IntRange, ByteSlider such as the stencil values) are .unity-slider-int. */
+.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__tracker,
+.thry-inspector .unity-slider-int.unity-base-slider--horizontal .unity-base-slider__tracker {
     position: absolute;
     top: 50%;
     left: 0;
@@ -5931,7 +5944,8 @@
     background-color: var(--thry-track-color);
 }
 
-.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger {
+.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger,
+.thry-inspector .unity-slider-int.unity-base-slider--horizontal .unity-base-slider__dragger {
     position: absolute;
     top: 50%;
     left: 0;
@@ -5943,12 +5957,15 @@
     background-color: var(--thry-thumb-color);
 }
 
-.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger-border {
+.thry-inspector .unity-slider.unity-base-slider--horizontal .unity-base-slider__dragger-border,
+.thry-inspector .unity-slider-int.unity-base-slider--horizontal .unity-base-slider__dragger-border {
     display: none;
 }
 
 .thry-inspector .unity-slider:hover .unity-base-slider__dragger,
-.thry-inspector .unity-slider:focus .unity-base-slider__dragger {
+.thry-inspector .unity-slider:focus .unity-base-slider__dragger,
+.thry-inspector .unity-slider-int:hover .unity-base-slider__dragger,
+.thry-inspector .unity-slider-int:focus .unity-base-slider__dragger {
     background-color: var(--thry-value-color);
 }
 

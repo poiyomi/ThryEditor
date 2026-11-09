@@ -32,7 +32,7 @@ namespace Thry.ThryEditor
             if(property is GIProperty)
             {
                 var field=new DropdownField(GIProperty.lightmapEmissiveStrings.Select(c=>c.text).ToList(),0);_view.UseInspectorMenu(field);parent.Add(field);
-                Track(field,()=>{int value=(int)(Model.Shader.Materials[0].globalIlluminationFlags&MaterialGlobalIlluminationFlags.AnyEmissive);int index=Array.IndexOf(GIProperty.lightmapEmissiveValues,value);field.SetValueWithoutNotify(index<0?"—":field.choices[index]);field.showMixedValue=Model.Shader.Materials.Select(m=>m.globalIlluminationFlags&MaterialGlobalIlluminationFlags.AnyEmissive).Distinct().Skip(1).Any();});
+                Track(field,()=>{int value=(int)(Model.Shader.Materials[0].globalIlluminationFlags&MaterialGlobalIlluminationFlags.AnyEmissive);int index=Array.IndexOf(GIProperty.lightmapEmissiveValues,value);SynchronizeValue(field,index<0?"—":field.choices[index],Model.Shader.Materials.Select(m=>m.globalIlluminationFlags&MaterialGlobalIlluminationFlags.AnyEmissive).Distinct().Skip(1).Any());});
                 field.RegisterValueChangedCallback(e=>{if(field.index>=0)Model.Mutate("Global Illumination",m=>{m.globalIlluminationFlags=(MaterialGlobalIlluminationFlags)GIProperty.lightmapEmissiveValues[field.index];GIProperty.FixupEmissiveFlag(m);});});handled=true;return;
             }
             foreach (var attribute in attributes)
@@ -234,7 +234,7 @@ namespace Thry.ThryEditor
                         var names=Enum.GetNames(type); int allBits=names.Length>=32?-1:(1<<names.Length)-1;
                         var choices=new[]{"Nothing","Everything"}.Concat(names).ToArray(); var maskButton=new Button(); parent.Add(maskButton);
                         maskButton.AddToClassList("thry-mask-picker");
-                        Track(maskButton,()=>{int value=(int)property.MaterialProperty.GetNumber();string selected=string.Join(", ",names.Where((s,i)=>(value&(1<<i))!=0));maskButton.text=property.MaterialProperty.hasMixedValue?"Mixed values":value==allBits?"Everything":string.IsNullOrEmpty(selected)?"Nothing":selected;maskButton.tooltip=maskButton.text;});
+                        Track(maskButton,()=>{int value=(int)property.MaterialProperty.GetNumber();string selected=string.Join(", ",names.Where((s,i)=>(value&(1<<i))!=0));maskButton.text=property.MaterialProperty.hasMixedValue?MixedDropdownText:value==allBits?"Everything":string.IsNullOrEmpty(selected)?"Nothing":selected;maskButton.tooltip=maskButton.text;});
                         maskButton.clicked+=()=>_view.ShowMenu(maskButton.worldBound,choices.Select(n=>new GUIContent(n)).ToArray(),Enumerable.Range(0,choices.Length).Where(i=>i==0?property.MaterialProperty.GetNumber()==0:i==1?(int)property.MaterialProperty.GetNumber()==allBits:((int)property.MaterialProperty.GetNumber()&(1<<(i-2)))!=0).ToArray(),i=>
                         {
                             if(i<2) { Model.Number(property,i==0?0:allBits); return; }

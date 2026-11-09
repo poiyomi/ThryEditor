@@ -277,11 +277,29 @@ namespace Thry.ThryEditor
             // Popup fields clear their value while mixed. Clear that state before
             // restoring a concrete value, so the first refresh is already correct.
             field.showMixedValue = mixed;
-            if (!changed) return;
+            if (changed) RefreshValue(field, value, mixed);
+            // Checked on every refresh: replacing a dropdown's choices also rewrites its text.
+            if (mixed) NameMixedDropdown(field);
+        }
+        static void RefreshValue<T>(BaseField<T> field, T value, bool mixed)
+        {
             field.SetValueWithoutNotify(value);
-            // Number, slider and popup fields write the new value's text over the mixed dash,
-            // so put the dash back. A focused text field refuses the mixed state, so leave it alone.
-            if (mixed && !HasFocus(field)) { field.showMixedValue = false; field.showMixedValue = true; }
+            // A focused text field refuses the mixed state, so leave it alone.
+            if (HasFocus(field)) return;
+            // Number, slider and popup fields write the new value's text over the mixed dash, so put the dash back.
+            if (mixed) { field.showMixedValue = false; field.showMixedValue = true; }
+            // Unity 2022.3 sliders hide their handle while mixed but leave the number in their own input box.
+            var sliderInput = field.ClassListContains(BaseSlider<float>.ussClassName) ? field.Q<TextField>(className: BaseSlider<float>.textFieldClassName) : null;
+            if (sliderInput != null) { sliderInput.showMixedValue = false; sliderInput.showMixedValue = mixed; }
+        }
+        internal static string MixedDropdownText => RetainedText.Get("dropdown_mixed_values", "Multiple Values");
+        static void NameMixedDropdown(VisualElement field)
+        {
+            if (!field.ClassListContains(BasePopupField<string, string>.ussClassName)) return;
+            var text = field.Q<TextElement>(className: BasePopupField<string, string>.textUssClassName);
+            string caption = MixedDropdownText;
+            // Without notify: a ChangeEvent from the caption would bubble to the dropdown's own value callbacks.
+            if (text != null && text.text != caption) ((INotifyValueChanged<string>)text).SetValueWithoutNotify(caption);
         }
         static bool HasFocus(VisualElement field)
         {

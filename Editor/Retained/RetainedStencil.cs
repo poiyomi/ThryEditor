@@ -223,7 +223,7 @@ namespace Thry.ThryEditor
             field.RegisterValueChangedCallback(e => { int index = field.choices.IndexOf(e.newValue); if (index >= 0) StencilEdit(config, id, old => Convert.ToInt32(Enum.Parse(typeof(T), choices[index]))); });
             Track(field, () => {
                 var values = Model.Shader.Materials.Select(m => StencilValue(m, id, typeof(T) == typeof(CompareFunction) ? (int)CompareFunction.Always : 0)).Distinct().ToArray();
-                string name = Enum.GetName(typeof(T), values.FirstOrDefault()); field.SetValueWithoutNotify(name == null ? "Unknown" : ObjectNames.NicifyVariableName(name)); field.showMixedValue = values.Length > 1;
+                string name = Enum.GetName(typeof(T), values.FirstOrDefault()); SynchronizeValue(field, name == null ? "Unknown" : ObjectNames.NicifyVariableName(name), values.Length > 1);
                 ShaderProperty p; field.SetEnabled(Model.Shader.PropertyDictionary.TryGetValue(id, out p) && Model.CanEdit(p));
             });
         }
