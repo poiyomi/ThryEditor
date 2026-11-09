@@ -226,6 +226,8 @@ namespace Thry.ThryEditor
                     var slider = new Slider(property.MaterialProperty.rangeLimits.x, property.MaterialProperty.rangeLimits.y) { showInputField = true };
                     bool integer = attributes.Any(a => a.Name == "IntRange" || a.Name == "ThryIntRange");
                     bool inverted = attributes.Any(a => a.Name == "InvertedSlider");
+                    if (integer && !inverted && !string.IsNullOrEmpty(property.Options.zero_label))
+                    { LabeledZeroRange(input, property, property.Options.zero_label); break; }
                     if (integer)
                     {
                         var integerSlider = new SliderInt((int)property.MaterialProperty.rangeLimits.x, (int)property.MaterialProperty.rangeLimits.y) { showInputField = true };
@@ -237,6 +239,21 @@ namespace Thry.ThryEditor
                     var number = new FloatField(); Bind(number, property, p => p.GetNumber(), (p,v) => p.SetNumber(v)); input.Add(number); break;
             }
             return root;
+        }
+        // An int slider whose number field shows a symbol or word for 0. The field takes the place of the
+        // slider's own one, so it is laid out and styled the same.
+        private void LabeledZeroRange(VisualElement input, ShaderProperty property, string zeroLabel)
+        {
+            var limits = property.MaterialProperty.rangeLimits;
+            var slider = new SliderInt((int)limits.x, (int)limits.y);
+            Bind(slider, property, p => (int)p.GetNumber(), (p, v) => p.SetNumber(v));
+            var number = new IntegerField { name = "labeled-number-" + property.MaterialProperty.name, formatString = "0;-0;'" + zeroLabel.Replace("'", "") + "'" };
+            number.AddToClassList("unity-base-slider__text-field");
+            slider.Add(number);
+            BindProperty(number, property);
+            TrackVisible(number, () => SynchronizeValue(number, (int)property.MaterialProperty.GetNumber(), property.MaterialProperty.hasMixedValue));
+            number.RegisterValueChangedCallback(e => Model.EditSingleProperty(property, p => p.SetNumber(Mathf.Clamp(e.newValue, limits.x, limits.y))));
+            input.Add(slider);
         }
         internal static float PowerValue(float value, float power) => Mathf.Sign(value) * Mathf.Pow(Mathf.Abs(value), power);
         private void PowerRange(VisualElement input, ShaderProperty property, float power)

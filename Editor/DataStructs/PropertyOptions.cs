@@ -20,6 +20,7 @@ namespace Thry.ThryEditor
         public string[] reference_properties;
         public string reference_property;
         public string fps_property;
+        public string zero_label;
         public bool force_texture_options = false;
         public bool is_visible_simple = false;
         public string file_name;
