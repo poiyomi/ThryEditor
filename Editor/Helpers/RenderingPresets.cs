@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Thry.ThryEditor.Helpers
 {
@@ -108,6 +109,56 @@ namespace Thry.ThryEditor.Helpers
                 m.SetOverrideTag(parkedTag, string.Empty); // Consumed
             }
             StampOwner(materials, identity);
+        }
+
+        /// <summary>
+        /// Matches the VRChat fallback of the materials a rendering preset was just applied to.
+        /// Call this once a property's on_value_actions have run; properties that are not a preset are ignored.
+        /// </summary>
+        public static void MatchFallbackAfterPreset(ShaderPart property, Material[] materials)
+        {
+            if (property?.MaterialProperty == null || property.Options?.on_value_actions == null) return;
+            if (PresetPropertyNames.Contains(property.MaterialProperty.name)) MatchFallback(materials);
+        }
+
+        /// <summary>
+        /// Makes each material's VRChat fallback match how the material renders: Cutout, Fade or Transparent for its
+        /// render type and blending, DoubleSided when culling is off. The fallback's shader type is kept, and a
+        /// fallback that is not a shader type with those two parts (Hidden, say) is left as it is.
+        /// </summary>
+        public static void MatchFallback(params Material[] materials)
+        {
+            if (materials == null) return;
+
+            foreach (Material m in materials)
+            {
+                if (m == null) continue;
+
+                string current = m.GetTag("VRCFallback", false, string.Empty);
+                bool doubleSided = GetNumber(m, "_Cull", (float)CullMode.Back) == (float)CullMode.Off;
+                string matched = VRCFallbackProperty.WithRenderMode(current, GetFallbackRenderType(m), doubleSided);
+                if (matched != current) m.SetOverrideTag("VRCFallback", matched);
+            }
+        }
+
+        // A blended material falls back to Fade when it blends by source alpha and to Transparent otherwise.
+        static string GetFallbackRenderType(Material material)
+        {
+            string renderType = material.GetTag("RenderType", false, string.Empty);
+            float source = GetNumber(material, "_SrcBlend", (float)BlendMode.One);
+            bool blends = source != (float)BlendMode.One || GetNumber(material, "_DstBlend", (float)BlendMode.Zero) != (float)BlendMode.Zero;
+
+            if (renderType == "Transparent" || (renderType == "TransparentCutout" && blends))
+                return source == (float)BlendMode.SrcAlpha ? "Fade" : "Transparent";
+            return renderType == "TransparentCutout" ? "Cutout" : string.Empty;
+        }
+
+        static float GetNumber(Material material, string name, float fallback)
+        {
+            Shader shader = material.shader;
+            int index = shader == null ? -1 : shader.FindPropertyIndex(name);
+            if (index < 0) return fallback;
+            return shader.GetPropertyType(index) == ShaderPropertyType.Int ? material.GetInteger(name) : material.GetFloat(name);
         }
 
         /// <summary>

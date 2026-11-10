@@ -426,7 +426,14 @@ namespace Thry.ThryEditor
                     int index = Array.IndexOf(VRCFallbackProperty.RetainedValues, tag);
                     RetainedFields.SynchronizeValue(fallback, index < 0 ? tag : VRCFallbackProperty.RetainedNames[index], mixed);
                 });
-                fallback.RegisterValueChangedCallback(e=>{if(fallback.index>=0)Model.Mutate("VRChat Fallback",m=>m.SetOverrideTag("VRCFallback",VRCFallbackProperty.RetainedValues[fallback.index]));}); Add(fallbackRow);
+                fallback.RegisterValueChangedCallback(e=>{if(fallback.index>=0)Model.Mutate("VRChat Fallback",m=>m.SetOverrideTag("VRCFallback",VRCFallbackProperty.RetainedValues[fallback.index]));});
+                input.AddToClassList("thry-components");
+                fallback.style.flexGrow = 1; fallback.style.flexBasis = 0; fallback.style.flexShrink = 1; fallback.style.minWidth = 0;
+                var matchFallback = new Button(() => Model.Mutate("VRChat Fallback", m => Helpers.RenderingPresets.MatchFallback(m)))
+                    { name = "thry-vrc-fallback-match", text = "Match", tooltip = "Match the fallback to this material's render mode and culling." };
+                matchFallback.AddToClassList("thry-component-spaced");
+                matchFallback.style.flexShrink = 0; matchFallback.style.marginTop = 0; matchFallback.style.marginRight = 0; matchFallback.style.marginBottom = 0;
+                input.Add(matchFallback); Add(fallbackRow);
             }
             var row = RetainedFields.Row(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),out input);
             _fields.DecoratePreset(row, Model.Shader.RetainedQueue);

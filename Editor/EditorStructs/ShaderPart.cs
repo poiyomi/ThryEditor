@@ -1680,6 +1680,7 @@ namespace Thry.ThryEditor
                     if (action == null) continue;
                     action.Execute(MaterialProperty, targets);
                 }
+            RenderingPresets.MatchFallbackAfterPreset(this, targets);
         }
 
         public abstract bool Search(string searchTerm, List<ShaderGroup> foundHeaders, bool isParentInSearch = false);

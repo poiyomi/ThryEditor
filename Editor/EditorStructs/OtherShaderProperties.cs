@@ -106,6 +106,14 @@ namespace Thry.ThryEditor
         static string[] s_vRCFallbackOptionsPopup = s_fallbackNoTypes.Union(s_fallbackShaderTypes.SelectMany(s => s_fallbackRenderTypes.SelectMany(r => s_fallbackCullTypes.Select(c => r + "/" + c).Select(rc => s + "/" + rc)))).ToArray();
         static string[] s_vRCFallbackOptionsValues = s_fallbackNoTypes.Union(s_fallbackShaderTypes.SelectMany(s => s_fallbackRenderTypesValues.SelectMany(r => s_fallbackCullTypesValues.Select(c => r + c).Select(rc => s + rc)))).ToArray();
 
+        internal static string WithRenderMode(string fallback, string renderType, bool doubleSided)
+        {
+            string shaderType = s_fallbackShaderTypes.FirstOrDefault(s => s_fallbackRenderTypesValues.Any(r => s_fallbackCullTypesValues.Any(c => s + r + c == fallback)));
+            // VRChat does not combine the Toon Standard fallbacks with a render type or culling
+            if (shaderType == null || shaderType.StartsWith("toonstandard", System.StringComparison.Ordinal)) return fallback;
+            return shaderType + renderType + (doubleSided ? s_fallbackCullTypesValues[1] : s_fallbackCullTypesValues[0]);
+        }
+
         public VRCFallbackProperty(ShaderEditor shaderEditor) : base(shaderEditor, "VRCFallback", 0, "", "Select the shader VRChat should use when your shaders are being hidden.", -1)
         {
             _doCustomDrawLogic = true;
