@@ -13,7 +13,7 @@ namespace Thry.ThryEditor
         private List<(Material material, string propertyName)> _textureUses;
         private Material _selectedMaterial;
         private string _selectedPropertyName;
-        private IVisualElementScheduledItem _searchHandOff;
+        private IVisualElementScheduledItem _handOff;
 
         public static void ShowWindow(Texture texture, List<(Material material, string propertyName)> textureUses)
         {
@@ -39,10 +39,10 @@ namespace Thry.ThryEditor
                 search.RegisterValueChangedCallback(e => row.style.display = (use.material.name + use.propertyName).IndexOf(e.newValue, StringComparison.OrdinalIgnoreCase) >= 0 ? DisplayStyle.Flex : DisplayStyle.None);
             }
             // Clear doesn't cancel scheduled items, so schedule once
-            if (_searchHandOff == null) _searchHandOff = root.schedule.Execute(() =>
+            if (_handOff == null) _handOff = root.schedule.Execute(() =>
             {
-                if (ShaderEditor.Active?.ShowSearch == null || _selectedMaterial == null || ShaderEditor.Active.Materials[0] != _selectedMaterial) return;
-                ShaderEditor.Active.ShowSearch(_selectedPropertyName); _selectedMaterial = null; _selectedPropertyName = null;
+                if (ShaderEditor.Active?.Navigate == null || _selectedMaterial == null || ShaderEditor.Active.Materials[0] != _selectedMaterial) return;
+                ShaderEditor.Active.Navigate(_selectedPropertyName); _selectedMaterial = null; _selectedPropertyName = null;
             }).Every(150);
         }
         [MenuItem("Assets/Thry/Textures/Find Uses", true)]

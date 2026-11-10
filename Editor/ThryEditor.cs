@@ -931,7 +931,7 @@ namespace Thry
             }
         }
 
-        internal Action<string> ShowSearch;
+        internal Func<string, bool> Navigate;
         private string _focusedCategory;
         internal string InspectorTitle => _shaderHeader?.Content.text ?? Shader?.name ?? "Material";
         internal string FocusedCategory => _focusedCategory;

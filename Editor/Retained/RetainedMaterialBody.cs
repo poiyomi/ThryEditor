@@ -480,7 +480,10 @@ namespace Thry.ThryEditor
     internal sealed class RetainedSubcategory : VisualElement
     {
         readonly VisualElement content;
+        readonly Action reveal;
         public override VisualElement contentContainer => content ?? this;
+        // Opens for this view without changing the remembered state.
+        internal void Reveal() => reveal();
 
         internal RetainedSubcategory(string title, string scope, string key, bool initiallyOpen)
         {
@@ -500,6 +503,7 @@ namespace Thry.ThryEditor
                 icon.image = expanded ? opened : closed;
             };
             Action toggle = () => { expanded = !expanded; RetainedUiState.Set(scope, key, expanded); refresh(); };
+            reveal = () => { expanded = true; refresh(); };
             arrow.clicked += toggle;
             header.RegisterCallback<PointerDownEvent>(e => {
                 if (e.button != 0) return;

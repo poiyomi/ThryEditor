@@ -459,7 +459,7 @@ namespace Thry.ThryEditor
             if (controller == null) reason = new Label(hint);
             else
             {
-                reason = new Button(() => _view.SearchProperty(controller)) { text = hint,
+                reason = new Button(() => _view.Navigate(controller)) { text = hint,
                     tooltip = T("find_controller", "Find controlling property") + ": " + Clean(RetainedText.PropertyCaption(controller)) };
                 reason.AddToClassList("thry-search-hidden-link");
             }

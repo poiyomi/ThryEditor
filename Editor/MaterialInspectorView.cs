@@ -37,6 +37,7 @@ namespace Thry.ThryEditor
         bool _typeFromQuery, _statusFromQuery, _multipleQueryTypes, _multipleQueryStates;
         private readonly Button _savedFilters;
         private readonly RetainedSearch _propertySearch;
+        private readonly RetainedNavigation _navigation;
         private ShaderEditor _shader;
         private bool _builtTools;
         private bool _toolTheme;
@@ -157,6 +158,7 @@ namespace Thry.ThryEditor
             _propertySearch = new RetainedSearch(this, ClearSearch);
             Add(_propertySearch);
             _body = new VisualElement { name = "thry-unfiltered-body" }; Add(_body);
+            _navigation = new RetainedNavigation(this);
             _fallback = new IMGUIContainer(() =>
             {
                 // A shader can change between retained refreshes. Never let a
@@ -174,7 +176,7 @@ namespace Thry.ThryEditor
                 EnableInClassList("thry-compact", evt.newRect.width < 420);
                 EnableInClassList("thry-narrow", evt.newRect.width < 310);
             });
-            RegisterCallback<DetachFromPanelEvent>(evt => { if (_shader != null) _shader.ShowSearch = null; });
+            RegisterCallback<DetachFromPanelEvent>(evt => ReleaseShaderHooks());
             // The Inspector host and its material foldout are established on attach.
             // Build visible controls now rather than leaving the first paint empty
             // until the periodic refresh. Collapsed embedded materials still return early.
@@ -453,9 +455,22 @@ namespace Thry.ThryEditor
             _sectionScope = section.MaterialProperty.name;
             ApplySearchNow(); _search.Focus();
         }
-        internal void SearchProperty(ShaderProperty property)
+        internal bool Navigate(string property) => _retained != null && Navigate(RetainedNavigation.Find(_retained.Model.Shader, property));
+        // Leaves search, opens what hides the part for this view only, then scrolls to it and flashes it.
+        // False when the part has no place in this inspector.
+        internal bool Navigate(ShaderPart part)
         {
-            if (property?.MaterialProperty != null) LoadSearch(property.MaterialProperty.name);
+            if (part == null || _retained == null || panel == null || style.display == DisplayStyle.None
+                || !RetainedMaterialModel.HasValidTargets(_editor) || !_navigation.Start(_retained, part)) return false;
+            if (_searchPending || CurrentQuery().Length > 0) ResetSearch();
+            _retained.Synchronize();
+            _navigation.Step();
+            return true;
+        }
+        private void ReleaseShaderHooks()
+        {
+            if (_shader == null) return;
+            _shader.Navigate = null;
         }
         internal bool IsFavorite(ShaderProperty property) => RetainedSearchPreferences.IsFavorite(property);
         internal void ToggleFavorite(ShaderProperty property)
@@ -501,6 +516,12 @@ namespace Thry.ThryEditor
         }
         private void ClearSearch()
         {
+            ResetSearch();
+            _retained?.Synchronize();
+            _search.Focus();
+        }
+        private void ResetSearch()
+        {
             _searchPending = false;
             _searchRefresh.Pause();
             _search.SetValueWithoutNotify("");
@@ -511,8 +532,6 @@ namespace Thry.ThryEditor
             _typeFilter.SetValueWithoutNotify(_typeFilter.choices[0]);
             _statusFilter.SetValueWithoutNotify(_statusFilter.choices[0]);
             UpdateSearch();
-            _retained?.Synchronize();
-            _search.Focus();
         }
         private void InvalidateRenderers() { _cachedRenderers = null; }
         private Renderer[] FindRenderers()
@@ -644,7 +663,7 @@ namespace Thry.ThryEditor
             if (current != null)
             {
                 // Detaching clears this, so set it on every refresh
-                current.ShowSearch = LoadSearch;
+                current.Navigate = Navigate;
                 _retained.Model.Renderers = FindRenderers(); _retained.Model.Refresh();
                 if (_retained.childCount == 0 || !ClassListContains("thry-filtering")) _retained.Synchronize();
             }
@@ -654,14 +673,14 @@ namespace Thry.ThryEditor
                 // fallback just to bridge the first retained refresh.
                 if (_loading.parent == null)
                 {
-                    if (_shader != null) _shader.ShowSearch = null;
+                    ReleaseShaderHooks();
                     _shader = null; _crossProperties = null; _retained = null;
                     _body.Clear(); _body.Add(_loading);
                 }
             }
             else if (_fallback.parent == null)
             {
-                if (_shader != null) _shader.ShowSearch = null;
+                ReleaseShaderHooks();
                 _shader = null; _crossProperties = null; _retained = null;
                 _body.Clear(); _body.Add(_fallback);
             }

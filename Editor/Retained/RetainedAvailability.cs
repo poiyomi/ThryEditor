@@ -25,7 +25,7 @@ namespace Thry.ThryEditor
                 var dependency = ControllingProperty(part);
                 if (dependency == null) return;
                 var menu = new UnityEditor.GenericMenu();
-                menu.AddItem(new GUIContent(RetainedText.Get(part.MyShaderUI, "find_controller", "Find controlling property") + ": " + RetainedMaterialBody.SectionCaption(dependency)), false, () => view.SearchProperty(dependency));
+                menu.AddItem(new GUIContent(RetainedText.Get(part.MyShaderUI, "find_controller", "Find controlling property") + ": " + RetainedMaterialBody.SectionCaption(dependency)), false, () => view.Navigate(dependency));
                 e.PreventDefaultHandling(); e.StopImmediatePropagation();
                 view.ShowLegacyMenu(menu, target, new Rect(e.position, Vector2.zero));
             }, TrickleDown.TrickleDown);

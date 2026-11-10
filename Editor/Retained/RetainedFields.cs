@@ -32,6 +32,7 @@ namespace Thry.ThryEditor
     {
         internal readonly RetainedMaterialModel Model;
         private readonly MaterialInspectorView _view;
+        internal MaterialInspectorView View => _view;
         private sealed class Binding
         {
             internal VisualElement Element;
