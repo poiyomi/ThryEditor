@@ -9356,7 +9356,8 @@
     color: var(--thry-muted-color);
 }
 .thry-inspector .thry-search-hidden-link,
-.thry-inspector .thry-search-hidden-more {
+.thry-inspector .thry-search-hidden-more,
+.thry-inspector .thry-mask-map-use {
     --thry-button-background: transparent;
     --thry-button-hover-background: transparent;
     --thry-button-pressed-background: transparent;
@@ -9371,6 +9372,124 @@
     font-size: var(--thry-type-small);
 }
 .thry-inspector .thry-search-hidden-link:hover,
-.thry-inspector .thry-search-hidden-more:hover {
+.thry-inspector .thry-search-hidden-more:hover,
+.thry-inspector .thry-mask-map-use:hover {
     color: var(--thry-value-color);
+}
+
+/* ===== Global Mask channel map ===== */
+.thry-mask-map {
+    margin: var(--thry-space-2) 0 var(--thry-space-4) 0;
+}
+.thry-mask-map-bar {
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--thry-control-height);
+    margin-bottom: var(--thry-space-2);
+    padding-left: var(--thry-space-6);
+}
+.thry-inspector .thry-mask-map-count {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    font-size: var(--thry-type-small);
+    color: var(--thry-muted-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.thry-inspector .thry-mask-map-filter {
+    flex-shrink: 0;
+    margin: 0;
+}
+.thry-inspector .thry-mask-map-filter .unity-toggle__text {
+    margin-left: var(--thry-space-4);
+    font-size: var(--thry-type-small);
+    color: var(--thry-caption-color);
+}
+.thry-mask-map-line {
+    flex-direction: row;
+    align-items: center;
+    padding-left: var(--thry-space-4);
+    border-left-width: var(--thry-border-width-strong);
+    border-left-color: transparent;
+}
+.thry-mask-map-row {
+    min-height: var(--thry-control-height);
+    padding-top: var(--thry-space-1);
+    padding-bottom: var(--thry-space-1);
+}
+.thry-mask-map-row:hover {
+    background-color: var(--thry-row-hover);
+}
+.thry-mask-map-row-unused {
+    opacity: 0.5;
+}
+.thry-mask-map-row-unused:hover,
+.thry-mask-map-row-unused.thry-mask-map-row-editing {
+    opacity: 1;
+}
+.thry-mask-map-row-unfilled {
+    border-left-color: var(--thry-monokai-orange);
+}
+.thry-inspector .thry-mask-map-channel {
+    width: 28px;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    font-size: var(--thry-font-size);
+    color: var(--thry-caption-color);
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+}
+.thry-inspector .thry-mask-map-name,
+.thry-inspector .thry-mask-map-fill,
+.thry-inspector .thry-mask-map-read {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0;
+    margin: 0 var(--thry-space-6) 0 0;
+    padding: 0;
+}
+.thry-inspector .thry-mask-map-read {
+    flex-grow: 1.5;
+    margin-right: 0;
+}
+.thry-inspector .thry-mask-map-fill,
+.thry-inspector .thry-mask-map-read {
+    font-size: var(--thry-type-small);
+    color: var(--thry-caption-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -unity-text-align: middle-left;
+}
+.thry-inspector .thry-mask-map-header > Label {
+    font-size: var(--thry-type-caption);
+    color: var(--thry-muted-color);
+}
+.thry-inspector .thry-mask-map-uses {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.thry-mask-map-entry {
+    flex-direction: row;
+    align-items: center;
+    margin-right: var(--thry-space-4);
+}
+.thry-inspector .thry-mask-map-use,
+.thry-inspector .thry-mask-map-note {
+    margin: 0;
+    font-size: var(--thry-type-small);
+    -unity-text-align: middle-left;
+}
+.thry-inspector .thry-mask-map-note {
+    padding: 0;
+    color: var(--thry-caption-color);
+}
+.thry-inspector .thry-mask-map-row-unfilled .thry-mask-map-unfilled {
+    color: var(--thry-monokai-orange);
 }

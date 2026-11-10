@@ -22,6 +22,7 @@ namespace Thry.ThryEditor
                 && _model.Shader.PropertyDictionary.TryGetValue(property, out var part) && _model.CanEdit(part);
             public void Mutate(string undoName, Action<Material> edit) => _model.Mutate(undoName, edit);
             public void Notify() => _model.Notify();
+            public void Search(string query) { if (!string.IsNullOrEmpty(query)) _model.Shader.ShowSearch?.Invoke(query); }
 
             // Bindings share one refresh pass, so an extension that throws must not stop the fields after it.
             public void Track(VisualElement element, Action update)
