@@ -352,9 +352,13 @@ namespace Thry.ThryEditor
         }
 
         private List<KeyValuePair<ShaderProperty, string>> SectionProperties(ShaderGroup section)
+            => ChangeScope(Model.Shader, section, section.Children,
+                new[] { section.Options.reference_property }.Concat(section.Options.reference_properties ?? Array.Empty<string>()));
+
+        internal static List<KeyValuePair<ShaderProperty, string>> ChangeScope(ShaderEditor shader, ShaderPart owner, IEnumerable<ShaderPart> parts, IEnumerable<string> references)
         {
             var result = new List<KeyValuePair<ShaderProperty, string>>();
-            var visited = new HashSet<ShaderPart>();
+            var visited = new HashSet<ShaderPart> { owner };
             Action<ShaderPart> collect = null;
             collect = part =>
             {
@@ -366,19 +370,19 @@ namespace Thry.ThryEditor
                 var group = part as ShaderGroup;
                 if (group != null) foreach (var child in group.Children) collect(child);
                 ShaderProperty reference;
-                if (part.Options.reference_property != null && Model.Shader.PropertyDictionary.TryGetValue(part.Options.reference_property, out reference)) collect(reference);
+                if (part.Options.reference_property != null && shader.PropertyDictionary.TryGetValue(part.Options.reference_property, out reference)) collect(reference);
                 if (part.Options.reference_properties != null)
                     foreach (var name in part.Options.reference_properties)
-                        if (name != null && Model.Shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
+                        if (name != null && shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
                 if (part.AdditionalDefaultCheckProperties != null)
                     foreach (var name in part.AdditionalDefaultCheckProperties)
-                        if (name != null && Model.Shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
+                        if (name != null && shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
             };
-            foreach (var child in section.Children) collect(child);
-            foreach (var name in new[] { section.Options.reference_property }.Concat(section.Options.reference_properties ?? Array.Empty<string>()))
+            foreach (var child in parts) collect(child);
+            foreach (var name in references)
             {
                 ShaderProperty reference;
-                if (name != null && Model.Shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
+                if (name != null && shader.PropertyDictionary.TryGetValue(name, out reference)) collect(reference);
             }
             return result;
         }

@@ -386,13 +386,14 @@ namespace Thry.ThryEditor
             public void ApplyInputDeviceDelta(Vector3 delta,DeltaSpeed speed,T startValue) => _field.ApplyInputDeviceDelta(delta,speed,startValue);
             public void StopDragging() { _field.StopDragging(); _dragging=false; _originals.Clear(); }
         }
-        private void ChangedPropertyIndicator(VisualElement row, Label caption, ShaderProperty property)
+        private void ChangedPropertyIndicator(VisualElement row, Label caption, ShaderProperty property, IReadOnlyList<KeyValuePair<ShaderProperty, string>> related = null)
         {
             // Keep indicators beside TextElements; children suppress their text rendering.
             caption.AddToClassList("thry-caption-has-changed-indicator");
             var dot = new VisualElement { name = "changed-property-" + property.MaterialProperty.name };
             dot.AddToClassList("thry-property-changed-dot"); row.Add(dot);
-            dot.RegisterCallback<TooltipEvent>(e => { e.tooltip = RetainedValueDetails.Describe(property); e.rect = dot.worldBound; e.StopImmediatePropagation(); });
+            dot.RegisterCallback<TooltipEvent>(e => { e.tooltip = ChangedDetails(property, related); e.rect = dot.worldBound; e.StopImmediatePropagation(); });
+            bool relatedChanged = false;
             Action position = () =>
             {
                 if (dot.style.display == DisplayStyle.None || caption.panel == null || caption.contentRect.width <= 0) return;
@@ -406,11 +407,27 @@ namespace Thry.ThryEditor
             row.RegisterCallback<GeometryChangedEvent>(e => position());
             TrackVisible(dot, () =>
             {
-                dot.style.display = RetainedMaterialBody.HasChangedValue(property) || RetainedMaterialBody.HasChangedTextureTransform(property)
-                    ? DisplayStyle.Flex : DisplayStyle.None;
+                bool show = false;
+                if (Config.Instance.showStarNextToNonDefaultProperties)
+                {
+                    if (related != null && !Model.DeferSummaryRefresh) relatedChanged = RetainedPropertyDefaults.HasChangedSection(Model.Shader, related);
+                    show = relatedChanged || RetainedMaterialBody.HasChangedValue(property) || RetainedMaterialBody.HasChangedTextureTransform(property);
+                }
+                dot.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
                 dot.style.backgroundColor = caption.resolvedStyle.color;
                 position();
             }, row);
+        }
+        private string ChangedDetails(ShaderProperty property, IReadOnlyList<KeyValuePair<ShaderProperty, string>> related)
+        {
+            string details = RetainedValueDetails.Describe(property);
+            var changed = (related ?? Array.Empty<KeyValuePair<ShaderProperty, string>>()).Select(r => r.Key)
+                .Where(r => RetainedMaterialBody.HasChangedValue(r) || RetainedMaterialBody.HasChangedTextureTransform(r))
+                .Select(r => RetainedText.PropertyCaption(r).Split('|')[0].Trim()).Where(c => c.Length > 0).Distinct().ToArray();
+            if (changed.Length == 0) return details;
+            bool own = RetainedMaterialBody.HasChangedValue(property) || RetainedMaterialBody.HasChangedTextureTransform(property);
+            return RetainedMaterialBody.Hover(own ? details : null,
+                RetainedText.Get(Model.Shader, "changed_options", "Changed options") + ": " + string.Join(", ", changed));
         }
         internal void Toggle(VisualElement parent, ShaderProperty property)
         {
@@ -563,7 +580,8 @@ namespace Thry.ThryEditor
             TrackVisible(foldCaption, () => { foldCaption.text = RetainedText.PropertyCaption(property);
             foldout.EnableInClassList("thry-readonly-texture-foldout", !Model.CanEdit(property));
             foldout.tooltip = RetainedMaterialBody.Hover(property.TooltipText, property.Note); });
-            ChangedPropertyIndicator(row, foldCaption, property);
+            ChangedPropertyIndicator(row, foldCaption, property, property.Options.reference_properties == null ? null
+                : RetainedMaterialBody.ChangeScope(Model.Shader, property, Enumerable.Empty<ShaderPart>(), property.Options.reference_properties));
             var dimension = property.MaterialProperty.textureDimension;
             // Use the asset type for native picker filtering; assignment is still dimension-checked below.
             bool cube = dimension == UnityEngine.Rendering.TextureDimension.Cube;
