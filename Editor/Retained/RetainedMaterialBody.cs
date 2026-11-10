@@ -263,7 +263,8 @@ namespace Thry.ThryEditor
             bool built = false;
             _fields.TrackVisible(header, () => {
                 title.text = SectionCaption(group);
-                if (!Model.DeferSummaryRefresh)
+                if (!Config.Instance.showStarNextToNonDefaultProperties) changedDot.style.display = DisplayStyle.None;
+                else if (!Model.DeferSummaryRefresh)
                     changedDot.style.display = RetainedPropertyDefaults.HasChangedSection(Model.Shader, changedProperties) ? DisplayStyle.Flex : DisplayStyle.None;
             });
             Action update = () => {

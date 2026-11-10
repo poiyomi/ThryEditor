@@ -223,6 +223,8 @@ namespace Thry.ThryEditor
                     }
                     if (key == "inlinePackerSaveLocationCustom")
                         row.tooltip = RetainedText.Get("custom_texture_folder_help", "Used when Texture save location is Custom folder. Choose a folder inside Assets.");
+                    if (key == "showStarNextToNonDefaultProperties")
+                        row.tooltip = RetainedText.Get("changed_dots_help", "Show a dot next to values and sections that differ from the shader's defaults.");
                     searchable.Rows.Add(new KeyValuePair<string, VisualElement>(group[0] + " " + label + " " + key, row));
                 }
                 if (group[0] == "Theme")
