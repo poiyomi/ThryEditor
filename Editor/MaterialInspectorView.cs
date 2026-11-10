@@ -124,6 +124,21 @@ namespace Thry.ThryEditor
                 }
             }, TrickleDown.TrickleDown);
             RegisterCallback<KeyDownEvent>(HandleFilterEscape);
+            // Find reaches the inspector's panel root when nothing in it has focus, so listen there.
+            RegisterCallback<AttachToPanelEvent>(evt => {
+                if (evt.target != this || _findRoot != null) return;
+                _findRoot = panel.visualTree;
+                _findRoot.RegisterCallback<ValidateCommandEvent>(ValidateFind);
+                _findRoot.RegisterCallback<ExecuteCommandEvent>(ExecuteFind);
+                _findRoot.RegisterCallback<KeyDownEvent>(FindKey);
+            });
+            RegisterCallback<DetachFromPanelEvent>(evt => {
+                if (evt.target != this || _findRoot == null) return;
+                _findRoot.UnregisterCallback<ValidateCommandEvent>(ValidateFind);
+                _findRoot.UnregisterCallback<ExecuteCommandEvent>(ExecuteFind);
+                _findRoot.UnregisterCallback<KeyDownEvent>(FindKey);
+                _findRoot = null;
+            });
             navigation.Add(_search);
             var filters = new VisualElement(); filters.AddToClassList("thry-search-filters");
             _typeFilter = new DropdownField(new List<string> { "All types", "Textures", "Colors", "Numbers", "Vectors", "Toggles" }, 0)
@@ -326,6 +341,34 @@ namespace Thry.ThryEditor
         {
             if (panel == null || !RetainedMaterialModel.HasValidTargets(_editor)) return;
             InvalidateRenderers(); _retained?.Model.Notify();
+        }
+        private VisualElement _findRoot;
+        private bool OwnsFind(IEventHandler target)
+        {
+            if (!ClassListContains("thry-active") || resolvedStyle.display == DisplayStyle.None) return false;
+            var element = target as VisualElement;
+            if (element != null && element != _findRoot) return element == this || Contains(element);
+            return _findRoot.Query<MaterialInspectorView>().Where(view => view.ClassListContains("thry-active") && view.resolvedStyle.display != DisplayStyle.None).First() == this;
+        }
+        private void ValidateFind(ValidateCommandEvent evt)
+        {
+            if (evt.commandName == "Find" && OwnsFind(evt.target)) evt.StopPropagation();
+        }
+        private void ExecuteFind(ExecuteCommandEvent evt)
+        {
+            if (evt.commandName != "Find" || !OwnsFind(evt.target)) return;
+            FocusSearch(); evt.StopPropagation();
+        }
+        private void FindKey(KeyDownEvent evt)
+        {
+            if (evt.keyCode != KeyCode.F || !evt.actionKey || evt.shiftKey || evt.altKey || !OwnsFind(evt.target)) return;
+            FocusSearch(); evt.StopPropagation();
+        }
+        private void FocusSearch()
+        {
+            _search.Focus();
+            var input = _search.Q<TextField>();
+            input?.schedule.Execute(() => { if (input.panel != null) input.SelectAll(); });
         }
         private void ApplySearchNow()
         {
