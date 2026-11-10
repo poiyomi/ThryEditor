@@ -179,14 +179,17 @@ namespace Thry.ThryEditor
             VisualElement input;
             var row = Row(inline ? "" : RetainedText.PropertyCaption(property), out input);
             var label = row.Q<Label>(className: "thry-property-label");
-            string lastCaption = null, lastTooltip = null, lastNote = null;
+            string lastCaption = null, lastTooltip = null, lastNote = null, lastInlineTooltip = root.tooltip;
             TrackVisible(label, () => {
                 string caption = RetainedMaterialBody.SectionCaption(property);
                 string tooltip = property.TooltipText, note = property.Note;
                 if (caption == lastCaption && tooltip == lastTooltip && note == lastNote) return;
                 int separator = caption.IndexOf('|');
-                label.text = inline ? "" : separator < 0 ? caption : caption.Substring(0, separator);
+                string text = separator < 0 ? caption : caption.Substring(0, separator);
+                label.text = inline ? "" : text;
                 label.tooltip = RetainedMaterialBody.Hover(caption, tooltip, note);
+                // Inline controls have no visible caption; keep any tooltip a caller set instead.
+                if (inline && root.tooltip == lastInlineTooltip) root.tooltip = lastInlineTooltip = RetainedMaterialBody.Hover(text, tooltip, note);
                 lastCaption = caption; lastTooltip = tooltip; lastNote = note;
             }, row);
             if (!inline) ChangedPropertyIndicator(row, label, property);
