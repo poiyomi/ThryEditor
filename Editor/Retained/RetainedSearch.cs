@@ -16,8 +16,12 @@ namespace Thry.ThryEditor
             internal ShaderProperty Property;
             internal ShaderPart Owner;
             internal string Path;
-            internal string Type, Haystack, RootCaption;
+            internal string Type, Caption, RootCaption;
+            // Upper-case label, name and section words, then tooltip and dropdown choices from PrimaryLength on.
+            internal string Text;
+            internal int PrimaryLength;
         }
+        const int PrimaryBand = 0, SecondaryBand = 1, HiddenBand = 2, HiddenRowLimit = 20;
         sealed class PendingField
         {
             internal VisualElement Element;
@@ -31,7 +35,8 @@ namespace Thry.ThryEditor
         RetainedMaterialModel _model;
         RetainedFields _fields;
         string _signature, _query;
-        List<Match> _matchedMetadata;
+        List<(Match Match, int Band, string Hint, ShaderProperty Controller)> _matchedMetadata;
+        readonly Dictionary<ShaderPart, string> _hints = new Dictionary<ShaderPart, string>();
         int _revision = -1;
         ShaderEditor _metadataShader;
         int _metadataRevision = -1, _stateStamp;
@@ -84,7 +89,7 @@ namespace Thry.ThryEditor
         {
             _clearButton.text = T("clear_filters", "Clear filters");
             _clearButton.tooltip = T("clear_filters_help", "Clear all filters to show the full inspector again.");
-            _signature = null; _stateInvalid = true;
+            _signature = null; _stateInvalid = true; _hints.Clear();
         }
         void BuildNext()
         {
@@ -220,7 +225,8 @@ namespace Thry.ThryEditor
             // Draggable labels and foldout headers are focusable too. Entering
             // results should land on an actual editable value.
             var input = _results.Query<VisualElement>().ToList().FirstOrDefault(e => e.focusable
-                && !(e is Label) && !(e is Foldout) && e.enabledInHierarchy && IsDisplayed(e) && IsNativeField(e));
+                && !(e is Label) && !(e is Foldout) && e.enabledInHierarchy && IsDisplayed(e) && IsNativeField(e))
+                ?? _results.Q<Button>(className: "thry-search-hidden-link");
             if (input == null) return false;
             input.Focus(); input.schedule.Execute(() => { if (input.panel != null) input.Focus(); }).StartingIn(0); return true;
         }
@@ -303,7 +309,7 @@ namespace Thry.ThryEditor
             _results.Clear();
             _model = model; _revision = model.Shader.RetainedRevision; _query = query; _signature = query; _matchedMetadata = matches;
             _fields = new RetainedFields(model, _view);
-            MatchCount = matches.Count;
+            MatchCount = matches.Count(m => m.Band != HiddenBand);
             string filters = DescribeFilters(query);
             _summary.text = string.Format(MatchCount == 1 ? T("property_count_one", "{0} property") : T("property_count", "{0} properties"), MatchCount) + (filters.Length == 0 ? "" : " · " + filters);
             _summary.tooltip = T("matching_properties", "Matching properties") + (TextQuery(query).Length == 0 ? "" : " — “" + TextQuery(query) + "”")
@@ -318,41 +324,71 @@ namespace Thry.ThryEditor
                 var empty = new Label(message) { name = "thry-filter-empty" };
                 empty.AddToClassList("thry-search-hint"); _results.Add(empty); return;
             }
-            foreach (var group in matches.GroupBy(m => m.Path))
+            string highlight = HighlightPattern(TextQuery(query));
+            VisualElement section = null;
+            string sectionPath = null;
+            int band = PrimaryBand;
+            for (int index = 0; index < matches.Count; index++)
             {
-                var section = new VisualElement(); section.AddToClassList("thry-filter-group"); _results.Add(section);
-                var breadcrumb = new Label(string.IsNullOrEmpty(group.Key) ? T("general", "General") : group.Key) { tooltip = group.Key };
-                breadcrumb.AddToClassList("thry-filter-breadcrumb"); section.Add(breadcrumb);
-                foreach (var match in group)
+                var entry = matches[index];
+                if (entry.Band != band)
                 {
-                    var wrapper = new VisualElement { name = "filtered-property-" + match.Property.MaterialProperty.name };
-                    wrapper.AddToClassList("thry-filter-control"); section.Add(wrapper);
-                    _rows.Add(wrapper);
-                    if (_firstResult == null) _firstResult = wrapper;
-                    wrapper.AddToClassList("thry-filter-pending");
-                    wrapper.focusable = true; wrapper.tabIndex = 0;
-                    wrapper.RegisterCallback<FocusInEvent>(e => {
-                        if (e.target != wrapper) return;
-                        var pending = _pendingBuild.FirstOrDefault(p => p.Element == wrapper);
-                        if (pending == null) return;
-                        bool backwards = e.relatedTarget is VisualElement previous && previous.worldBound.yMin > wrapper.worldBound.yMin;
-                        _pendingBuild.Remove(pending); pending.Build();
-                        var inputs = wrapper.Query<VisualElement>().ToList().Where(element => element.focusable
-                            && !(element is Label) && !(element is Foldout) && element.enabledInHierarchy && IsNativeField(element)).ToList();
-                        var input = backwards ? inputs.LastOrDefault() : inputs.FirstOrDefault();
-                        input?.Focus();
-                    });
-                    _pendingBuild.Add(new PendingField { Element = wrapper, Build = () => {
-                        wrapper.Add(_fields.Field(match.Property));
-                        InstallHighlights(wrapper, TextQuery(query));
-                        wrapper.focusable = false;
-                        wrapper.RemoveFromClassList("thry-filter-pending");
-                        _fields.Track(wrapper, () => {
-                            wrapper.style.display = IsVisible(match.Property, match.Owner) ? DisplayStyle.Flex : DisplayStyle.None;
-                            wrapper.SetEnabled(AncestorsEnabled(match.Property, match.Owner));
-                        });
-                    }});
+                    band = entry.Band; section = null;
+                    var heading = new Label(band == SecondaryBand ? T("search_other_matches", "Found in tooltips and dropdown choices")
+                        : string.Format(T("search_hidden_matches", "{0} hidden by other settings"), matches.Count - MatchCount));
+                    heading.AddToClassList("thry-search-band"); _results.Add(heading);
                 }
+                if (band == HiddenBand)
+                {
+                    var hidden = new VisualElement(); hidden.AddToClassList("thry-search-hidden"); _results.Add(hidden);
+                    var rest = matches.Skip(index).ToList();
+                    foreach (var row in rest.Take(HiddenRowLimit)) hidden.Add(HiddenRow(row.Match, row.Hint, row.Controller, highlight));
+                    if (rest.Count > HiddenRowLimit)
+                    {
+                        Button more = null;
+                        more = new Button(() => {
+                            more.RemoveFromHierarchy();
+                            foreach (var row in rest.Skip(HiddenRowLimit)) hidden.Add(HiddenRow(row.Match, row.Hint, row.Controller, highlight));
+                        }) { text = string.Format(T("show_more", "Show {0} more"), rest.Count - HiddenRowLimit) };
+                        more.AddToClassList("thry-search-hidden-more"); hidden.Add(more);
+                    }
+                    break;
+                }
+                var match = entry.Match;
+                if (section == null || sectionPath != match.Path)
+                {
+                    section = new VisualElement(); section.AddToClassList("thry-filter-group"); _results.Add(section);
+                    sectionPath = match.Path;
+                    var breadcrumb = new Label(string.IsNullOrEmpty(match.Path) ? T("general", "General") : match.Path) { tooltip = match.Path };
+                    breadcrumb.AddToClassList("thry-filter-breadcrumb"); section.Add(breadcrumb);
+                }
+                var wrapper = new VisualElement { name = "filtered-property-" + match.Property.MaterialProperty.name };
+                wrapper.AddToClassList("thry-filter-control"); section.Add(wrapper);
+                _rows.Add(wrapper);
+                if (_firstResult == null) _firstResult = wrapper;
+                wrapper.AddToClassList("thry-filter-pending");
+                wrapper.focusable = true; wrapper.tabIndex = 0;
+                wrapper.RegisterCallback<FocusInEvent>(e => {
+                    if (e.target != wrapper) return;
+                    var pending = _pendingBuild.FirstOrDefault(p => p.Element == wrapper);
+                    if (pending == null) return;
+                    bool backwards = e.relatedTarget is VisualElement previous && previous.worldBound.yMin > wrapper.worldBound.yMin;
+                    _pendingBuild.Remove(pending); pending.Build();
+                    var inputs = wrapper.Query<VisualElement>().ToList().Where(element => element.focusable
+                        && !(element is Label) && !(element is Foldout) && element.enabledInHierarchy && IsNativeField(element)).ToList();
+                    var input = backwards ? inputs.LastOrDefault() : inputs.FirstOrDefault();
+                    input?.Focus();
+                });
+                _pendingBuild.Add(new PendingField { Element = wrapper, Build = () => {
+                    wrapper.Add(_fields.Field(match.Property));
+                    InstallHighlights(wrapper, highlight);
+                    wrapper.focusable = false;
+                    wrapper.RemoveFromClassList("thry-filter-pending");
+                    _fields.Track(wrapper, () => {
+                        wrapper.style.display = IsVisible(match.Property, match.Owner) ? DisplayStyle.Flex : DisplayStyle.None;
+                        wrapper.SetEnabled(AncestorsEnabled(match.Property, match.Owner));
+                    });
+                }});
             }
             BuildNext();
             if (_pendingBuild.Count > 0) _buildSchedule.Resume();
@@ -380,23 +416,56 @@ namespace Thry.ThryEditor
                 }
             bounds.yMin -= 100; bounds.yMax += 100; return bounds;
         }
-        void InstallHighlights(VisualElement wrapper, string text)
+        static string HighlightPattern(string text)
         {
             var words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 0) return;
+            if (words.Length == 0) return null;
             // Tags match first and are kept, so words never highlight inside them.
-            string pattern = "(" + RichTextTag + ")|" + string.Join("|", words.OrderByDescending(w => w.Length).Select(System.Text.RegularExpressions.Regex.Escape));
+            return "(" + RichTextTag + ")|" + string.Join("|", words.OrderByDescending(w => w.Length).Select(System.Text.RegularExpressions.Regex.Escape));
+        }
+        static string Highlight(string text, string pattern)
+        {
+            if (pattern == null) return text ?? "";
+            string color = EditorGUIUtility.isProSkin ? "#b4d9ea" : "#215f7d";
+            return System.Text.RegularExpressions.Regex.Replace(text ?? "", pattern,
+                m => m.Groups[1].Success ? m.Value : "<color=" + color + ">" + m.Value + "</color>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+        void InstallHighlights(VisualElement wrapper, string pattern)
+        {
+            if (pattern == null) return;
             foreach (var label in wrapper.Query<Label>(className: "thry-property-label").ToList())
             {
                 string last = null;
                 _fields.Track(label, () => {
                     if (label.text == last) return;
-                    string color = EditorGUIUtility.isProSkin ? "#b4d9ea" : "#215f7d";
-                    last = System.Text.RegularExpressions.Regex.Replace(label.text ?? "", pattern,
-                        m => m.Groups[1].Success ? m.Value : "<color=" + color + ">" + m.Value + "</color>", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    last = Highlight(label.text, pattern);
                     label.enableRichText = true; label.text = last;
                 });
             }
+        }
+        VisualElement HiddenRow(Match match, string hint, ShaderProperty controller, string pattern)
+        {
+            var row = new VisualElement { name = "hidden-property-" + match.Property.MaterialProperty.name };
+            row.AddToClassList("thry-search-hidden-row");
+            var title = new VisualElement(); title.AddToClassList("thry-search-hidden-title"); row.Add(title);
+            var caption = new Label(Highlight(match.Caption, pattern)) { enableRichText = true, tooltip = match.Property.TooltipText };
+            caption.AddToClassList("thry-search-hidden-caption"); title.Add(caption);
+            if (match.Path.Length > 0)
+            {
+                var path = new Label(match.Path) { tooltip = match.Path };
+                path.AddToClassList("thry-search-hidden-path"); title.Add(path);
+            }
+            TextElement reason;
+            if (controller == null) reason = new Label(hint);
+            else
+            {
+                reason = new Button(() => _view.SearchProperty(controller)) { text = hint,
+                    tooltip = T("find_controller", "Find controlling property") + ": " + Clean(RetainedText.PropertyCaption(controller)) };
+                reason.AddToClassList("thry-search-hidden-link");
+            }
+            reason.AddToClassList("thry-search-hidden-reason"); row.Add(reason);
+            _rows.Add(row);
+            return row;
         }
         void AlignColumns()
         {
@@ -413,7 +482,7 @@ namespace Thry.ThryEditor
         {
             if (_metadataShader == shader && _metadataRevision == shader.RetainedRevision) return;
             _metadataShader = shader; _metadataRevision = shader.RetainedRevision;
-            _metadata = new List<Match>(); MetadataBuildCount++;
+            _metadata = new List<Match>(); MetadataBuildCount++; _hints.Clear();
             var owners = new Dictionary<string, List<ShaderPart>>();
             Action<string, ShaderPart> addOwner = (name, owner) => {
                 if (string.IsNullOrEmpty(name)) return;
@@ -427,9 +496,17 @@ namespace Thry.ThryEditor
                 if (part.Options.reference_properties != null) foreach (var reference in part.Options.reference_properties) addOwner(reference, part);
             }
             var roots = new HashSet<ShaderGroup>(shader.RootCategories);
-            foreach (var property in shader.ShaderParts.OfType<ShaderProperty>().Distinct().OrderBy(p => p.ThryPropertyIndex))
+            var properties = shader.ShaderParts.OfType<ShaderProperty>().Distinct().OrderBy(p => p.ThryPropertyIndex).Where(RetainedFields.CanRenderProperty).ToList();
+            var choiceLists = new Dictionary<ShaderProperty, string>();
+            foreach (var property in properties)
             {
-                if (!RetainedFields.CanRenderProperty(property)) continue;
+                string[] choices; float[] values;
+                if (RetainedAvailability.EnumChoices(property, out choices, out values)) choiceLists[property] = string.Join(" ", choices.Select(StripTags));
+            }
+            // Choice lists repeated on many dropdowns, like UV, channel or blend pickers, would match almost any search.
+            var sharedChoices = new HashSet<string>(choiceLists.Values.GroupBy(list => list).Where(group => group.Count() > 3).Select(group => group.Key));
+            foreach (var property in properties)
+            {
                 ShaderPart owner = null;
                 if (owners.TryGetValue(property.MaterialProperty.name, out var candidates))
                     owner = candidates.FirstOrDefault(candidate => candidate != property && candidate.MaterialProperty != null
@@ -448,6 +525,9 @@ namespace Thry.ThryEditor
                     }
                 }
                 else presentations.Add(new KeyValuePair<ShaderProperty, ShaderPart>(property, owner));
+                string choiceText;
+                if (!choiceLists.TryGetValue(property, out choiceText) || sharedChoices.Contains(choiceText)) choiceText = "";
+                string secondary = (StripTags(property.TooltipText) + " " + choiceText).Trim().ToUpperInvariant();
                 foreach (var presentation in presentations)
                 {
                     var displayed = presentation.Key; var displayedOwner = presentation.Value;
@@ -456,13 +536,15 @@ namespace Thry.ThryEditor
                     string path = string.Join(" › ", ancestry.Select(p => Clean(p.Content.text)).Where(label => label.Length > 0));
                     // Root category words should not make "normal" match all Color & Normals properties.
                     var context = ancestry.Where(p => !(p is ShaderGroup && roots.Contains((ShaderGroup)p)));
-                    string haystack = Clean(RetainedText.PropertyCaption(displayed)) + " " + displayed.MaterialProperty.name + " " + string.Join(" ", context.Select(p => Clean(p.Content.text)));
+                    string caption = Clean(RetainedText.PropertyCaption(displayed));
+                    string primary = (caption + " " + displayed.MaterialProperty.name + " " + string.Join(" ", context.Select(p => Clean(p.Content.text)))).ToUpperInvariant();
                     string rootCaption = ancestry.Where(p => p is ShaderGroup && roots.Contains((ShaderGroup)p)).Select(p => Clean(p.Content.text)).FirstOrDefault() ?? "";
-                    _metadata.Add(new Match { Property = displayed, Owner = displayedOwner, Path = path, Type = PropertyType(displayed), Haystack = haystack, RootCaption = rootCaption });
+                    _metadata.Add(new Match { Property = displayed, Owner = displayedOwner, Path = path, Type = PropertyType(displayed), Caption = caption,
+                        Text = secondary.Length == 0 ? primary : primary + "\n" + secondary, PrimaryLength = primary.Length, RootCaption = rootCaption });
                 }
             }
         }
-        List<Match> FindMatches(ShaderEditor shader, string query)
+        List<(Match Match, int Band, string Hint, ShaderProperty Controller)> FindMatches(ShaderEditor shader, string query)
         {
             MatchEvaluationCount++;
             var tokens = query.Split(' ');
@@ -476,8 +558,13 @@ namespace Thry.ThryEditor
             var types = new HashSet<string>(tokens.Select(TypeFilter).Where(t => t != null));
             string text = TextQuery(query);
             var words = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var keys = words.Select(word => word.ToUpperInvariant()).ToArray();
+            string phrase = string.Join(" ", words);
             var missingNames = missing ? MissingTextureReferences(shader.Materials) : null;
-            var matches = new List<Match>();
+            // Tier 0 is an exact label or property name, 1 any other label, name or section match,
+            // 2 a word found only in the tooltip or dropdown choices.
+            var visible = new List<(Match Match, int Tier)>();
+            var hidden = new List<(Match Match, int Tier, ShaderPart HiddenBy)>();
             foreach (var match in _metadata)
             {
                 var property = match.Property;
@@ -485,28 +572,70 @@ namespace Thry.ThryEditor
                 // Text/type rejection does not need native material values. Avoid
                 // projection refreshes and per-row predicate closures for misses.
                 bool rootMatch = match.RootCaption.Equals(text, StringComparison.OrdinalIgnoreCase);
-                bool textMatches = true;
-                foreach (var word in words)
-                    if (match.Haystack.IndexOf(word, StringComparison.OrdinalIgnoreCase) < 0
-                        && !(rootMatch && match.RootCaption.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0))
-                    { textMatches = false; break; }
-                if (!textMatches || !property.RefreshRetainedProjection()) continue;
+                int tier = 1;
+                for (int i = 0; i < keys.Length && tier > 0; i++)
+                {
+                    int index = match.Text.IndexOf(keys[i], StringComparison.Ordinal);
+                    if (index >= 0 && index < match.PrimaryLength) continue;
+                    if (rootMatch && match.RootCaption.IndexOf(words[i], StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                    tier = index < 0 ? -1 : 2;
+                }
+                if (tier < 0 || !property.RefreshRetainedProjection()) continue;
+                if (tier == 1 && keys.Length > 0 && (match.Caption.Equals(phrase, StringComparison.OrdinalIgnoreCase)
+                    || property.MaterialProperty.name.Equals(phrase, StringComparison.OrdinalIgnoreCase))) tier = 0;
                 if (scopes.Length > 0 && !Ancestors(match.Owner ?? property).Concat(new[] { match.Owner ?? property })
                     .Any(p => p.MaterialProperty != null && scopes.Contains(p.MaterialProperty.name, StringComparer.OrdinalIgnoreCase))) continue;
                 if (favorite && !RetainedSearchPreferences.IsFavorite(property)) continue;
                 if ((assigned || empty) && match.Type != "texture") continue;
                 if (assigned && !property.MaterialProperty.targets.OfType<Material>().Any(m => OwnsTexture(m, property) && m.GetTexture(property.MaterialProperty.name) != null)) continue;
                 if (empty && !property.MaterialProperty.targets.OfType<Material>().Any(m => OwnsTexture(m, property) && m.GetTexture(property.MaterialProperty.name) == null)) continue;
-                if (!IsVisible(property, match.Owner)) continue;
+                ShaderPart hiddenBy = null;
+                if (!IsVisible(property, match.Owner) && (keys.Length == 0 || (hiddenBy = HiddenBy(property, match.Owner)) == null)) continue;
                 if (changed && !HasChanged(property, shader)) continue;
                 if (animated && !property.IsAnimated) continue;
                 if (missing && !property.MaterialProperty.targets.OfType<Material>().Any(m => OwnsTexture(m, property)
                     && missingNames.TryGetValue(m, out var names) && names.Contains(property.MaterialProperty.name))) continue;
-                matches.Add(match);
+                if (hiddenBy == null) visible.Add((match, tier));
+                else hidden.Add((match, tier, hiddenBy));
             }
-            var included = new HashSet<ShaderProperty>(matches.Select(m => m.Property));
-            return matches.Where(m => !(m.Owner is ShaderProperty && included.Contains((ShaderProperty)m.Owner)
-                && (m.Owner is ShaderTextureProperty || m.Owner.Options.reference_property == m.Property.MaterialProperty.name))).ToList();
+            var included = new HashSet<ShaderProperty>(visible.Select(m => m.Match.Property));
+            var includedHidden = new HashSet<ShaderProperty>(hidden.Select(m => m.Match.Property));
+            Func<Match, HashSet<ShaderProperty>, bool> drawnByOwner = (m, owners) => m.Owner is ShaderProperty && owners.Contains((ShaderProperty)m.Owner)
+                && (m.Owner is ShaderTextureProperty || m.Owner.Options.reference_property == m.Property.MaterialProperty.name);
+            visible.RemoveAll(m => drawnByOwner(m.Match, included));
+            hidden.RemoveAll(m => drawnByOwner(m.Match, includedHidden));
+            var results = new List<(Match Match, int Band, string Hint, ShaderProperty Controller)>();
+            // Sections holding an exact match come first, with that match at their top.
+            results.AddRange(visible.Where(m => m.Tier < 2).GroupBy(m => m.Match.Path).OrderBy(g => g.Any(m => m.Tier == 0) ? 0 : 1)
+                .SelectMany(g => g.OrderBy(m => m.Tier)).Select(m => (m.Match, PrimaryBand, (string)null, (ShaderProperty)null)));
+            results.AddRange(visible.Where(m => m.Tier == 2).GroupBy(m => m.Match.Path).SelectMany(g => g)
+                .Select(m => (m.Match, SecondaryBand, (string)null, (ShaderProperty)null)));
+            var controllers = new Dictionary<ShaderPart, ShaderProperty>();
+            foreach (var entry in hidden.OrderBy(m => m.Tier))
+            {
+                var condition = entry.HiddenBy.Options.condition_show;
+                string hint;
+                if (!_hints.TryGetValue(entry.HiddenBy, out hint))
+                    _hints[entry.HiddenBy] = hint = string.Format(T("shown_when", "Shown when {0}"), RetainedAvailability.Condition(condition, shader));
+                ShaderProperty controller;
+                if (!controllers.TryGetValue(entry.HiddenBy, out controller))
+                    controllers[entry.HiddenBy] = controller = RetainedAvailability.ConditionProperty(condition, entry.HiddenBy);
+                results.Add((entry.Match, HiddenBand, hint, controller));
+            }
+            return results;
+        }
+        // The part whose condition hides the property, or null when it is visible, hidden by the user, or can never show.
+        static ShaderPart HiddenBy(ShaderProperty property, ShaderPart owner)
+        {
+            ShaderPart hiddenBy = null;
+            for (ShaderPart part = property; part != null; part = part == property ? owner ?? property.Parent : part.Parent)
+            {
+                if (SectionEditing.IsHidden(part)) return null;
+                if (SectionEditing.IsEditing(part) || part.Options.condition_show.Test()) continue;
+                if (part.Options.condition_show.IsConstantCondition) return null;
+                if (hiddenBy == null) hiddenBy = part;
+            }
+            return hiddenBy;
         }
         static IEnumerable<ShaderPart> Ancestors(ShaderPart property)
         {
@@ -540,6 +669,7 @@ namespace Thry.ThryEditor
         }
         const string RichTextTag = @"</?[A-Za-z][^<>]*>";
         static string Clean(string text) => System.Text.RegularExpressions.Regex.Replace(text ?? "", RichTextTag, "").Trim().TrimEnd('*').Split('|')[0];
+        static string StripTags(string text) => string.IsNullOrEmpty(text) ? "" : System.Text.RegularExpressions.Regex.Replace(text, RichTextTag, "").Replace('\n', ' ');
         static bool HasChanged(ShaderProperty property, ShaderEditor shader, HashSet<ShaderProperty> visited = null)
         {
             return RetainedPropertyDefaults.HasChanged(property, shader, visited);

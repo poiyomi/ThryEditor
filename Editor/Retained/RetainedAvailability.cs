@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Thry.ThryEditor.Helpers;
@@ -57,12 +59,33 @@ namespace Thry.ThryEditor
                 foreach (var condition in conditions)
                 {
                     if (condition == null || condition.Test()) continue;
-                    foreach (Match token in Regex.Matches(condition.ToString(), @"\b[A-Za-z_][A-Za-z0-9_]*\b"))
-                    {
-                        ShaderProperty dependency;
-                        if (part.MyShaderUI.PropertyDictionary.TryGetValue(token.Value, out dependency) && dependency != part) return dependency;
-                    }
+                    var dependency = ConditionProperty(condition, part);
+                    if (dependency != null) return dependency;
                 }
+            }
+            return null;
+        }
+
+        static readonly Regex ComparisonPattern = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=|>=|<=|>|<)\s*(-?[0-9]+(?:\.[0-9]+)?|[A-Za-z_][A-Za-z0-9_]*)");
+
+        // Prefer the property of a comparison that currently fails, so a combined condition points at what to change.
+        internal static ShaderProperty ConditionProperty(DefineableCondition condition, ShaderPart part)
+        {
+            var shader = part.MyShaderUI;
+            string source = condition.ToString();
+            ShaderProperty first = null;
+            foreach (Match comparison in ComparisonPattern.Matches(source))
+            {
+                ShaderProperty property;
+                if (!shader.PropertyDictionary.TryGetValue(comparison.Groups[1].Value, out property) || property == part) continue;
+                if (!DefineableCondition.Parse(comparison.Value).Test()) return property;
+                if (first == null) first = property;
+            }
+            if (first != null) return first;
+            foreach (Match token in Regex.Matches(source, @"\b[A-Za-z_][A-Za-z0-9_]*\b"))
+            {
+                ShaderProperty dependency;
+                if (shader.PropertyDictionary.TryGetValue(token.Value, out dependency) && dependency != part) return dependency;
             }
             return null;
         }
@@ -99,16 +122,27 @@ namespace Thry.ThryEditor
             return null;
         }
 
-        static string Describe(DefineableCondition condition, ShaderEditor shader)
+        static string Describe(DefineableCondition condition, ShaderEditor shader) => "Available when " + Condition(condition, shader) + ".";
+
+        internal static string Condition(DefineableCondition condition, ShaderEditor shader)
         {
-            string source = Regex.Replace(condition.ToString(), @"\b([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=)\s*([01])\b", match =>
+            var choices = new List<string>();
+            string source = ComparisonPattern.Replace(condition.ToString(), match =>
             {
-                ShaderProperty toggle;
-                if (!shader.PropertyDictionary.TryGetValue(match.Groups[1].Value, out toggle) || toggle.ShaderPropertyIndex < 0
-                    || !toggle.MyShader.GetPropertyAttributes(toggle.ShaderPropertyIndex).Any(a => new DrawerAttribute(a).Name.Contains("Toggle"))) return match.Value;
-                bool on = match.Groups[3].Value == "1";
-                if (match.Groups[2].Value == "!=") on = !on;
-                return match.Groups[1].Value + (on ? " is On" : " is Off");
+                ShaderProperty property;
+                string comparison = match.Groups[2].Value, value = match.Groups[3].Value;
+                float number;
+                if ((comparison != "==" && comparison != "!=") || !shader.PropertyDictionary.TryGetValue(match.Groups[1].Value, out property)
+                    || property.ShaderPropertyIndex < 0 || !float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out number)) return match.Value;
+                bool equal = comparison == "==";
+                if ((value == "0" || value == "1") && property.MyShader.GetPropertyAttributes(property.ShaderPropertyIndex).Any(a => new DrawerAttribute(a).Name.Contains("Toggle")))
+                    return match.Groups[1].Value + ((value == "1") == equal ? " is On" : " is Off");
+                string[] names; float[] values;
+                int index = EnumChoices(property, out names, out values) ? Array.IndexOf(values, number) : -1;
+                if (index < 0) return match.Value;
+                // The choice is put back after the identifier and operator rewrites below.
+                choices.Add(names[index]);
+                return match.Groups[1].Value + (equal ? " is " : " is not ") + "\u0001" + (choices.Count - 1) + "\u0001";
             });
             string expression = Regex.Replace(source, @"\b[A-Za-z_][A-Za-z0-9_]*\b", match =>
             {
@@ -127,7 +161,59 @@ namespace Thry.ThryEditor
                 .Replace(">=", " is at least ").Replace("<=", " is at most ")
                 .Replace("!=", " is not ").Replace("==", " is ")
                 .Replace(">", " is greater than ").Replace("<", " is less than ");
-            return "Available when " + Regex.Replace(expression, @"\s+", " ").Trim() + ".";
+            expression = Regex.Replace(expression, "\u0001([0-9]+)\u0001", match => choices[int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)]);
+            return Regex.Replace(expression, @"\s+", " ").Trim();
+        }
+
+        internal static bool EnumChoices(ShaderProperty property, out string[] names, out float[] values)
+        {
+            names = null; values = null;
+            if (property?.MyShader == null || property.ShaderPropertyIndex < 0 || property.ShaderPropertyIndex >= property.MyShader.GetPropertyCount()) return false;
+            var attribute = property.MyShader.GetPropertyAttributes(property.ShaderPropertyIndex).Select(a => new DrawerAttribute(a))
+                .FirstOrDefault(a => a.Name == "ThryWideEnum" || a.Name == "Enum" || a.Name == "KeywordEnum");
+            if (attribute == null || attribute.Args.Length == 0) return false;
+            Type enumType = attribute.Args.Length == 1 || (attribute.Name == "ThryWideEnum" && attribute.Args.Length == 2) ? EnumType(attribute.Args[0]) : null;
+            if (attribute.Name == "KeywordEnum")
+            {
+                names = attribute.Args;
+                values = Enumerable.Range(0, names.Length).Select(i => (float)i).ToArray();
+            }
+            else if (enumType != null)
+            {
+                names = Enum.GetNames(enumType);
+                values = Enum.GetValues(enumType).Cast<object>().Select(Convert.ToSingle).ToArray();
+            }
+            else if (attribute.Args.Length > 1)
+            {
+                names = new string[attribute.Args.Length / 2];
+                values = new float[names.Length];
+                for (int i = 0; i < names.Length; i++)
+                {
+                    names[i] = attribute.Args[i * 2];
+                    try { values[i] = DrawerAttribute.Number(attribute.Args[i * 2 + 1]); }
+                    catch (FormatException) { names = null; values = null; return false; }
+                }
+            }
+            else return false;
+            var locale = property.MyShaderUI?.Locale;
+            if (locale != null) names = names.Select(name => locale.Get(name, name)).ToArray();
+            return true;
+        }
+
+        static readonly Dictionary<string, Type> EnumTypes = new Dictionary<string, Type>();
+        static Type EnumType(string name)
+        {
+            Type type;
+            if (EnumTypes.TryGetValue(name, out type)) return type;
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try { type = assembly.GetType(name, false); }
+                catch (ArgumentException) { type = null; }
+                if (type != null && type.IsEnum) break;
+                type = null;
+            }
+            EnumTypes[name] = type;
+            return type;
         }
     }
 }

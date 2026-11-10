@@ -9302,3 +9302,75 @@
     color: var(--thry-caption-color);
     white-space: normal;
 }
+
+/* Search results matched by tooltip or dropdown choice, and matches hidden by other settings. */
+.thry-inspector .thry-search-band {
+    margin: var(--thry-space-8) 0 var(--thry-space-3) 0;
+    padding: 0 var(--thry-space-4);
+    white-space: normal;
+    -unity-font-style: bold;
+    font-size: var(--thry-type-body-small);
+    color: var(--thry-muted-color);
+}
+.thry-search-hidden {
+    margin: 0 0 var(--thry-space-3) 0;
+}
+.thry-inspector .thry-search-hidden-row {
+    padding: var(--thry-space-3) var(--thry-space-4);
+    border-bottom-width: var(--thry-border-width);
+    border-bottom-color: var(--thry-border-color);
+}
+.thry-search-hidden-title {
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+}
+.thry-inspector .thry-search-hidden-caption {
+    flex-shrink: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    color: var(--thry-muted-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.thry-inspector .thry-search-hidden-path {
+    flex-shrink: 1;
+    min-width: 0;
+    margin: 0 0 0 var(--thry-space-8);
+    padding: 0;
+    font-size: var(--thry-type-small);
+    color: var(--thry-muted-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.thry-inspector .thry-search-hidden-reason {
+    align-self: flex-start;
+    margin: var(--thry-space-1) 0 0 0;
+    padding: 0;
+    white-space: normal;
+    -unity-text-align: middle-left;
+    font-size: var(--thry-type-small);
+    color: var(--thry-muted-color);
+}
+.thry-inspector .thry-search-hidden-link,
+.thry-inspector .thry-search-hidden-more {
+    --thry-button-background: transparent;
+    --thry-button-hover-background: transparent;
+    --thry-button-pressed-background: transparent;
+    --thry-button-disabled-background: transparent;
+    min-height: 0;
+    padding: 0;
+    color: var(--thry-accent-color);
+}
+.thry-inspector .thry-search-hidden-more {
+    align-self: flex-start;
+    margin: var(--thry-space-4) 0 0 var(--thry-space-4);
+    font-size: var(--thry-type-small);
+}
+.thry-inspector .thry-search-hidden-link:hover,
+.thry-inspector .thry-search-hidden-more:hover {
+    color: var(--thry-value-color);
+}
