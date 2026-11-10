@@ -437,6 +437,7 @@ namespace Thry.ThryEditor
             if (suffix.Length > 0 && name.EndsWith("_" + suffix, StringComparison.Ordinal))
                 name = name.Substring(0, name.Length - suffix.Length - 1);
             string tag = ShaderOptimizer.GetAnimatedTag(material, name);
+            if (tag == "2" && !ShaderOptimizer.CanRename(name)) return "1";
             return tag == "0" ? "" : tag;
         }
         protected override void GUILocaleEditing(bool isInHeader)

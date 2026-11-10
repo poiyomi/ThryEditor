@@ -171,6 +171,7 @@ namespace Thry.ThryEditor
         public bool IsAnimatable { protected set; get; } = true;
         public bool IsAnimated { protected set; get; } = false;
         public bool IsRenaming { protected set; get; } = false;
+        bool CanRename => MaterialProperty != null && ShaderOptimizer.CanRename(MaterialProperty.name);
 
         public bool DoReferencePropertiesExist { protected set; get; } = false;
         public bool DoesReferencePropertyExist { protected set; get; } = false;
@@ -999,7 +1000,8 @@ namespace Thry.ThryEditor
             if (IsAnimatable && !MyShaderUI.IsLockedMaterial)
             {
                 _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => SetAnimated(!IsAnimated, false));
-                _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => SetAnimated(true, !IsRenaming));
+                if (CanRename)
+                    _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => SetAnimated(true, !IsRenaming));
             }
             AddPresetMenu(_contextMenu);
             if (MaterialProperty != null)
@@ -1036,7 +1038,8 @@ namespace Thry.ThryEditor
                     if (IsAnimatable && !ShaderEditor.Active.IsLockedMaterial)
                     {
                         _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => { SetAnimated(!IsAnimated, false); });
-                        _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => { SetAnimated(true, !IsRenaming); });
+                        if (CanRename)
+                            _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => { SetAnimated(true, !IsRenaming); });
                         _contextMenu.AddItem(new GUIContent("Locking Explanation"), false, () => { Application.OpenURL("https://www.poiyomi.com/general/locking"); });
                         _contextMenu.AddSeparator("");
                     }
@@ -1622,6 +1625,7 @@ namespace Thry.ThryEditor
             renamed = animated && renamed;
             UpdatedMaterialPropertyReference();
             if (MaterialProperty == null) return;
+            if (renamed && !MyShaderUI.IsLockedMaterial && !CanRename) renamed = false;
             string tag = animated ? (renamed ? "2" : "1") : "";
             var targets = MaterialProperty.targets.OfType<Material>().Where(m => m != null && m.HasProperty(MaterialProperty.name)).ToArray();
             if (targets.Length == 0) return;

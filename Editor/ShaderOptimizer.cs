@@ -665,6 +665,11 @@ namespace Thry.ThryEditor
             return m.GetTag(prop + AnimatedTagSuffix, false, "0") != "0";
         }
 
+        public static bool CanRename(string prop)
+        {
+            return !prop.EndsWith("UV", StringComparison.Ordinal) && !prop.EndsWith("Pan", StringComparison.Ordinal);
+        }
+
         public static string CleanStringForPropertyNames(string s)
         {
             s = s.Trim().Replace(" ", "");
@@ -1644,7 +1649,7 @@ namespace Thry.ThryEditor
                 if (material.GetTag(prop.name + AnimatedTagSuffix, false, "") != "2") continue;
 
                 // this property might be animated, but we're not allowed to rename it. this will break things.
-                if (prop.name.EndsWith("UV", StringComparison.Ordinal) || prop.name.EndsWith("Pan", StringComparison.Ordinal)) continue;
+                if (!CanRename(prop.name)) continue;
 
                 if (IllegalPropertyRenames.Contains(prop.name))
                     toDuplicate.Add(new RenamingProperty(prop, prop.name, prop.name + "_" + animPropertySuffix));
@@ -3193,7 +3198,7 @@ namespace Thry.ThryEditor
 
                 string animateTag = material.GetTag(propName + AnimatedTagSuffix, false, "");
                 if (string.IsNullOrEmpty(animateTag) || animateTag != "2" || // Property was not renamed.
-                    propName.EndsWith("UV", StringComparison.Ordinal) || propName.EndsWith("Pan", StringComparison.Ordinal) || // Skip over stuff that doesn't get renamed.
+                    !CanRename(propName) || // Skip over stuff that doesn't get renamed.
                     IllegalPropertyRenames.Contains(propName)) continue; // This stuff gets duplicated instead of renamed, should this still get reverted?
 
                 renamedProperties.Add(prop); // Properties fetched now retain their value after switching to the unlocked shader.
