@@ -62,6 +62,8 @@ namespace Thry.ThryEditor
             Add(materialActions);
             if (shader.RetainedOptimizer != null)
             {
+                var variantNotice = new HelpBox("Material variants can't be locked. Clear Parent above to lock this material.", HelpBoxMessageType.Info) { name = "thry-variant-notice" };
+                materialActions.Add(variantNotice);
                 var button = new Button(() =>
                 {
                     shader.ActivateRetained();
@@ -76,7 +78,12 @@ namespace Thry.ThryEditor
                 }) { name = "thry-lock-button" };
                 button.AddToClassList("thry-lock-button");
                 _fields.Track(button, () => button.text = shader.IsLockedMaterial ? RetainedText.Get(Model.Shader, "unlock_shader", "Unlock Shader") : RetainedText.Get(Model.Shader, "lock_shader", "Lock In Optimized Shader")); materialActions.Add(button);
-                button.SetEnabled(!shader.Materials.Any(m=>m.isVariant));
+                _fields.Track(variantNotice, () =>
+                {
+                    bool variant = shader.Materials.Any(m => m != null && m.isVariant);
+                    variantNotice.style.display = variant ? DisplayStyle.Flex : DisplayStyle.None;
+                    button.SetEnabled(!variant);
+                });
                 if (Config.Instance.allowCustomLockingRenaming || shader.HasCustomRenameSuffix)
                 {
                     VisualElement suffixInput;
