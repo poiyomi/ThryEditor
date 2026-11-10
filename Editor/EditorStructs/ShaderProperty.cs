@@ -597,14 +597,28 @@ namespace Thry.ThryEditor
                 EditorGUI.EndDisabledGroup();
         }
 
+        static readonly string[] s_animatedTexturePaths = { "_ST.x", "_ST.y", "_ST.z", "_ST.w" };
+        static readonly string[] s_animatedColorPaths = { ".r", ".g", ".b", ".a" };
+        static readonly string[] s_animatedVectorPaths = { ".x", ".y", ".z", ".w" };
+        static readonly string[] s_animatedFloatPaths = { "" };
+
         private void AutomaticAnimatedMarking()
         {
-            if (Config.Instance.autoMarkPropertiesAnimated && MyShaderUI.ActiveRenderer != null && MyShaderUI.IsInAnimationMode && IsAnimatable && !IsAnimated)
+            if (!Config.Instance.autoMarkPropertiesAnimated || MyShaderUI.ActiveRenderer == null || !MyShaderUI.IsInAnimationMode || !IsAnimatable || IsAnimated) return;
+            string[] paths;
+            switch (MaterialProperty.GetPropertyType())
             {
-                if (MaterialProperty.GetPropertyType() == ShaderPropertyType.Texture ?
-                AnimationMode.IsPropertyAnimated(MyShaderUI.ActiveRenderer, "material." + MaterialProperty.name + "_ST.x") :
-                    AnimationMode.IsPropertyAnimated(MyShaderUI.ActiveRenderer, "material." + MaterialProperty.name))
-                    SetAnimated(true, false);
+                case ShaderPropertyType.Texture: paths = s_animatedTexturePaths; break;
+                case ShaderPropertyType.Color: paths = s_animatedColorPaths; break;
+                case ShaderPropertyType.Vector: paths = s_animatedVectorPaths; break;
+                default: paths = s_animatedFloatPaths; break;
+            }
+            string name = "material." + MaterialProperty.name;
+            foreach (string path in paths)
+            {
+                if (!AnimationMode.IsPropertyAnimated(MyShaderUI.ActiveRenderer, name + path)) continue;
+                SetAnimated(true, false);
+                return;
             }
         }
 
