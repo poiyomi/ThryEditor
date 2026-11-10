@@ -23,6 +23,7 @@ namespace Thry.ThryEditor
         public string zero_label;
         public bool force_texture_options = false;
         public bool is_visible_simple = false;
+        public bool own_label = false;
         public string file_name;
         public bool never_lock;
         public float margin_top = 0;

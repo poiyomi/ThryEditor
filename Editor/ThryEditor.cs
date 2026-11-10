@@ -470,7 +470,9 @@ namespace Thry
                 //extract json data from display name
                 string optionsRaw = SplitOptionsFromDisplayName(ref displayName);
 
-                displayName = Locale.Get(props[i], displayName);
+                // A second declaration of a property can keep its own label; the locale is keyed by property name
+                if (optionsRaw != null && optionsRaw.Contains("own_label:true")) displayName = Locale.Get(displayName, displayName);
+                else displayName = Locale.Get(props[i], displayName);
 
                 int offset = offsetDepthCount;
                 
