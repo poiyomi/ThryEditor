@@ -253,11 +253,25 @@ namespace Thry.ThryEditor
 
             returnObject = Activator.CreateInstance(t);
 
+            FieldInfo openText = null;
+            int openTextStart = 0;
+
+            // Unquoted text keeps its commas: a chunk that is not a "key:value" continues the string before it.
+            void continueText(int varStart, int varEnd)
+            {
+                if (openText == null || string.IsNullOrWhiteSpace(input.Substring(varStart, varEnd - varStart)))
+                    return;
+                openText.SetValue(returnObject, ParseToPrimitive(input, openTextStart, varEnd, typeof(string)));
+            }
+
             void parseVariable(int varStart, int varEnd)
             {
                 int seperatorIndex = input.IndexOf(':', varStart, varEnd - varStart);
                 if (seperatorIndex == -1)
+                {
+                    continueText(varStart, varEnd);
                     return;
+                }
 
                 int keyStart = varStart;
                 int keyEnd = seperatorIndex;
@@ -275,13 +289,27 @@ namespace Thry.ThryEditor
                     object value = ParseJsonPart(input, seperatorIndex + 1, varEnd, field.FieldType, debugName + "." + field.Name);
                     if(value != null)
                         field.SetValue(returnObject, value);
+                    openText = null;
+                    if (value is string)
+                    {
+                        openTextStart = seperatorIndex + 1;
+                        while (openTextStart < varEnd && (input[openTextStart] == ' ' || input[openTextStart] == '\t' || input[openTextStart] == '\n' || input[openTextStart] == '\r'))
+                            openTextStart++;
+                        if (openTextStart < varEnd && input[openTextStart] != '\"')
+                            openText = field;
+                    }
                 }
                 else if (properties.TryGetValue(key, out PropertyInfo property))
                 {
                     object value = ParseJsonPart(input, seperatorIndex + 1, varEnd, property.PropertyType, debugName + "." + property.Name);
                     if(value != null)
                         property.SetValue(returnObject, value, null);
+                    openText = null;
                 }
+                else if (IsIdentifier(key))
+                    openText = null;
+                else
+                    continueText(varStart, varEnd);
             }
 
             int depth = 0;
@@ -386,6 +414,14 @@ namespace Thry.ThryEditor
             while (index - backslashes > 0 && input[index - backslashes - 1] == '\\')
                 backslashes++;
             return (backslashes & 1) == 1;
+        }
+
+        private static bool IsIdentifier(string s)
+        {
+            if (s.Length == 0 || char.IsDigit(s[0])) return false;
+            foreach (char c in s)
+                if (!char.IsLetterOrDigit(c) && c != '_') return false;
+            return true;
         }
 
         private static string Unescape(string s)
