@@ -551,13 +551,20 @@ namespace Thry.ThryEditor
             menu.DropDown(position);
         }
 
+        // The defaults material has no Animated tags, so a plain copy would clear them
+        internal void CopyDefaultsFrom(Material defaults)
+        {
+            MaterialTextSerializer.KeepAnimatedTags(MyShaderUI, new HashSet<string>(MyShaderUI.PropertyDictionary.Keys),
+                () => CopyFrom(defaults, true));
+        }
+
         private void ResetSection(Material[] materials)
         {
             int undoGroup = Undo.GetCurrentGroup();
             var defaults = new Material(SectionLock.GetSourceShader(materials[0].shader) ?? materials[0].shader);
             try
             {
-                CopyFrom(defaults, true);
+                CopyDefaultsFrom(defaults);
                 var linkedMaterials = MaterialLinker.GetLinked(MaterialProperty);
                 if (linkedMaterials != null)
                     foreach (Material material in linkedMaterials)
