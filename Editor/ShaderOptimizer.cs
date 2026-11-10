@@ -851,6 +851,14 @@ namespace Thry.ThryEditor
         // reconciled across every material sharing them once, rather than per material.
         private static readonly HashSet<string> s_cacheEntriesTouchedThisBatch = new HashSet<string>();
 
+        // Folder entries the batch's unlocks left without a known user. A copy of a material in another folder
+        // can still point at one, which is looked up once for the whole batch.
+        private static readonly HashSet<string> s_entriesToDeleteThisBatch = new HashSet<string>();
+        // One scan of the material files serves every batch run from the same call, such as an upgrade that
+        // unlocks materials one at a time. Files of materials unlocked since then still name their old shader.
+        private static Dictionary<string, List<string>> s_materialsByShaderGuid;
+        private static readonly HashSet<string> s_unlockedSinceScan = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         // Per batch only: the dependency hash misses included files
         private static readonly Dictionary<string, IfexConditions> s_ifexConditionsThisBatch = new Dictionary<string, IfexConditions>();
         private static readonly Dictionary<string, TextReferences> s_textReferencesThisBatch = new Dictionary<string, TextReferences>();
@@ -879,6 +887,8 @@ namespace Thry.ThryEditor
             s_applyStructsLater.Clear();
             s_lockedShaderNamesThisBatch.Clear();
             s_cacheEntriesTouchedThisBatch.Clear();
+            s_entriesToDeleteThisBatch.Clear();
+            if (s_materialsByShaderGuid == null) s_unlockedSinceScan.Clear();
             s_ifexConditionsThisBatch.Clear();
             s_textReferencesThisBatch.Clear();
             s_textMatchesThisBatch.Clear();
@@ -1043,6 +1053,7 @@ namespace Thry.ThryEditor
                             ThryLogger.LogErr("Could not un-/lock material " + m.name + "\n" + e.StackTrace);
                         }
                         EditorUtility.ClearProgressBar();
+                        DeleteUnusedFolderEntries();
                         AssetDatabase.StopAssetEditing();
                         assetEditingActive = false;
                         return false;
@@ -1063,6 +1074,7 @@ namespace Thry.ThryEditor
                     foreach (Material m in materialsToChangeLock) GlobalLinker.ApplyAllLinksToMaterial(m);
                 }
                 
+                DeleteUnusedFolderEntries();
                 AssetDatabase.StopAssetEditing();
                 assetEditingActive = false;
                 LockedShaderCache.PruneEmptyFolders();
@@ -3270,12 +3282,13 @@ namespace Thry.ThryEditor
             {
                 string entryDirectory = Path.GetDirectoryName(lockedShaderAssetPath).Replace('\\', '/');
                 string tagUsers = material.GetTag(TAG_ALL_MATERIALS_GUIDS_USING_THIS_LOCKED_SHADER, false, string.Empty);
+                s_unlockedSinceScan.Add(AssetDatabase.GUIDToAssetPath(unlockedMaterialGUID));
                 LockedShaderCache.DeregisterUser(entryDirectory, unlockedMaterialGUID);
                 material.SetOverrideTag(TAG_ALL_MATERIALS_GUIDS_USING_THIS_LOCKED_SHADER, string.Empty);
                 if (IsLockedShaderStillUsed(lockedShader, entryDirectory, tagUsers))
                     s_cacheEntriesTouchedThisBatch.Add(entryDirectory);
                 else
-                    LockedShaderCache.DeleteEntry(entryDirectory);
+                    s_entriesToDeleteThisBatch.Add(entryDirectory);
                 return UnlockSuccess.success;
             }
 
@@ -3349,6 +3362,28 @@ namespace Thry.ThryEditor
                 if (other != null && other.shader == lockedShader) return true;
             }
             return false;
+        }
+
+        // A copy of a material in another folder can still be on one of these shaders
+        static void DeleteUnusedFolderEntries()
+        {
+            if (s_entriesToDeleteThisBatch.Count == 0) return;
+            if (s_materialsByShaderGuid == null)
+            {
+                s_materialsByShaderGuid = LockedShaderCache.GetMaterialPathsByShaderGuid();
+                EditorApplication.delayCall += () => { s_materialsByShaderGuid = null; s_unlockedSinceScan.Clear(); };
+            }
+            string[] loadedShaderPaths = Resources.FindObjectsOfTypeAll<Material>().Where(m => m != null && m.shader != null)
+                .Select(m => AssetDatabase.GetAssetPath(m.shader)).Distinct().ToArray();
+            foreach (string entryDirectory in s_entriesToDeleteThisBatch)
+            {
+                string prefix = entryDirectory + "/";
+                bool used = loadedShaderPaths.Any(path => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    || AssetDatabase.FindAssets("t:Shader", new[] { entryDirectory }).Any(shaderGuid =>
+                        s_materialsByShaderGuid.TryGetValue(shaderGuid, out List<string> users) && users.Any(path => !s_unlockedSinceScan.Contains(path)));
+                if (!used) LockedShaderCache.DeleteEntry(entryDirectory);
+            }
+            s_entriesToDeleteThisBatch.Clear();
         }
 
         private static Shader GetOriginalShaderByName(Material material, bool log = true)

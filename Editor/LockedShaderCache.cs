@@ -397,6 +397,41 @@ are using Poiyomi Shaders, this folder is very important!
         }
 
         /// <summary>
+        /// The .mat files under Assets by the shader GUID their header names. Reading the first kilobyte of each
+        /// file takes a fraction of the time the import database needs for every material's dependencies.
+        /// </summary>
+        internal static Dictionary<string, List<string>> GetMaterialPathsByShaderGuid()
+        {
+            var materialsByShader = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            byte[] buffer = new byte[1024];
+
+            foreach (string guid in AssetDatabase.FindAssets("t:Material", new[] { "Assets" }))
+            {
+                string materialPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (!materialPath.EndsWith(".mat", StringComparison.OrdinalIgnoreCase)) continue;
+
+                string head;
+                try
+                {
+                    using (var stream = new FileStream(materialPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, buffer.Length))
+                        head = Encoding.UTF8.GetString(buffer, 0, stream.Read(buffer, 0, buffer.Length));
+                }
+                catch (IOException) { continue; }
+
+                int shader = head.IndexOf("m_Shader:", StringComparison.Ordinal);
+                int start = shader < 0 ? -1 : head.IndexOf("guid: ", shader, StringComparison.Ordinal);
+                if (start < 0 || start + 38 > head.Length) continue;
+
+                string shaderGuid = head.Substring(start + 6, 32);
+                if (!materialsByShader.TryGetValue(shaderGuid, out List<string> paths))
+                    materialsByShader[shaderGuid] = paths = new List<string>();
+                paths.Add(materialPath);
+            }
+
+            return materialsByShader;
+        }
+
+        /// <summary>
         /// Deletes entries no material references. With <paramref name="budgetBytes"/> above zero
         /// it stops as soon as the cache fits the budget, oldest entry first; otherwise it removes every
         /// unreferenced entry. Returns the number of entries deleted.
