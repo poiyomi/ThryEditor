@@ -41,8 +41,8 @@ namespace Thry.ThryEditor
             // Clear doesn't cancel scheduled items, so schedule once
             if (_searchHandOff == null) _searchHandOff = root.schedule.Execute(() =>
             {
-                if (ShaderEditor.Active == null || _selectedMaterial == null || ShaderEditor.Active.Materials[0] != _selectedMaterial) return;
-                ShaderEditor.Active.SetSearchTerm(_selectedPropertyName); _selectedMaterial = null; _selectedPropertyName = null;
+                if (ShaderEditor.Active?.ShowSearch == null || _selectedMaterial == null || ShaderEditor.Active.Materials[0] != _selectedMaterial) return;
+                ShaderEditor.Active.ShowSearch(_selectedPropertyName); _selectedMaterial = null; _selectedPropertyName = null;
             }).Every(150);
         }
         [MenuItem("Assets/Thry/Textures/Find Uses", true)]

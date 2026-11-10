@@ -3,66 +3,15 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
-using Thry.ThryEditor.Helpers;
 
 namespace Thry.ThryEditor
 {
     public class RenderQueueProperty : ShaderProperty
     {
-        private readonly InspectorPopup _queuePopup = new InspectorPopup();
-        public RenderQueueProperty(ShaderEditor shaderEditor) : base(shaderEditor, "RenderQueue", 0, "", "Change the Queue at which the material is rendered.", -1)
+        public RenderQueueProperty(ShaderEditor shaderEditor) : base(shaderEditor, "RenderQueue", "", "Change the Queue at which the material is rendered.", -1)
         {
-            _doCustomDrawLogic = true;
             IsAnimatable = false;
             CustomStringTagID = "RenderQueue";
-        }
-
-        static readonly string[] s_renderQueueNames = { "From Shader", "Geometry", "AlphaTest", "Transparent" };
-        static readonly int[] s_renderQueueValues = { -1, 2000, 2450, 3000 };
-
-        protected override void DrawDefault()
-        {
-            Rect r = RectifiedLayout.GetPaddedRect(InspectorTheme.FieldHeight);
-            int queue = MyShaderUI.Materials[0].renderQueue;
-            
-            using (new GUILib.IndentOverrideScope(0))
-            {
-                // Split rect: label on left, dropdown in middle, int field on right
-                float labelWidth = EditorGUIUtility.labelWidth;
-                float fieldWidth = 75;
-                float dropdownWidth = r.width - labelWidth - fieldWidth - 4;
-                
-                Rect labelRect = new Rect(r.x, r.y, labelWidth, r.height);
-                Rect dropdownRect = new Rect(r.x + labelWidth + 2, r.y, dropdownWidth - 2, r.height);
-                Rect intRect = new Rect(dropdownRect.xMax + 4, r.y, fieldWidth, r.height);
-                
-                EditorGUI.LabelField(labelRect, "Render Queue");
-                
-                // Dropdown for preset queues. A custom value adds a display only trailing entry,
-                // so an index past the preset count must not be written back.
-                int selectedIndex;
-                string[] queueNames = RenderQueueHelper.GetDropdownNames(queue, s_renderQueueNames, s_renderQueueValues, out selectedIndex);
-                
-                EditorGUI.BeginChangeCheck();
-                int newIndex = _queuePopup.Draw(dropdownRect, GUIContent.none, selectedIndex, queueNames);
-                if (EditorGUI.EndChangeCheck() && newIndex != selectedIndex && newIndex < s_renderQueueValues.Length)
-                {
-                    queue = s_renderQueueValues[newIndex];
-                    Undo.RecordObjects(MyShaderUI.Materials, "Change Render Queue");
-                    foreach (Material m in MyShaderUI.Materials)
-                        m.renderQueue = queue;
-                }
-                
-                // Int field for exact value
-                EditorGUI.BeginChangeCheck();
-                queue = EditorGUI.IntField(intRect, queue);
-                if (EditorGUI.EndChangeCheck())
-                {
-                    Undo.RecordObjects(MyShaderUI.Materials, "Change Render Queue");
-                    foreach (Material m in MyShaderUI.Materials)
-                        m.renderQueue = queue;
-                }
-            }
         }
 
         public override object FetchPropertyValue()
@@ -95,7 +44,6 @@ namespace Thry.ThryEditor
     {
         internal static string[] RetainedNames => s_vRCFallbackOptionsPopup;
         internal static string[] RetainedValues => s_vRCFallbackOptionsValues;
-        private readonly InspectorPopup _fallbackPopup = new InspectorPopup();
         static string[] s_fallbackShaderTypes = { "Standard", "Toon", "Unlit", "VertexLit", "Particle", "Sprite", "Matcap", "MobileToon", "toonstandard", "toonstandardoutline" };
         static string[] s_fallbackRenderTypes = { "Opaque", "Cutout", "Transparent", "Fade" };
         static string[] s_fallbackRenderTypesValues = { "", "Cutout", "Transparent", "Fade" };
@@ -114,33 +62,11 @@ namespace Thry.ThryEditor
             return shaderType + renderType + (doubleSided ? s_fallbackCullTypesValues[1] : s_fallbackCullTypesValues[0]);
         }
 
-        public VRCFallbackProperty(ShaderEditor shaderEditor) : base(shaderEditor, "VRCFallback", 0, "", "Select the shader VRChat should use when your shaders are being hidden.", -1)
+        public VRCFallbackProperty(ShaderEditor shaderEditor) : base(shaderEditor, "VRCFallback", "", "Select the shader VRChat should use when your shaders are being hidden.", -1)
         {
-            _doCustomDrawLogic = true;
             IsAnimatable = false;
             CustomStringTagID = "VRCFallback";
             IsExemptFromLockedDisabling = true;
-        }
-
-        protected override void DrawDefault()
-        {
-            Rect r = RectifiedLayout.GetPaddedRect(InspectorTheme.FieldHeight);
-            string current = MyShaderUI.Materials[0].GetTag("VRCFallback", false, "None");
-            EditorGUI.BeginChangeCheck();
-            // Reset indent to 0 since our rect already has padding
-            int oldIndent = EditorGUI.indentLevel;
-            EditorGUI.indentLevel = 0;
-            int selected = _fallbackPopup.Draw(r, new GUIContent("VRChat Fallback Shader"), s_vRCFallbackOptionsValues.Select((f, i) => (f, i)).FirstOrDefault(f => f.f == current).i, s_vRCFallbackOptionsPopup);
-            EditorGUI.indentLevel = oldIndent;
-            if (EditorGUI.EndChangeCheck())
-            {
-                Undo.RecordObjects(MyShaderUI.Materials, "Change VRChat Fallback Shader");
-                foreach (Material m in MyShaderUI.Materials)
-                {
-                    m.SetOverrideTag("VRCFallback", s_vRCFallbackOptionsValues[selected]);
-                    EditorUtility.SetDirty(m);
-                }
-            }
         }
 
         public void SetPropertyValue(string value)
@@ -181,9 +107,8 @@ namespace Thry.ThryEditor
     }
     public class InstancingProperty : ShaderProperty
     {
-        public InstancingProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, int xOffset, string optionsRaw, bool forceOneLine, int property_index) : base(shaderEditor, materialProperty, displayName, xOffset, optionsRaw, forceOneLine, property_index)
+        public InstancingProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, string optionsRaw, int property_index) : base(shaderEditor, materialProperty, displayName, optionsRaw, property_index)
         {
-            _doCustomDrawLogic = true;
             IsAnimatable = false;
         }
 
@@ -193,43 +118,14 @@ namespace Thry.ThryEditor
         }
         public override object PropertyDefaultValue => false;
         public override bool IsPropertyValueDefault => MyShaderUI.Materials.All(m => m.enableInstancing == false);
-
-        protected override void DrawDefault()
-        {
-            Rect r = GUILib.GetPropertyRect(XOffset, EditorGUIUtility.singleLineHeight);
-            bool mixed = MyShaderUI.Materials.Any(m => m.enableInstancing != MyShaderUI.Materials[0].enableInstancing);
-            EditorGUI.showMixedValue = mixed;
-            EditorGUI.BeginChangeCheck();
-            bool enabled = EditorGUI.Toggle(r, new GUIContent("Enable GPU Instancing"), MyShaderUI.Materials[0].enableInstancing);
-            if (EditorGUI.EndChangeCheck())
-            {
-                Undo.RecordObjects(MyShaderUI.Materials, "Change GPU Instancing");
-                foreach (Material m in MyShaderUI.Materials)
-                    m.enableInstancing = enabled;
-            }
-            EditorGUI.showMixedValue = false;
-        }
     }
     public class GIProperty : ShaderProperty
     {
-        private readonly InspectorPopup _emissionPopup = new InspectorPopup();
-        public GIProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, int xOffset, string optionsRaw, bool forceOneLine, int property_index) : base(shaderEditor, materialProperty, displayName, xOffset, optionsRaw, forceOneLine, property_index)
+        public GIProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, string optionsRaw, int property_index) : base(shaderEditor, materialProperty, displayName, optionsRaw, property_index)
         {
-            _doCustomDrawLogic = true;
             IsAnimatable = false;
         }
 
-        protected override void DrawInternal(GUIContent content, Rect? rect = null, bool useEditorIndent = false, bool isInHeader = false)
-        {
-            base.DrawInternal(content, rect, useEditorIndent, isInHeader);
-        }
-
-        protected override void DrawDefault()
-        {
-            LightmapEmissionFlagsProperty(XOffset, false);
-        }
-
-        public static readonly GUIContent lightmapEmissiveLabel = EditorGUIUtility.TrTextContent("Global Illumination", "Controls if the emission is baked or realtime.\n\nBaked only has effect in scenes where baked global illumination is enabled.\n\nRealtime uses realtime global illumination if enabled in the scene. Otherwise the emission won't light up other objects.");
         public static GUIContent[] lightmapEmissiveStrings = { EditorGUIUtility.TrTextContent("Realtime"), EditorGUIUtility.TrTextContent("Baked"), EditorGUIUtility.TrTextContent("None") };
         public static int[] lightmapEmissiveValues = { (int)MaterialGlobalIlluminationFlags.RealtimeEmissive, (int)MaterialGlobalIlluminationFlags.BakedEmissive, (int)MaterialGlobalIlluminationFlags.None };
 
@@ -252,48 +148,6 @@ namespace Thry.ThryEditor
             return flags;
         }
 
-        public void LightmapEmissionFlagsProperty(int indent, bool enabled)
-        {
-            LightmapEmissionFlagsProperty(indent, enabled, false);
-        }
-
-        public void LightmapEmissionFlagsProperty(int indent, bool enabled, bool ignoreEmissionColor)
-        {
-            // Calculate isMixed
-            MaterialGlobalIlluminationFlags any_em = MaterialGlobalIlluminationFlags.AnyEmissive;
-            MaterialGlobalIlluminationFlags giFlags = MyShaderUI.Materials[0].globalIlluminationFlags & any_em;
-            bool isMixed = false;
-            for (int i = 1; i < MyShaderUI.Materials.Length; i++)
-            {
-                if ((MyShaderUI.Materials[i].globalIlluminationFlags & any_em) != giFlags)
-                {
-                    isMixed = true;
-                    break;
-                }
-            }
-
-            EditorGUI.BeginChangeCheck();
-
-            // Show popup with proper positioning
-            Rect r = GUILib.GetPropertyRect(indent, EditorGUIUtility.singleLineHeight);
-            EditorGUI.showMixedValue = isMixed;
-            int emissionIndex = _emissionPopup.Draw(r, lightmapEmissiveLabel, System.Array.IndexOf(lightmapEmissiveValues, (int)giFlags), lightmapEmissiveStrings);
-            if (emissionIndex >= 0) giFlags = (MaterialGlobalIlluminationFlags)lightmapEmissiveValues[emissionIndex];
-            EditorGUI.showMixedValue = false;
-
-            // Apply flags. But only the part that this tool modifies (RealtimeEmissive, BakedEmissive, None)
-            bool applyFlags = EditorGUI.EndChangeCheck();
-            if (applyFlags) Undo.RecordObjects(MyShaderUI.Materials, "Change Global Illumination");
-            foreach (Material mat in MyShaderUI.Materials)
-            {
-                mat.globalIlluminationFlags = applyFlags ? giFlags : mat.globalIlluminationFlags;
-                if (!ignoreEmissionColor)
-                {
-                    FixupEmissiveFlag(mat);
-                }
-            }
-        }
-
         public override object FetchPropertyValue()
         {
             return MyShaderUI.Materials[0].globalIlluminationFlags;
@@ -305,15 +159,9 @@ namespace Thry.ThryEditor
     }
     public class DSGIProperty : ShaderProperty
     {
-        public DSGIProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, int xOffset, string optionsRaw, bool forceOneLine, int property_index) : base(shaderEditor, materialProperty, displayName, xOffset, optionsRaw, forceOneLine, property_index)
+        public DSGIProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, string optionsRaw, int property_index) : base(shaderEditor, materialProperty, displayName, optionsRaw, property_index)
         {
-            _doCustomDrawLogic = true;
             IsAnimatable = false;
-        }
-
-        protected override void DrawDefault()
-        {
-            MyShaderUI.Editor.DoubleSidedGIField();
         }
 
         public override object FetchPropertyValue()
@@ -322,18 +170,5 @@ namespace Thry.ThryEditor
         }
         public override object PropertyDefaultValue => false;
         public override bool IsPropertyValueDefault => MyShaderUI.Materials.All(m => m.doubleSidedGI == false);
-    }
-    public class LocaleProperty : ShaderProperty
-    {
-        public LocaleProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, int xOffset, string optionsRaw, bool forceOneLine, int property_index) : base(shaderEditor, materialProperty, displayName, xOffset, optionsRaw, forceOneLine, property_index)
-        {
-            _doCustomDrawLogic = true;
-            IsAnimatable = false;
-        }
-
-        protected override void DrawInternal(GUIContent content, Rect? rect = null, bool useEditorIndent = false, bool isInHeader = false)
-        {
-            ShaderEditor.Active.Locale.DrawDropdown(rect.Value);
-        }
     }
 }

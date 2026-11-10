@@ -4,8 +4,18 @@ using UnityEngine.UIElements;
 
 namespace Thry.ThryEditor.Drawers
 {
-    public partial class LocalMessageDrawer
+    public class LocalMessageDrawer
     {
+        ButtonData _buttonData;
+        bool _isInit;
+
+        void Init(string s)
+        {
+            if (_isInit) return;
+            _buttonData = Parser.Deserialize<ButtonData>(s);
+            _isInit = true;
+        }
+
         internal VisualElement CreateRetained(string definition, Material[] materials, Action<DefineableAction> perform = null, Func<bool> valid = null)
         {
             Init(definition);

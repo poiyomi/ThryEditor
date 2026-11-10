@@ -80,8 +80,7 @@ namespace Thry
                 InitEditorData(editor);
                 InitlizeThryUI();
                 _doReloadNextDraw = false;
-                // IMGUI initializes a part's options the first time it draws. Retained inspectors
-                // never call Draw, so tooltips, offsets and stored foldout states would stay unread.
+                // Options are read lazily, so tooltips and stored foldout states would stay unread.
                 foreach (var part in ShaderParts) part.EnsureOptionsInitialized();
                 // The model resolves animation after refreshing owner metadata below.
                 // Reading every tag here would duplicate that complete pass, and would
@@ -112,8 +111,7 @@ namespace Thry
                     }
                 }
             }
-            // Shader swap actions used to run at the end of the IMGUI event pass.
-            // Consume the pending actions here so retained inspectors preserve that one-shot behavior.
+            // Shader swap actions run once, on the first refresh after the swap.
             if (_didSwapToShader)
             {
                 var actions = _onSwapToActions;
@@ -122,7 +120,6 @@ namespace Thry
                 if (actions != null)
                     foreach (var action in actions) action.Perform(Materials);
             }
-            IsFirstCall = false;
             return rebuild;
         }
 
@@ -228,7 +225,7 @@ namespace Thry.ThryEditor
             if (!changed) { StampSnapshotsIfUnchanged(readTargets, readVersions); return; }
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.TextureKeywords))
                 _textureKeywords.Synchronize(Shader, changedTargets);
-            // Unlike IMGUI, retained inspectors do not receive UndoRedoPerformed GUI events.
+            // Retained inspectors do not receive UndoRedoPerformed GUI events.
             // Refresh tag state after material changes without rebuilding or opening sections.
             if (rebuilt || forceAnimatedState || animationChanged)
             using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.AnimationIndicators))
@@ -452,9 +449,9 @@ namespace Thry.ThryEditor
         {
             if (!HasValidTargets(Editor)) return;
             Shader.ActivateRetained();
-            // Searching and animation recording both keep the foldout in memory only, so writing
-            // an undo entry for them would put an empty step on the stack.
-            if (!group.PersistsExpanded || Shader.IsInSearchMode || Shader.IsInAnimationMode)
+            // Animation recording keeps the foldout in memory only, so writing an undo entry for it
+            // would put an empty step on the stack.
+            if (!group.PersistsExpanded || Shader.IsInAnimationMode)
             { group.RetainedExpanded = expanded; return; }
             // The property's native setter records the undo step and names it.
             group.RetainedExpanded = expanded;

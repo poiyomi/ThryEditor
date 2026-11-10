@@ -15,9 +15,9 @@ namespace Thry.ThryEditor
     /// </summary>
     internal static class RetainedColorPicker
     {
-        /// <summary>A picker, eyedropper or picker-driven IMGUI edit is in progress. Computed, so it cannot stay set.</summary>
+        /// <summary>A picker or eyedropper session is in progress. Computed, so it cannot stay set.</summary>
         internal static bool GestureActive => ThryColorPickerWindow.Current != null || ThryEyeDropper.IsActive
-            || Drawers.ThryColorGUI.SessionActive || UnityPicker.Target != null;
+            || UnityPicker.Target != null;
 
         /// <summary>The field whose picker or eyedropper session is running. Its inspector no longer has focus.</summary>
         internal static VisualElement ActiveField { get; private set; }

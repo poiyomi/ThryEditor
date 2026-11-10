@@ -306,7 +306,6 @@ namespace Thry.ThryEditor.Drawers
                 current[index].Invert = restored[index].Invert; current[index].Fallback = restored[index].Fallback; current[index].Remapping = restored[index].Remapping;
             }
             _current._isInit = true;
-            _current._packedTexture = _prop.textureValue as Texture2D;
             _current._hasTextureChanged = targets.Any(material => PendingState(material) != null);
             _current._hasConfigChanged = _current._hasTextureChanged || targets.Any(material =>
                 material.GetTag(SavedInputsTag, false, _retainedSavedInputs.TryGetValue(material, out var baseline) ? baseline : "") != RetainedInputSignature(material));

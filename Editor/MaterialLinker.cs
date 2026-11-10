@@ -116,28 +116,6 @@ namespace Thry.ThryEditor
             linked_materials.Remove((m,p.name));
         }
 
-        private static void UpdateLinkList(List<Material> new_linked_materials, MaterialProperty p)
-        {
-            var key = (p.targets[0] as Material, p.name);
-            if (linked_materials.ContainsKey(key))
-            {
-                List<Material> old_materials = linked_materials[key];
-                foreach (Material m in old_materials)
-                    linked_materials.Remove((m, p.name));
-            }
-            foreach (Material m in new_linked_materials)
-            {
-                if (linked_materials.TryGetValue((m, p.name), out List<Material> previous) && previous != new_linked_materials)
-                {
-                    previous.Remove(m);
-                    linked_materials.Remove((m, p.name));
-                }
-            }
-            foreach (Material m in new_linked_materials)
-                linked_materials[(m, p.name)] = new_linked_materials;
-            RemoveEmptyLinks();
-        }
-
         public static void UnlinkAll(Material m)
         {
             Load();
@@ -169,104 +147,6 @@ namespace Thry.ThryEditor
             }
             foreach ((Material, string) k in remove_keys)
                 linked_materials.Remove(k);
-        }
-
-        private static MaterialLinkerPopupWindow window;
-        public static void Popup(Rect activeation_rect, IEnumerable<Material> linked_materials, MaterialProperty p)
-        {
-            Vector2 pos = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
-            pos.x = Mathf.Min(EditorWindow.focusedWindow.position.x + EditorWindow.focusedWindow.position.width - 250, pos.x);
-            pos.y = Mathf.Min(EditorWindow.focusedWindow.position.y + EditorWindow.focusedWindow.position.height - 200, pos.y);
-
-            Load();
-            if (window != null)
-                window.Close();
-            window = ScriptableObject.CreateInstance<MaterialLinkerPopupWindow>();
-            window.position = new Rect(pos.x, pos.y, 250, 200);
-            window.Init(linked_materials, p);
-            window.ShowPopup();
-        }
-
-        private class MaterialLinkerPopupWindow : EditorWindow
-        {
-            private Vector2 scrollPos;
-            private List<Material> linked_materials;
-            private MaterialProperty materialProperty;
-
-            public void Init(IEnumerable<Material> linked_materials, MaterialProperty p)
-            {
-                if (linked_materials == null)
-                    linked_materials = new List<Material>();
-                this.linked_materials = new List<Material>(linked_materials);
-
-                string self_guid = UnityHelper.GetGUID((Material)p.targets[0]);
-                for (int i = this.linked_materials.Count - 1; i >= 0; i--)
-                {
-                    if (UnityHelper.GetGUID(this.linked_materials[i]) == self_guid)
-                        this.linked_materials.RemoveAt(i);
-                }
-                this.materialProperty = p;
-            }
-
-            public new Vector2 minSize = new Vector2(250, 200);
-
-            void OnGUI()
-            {
-                GUILayout.Label("Linked Materials", EditorStyles.boldLabel);
-                float listMaxHeight = this.position.height - 110;
-                GUILib.DrawListField<Material>(linked_materials, listMaxHeight, ref scrollPos);
-                GUILayout.Box("Drag and Drop new Material", EditorStyles.helpBox, GUILayout.MinHeight(30));
-                //Rect drag_rect = GUILayoutUtility.GetLastRect();
-                Rect lastRect = GUILayoutUtility.GetLastRect();
-                Rect drag_rect = new Rect(0, lastRect.y, Screen.width, Screen.height - lastRect.y - 30);
-                Event e = Event.current;
-                if ((e.type == EventType.DragPerform || e.type == EventType.DragUpdated) && drag_rect.Contains(e.mousePosition))
-                {
-                    DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
-                    if (e.type == EventType.DragPerform)
-                    {
-                        DragAndDrop.AcceptDrag();
-                        HanldeDropEvent();
-                    }
-                }
-                if (GUI.Button(new Rect(0,this.position.height-30,this.position.width,30),"Done"))
-                    this.Close();
-            }
-
-            public void HanldeDropEvent()
-            {
-                foreach (string path in DragAndDrop.paths)
-                {
-                    if (AssetDatabase.GetMainAssetTypeAtPath(path) == typeof(Material))
-                    {
-                        linked_materials.Add(AssetDatabase.LoadAssetAtPath<Material>(path));
-                    }
-                }
-            }
-
-            void Awake()
-            {
-                
-            }
-
-            void OnDestroy()
-            {
-                //add itself
-                bool contains_itself = false;
-                string self_guid = UnityHelper.GetGUID((Material)materialProperty.targets[0]);
-                for (int i = linked_materials.Count - 1; i >= 0; i--)
-                {
-                    if (UnityHelper.GetGUID(linked_materials[i]) == self_guid)
-                        contains_itself = true;
-                    if (linked_materials[i] == null)
-                        linked_materials.RemoveAt(i);
-                }
-                if (linked_materials.Count>0 && !contains_itself)
-                    linked_materials.Add((Material)materialProperty.targets[0]);
-
-                UpdateLinkList(linked_materials, materialProperty);
-                Save();
-            }
         }
     }
 }

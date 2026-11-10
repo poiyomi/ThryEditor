@@ -11,7 +11,6 @@ using Thry.ThryEditor.ShaderTranslations;
 using JetBrains.Annotations;
 using Thry.ThryEditor.Helpers;
 using Thry.ThryEditor.Drawers;
-using static Thry.ThryEditor.UnityHelper;
 using UnityEngine.Rendering;
 
 namespace Thry
@@ -25,7 +24,6 @@ namespace Thry
         public const string PROPERTY_NAME_IN_SHADER_PRESETS = "_Mode";
 
         //Static
-        public static InputEvent Input = new InputEvent();
         public static ShaderEditor Active { get; private set; }
 
         /// <summary>
@@ -49,12 +47,6 @@ namespace Thry
         private RenderQueueProperty _renderQueueProperty;
         private VRCFallbackProperty _vRCFallbackProperty;
 
-        // UI Instance Variables
-
-        private string _enteredSearchTerm = "";
-        private string _appliedSearchTerm = "";
-        public bool IsInSearchMode { private set; get; } = false;
-
         // shader specified values
         private ShaderHeaderProperty _shaderHeader = null;
         private List<FooterButton> _footers;
@@ -67,7 +59,6 @@ namespace Thry
         private bool _doApplyRenderingPresetAfterSwap = false;
 
         //EditorData
-        public bool DoUseShaderOptimizer;
         public string RenamedPropertySuffix;
         public bool HasCustomRenameSuffix;
         public bool IsLockedMaterial;
@@ -83,19 +74,16 @@ namespace Thry
         public Dictionary<string, ShaderProperty> PropertyDictionary { get; private set; }
         public List<ShaderPart> ShaderParts { get; private set; }
         public List<ShaderProperty> TextureArrayProperties { get; private set; }
-        public bool IsFirstCall { get; private set; }
         public bool IsInAnimationMode { get; private set; }
         public Renderer ActiveRenderer { get; private set; }
         public Localization Locale { get; private set; }
         public ShaderTranslator SuggestedTranslationDefinition { get; private set; }
-        private string _duplicatePropertyNamesString = null;
 
         public MaterialPropertyNotesContainer[] NoteContainers { get; private set; }
 
         //other
         string ShaderOptimizerPropertyName = null;
         ShaderProperty ShaderOptimizerProperty { get; set; }
-        ShaderProperty LocaleProperty { get; set; }
         ShaderProperty InShaderPresetsProperty { get; set; }
 
         [PublicAPI]
@@ -103,7 +91,6 @@ namespace Thry
 
         private DefineableAction[] _onSwapToActions = null;
 
-        public bool IsDrawing { get; private set; } = false;
         public bool IsPresetEditor { get; private set; } = false;
         public bool IsSectionedPresetEditor
         {
@@ -199,14 +186,6 @@ namespace Thry
             string options = displayName.Substring(index + EXTRA_OPTIONS_PREFIX.Length);
             displayName = displayName.Substring(0, index);
             return options;
-        }
-
-        public static string GetMaterialPropertyDisplayNameWithoutOptions(MaterialProperty prop)
-        {
-            string displayName = prop.displayName;
-            int index = displayName.IndexOf(EXTRA_OPTIONS_PREFIX, StringComparison.Ordinal);
-            if(index == -1) return displayName;
-            return displayName.Substring(0, index);
         }
 
         internal enum ThryPropertyType
@@ -445,7 +424,6 @@ namespace Thry
             _onSwapToActions = null;
             _shaderHeader = null;
             ShaderOptimizerPropertyName = null;
-            _duplicatePropertyNamesString = null;
 
             if (ShaderOptimizer.IsShaderUsingThryOptimizer(Shader))
             {
@@ -464,10 +442,6 @@ namespace Thry
             groupStack.Push(_mainGroup); //add top object as top object to stack
             groupStack.Push(_mainGroup); //add top object a second time, because it get's popped with first actual header item
             _footers = new List<FooterButton>(); //init footer list
-            int offsetDepthCount = 0;
-
-            HashSet<string> duplicatePropertiesSearch = new HashSet<string>(); // for debugging
-            List<string> duplicateProperties = new List<string>(); // for debugging
 
             for (int i = 0; i < props.Length; i++)
             {
@@ -480,36 +454,25 @@ namespace Thry
                 if (optionsRaw != null && optionsRaw.Contains("own_label:true")) displayName = Locale.Get(displayName, displayName);
                 else displayName = Locale.Get(props[i], displayName);
 
-                int offset = offsetDepthCount;
-                
-                // Duplicate property name check
-                if(duplicatePropertiesSearch.Add(props[i].name) == false)
-                    duplicateProperties.Add(props[i].name);
-
                 ThryPropertyType type = GetPropertyType(props[i]);
                 ShaderProperty NewProperty = null;
                 ShaderPart newPart = null;
                 // -- Group logic --
-                // Change offset if needed
-                if(type == ThryPropertyType.header_start)
-                    offset = ++offsetDepthCount;
-                if(type == ThryPropertyType.header_end)
-                    offsetDepthCount--;
                 // Create new group if needed
                 switch(type)
                 {
                     case ThryPropertyType.group_start:
-                        newPart = new ShaderGroup(this, props[i], Editor, displayName, offset, optionsRaw, i);
+                        newPart = new ShaderGroup(this, props[i], Editor, displayName, optionsRaw, i);
                         break;
                     case ThryPropertyType.section_start:
-                        newPart = new ShaderSection(this, props[i], Editor, displayName, offset, optionsRaw, i);
+                        newPart = new ShaderSection(this, props[i], Editor, displayName, optionsRaw, i);
                         break;
                     case ThryPropertyType.subsection_start:
-                        newPart = new ShaderSubSection(this, props[i], Editor, displayName, offset, optionsRaw, i);
+                        newPart = new ShaderSubSection(this, props[i], Editor, displayName, optionsRaw, i);
                         break;
                     case ThryPropertyType.header:
                     case ThryPropertyType.header_start:
-                        newPart = new ShaderHeader(this, props[i], Editor, displayName, offset, optionsRaw, i);
+                        newPart = new ShaderHeader(this, props[i], Editor, displayName, optionsRaw, i);
                         break;
                 }
                 // pop if needed
@@ -531,7 +494,7 @@ namespace Thry
                         _onSwapToActions = PropertyOptions.Deserialize(optionsRaw).actions;
                         break;
                     case ThryPropertyType.master_label:
-                        _shaderHeader = new ShaderHeaderProperty(this, props[i], displayName, 0, optionsRaw, false, i);
+                        _shaderHeader = new ShaderHeaderProperty(this, props[i], displayName, optionsRaw, i);
                         break;
                     case ThryPropertyType.footer:
                     {
@@ -550,34 +513,31 @@ namespace Thry
                     case ThryPropertyType.shown_property:
 #if UNITY_6000_2_OR_NEWER
                         if (props[i].propertyType == ShaderPropertyType.Texture)
-                            NewProperty = new ShaderTextureProperty(this, props[i], displayName, offset, optionsRaw, props[i].propertyFlags.HasFlag(UnityEngine.Rendering.ShaderPropertyFlags.NoScaleOffset) == false, false, i);
+                            NewProperty = new ShaderTextureProperty(this, props[i], displayName, optionsRaw, props[i].propertyFlags.HasFlag(UnityEngine.Rendering.ShaderPropertyFlags.NoScaleOffset) == false, i);
 #else
                         if (props[i].GetPropertyType() == ShaderPropertyType.Texture)
-                            NewProperty = new ShaderTextureProperty(this, props[i], displayName, offset, optionsRaw, props[i].flags.HasFlag(MaterialProperty.PropFlags.NoScaleOffset) == false, false, i);
+                            NewProperty = new ShaderTextureProperty(this, props[i], displayName, optionsRaw, props[i].flags.HasFlag(MaterialProperty.PropFlags.NoScaleOffset) == false, i);
 #endif
                         else
-                            NewProperty = new ShaderProperty(this, props[i], displayName, offset, optionsRaw, false, i);
+                            NewProperty = new ShaderProperty(this, props[i], displayName, optionsRaw, i);
                         break;
                     case ThryPropertyType.lightmap_flags:
-                        NewProperty = new GIProperty(this, props[i], displayName, offset, optionsRaw, false, i);
+                        NewProperty = new GIProperty(this, props[i], displayName, optionsRaw, i);
                         break;
                     case ThryPropertyType.dsgi:
-                        NewProperty = new DSGIProperty(this, props[i], displayName, offset, optionsRaw, false, i);
+                        NewProperty = new DSGIProperty(this, props[i], displayName, optionsRaw, i);
                         break;
                     case ThryPropertyType.instancing:
-                        NewProperty = new InstancingProperty(this, props[i], displayName, offset, optionsRaw, false, i);
-                        break;
-                    case ThryPropertyType.locale:
-                        LocaleProperty = new LocaleProperty(this, props[i], displayName, offset, optionsRaw, false, i);
+                        NewProperty = new InstancingProperty(this, props[i], displayName, optionsRaw, i);
                         break;
                     case ThryPropertyType.optimizer:
-                        ShaderOptimizerProperty = new ShaderProperty(this, props[i], displayName, offset, optionsRaw, false, i);
+                        ShaderOptimizerProperty = new ShaderProperty(this, props[i], displayName, optionsRaw, i);
                         ShaderOptimizerProperty.SetIsExemptFromLockedDisabling(true);
                         NewProperty = ShaderOptimizerProperty;
                         doAssignPropertyToGroup = false;
                         break;
                     case ThryPropertyType.in_shader_presets:
-                        ShaderProperty presetsProperty = new ShaderProperty(this, props[i], displayName, offset, optionsRaw, false, i);
+                        ShaderProperty presetsProperty = new ShaderProperty(this, props[i], displayName, optionsRaw, i);
                         // A shader is expected to declare one preset property; should it declare several, the most
                         // specific name wins, matching how RenderingPresets resolves it.
                         if (InShaderPresetsProperty == null ||
@@ -603,19 +563,13 @@ namespace Thry
                     ShaderParts.Add(newPart);
                 }
             }
-
-            if(duplicateProperties.Count > 0 && Config.Instance.enableDeveloperMode)
-                _duplicatePropertyNamesString = string.Join("\n ", duplicateProperties.ToArray());
         }
-
-        //-------------Draw Functions----------------
 
         public void InitlizeThryUI()
         {
             Config config = Config.Instance;
             Active = this;
             RegisterCallacks();
-            HookInspectorContainers();
 
             //get material targets
             Materials = Editor.targets.OfType<Material>()
@@ -686,8 +640,8 @@ namespace Thry
         private static readonly List<ShaderEditor> s_editorsWithCallbacks = new List<ShaderEditor>();
 
         /// <summary>
-        /// Releases every registered editor whose MaterialEditor Unity has destroyed. Called from OnGUI, so
-        /// a discarded tree lives at most until the next inspector draw. The cross editor's instances are
+        /// Releases every registered editor whose MaterialEditor Unity has destroyed. Called when an inspector
+        /// refreshes, so a discarded tree lives at most until the next refresh. The cross editor's instances are
         /// skipped here because their MaterialEditor stays alive; CrossEditor releases those itself.
         /// </summary>
         private static void ReleaseOrphanedEditors(ShaderEditor current)
@@ -777,6 +731,7 @@ namespace Thry
         public void Release()
         {
             UnregisterCallbacks();
+            _inspectorMount?.Clear();
             foreach (MaterialEditor editor in s_editorCache.Values)
                 if (editor != null) UnityEngine.Object.DestroyImmediate(editor);
             s_editorCache.Clear();
@@ -927,7 +882,6 @@ namespace Thry
             _doApplyRenderingPresetAfterSwap = true;
             
             this.ShaderOptimizerProperty = null;
-            this.LocaleProperty = null;
             this.InShaderPresetsProperty = null;
             //Unity sets the render queue to the shader defult when changing shader
             //This seems to be some deeper process that cant be disabled so i just set it again after the swap
@@ -950,235 +904,44 @@ namespace Thry
         {
             Editor = materialEditor;
             TextureArrayProperties = new List<ShaderProperty>();
-            IsFirstCall = true;
         }
+
+        private RetainedInspectorMount _inspectorMount;
+        private bool _drawsHostNotice;
 
         public override void OnGUI(MaterialEditor materialEditor, MaterialProperty[] props)
         {
-            //Init
-            bool reloadUI = _isFirstOnGUICall || (_doReloadNextDraw && Event.current.type == EventType.Layout) || SectionLock.GetSourceShader((materialEditor.target as Material).shader) != Shader;
-            if (reloadUI) 
+            if (Event.current.type == EventType.Layout)
             {
-                InitEditorData(materialEditor);
-                Properties = props;
-                InitlizeThryUI();
+                _inspectorMount ??= new RetainedInspectorMount();
+                _drawsHostNotice = !_inspectorMount.Show(materialEditor);
+                // No view refreshes this editor, so a shader swap is finished here.
+                if (_drawsHostNotice && (_didSwapToShader || _doApplyRenderingPresetAfterSwap))
+                    PrepareRetained(materialEditor, Array.Empty<Renderer>());
             }
-
-            //Update Data
-            Properties = props;
-            Input.Update(IsLockedMaterial);
-            ActiveRenderer = Selection.activeTransform?.GetComponent<Renderer>();
-            IsInAnimationMode = AnimationMode.InAnimationMode();
-
-            Active = this;
-            ReleaseOrphanedEditors(this);
-
-            // Undos throw errors because the structure of the UI changes between layout and repaint
-            // This is a workaround to prevent the error by exiting the GUI call early
-            if((Event.current.type == EventType.ExecuteCommand || Event.current.type == EventType.ValidateCommand)
-                && Event.current.commandName == "UndoRedoPerformed")
+            if (!_drawsHostNotice) return;
+            using (new InspectorTheme.Scope())
             {
-                _doReloadNextDraw = true;
-                GUIUtility.ExitGUI();
-                return;
-            }
-            if (ShouldSkipDragEventPass()) return;
-            try
-            {
-                if (Event.current.type == EventType.Layout)
-                    while (_pendingViewActions.Count > 0) _pendingViewActions.Dequeue()();
-                using (new InspectorTheme.Scope()) Draw();
-                HandleEvents();
-            }
-            finally
-            {
-                // Drawers set this per control and count on resetting it afterwards. Anything that ends the
-                // pass early - the object picker's ExitGUI, an exception - skips that reset and leaves it on
-                // for every control drawn later. The inspector's container resets GUI state each pass so it
-                // never shows; the Cross Editor is a plain window and ended up with every material row and
-                // toggle drawn as a mixed-value dash after a texture picker was opened.
-                EditorGUI.showMixedValue = false;
-            }
-            _didSwapToShader = false;
-        }
-
-        // A drag pass is let through only when no other has run since the last Repaint, or when the last one
-        // is older than this. The valve exists so a slider can never wait on a Repaint that nothing asked for.
-        private const double DRAG_PASS_VALVE_SECONDS = 0.05;
-        private bool _dragPassSinceRepaint;
-        private double _lastFullDragPassTime;
-
-        /// <summary>
-        /// Drops surplus MouseDrag event passes: one processed drag per frame is all a slider needs.
-        ///
-        /// The editor runs a full Layout pass and then a full event pass of this UI for every mouse event
-        /// the OS delivers, and it does not coalesce them: a high-polling-rate mouse queues dozens of
-        /// MouseDrag events per frame while a slider is dragged, and each pass over a Poiyomi material
-        /// costs around 10 ms and allocates about 1 MB. Measured live, that put a drag at roughly one frame
-        /// per second with a garbage collection every frame, for a single material and for thirteen alike.
-        ///
-        /// Skipping only the event pass is always legal for IMGUI (a non-Layout pass may request fewer
-        /// controls than the Layout pass created), so this is safe under any host. It halves the cost;
-        /// the Layout pass and the MaterialEditor's own per-pass work (fetching every property, updating
-        /// the serialized object - about 5 ms together) can only be avoided by the host, which is what
-        /// Poiyomi's ErrorShaderEditor does with IsDragEventIncoming, using this same one-per-repaint rule
-        /// so the two decisions agree.
-        /// </summary>
-        private bool ShouldSkipDragEventPass()
-        {
-            Event e = Event.current;
-            if (e.type == EventType.Repaint) { _dragPassSinceRepaint = false; return false; }
-            if (e.type != EventType.MouseDrag) return false;
-            s_incomingImguiEvent = EventType.Ignore; // this pass consumes the note
-            double now = EditorApplication.timeSinceStartup;
-            if (_dragPassSinceRepaint && now - _lastFullDragPassTime < DRAG_PASS_VALVE_SECONDS) return true;
-            _dragPassSinceRepaint = true;
-            _lastFullDragPassTime = now;
-            return false;
-        }
-
-        // Which IMGUI mouse event the inspector's container is about to run passes for, and when it was
-        // noted. The Layout pass Unity sends before an event carries nothing that identifies the event
-        // (its own Event object, no delta), so the note is taken one step earlier: UI Toolkit hands the
-        // mouse event to the IMGUIContainer through a trickle-down callback before the container runs
-        // IMGUI, and a Repaint never passes that way. The note is consumed by the event pass that follows.
-        private static EventType s_incomingImguiEvent = EventType.Ignore;
-        private static double s_incomingImguiEventTime;
-
-        /// <summary>
-        /// True while the inspector's IMGUI container is running the Layout and event passes for a
-        /// MouseDrag. Lets a host MaterialEditor decide, already at the Layout pass, to draw a placeholder
-        /// instead of running its own per-pass work and this UI. A host that does so must call
-        /// <see cref="ConsumeIncomingDragEvent"/> from the event pass it skipped.
-        /// </summary>
-        public static bool IsDragEventIncoming()
-        {
-            return s_incomingImguiEvent == EventType.MouseDrag
-                && EditorApplication.timeSinceStartup - s_incomingImguiEventTime < 0.1;
-        }
-
-        public static void ConsumeIncomingDragEvent()
-        {
-            s_incomingImguiEvent = EventType.Ignore;
-        }
-
-        /// <summary>The valve a host should use with IsDragEventIncoming so its decision matches this UI's.</summary>
-        public static double DragPassValveSeconds => DRAG_PASS_VALVE_SECONDS;
-
-        private static void OnInspectorContainerMouseMove(UnityEngine.UIElements.MouseMoveEvent evt)
-        {
-            Event imgui = evt.imguiEvent;
-            s_incomingImguiEvent = imgui != null ? imgui.type : EventType.MouseMove;
-            s_incomingImguiEventTime = EditorApplication.timeSinceStartup;
-        }
-
-        /// <summary>
-        /// Registers the mouse-move note on every IMGUI container of every inspector window. Called when
-        /// this UI is (re)built, which is also when the inspector rebuilds its containers. Registering the
-        /// same callback twice on a container is a no-op for UI Toolkit, so this is safe to repeat.
-        /// </summary>
-        private static void HookInspectorContainers()
-        {
-            Type inspectorType = typeof(Editor).Assembly.GetType("UnityEditor.InspectorWindow");
-            if (inspectorType == null) return;
-            foreach (UnityEngine.Object o in Resources.FindObjectsOfTypeAll(inspectorType))
-            {
-                EditorWindow window = o as EditorWindow;
-                if (window == null) continue;
-                UnityEngine.UIElements.VisualElement root;
-                try { root = window.rootVisualElement; } catch { continue; }
-                if (root != null) HookContainers(root);
-            }
-        }
-
-        private static void HookContainers(UnityEngine.UIElements.VisualElement element)
-        {
-            UnityEngine.UIElements.IMGUIContainer container = element as UnityEngine.UIElements.IMGUIContainer;
-            if (container != null)
-                container.RegisterCallback<UnityEngine.UIElements.MouseMoveEvent>(OnInspectorContainerMouseMove, UnityEngine.UIElements.TrickleDown.TrickleDown);
-            for (int i = 0; i < element.hierarchy.childCount; i++)
-                HookContainers(element.hierarchy[i]);
-        }
-
-        void Draw()
-        {
-
-            IsDrawing = true;
-            if (!IsCrossEditor && !HasRetainedToolbar) EditorGUI.indentLevel -= 2;
-
-            DoVariantWarning();
-            if (ThryEditor.GrabPassQueueWarning.HasAffected(Materials))
-                EditorGUILayout.HelpBox(ThryEditor.GrabPassQueueWarning.Message, MessageType.Warning);
-            GUIManualReloadButton();
-            GUIDevloperMode();
-
-            GUILayout.Space(HasRetainedToolbar ? 2 : 6);
-            if (!HasRetainedToolbar) GUITopBar();
-            SectionEditing.DrawToolbar?.Invoke(this);
-            GUILayout.Space(4);
-            if (!HasRetainedToolbar) GUISearchBar();
-            GUILockinButton();
-            GUILayout.Space(4);
-            GUIPresetsBar();
-
-            Presets.PresetEditorGUI(this);
-            ShaderTranslator.SuggestedTranslationButtonGUI(this);
-
-            if (!IsCrossEditor && !HasRetainedToolbar) EditorGUI.indentLevel += 2;
-
-            GUILayout.Space(2);
-            //PROPERTIES
-            using ( new DetourMaterialPropertyVariantIcon())
-            {
-                foreach (ShaderPart part in _mainGroup.Children)
+                GUILayout.Label("The Poiyomi inspector can't be shown in this window.", EditorStyles.wordWrappedLabel);
+                if (GUILayout.Button("Open in Cross Shader Editor", InspectorTheme.Button))
                 {
-                    if (!IsInSearchMode && !string.IsNullOrEmpty(_focusedCategory) && part is ShaderGroup
-                        && part.MaterialProperty?.name != _focusedCategory) continue;
-                    part.Draw();
+                    Material[] materials = materialEditor.targets.OfType<Material>().ToArray();
+                    EditorApplication.delayCall += () => CrossEditor.GetInstance().UpdateTargets(materials.Where(m => m != null));
                 }
             }
-
-            //Render Queue selection
-            GUILayout.Space(10);
-            if(VRCInterface.IsVRCSDKInstalled()) _vRCFallbackProperty.Draw();
-            if (Config.Instance.showRenderQueue) _renderQueueProperty.Draw();
-
-            BetterTooltips.DrawActive();
-
-            GUIFooters();
-            IsDrawing = false;
         }
 
-        internal bool HasRetainedToolbar { get; set; }
-        internal Action<Rect, GUIContent[], int[], Action<int>> ShowDropdown;
-        private readonly Queue<Action> _pendingViewActions = new Queue<Action>();
+        internal Action<string> ShowSearch;
         private string _focusedCategory;
         internal string InspectorTitle => _shaderHeader?.Content.text ?? Shader?.name ?? "Material";
-        internal string SearchText => _enteredSearchTerm;
-        internal bool HasSearchResults => !IsInSearchMode || _foundGroups.Count > 0;
         internal string FocusedCategory => _focusedCategory;
         internal IEnumerable<ShaderGroup> RootCategories => _mainGroup == null
             ? Enumerable.Empty<ShaderGroup>() : _mainGroup.Children.OfType<ShaderGroup>();
         internal bool SupportsRetainedToolbar => _shaderHeader?.Options.texture == null;
 
-        internal void QueueViewAction(Action action)
-        {
-            _pendingViewActions.Enqueue(action);
-            Editor?.Repaint();
-        }
-
-        internal void SearchFromView(string value)
-        {
-            _enteredSearchTerm = value ?? "";
-            if (!string.IsNullOrEmpty(_enteredSearchTerm)) _focusedCategory = null;
-            _appliedSearchTerm = _enteredSearchTerm;
-            UpdateSearch();
-        }
-
         internal void FocusCategory(string propertyName)
         {
             _focusedCategory = propertyName;
-            SearchFromView("");
             foreach (var group in RootCategories)
                 if (group.MaterialProperty?.name == propertyName) group.ExpandForNavigation(true);
         }
@@ -1193,7 +956,7 @@ namespace Thry
 
             var expanded = groups.Where(group => group.RetainedExpanded
                 || (group.PersistsExpanded && group.MaterialProperty.hasMixedValue)).ToList();
-            bool writesMaterial = !IsInSearchMode && !AnimationMode.InAnimationMode()
+            bool writesMaterial = !AnimationMode.InAnimationMode()
                 && expanded.Any(group => group.PersistsExpanded);
             if (writesMaterial) Editor.RegisterPropertyChangeUndo("Collapse All");
             foreach (var group in expanded) group.SetExpandedFromView(false);
@@ -1203,206 +966,6 @@ namespace Thry
                 Editor.PropertiesChanged();
             }
         }
-
-        internal void OpenToolsFromView(Rect anchor) => PopupTools(anchor);
-
-        private void GUIManualReloadButton()
-        {
-            if (Config.Instance.showManualReloadButton)
-            {
-                if(GUILayout.Button("Manual Reload"))
-                {
-                    this.Reload();
-                }
-            }
-        }
-
-        private void GUIDevloperMode()
-        {
-            if (Config.Instance.enableDeveloperMode)
-            {
-                // Show duplicate property names
-                if(_duplicatePropertyNamesString != null)
-                {
-                    EditorGUILayout.HelpBox("Duplicate Property Names:\n" + _duplicatePropertyNamesString, MessageType.Warning);
-                }
-            }
-        }
-
-        private void GUITopBar()
-        {
-            //if header is texture, draw it first so other ui elements can be positions below
-            if (_shaderHeader != null && _shaderHeader.Options.texture != null) _shaderHeader.Draw();
-
-            bool drawAboveToolbar = EditorGUIUtility.wideMode == false;
-            if(_shaderHeader != null && drawAboveToolbar) _shaderHeader.Draw(EditorGUILayout.GetControlRect());
-
-            Rect topBarRect = RectifiedLayout.GetRect(25);
-            // Icons have ~4px internal padding, compensate to get visual EDGE_PADDING
-            Rect iconRect = new Rect(GUILib.EDGE_PADDING - 4, topBarRect.y, 25, 25);
-            if(GUILib.ButtonWithCursor(iconRect, ToolbarIcons.Settings ?? Icons.settings, "Settings"))
-            {
-                EditorWindow.GetWindow<Settings>(false, "Thry Settings", true);
-            }
-            iconRect.x += 25;
-            if (GUILib.ButtonWithCursor(iconRect, ToolbarIcons.Tools ?? Icons.tools, "Tools"))
-            {
-                PopupTools(iconRect);
-            }
-            iconRect.x += 25;
-            if (GUILib.ButtonWithCursor(iconRect, ToolbarIcons.Camera, "Save a screenshot of the material settings to your desktop."))
-                InspectorCapture.CaptureActiveInspector(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
-
-            // Strip disabled sections while editing: full color while on, dimmed while off, as in the retained toolbar.
-            GUIStyle sectionLockIcon = ToolbarIcons.SectionLock;
-            if (sectionLockIcon != null && SectionLockService.AppliesTo(Shader))
-            {
-                iconRect.x += 25;
-                bool on = SectionLockService.Enabled;
-                Color color = GUI.color;
-                if (!on) GUI.color = new Color(color.r, color.g, color.b, color.a * 0.4f);
-                bool clicked = GUILib.ButtonWithCursor(iconRect, sectionLockIcon, SectionLockService.ToolbarTooltip);
-                GUI.color = color;
-                if (clicked) SectionLockService.SetEnabled(!on);
-            }
-
-            // Buttons added by packages built on this UI. Drawn last so the built-ins keep their
-            // positions. The icon is resolved here rather than at registration time.
-            foreach (var extra in TopBarButtons.All)
-            {
-                GUIStyle style = extra.Icon();
-                if (style == null) continue;
-
-                iconRect.x += 25;
-                if (GUILib.ButtonWithCursor(iconRect, style, extra.Tooltip))
-                    extra.OnClick();
-            }
-
-            float rightEdge = topBarRect.x + topBarRect.width - GUILib.EDGE_PADDING + GUILib.UNITY_HEADER_RIGHT_MARGIN;
-
-            Rect headerRect = new Rect(topBarRect);
-            headerRect.x = iconRect.x + 25;
-            headerRect.width = rightEdge - headerRect.x;
-
-            if (LocaleProperty != null)
-            {
-                Rect localeRect = new Rect(topBarRect);
-                localeRect.width = 100;
-                localeRect.x = rightEdge - 100;
-                LocaleProperty.Draw(localeRect);
-                headerRect.width -= localeRect.width;
-            }
-            
-
-            //draw master label text after ui elements, so it can be positioned between
-            if (_shaderHeader != null && !drawAboveToolbar) _shaderHeader.Draw(headerRect);
-        }
-
-        private void GUILockinButton()
-        {
-            if(ShaderOptimizerProperty != null)
-                ShaderOptimizerProperty.Draw();
-        }
-
-        private void GUIPresetsBar()
-        {
-            Rect barRect = RectifiedLayout.GetPaddedRect(30);
-
-            Rect inShaderRect = new Rect(barRect);
-            inShaderRect.width = (barRect.width - 6) / 2;
-            inShaderRect.height = 24;
-            inShaderRect.x = barRect.x + barRect.width - inShaderRect.width;
-
-            Rect presetsRect = new Rect(barRect);
-            presetsRect.width = inShaderRect.width;
-            presetsRect.height = 24;
-
-            Rect presetsIcon = new Rect(presetsRect);
-            presetsIcon.width = 18;
-            presetsIcon.height = 18;
-            presetsIcon.y += 3;
-            presetsIcon.x = presetsRect.x + presetsRect.width - 20;
-
-            if (GUI.Button(presetsRect, "Presets") | GUILib.Button(presetsIcon, Icons.presets))
-                Presets.OpenPresetsMenu(barRect, this, false);
-            bool renderLabel = ThryWideEnumDrawer.RenderLabel;
-            var popupStyle = ThryWideEnumDrawer.PopupStyle;
-            try
-            {
-                ThryWideEnumDrawer.RenderLabel = false;
-                ThryWideEnumDrawer.PopupStyle = InspectorTheme.ToolbarPopup;
-                if (InShaderPresetsProperty != null) InShaderPresetsProperty.Draw(inShaderRect);
-            }
-            finally { ThryWideEnumDrawer.RenderLabel = renderLabel; ThryWideEnumDrawer.PopupStyle = popupStyle; }
-        }
-
-        private void GUISearchBar()
-        {
-            // Search field has different built-in margins than buttons, so adjust separately
-            Rect searchRect = RectifiedLayout.GetRect(28);
-            float rightEdge = searchRect.x + searchRect.width;
-            searchRect.x += GUILib.EDGE_PADDING - 2;  // toolbarSearchField left margin is ~2
-            searchRect.width = rightEdge - searchRect.x - (GUILib.EDGE_PADDING - 5);  // toolbarSearchField right margin is ~5
-            _enteredSearchTerm = GUI.TextField(searchRect, _enteredSearchTerm, EditorStyles.toolbarSearchField);
-            if (string.IsNullOrEmpty(_enteredSearchTerm) && Event.current.type == EventType.Repaint)
-                GUI.Label(new Rect(searchRect.x + 20, searchRect.y, searchRect.width - 24, searchRect.height), "Search properties...", InspectorTheme.MutedLabel);
-            if(_enteredSearchTerm != _appliedSearchTerm)
-            {
-                _appliedSearchTerm = _enteredSearchTerm;
-                UpdateSearch();
-            }
-        }
-
-        private void GUIFooters()
-        {
-            GUILayout.Space(6);
-            Rect footerRect = RectifiedLayout.GetRect(62);
-            float rightX = footerRect.x + footerRect.width - GUILib.EDGE_PADDING + GUILib.UNITY_HEADER_RIGHT_MARGIN;
-            InspectorTheme.Fill(new Rect(GUILib.EDGE_PADDING, footerRect.y, rightX - GUILib.EDGE_PADDING, 1), InspectorTheme.Border, 0);
-            
-            // Social buttons on the right, shifted down 10px
-            try
-            {
-                const float INTER_PADDING = 6;
-                float buttonX = rightX;
-                for (int i = _footers.Count - 1; i >= 0; i--)
-                {
-                    var footer = _footers[i];
-                    float buttonWidth = footer.GetWidth();
-                    buttonX -= buttonWidth;
-                    Rect buttonRect = new Rect(buttonX, footerRect.y + 12, buttonWidth, 24);
-                    footer.DrawAt(buttonRect);
-                    buttonX -= INTER_PADDING;
-                }
-
-                const float THRY_ICON_SIZE = 24;
-                Rect thryRect = new Rect(buttonX - THRY_ICON_SIZE,
-                    footerRect.y + 12, THRY_ICON_SIZE, THRY_ICON_SIZE);
-                if (GUILib.ButtonWithCursor(thryRect, Icons.thryIcon, "Thryrallo"))
-                    Application.OpenURL("https://www.twitter.com/thryrallo");
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning(ex);
-            }
-            
-            // "Made by Thryrallo" on the left
-            Rect madeByRect = new Rect(GUILib.EDGE_PADDING, footerRect.y + 41, 150, 16);
-            if (GUI.Button(madeByRect, "UI by Thryrallo", InspectorTheme.MutedLabel))
-                Application.OpenURL("https://www.twitter.com/thryrallo");
-            EditorGUIUtility.AddCursorRect(madeByRect, MouseCursor.Link);
-        }
-
-        private void DoVariantWarning()
-        {
-            if(Materials[0].isVariant)
-            {
-                EditorGUILayout.HelpBox("This material is a variant, which isn't supported by Poiyomi at this time.\nThe material cannot be locked or uploaded to VRChat. To continue using this material, clear the Parent box above.", MessageType.Warning);
-            }
-        }
-
-        private void PopupTools(Rect position)
-            => RetainedToolsMenu().DropDown(position);
 
         internal GenericMenu RetainedToolsMenu()
         {
@@ -1561,55 +1124,6 @@ namespace Thry
             else Debug.Log($"<color=#ff80ff>[Thry]</color> <b><color={ColorUtility.ToHtmlStringRGB(c)}>{header}</b></color> \n{lines.Aggregate((s1, s2) => s1 + "\n" + s2)}");
         }
 
-        private void HandleEvents()
-        {
-            Event e = Event.current;
-            //if reloaded, set reload to false
-            if (_doReloadNextDraw && Event.current.type == EventType.Layout) _doReloadNextDraw = false;
-
-            //on swap
-            if (_onSwapToActions != null && _didSwapToShader)
-            {
-                foreach (DefineableAction a in _onSwapToActions)
-                    a.Perform(Materials);
-                _onSwapToActions = null;
-            }
-
-            if (Input.HadMouseDownRepaint) Input.HadMouseDown = false;
-            Input.HadMouseDownRepaint = false;
-            IsFirstCall = false;
-            materialPropertyDictionary = null;
-        }
-
-        public void SetSearchTerm(string term)
-        {
-            _enteredSearchTerm = term;
-            Editor.Repaint();
-            GUIUtility.ExitGUI();
-        }
-
-        //iterate the same way drawing would iterate
-        //if display part, display all parents parts
-        List<ShaderGroup> _foundGroups = new List<ShaderGroup>();
-        private void UpdateSearch()
-        {
-            IsInSearchMode = _enteredSearchTerm.Length > 0;
-            foreach (ShaderGroup g in _foundGroups)
-                g.SetSearchExpanded(false);
-            _foundGroups.Clear();
-            _mainGroup.Search(_enteredSearchTerm, _foundGroups);
-            for(int i = 1; i < 11 && i <= _foundGroups.Count; i++)
-            {
-                _foundGroups[_foundGroups.Count - i].SetSearchExpanded(true);
-            }
-        }
-
-        private void ClearSearch()
-        {
-            _enteredSearchTerm = "";
-            UpdateSearch();
-        }
-
         public void Repaint()
         {
             if (Materials.Length > 0)
@@ -1630,7 +1144,6 @@ namespace Thry
             {
                 this.Repaint();
             }
-            ThryWideEnumDrawer.Reload();
             ThryRGBAPackerDrawer.Reload();
         }
 

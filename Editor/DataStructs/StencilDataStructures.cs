@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using Thry.ThryEditor.Helpers;
 
 namespace Thry.ThryEditor.DataStructs
 {
@@ -93,78 +92,5 @@ namespace Thry.ThryEditor.DataStructs
         {
             return defaultPropertyName.Insert(StencilPropertyPrefix.Length, variant);
         }
-    }
-
-    [Flags]
-    public enum BitRowOptions
-    {
-        Editable = 1 << 0,
-        ShowDecimal = 1 << 1,
-        DecimalEditable = 1 << 2
-    }
-
-    public struct ReadMaskValues
-    {
-        public int StencilRef;
-        public int StencilReadMask;
-        public int BufferValue;
-        public bool StencilRefIsMixed;
-        public bool StencilReadMaskIsMixed;
-        public bool BufferValueIsMixed;
-        public bool StencilRefChanged;
-        public bool StencilReadMaskChanged;
-        public bool BufferValueChanged;
-    }
-
-    public struct WriteMaskValues
-    {
-        public int StencilRef;
-        public int StencilWriteMask;
-        public bool StencilRefIsMixed;
-        public bool StencilWriteMaskIsMixed;
-        public bool StencilRefChanged;
-        public bool StencilWriteMaskChanged;
-    }
-
-    public struct BitRow
-    {
-        public string Label;
-        public Color LitColor;
-        public BitRowOptions Options;
-        public int MaskBits;
-        public Func<bool, string> LabelProvider;
-        public bool HideLedBackground;
-        public string Tooltip;
-        public bool HasMixedValue;
-    }
-
-    public struct BitRowLayout
-    {
-        private const int BitCount = StencilOperationsHelper.BitsPerByte;
-
-        public const float BitWidth = 20f;
-        public const float ColumnGap = 8f;
-        public const float BinaryColumnLeftPadding = 2f;
-        public const float BinaryColumnWidth = BitCount * BitWidth;
-
-        public float StartX;
-        public float YPos;
-        public float RowHeight;
-        public float AvailableWidth;
-        public float LabelWidth;
-        // Kept explicit because dividers and spacers make Y-position-derived parity unreliable.
-        public int RowIndex;
-
-        public float BinaryStartX => StartX + LabelWidth + BinaryColumnLeftPadding;
-        public float DecimalStartX => StartX + LabelWidth + BinaryColumnLeftPadding + BinaryColumnWidth + ColumnGap;
-        public float FixedWidth => LabelWidth + BinaryColumnLeftPadding + BinaryColumnWidth + ColumnGap;
-        public float DecimalWidth => Mathf.Max(AvailableWidth - FixedWidth, 0);
-        public float TotalWidth => FixedWidth + DecimalWidth;
-        public Rect RowBgRect => new Rect(StartX, YPos, TotalWidth, RowHeight);
-        public Rect LabelRect => new Rect(StartX, YPos, LabelWidth, RowHeight);
-        public Rect GetBitRect(int bitIndex) => new Rect(BinaryStartX + (BitCount - 1 - bitIndex) * BitWidth, YPos, BitWidth, RowHeight);
-        // Deriving this from the bit rectangle prevents cell and divider positions from drifting apart.
-        public float GetBitDividerX(int dividerIndex) => GetBitRect(BitCount - 1 - dividerIndex).xMin;
-        public Rect DecimalRect => new Rect(DecimalStartX, YPos, DecimalWidth, RowHeight);
     }
 }

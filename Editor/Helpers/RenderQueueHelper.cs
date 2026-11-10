@@ -24,19 +24,5 @@ namespace Thry.ThryEditor.Helpers
             if (offset == 0) return presetNames[band];
             return presetNames[band] + (offset > 0 ? " +" : " ") + offset;
         }
-
-        // Presets keep their indices so a selection maps straight back to the caller's value array.
-        // A custom queue appends a display only entry, which callers ignore by index.
-        public static string[] GetDropdownNames(int queue, string[] presetNames, int[] presetValues, out int selectedIndex)
-        {
-            selectedIndex = System.Array.IndexOf(presetValues, queue);
-            if (selectedIndex >= 0) return presetNames;
-
-            string[] names = new string[presetNames.Length + 1];
-            presetNames.CopyTo(names, 0);
-            names[presetNames.Length] = GetDisplayName(queue, presetNames, presetValues);
-            selectedIndex = presetNames.Length;
-            return names;
-        }
     }
 }

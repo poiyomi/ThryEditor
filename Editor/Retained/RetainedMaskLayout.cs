@@ -4,23 +4,13 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Thry.ThryEditor.Drawers
-{
-    // Explicit property names survive module instance expansion and localization.
-    public sealed class ThryMaskLayoutDecorator : MaterialPropertyDrawer
-    {
-        public ThryMaskLayoutDecorator(string uv, string channel, string panning, string strength) { }
-        public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor) => 0;
-        public override void OnGUI(Rect position, MaterialProperty prop, GUIContent label, MaterialEditor editor) { }
-    }
-}
-
 namespace Thry.ThryEditor
 {
     // Composes existing property drawers. Callers supply the controls explicitly;
     // the layout does not infer shader semantics or own material values.
     internal static class RetainedMaskLayout
     {
+        // ThryMaskLayout(uv, channel, panning, strength). Explicit property names survive module instance expansion and localization.
         internal static void Arrange(VisualElement details, DrawerAttribute bindings, VisualElement levels)
         {
             if (bindings == null || bindings.Args.Length != 4 || levels == null) return;

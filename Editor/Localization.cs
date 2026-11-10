@@ -23,7 +23,6 @@ namespace Thry.ThryEditor
         Dictionary<string, string[]> _localizedStrings = new Dictionary<string, string[]>();
         string[] _allLanguages;
         bool _isLoaded = false;
-        bool _couldNotLoad = false;
 
         bool _editInUI = false;
 
@@ -61,7 +60,6 @@ namespace Thry.ThryEditor
             if (l == null)
             {
                 l = ScriptableObject.CreateInstance<Localization>();
-                l._couldNotLoad = true;
                 return l;
             }
             l.Load();
@@ -120,23 +118,6 @@ namespace Thry.ThryEditor
             Array.Copy(l.Languages, 0, l._allLanguages, 1, l.Languages.Length);
             l._localizedStrings = new Dictionary<string, string[]>();
             return l;
-        }
-
-        public void DrawDropdown(Rect r)
-        {
-            if (_couldNotLoad)
-            {
-                EditorGUI.HelpBox(r, "Could not load localization file", MessageType.Warning);
-                return;
-            }
-            EditorGUI.BeginChangeCheck();
-            SelectedLanguage = EditorGUI.Popup(r, SelectedLanguage + 1, _allLanguages) - 1;
-            if (EditorGUI.EndChangeCheck())
-            {
-                ShaderEditor.Active.Reload();
-                EditorUtility.SetDirty(this);
-                AssetDatabase.SaveAssets();
-            }
         }
 
         public string Get(MaterialProperty prop, string defaultValue)

@@ -37,7 +37,6 @@ using System.Security.Cryptography;
 using Object = UnityEngine.Object;
 using System.Reflection;
 using Thry.ThryEditor.Helpers;
-using Thry.ThryEditor.Drawers;
 using JetBrains.Annotations;
 
 #if VRC_SDK_VRCSDK3
@@ -795,11 +794,6 @@ namespace Thry.ThryEditor
         }
 #endregion
 #region Lock Managing
-        public static void ToggleLockFromPropertyButton(MaterialProperty prop)
-        {
-            SetLockedForAllMaterialsInternal(prop.targets.Select(t => t as Material), prop.GetNumber() == 1 ? 0 : 1, true, false, false, prop);
-        }
-
         [Obsolete("Use ShaderOptimizer.LockMaterials or ShaderOptimizer.UnlockMaterials instead")]
         public static bool SetLockForAllChildren(GameObject[] objects, int lockState, bool showProgressbar = false, bool showDialog = false, bool allowCancel = true)
         {
@@ -1710,7 +1704,7 @@ namespace Thry.ThryEditor
             // optimizes to the same code reuses this shader instead of compiling its own copy. See LockedShaderCache.
             string newShaderName = usedShaderName;
 
-            string shaderOptimizerButtonDrawerName = $"[{nameof(ThryShaderOptimizerLockButtonDrawer).Replace("Drawer", "")}]";
+            string shaderOptimizerButtonDrawerName = "[ThryShaderOptimizerLockButton]";
             
             // Kept without a trailing slash so it matches the form the cache hands back everywhere else;
             // the file-writing loop below appends the separator itself.

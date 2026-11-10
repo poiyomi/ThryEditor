@@ -8,11 +8,9 @@ using UnityEngine;
 
 namespace Thry.ThryEditor.Helpers
 {
-    // Detects and removes duplicate copies of specified drawer scripts that were moved
-    // from Poiyomi Shaders into this ThryEditor fork. If a user updates ThryEditor
-    // without updating Poiyomi (which is pretty common), the old Poiyomi-shipped
-    // versions of these scripts will collide (same GUIDs) with the new canonical
-    // copies in this repo.
+    // Removes the copies of these drawer scripts that older Poiyomi Shaders versions
+    // shipped in their own folders. If a user updates ThryEditor without updating
+    // Poiyomi (which is pretty common), those copies are left behind.
     [InitializeOnLoad]
     internal static class DuplicateDrawerCleanup
     {
@@ -28,8 +26,6 @@ namespace Thry.ThryEditor.Helpers
         static readonly string[] OldPoiyomiFolders = { "Scripts/Editor", "Scripts/ThryStuff" };
         const string DrawerNamespace = "namespace Thry.ThryEditor.Drawers";
 
-        const string SelfFileName = nameof(DuplicateDrawerCleanup) + ".cs";
-
         static DuplicateDrawerCleanup()
         {
             EditorApplication.delayCall += Scan;
@@ -37,16 +33,11 @@ namespace Thry.ThryEditor.Helpers
 
         static void Scan()
         {
-            string drawersDir = ResolveCanonicalDrawersDir();
-            if (drawersDir == null) return;
-
             var removed = new List<string>();
             var failed = new List<string>();
 
             foreach (var (name, _) in MovedDrawers)
             {
-                string canonicalPath = (drawersDir + "/" + name + ".cs");
-
                 string[] guids = AssetDatabase.FindAssets(name + " t:MonoScript");
                 foreach (string guid in guids)
                 {
@@ -54,8 +45,6 @@ namespace Thry.ThryEditor.Helpers
                     if (string.IsNullOrEmpty(path)) continue;
 
                     string normalized = path.Replace('\\', '/');
-                    if (string.Equals(normalized, canonicalPath, StringComparison.OrdinalIgnoreCase)) continue;
-
                     if (Path.GetFileNameWithoutExtension(normalized) != name) continue;
                     // Other packages can ship scripts with these names
                     if (!IsOldPoiyomiCopy(normalized)) continue;
@@ -91,28 +80,6 @@ namespace Thry.ThryEditor.Helpers
 
             var script = AssetDatabase.LoadAssetAtPath<MonoScript>(path);
             return script != null && script.text.Contains(DrawerNamespace);
-        }
-
-        static string ResolveCanonicalDrawersDir()
-        {
-            string[] selfGuids = AssetDatabase.FindAssets(nameof(DuplicateDrawerCleanup) + " t:MonoScript");
-            foreach (string selfGuid in selfGuids)
-            {
-                string selfPath = AssetDatabase.GUIDToAssetPath(selfGuid);
-                if (string.IsNullOrEmpty(selfPath)) continue;
-
-                string normalized = selfPath.Replace('\\', '/');
-                if (!normalized.EndsWith("/" + SelfFileName, StringComparison.OrdinalIgnoreCase)) continue;
-
-                string helpersDir = Path.GetDirectoryName(normalized)?.Replace('\\', '/');
-                if (string.IsNullOrEmpty(helpersDir)) continue;
-
-                string editorDir = Path.GetDirectoryName(helpersDir)?.Replace('\\', '/');
-                if (string.IsNullOrEmpty(editorDir)) continue;
-
-                return editorDir + "/Drawers";
-            }
-            return null;
         }
     }
 }

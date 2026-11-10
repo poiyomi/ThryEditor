@@ -75,7 +75,7 @@ Button surface states are defined once near the start of `ThryTheme.uss`. Use `-
 
 ## Boundaries
 
-The normal inspector is UI Toolkit. A stylesheet cannot change the interiors of legacy IMGUI fallback controls, native dialogs, or third-party embedded tools. Material-authored colors, animated-property markers, explicit shader drawer settings, and layout measurements stay data-driven. Pathing preview paint still represents material data; its neutral background and channel markers read the shared theme. Independent TPS, shader-generator/debugger, and translator UIs have separate styling and require explicit integration before this can be described as a theme for every Poiyomi tool.
+The inspector is UI Toolkit. A stylesheet cannot change the interiors of the IMGUI controls it hosts, native dialogs, or third-party embedded tools. Material-authored colors, animated-property markers, explicit shader drawer settings, and layout measurements stay data-driven. Pathing preview paint still represents material data; its neutral background and channel markers read the shared theme. Independent TPS, shader-generator/debugger, and translator UIs have separate styling and require explicit integration before this can be described as a theme for every Poiyomi tool.
 
 ## Texture Studio
 

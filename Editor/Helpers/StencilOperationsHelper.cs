@@ -8,7 +8,6 @@ namespace Thry.ThryEditor.Helpers
     {
         public const int ByteMin = 0;
         public const int ByteMax = 255;
-        public const int BitsPerByte = 8;
 
         // Unity stencil comparisons evaluate referenceValue COMP bufferValue, with the reference on the left.
         public static bool EvaluateStencilCompare(CompareFunction compareFunction, int referenceValue, int bufferValue)

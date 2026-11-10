@@ -1,23 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using Thry.ThryEditor.Helpers;
 using Thry.ThryEditor.TexturePacker;
 using UnityEditor;
 using UnityEngine;
 
 namespace Thry.ThryEditor.Drawers
 {
-    public partial class ThryRGBAPackerDrawer : MaterialPropertyDrawer
+    public partial class ThryRGBAPackerDrawer
     {
-        private readonly Dictionary<InlinePackerChannelConfig, InspectorPopup> _channelPopups = new Dictionary<InlinePackerChannelConfig, InspectorPopup>();
         // TODO : Load lacale by property name in the future: propname_r, propname_g, propname_b, propname_a
         class ThryRGBAPackerData
         {
-            public Texture _previousTexture;
-            public Texture2D _packedTexture;
-
             public InlinePackerChannelConfig _input_r;
             public InlinePackerChannelConfig _input_g;
             public InlinePackerChannelConfig _input_b;
@@ -26,14 +18,7 @@ namespace Thry.ThryEditor.Drawers
             public bool _isInit;
             public bool _hasConfigChanged;
             public bool _hasTextureChanged;
-            public long _lastConfirmTime;
-            public int _overwriteShowInline;
-
-            public TexturePacker.Connection[] _connections;
-            public TexturePacker.PackerSource[] _sources;
         }
-
-        Dictionary<UnityEngine.Object, ThryRGBAPackerData> materialPackerData = new Dictionary<UnityEngine.Object, ThryRGBAPackerData>();
 
         MaterialProperty _prop;
         ThryRGBAPackerData _current;
@@ -93,146 +78,6 @@ namespace Thry.ThryEditor.Drawers
             _firstTextureIsRGB = true;
         }
 
-        public override void OnGUI(Rect position, MaterialProperty prop, GUIContent label, MaterialEditor editor)
-        {
-            _prop = prop;
-            if (materialPackerData.ContainsKey(_prop.targets[0]) == false) materialPackerData[_prop.targets[0]] = new ThryRGBAPackerData();
-            _current = materialPackerData[_prop.targets[0]];
-            // So showFoldoutProperties is reset to false a few events after an undo event.
-            // To keep the texture packer open we just force it to ture until this reset is done (which happens in / after the ValidateCommand event, right before the KeyUp event)
-            if (_current._overwriteShowInline > 0)
-            {
-                DrawingData.CurrentTextureProperty.showFoldoutProperties = true;
-                if (Event.current.type == EventType.ValidateCommand)
-                    _current._overwriteShowInline = 1;
-                else if (Event.current.type == EventType.Layout && _current._overwriteShowInline == 1)
-                    _current._overwriteShowInline = 0;
-            }
-            GUILib.SmallTextureProperty(position, prop, label, editor, true, InlineTexturePackerGUI);
-            if (_prop.textureValue != _current._packedTexture) _current._previousTexture = _prop.textureValue;
-        }
-
-        void InlineTexturePackerGUI()
-        {
-            Init();
-            LoadLabels();
-            bool didChange = false;
-            didChange |= TexturePackerSlotGUI(_current._input_r, _label1);
-            didChange |= TexturePackerSlotGUI(_current._input_g, _label2);
-            if (_label3 != null) didChange |= TexturePackerSlotGUI(_current._input_b, _label3);
-            if (_label4 != null) didChange |= TexturePackerSlotGUI(_current._input_a, _label4);
-            didChange |= _current._input_r.Source.HasBeenModifiedExternally();
-            didChange |= _current._input_g.Source.HasBeenModifiedExternally();
-            didChange |= _current._input_b.Source.HasBeenModifiedExternally();
-            didChange |= _current._input_a.Source.HasBeenModifiedExternally();
-            if (didChange)
-            {
-                _current._hasConfigChanged = true;
-                foreach (Material m in ShaderEditor.Active.Materials)
-                    Undo.RegisterCompleteObjectUndo(m, "Thry Packer Texture Change " + _prop.name);
-                Save();
-                Pack();
-            }
-
-            GUILayout.Space(4);
-            Rect buttonRect = EditorGUI.IndentedRect(EditorGUILayout.GetControlRect(false, 24));
-            buttonRect.width /= 4;
-            EditorGUI.BeginDisabledGroup(!_current._hasConfigChanged);
-            if (GUI.Button(buttonRect, "Merge")) Confirm();
-            buttonRect.x += buttonRect.width;
-            EditorGUI.EndDisabledGroup();
-            EditorGUI.BeginDisabledGroup(!_current._hasTextureChanged);
-            if (GUI.Button(buttonRect, "Revert")) Revert();
-            EditorGUI.EndDisabledGroup();
-            buttonRect.x += buttonRect.width;
-            if (GUI.Button(buttonRect, "Advanced")) OpenFullTexturePacker();
-            buttonRect.x += buttonRect.width;
-            bool hasAnythingToClear = _current._input_r.GetTexture() != null || _current._input_g.GetTexture() != null
-                || _current._input_b.GetTexture() != null || _current._input_a.GetTexture() != null
-                || _prop.textureValue != null;
-            EditorGUI.BeginDisabledGroup(!hasAnythingToClear);
-            if (GUI.Button(buttonRect, "Clear")) Clear();
-            EditorGUI.EndDisabledGroup();
-            GUILayout.Space(6);
-        }
-
-        bool TexturePackerSlotGUI(InlinePackerChannelConfig input, string label)
-        {
-            bool didChange = false;
-            EditorGUI.BeginChangeCheck();
-
-            Rect totalRect = EditorGUILayout.GetControlRect(false, InspectorTheme.FieldHeight);
-            totalRect = EditorGUI.IndentedRect(totalRect);
-            Rect r = totalRect;
-
-            int ind = EditorGUI.indentLevel;
-            EditorGUI.indentLevel = 0;
-
-            float texWidth = Math.Max(50, r.width - 130 - 30) - 5;
-            r.x = totalRect.x;
-            r.width = 30;
-            r.y += (totalRect.height - 18) / 2;
-            r.height = 18; // Taller texture ObjectFields switch to Unity's large preview layout.
-            EditorGUI.BeginChangeCheck();
-            Texture2D changed = EditorGUI.ObjectField(r, input.Source.Texture, typeof(Texture2D), false) as Texture2D;
-            if (EditorGUI.EndChangeCheck())
-            {
-                input.Source.SetInputTexture(changed);
-            }
-
-            r.x += r.width + 5;
-            r.y = totalRect.y;
-            r.height = totalRect.height;
-            r.width = texWidth - 5;
-            EditorGUI.LabelField(r, label);
-
-            if (input.Source.Texture == null)
-            {
-                r.width = 70;
-                r.x = totalRect.x + totalRect.width - r.width;
-                input.Fallback = EditorGUI.DelayedFloatField(r, input.Fallback);
-
-                r.width = 60;
-                r.x -= r.width;
-                EditorGUI.LabelField(r, "Fallback:");
-                didChange = EditorGUI.EndChangeCheck();
-            }
-            else
-            {
-                r.width = 50;
-                r.x = totalRect.x + totalRect.width - r.width;
-                if (!_firstTextureIsRGB || input != _current._input_r)
-                {
-                    InspectorPopup popup;
-                    if (!_channelPopups.TryGetValue(input, out popup)) _channelPopups[input] = popup = new InspectorPopup();
-                    input.Channel = (TexturePacker.TextureChannelIn)popup.DrawEnum(r, input.Channel);
-                }
-
-                r.width = 20;
-                r.x -= r.width;
-                var toggleRect = new Rect(r.x, r.center.y - 8, 16, 16);
-                input.Invert = EditorGUI.Toggle(toggleRect, input.Invert);
-
-                r.width = 60;
-                r.x -= r.width;
-                EditorGUI.LabelField(r, "Inverted:");
-
-                // remap multi slider
-                didChange = EditorGUI.EndChangeCheck();
-                r.width = 150;
-                r.x -= r.width + 5;
-                EventType eventType = Event.current.type;
-                EditorGUI.MinMaxSlider(r, ref input.Remapping.x, ref input.Remapping.y, 0, 1);
-                input.Remapping.z = 0;
-                input.Remapping.w = 1;
-                didChange |= Event.current.type == EventType.Used && eventType == EventType.MouseUp;
-            }
-
-            EditorGUI.indentLevel = ind;
-
-            return didChange;
-        }
-
         void Init()
         {
             if (_current._isInit) return;
@@ -240,48 +85,7 @@ namespace Thry.ThryEditor.Drawers
             _current._input_g = LoadForChannel(ShaderEditor.Active.Materials[0], _prop.name, "g");
             _current._input_b = LoadForChannel(ShaderEditor.Active.Materials[0], _prop.name, "b");
             _current._input_a = LoadForChannel(ShaderEditor.Active.Materials[0], _prop.name, "a");
-            _current._lastConfirmTime = long.Parse(ShaderEditor.Active.Materials[0].GetTag(_prop.name + "_texPack_lastConfirmTime", false, "" + Helper.DatetimeToUnixSeconds(DateTime.Now)));
-            _current._previousTexture = _prop.textureValue;
             _current._isInit = true;
-
-            Undo.undoRedoEvent -= OnUndoRedo;
-            Undo.undoRedoEvent += OnUndoRedo;
-        }
-
-        void OnUndoRedo(in UndoRedoInfo undoRedoInfo)
-        {
-            if (undoRedoInfo.undoName == "Thry Packer Texture Change " + _prop.name)
-            {
-                // The undone change may belong to any material
-                foreach (ThryRGBAPackerData data in materialPackerData.Values) data._isInit = false;
-                _current._overwriteShowInline = 2;
-                Undo.undoRedoEvent -= OnUndoRedo;
-            }
-        }
-
-        void Save()
-        {
-            SaveForChannel(_current._input_r, _prop.name, "r");
-            SaveForChannel(_current._input_g, _prop.name, "g");
-            SaveForChannel(_current._input_b, _prop.name, "b");
-            SaveForChannel(_current._input_a, _prop.name, "a");
-            foreach (Material m in ShaderEditor.Active.Materials)
-            {
-                m.SetOverrideTag(_prop.name + "_texPack_lastConfirmTime", "" + _current._lastConfirmTime);
-            }
-        }
-
-        void SaveForChannel(InlinePackerChannelConfig input, string id, string channel)
-        {
-            foreach (Material m in ShaderEditor.Active.Materials)
-            {
-                if (input.Source.Texture != null) m.SetOverrideTag(id + "_texPack_" + channel + "_guid", AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(input.Source.Texture)));
-                else m.SetOverrideTag(id + "_texPack_" + channel + "_guid", "");
-                m.SetOverrideTag(id + "_texPack_" + channel + "_fallback", input.Fallback.ToString(CultureInfo.InvariantCulture));
-                m.SetOverrideTag(id + "_texPack_" + channel + "_inverted", input.Invert.ToString());
-                m.SetOverrideTag(id + "_texPack_" + channel + "_channel", ((int)input.Channel).ToString(CultureInfo.InvariantCulture));
-                m.SetOverrideTag(id + "_texPack_" + channel + "_srcRange", "(" + string.Join(",", Enumerable.Range(0, 4).Select(i => input.Remapping[i].ToString(CultureInfo.InvariantCulture))) + ")");
-            }
         }
 
         // Default fallback based on the shader property's default texture
@@ -319,14 +123,6 @@ namespace Thry.ThryEditor.Drawers
             }
             _ = packerChannelConfig.Source.ComputeShaderTexture; // to cache uncompressed texture
             return packerChannelConfig;
-        }
-
-        void Pack()
-        {
-            _current._packedTexture = Packer.Pack(GetConfig());
-            _prop.textureValue = _current._packedTexture;
-
-            _current._hasTextureChanged = true;
         }
 
         TexturePackerConfig GetConfig()
@@ -391,58 +187,6 @@ namespace Thry.ThryEditor.Drawers
             return connections;
         }
 
-        void OpenFullTexturePacker()
-        {
-            NodeGUI packer = NodeGUI.Open(GetConfig());
-            packer.ListenerKeepsOutput = true;
-            // The inspector may show another material by then
-            MaterialProperty prop = _prop;
-            ThryRGBAPackerData data = _current;
-            packer.OnChange += (tex, config) => FullTexturePackerOnChange(prop, data, tex, config);
-            packer.OnSave += tex => FullTexturePackerOnSave(prop, data, tex);
-        }
-
-        void FullTexturePackerOnSave(MaterialProperty prop, ThryRGBAPackerData data, Texture2D tex)
-        {
-            if (prop.targets.Any(t => t == null)) return;
-            data._packedTexture = tex;
-            prop.textureValue = data._packedTexture;
-            data._hasTextureChanged = false;
-        }
-
-        void FullTexturePackerOnChange(MaterialProperty prop, ThryRGBAPackerData data, Texture2D tex, TexturePackerConfig config)
-        {
-            if (prop.targets.Any(t => t == null)) return;
-            if (_firstTextureIsRGB)
-            {
-                // The second slot feeds the A output
-                SyncFromFullTexturePacker(data._input_r, config, 0, 0);
-                SyncFromFullTexturePacker(data._input_g, config, 1, 3);
-            }
-            else
-            {
-                SyncFromFullTexturePacker(data._input_r, config, 0, 0);
-                SyncFromFullTexturePacker(data._input_g, config, 1, 1);
-                SyncFromFullTexturePacker(data._input_b, config, 2, 2);
-                SyncFromFullTexturePacker(data._input_a, config, 3, 3);
-            }
-
-            data._packedTexture = tex;
-            prop.textureValue = data._packedTexture;
-            data._hasTextureChanged = true;
-            data._hasConfigChanged = true;
-        }
-
-        static void SyncFromFullTexturePacker(InlinePackerChannelConfig input, TexturePackerConfig config, int sourceIndex, int targetIndex)
-        {
-            // Connection is a struct; FirstOrDefault can't signal a miss
-            bool connected = config.Connections.Any(c => c.FromTextureIndex == sourceIndex);
-            Connection connection = config.Connections.FirstOrDefault(c => c.FromTextureIndex == sourceIndex);
-            input.Source = connected ? config.Sources[sourceIndex] : new PackerSource();
-            input.FromOutputConfig(config.Targets[targetIndex]);
-            input.Channel = connected ? connection.FromChannel : TextureChannelIn.Max;
-        }
-
         FilterMode GetFiltermode()
         {
             if (_current._input_r.GetTexture() != null) return _current._input_r.GetTexture().filterMode;
@@ -450,93 +194,6 @@ namespace Thry.ThryEditor.Drawers
             if (_current._input_b.GetTexture() != null) return _current._input_b.GetTexture().filterMode;
             if (_current._input_a.GetTexture() != null) return _current._input_a.GetTexture().filterMode;
             return FilterMode.Bilinear;
-        }
-
-        void Confirm()
-        {
-            if (_current._packedTexture == null) Pack();
-            string dir;
-            switch(Config.Instance.inlinePackerSaveLocation)
-            {
-                case TextureSaveLocation.material:
-                    dir = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(ShaderEditor.Active.Materials[0]));
-                    break;
-                case TextureSaveLocation.texture:
-                    if(_current._input_r.GetTexture() != null) dir = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(_current._input_r.GetTexture()));
-                    else if(_current._input_g.GetTexture() != null) dir = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(_current._input_g.GetTexture()));
-                    else if(_current._input_b.GetTexture() != null) dir = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(_current._input_b.GetTexture()));
-                    else if(_current._input_a.GetTexture() != null) dir = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(_current._input_a.GetTexture()));
-                    else dir = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(ShaderEditor.Active.Materials[0]));
-                    break;
-                case TextureSaveLocation.custom:
-                    dir = Config.Instance.inlinePackerSaveLocationCustom;
-                    break;
-                case TextureSaveLocation.prompt:
-                    dir = EditorUtility.OpenFolderPanel("Select Folder", "Assets", "");
-                    if (string.IsNullOrEmpty(dir)) return;
-                    dir = FileUtil.GetProjectRelativePath(dir.Replace('\\', '/'));
-                    if (dir != "Assets" && !dir.StartsWith("Assets/", StringComparison.Ordinal))
-                    {
-                        EditorUtility.DisplayDialog("Merge", "Choose a folder inside this project's Assets folder.", "OK");
-                        return;
-                    }
-                    break;
-                default:
-                    dir = "Assets/Textures/Packed";
-                    break;
-            }
-            string fileName = ShaderEditor.Active.Materials[0].name + _prop.name + ".png";
-            string path = dir + "/" + fileName;
-            _prop.textureValue = TextureHelper.SaveTextureAsPNG(_current._packedTexture, path);
-            TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
-            importer.streamingMipmaps = true;
-            importer.crunchedCompression = Config.Instance.inlinePackerChrunchCompression;
-            importer.sRGBTexture = _colorSpace == ColorSpace.Gamma;
-            importer.filterMode = GetFiltermode();
-            importer.alphaIsTransparency = _current._packedTexture.alphaIsTransparency;
-            importer.SaveAndReimport();
-
-            _current._hasConfigChanged = false;
-            _current._hasTextureChanged = false;
-            _current._lastConfirmTime = Helper.DatetimeToUnixSeconds(DateTime.Now);
-        }
-
-        void Revert()
-        {
-            _prop.textureValue = _current._previousTexture;
-            _current._hasTextureChanged = false;
-        }
-
-        void Clear()
-        {
-            foreach (Material m in ShaderEditor.Active.Materials)
-                Undo.RegisterCompleteObjectUndo(m, "Thry Packer Texture Change " + _prop.name);
-
-            float defaultFallback = Parser.ParseFloat(GetDefaultFallback(ShaderEditor.Active.Materials[0], _prop.name));
-            foreach (InlinePackerChannelConfig input in new[] { _current._input_r, _current._input_g, _current._input_b, _current._input_a })
-            {
-                input.Source.SetInputTexture(null);
-                input.Invert = false;
-                input.Channel = TextureChannelIn.Max;
-                input.Remapping = s_RemappingDefault;
-                input.Fallback = defaultFallback;
-            }
-
-            // Clear the packed texture from the material property.
-            _current._packedTexture = null;
-            _prop.textureValue = null;
-            _current._previousTexture = null;
-
-            Save();
-
-            _current._hasConfigChanged = false;
-            _current._hasTextureChanged = false;
-        }
-
-        public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
-        {
-            ShaderProperty.RegisterDrawer(this);
-            return base.GetPropertyHeight(prop, label, editor);
         }
 
         readonly static Vector4 s_RemappingDefault = new Vector4(0, 1, 0, 1);
@@ -553,12 +210,6 @@ namespace Thry.ThryEditor.Drawers
             public OutputTarget ToOutputConfig()
             {
                 return new OutputTarget(BlendMode.Add, Invert ? InvertMode.Invert : InvertMode.None, Fallback);
-            }
-
-            public void FromOutputConfig(OutputTarget config)
-            {
-                Invert = config.Invert == InvertMode.Invert;
-                Fallback = config.Fallback;
             }
 
             public Texture2D GetTexture()

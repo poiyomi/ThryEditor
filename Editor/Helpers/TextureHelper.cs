@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace Thry.ThryEditor.Helpers
 {
@@ -30,35 +28,6 @@ namespace Thry.ThryEditor.Helpers
                 finally { UnityEngine.Object.DestroyImmediate(readable); }
             }
             return new Gradient();
-        }
-
-        private static Texture2D s_BackgroundTexture;
-
-        public static Texture2D GetBackgroundTexture()
-        {
-            if (s_BackgroundTexture == null)
-                s_BackgroundTexture = CreateCheckerTexture(32, 4, 4, Color.white, new Color(0.7f, 0.7f, 0.7f));
-            return s_BackgroundTexture;
-        }
-
-        public static Texture2D CreateCheckerTexture(int numCols, int numRows, int cellPixelWidth, Color col1, Color col2)
-        {
-            int height = numRows * cellPixelWidth;
-            int width = numCols * cellPixelWidth;
-
-            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-            texture.hideFlags = HideFlags.HideAndDontSave;
-            Color[] pixels = new Color[width * height];
-
-            for (int i = 0; i < numRows; i++)
-                for (int j = 0; j < numCols; j++)
-                    for (int ci = 0; ci < cellPixelWidth; ci++)
-                        for (int cj = 0; cj < cellPixelWidth; cj++)
-                            pixels[(i * cellPixelWidth + ci) * width + j * cellPixelWidth + cj] = ((i + j) % 2 == 0) ? col1 : col2;
-
-            texture.SetPixels(pixels);
-            texture.Apply();
-            return texture;
         }
 
         public static Texture SaveTextureAsPNG(Texture2D texture, string path, TextureData settings = null)
@@ -241,126 +210,12 @@ namespace Thry.ThryEditor.Helpers
 
         public class VRAM
         {
-            static Dictionary<TextureImporterFormat, int> BPP = new Dictionary<TextureImporterFormat, int>()
-    {
-        { TextureImporterFormat.BC7 , 8 },
-        { TextureImporterFormat.DXT5 , 8 },
-        { TextureImporterFormat.DXT5Crunched , 8 },
-        { TextureImporterFormat.RGBA32 , 32 },
-        { TextureImporterFormat.RGBA16 , 16 },
-        { TextureImporterFormat.DXT1 , 4 },
-        { TextureImporterFormat.DXT1Crunched , 4 },
-        { TextureImporterFormat.RGB24 , 32 },
-        { TextureImporterFormat.RGB16 , 16 },
-        { TextureImporterFormat.BC5 , 8 },
-        { TextureImporterFormat.BC4 , 4 },
-        { TextureImporterFormat.R8 , 8 },
-        { TextureImporterFormat.R16 , 16 },
-        { TextureImporterFormat.Alpha8 , 8 },
-        { TextureImporterFormat.RGBAHalf , 64 },
-        { TextureImporterFormat.BC6H , 8 },
-        { TextureImporterFormat.RGB9E5 , 32 },
-        { TextureImporterFormat.ETC2_RGBA8Crunched , 8 },
-        { TextureImporterFormat.ETC2_RGB4 , 4 },
-        { TextureImporterFormat.ETC2_RGBA8 , 8 },
-        { TextureImporterFormat.ETC2_RGB4_PUNCHTHROUGH_ALPHA , 4 },
-#if !UNITY_6000_1_OR_NEWER
-        { TextureImporterFormat.PVRTC_RGB2 , 2 },
-        { TextureImporterFormat.PVRTC_RGB4 , 4 },
-#endif
-        { TextureImporterFormat.ARGB32 , 32 },
-        { TextureImporterFormat.ARGB16 , 16 },
-        { TextureImporterFormat.RGBA64 , 64 },
-        { TextureImporterFormat.RGB48 , 64 },
-        { TextureImporterFormat.RG32 , 32 },
-    };
-
-            static Dictionary<RenderTextureFormat, int> RT_BPP = new Dictionary<RenderTextureFormat, int>()
-        {
-            { RenderTextureFormat.ARGB32 , 32 },
-            { RenderTextureFormat.Depth , 0 },
-            { RenderTextureFormat.ARGBHalf , 64 },
-            { RenderTextureFormat.Shadowmap , 8 }, //guessed bpp
-            { RenderTextureFormat.RGB565 , 32 }, //guessed bpp
-            { RenderTextureFormat.ARGB4444 , 16 },
-            { RenderTextureFormat.ARGB1555 , 16 },
-            { RenderTextureFormat.Default , 32 },
-            { RenderTextureFormat.ARGB2101010 , 32 },
-            { RenderTextureFormat.DefaultHDR , 128 },
-            { RenderTextureFormat.ARGB64 , 64 },
-            { RenderTextureFormat.ARGBFloat , 128 },
-            { RenderTextureFormat.RGFloat , 64 },
-            { RenderTextureFormat.RGHalf , 32 },
-            { RenderTextureFormat.RFloat , 32 },
-            { RenderTextureFormat.RHalf , 16 },
-            { RenderTextureFormat.R8 , 8 },
-            { RenderTextureFormat.ARGBInt , 128 },
-            { RenderTextureFormat.RGInt , 64 },
-            { RenderTextureFormat.RInt , 32 },
-            { RenderTextureFormat.BGRA32 , 32 },
-            { RenderTextureFormat.RGB111110Float , 32 },
-            { RenderTextureFormat.RG32 , 32 },
-            { RenderTextureFormat.RGBAUShort , 64 },
-            { RenderTextureFormat.RG16 , 16 },
-            { RenderTextureFormat.BGRA10101010_XR , 40 },
-            { RenderTextureFormat.BGR101010_XR , 30 },
-            { RenderTextureFormat.R16 , 16 }
-        };
-
             public static string ToByteString(long l)
             {
                 if (l < 1000) return l + " B";
                 if (l < 1000000) return (l / 1000f).ToString("n2") + " KB";
                 if (l < 1000000000) return (l / 1000000f).ToString("n2") + " MB";
                 else return (l / 1000000000f).ToString("n2") + " GB";
-            }
-
-            public static (long size, string format) CalcSize(Texture t)
-            {
-                string add = "";
-                long bytesCount = 0;
-
-                string path = AssetDatabase.GetAssetPath(t);
-                if (t != null && path != null && t is RenderTexture == false && t.dimension == UnityEngine.Rendering.TextureDimension.Tex2D)
-                {
-                    AssetImporter assetImporter = AssetImporter.GetAtPath(path);
-                    if (assetImporter is TextureImporter)
-                    {
-                        TextureImporter textureImporter = (TextureImporter)assetImporter;
-                        TextureImporterPlatformSettings platformSettings = textureImporter.GetPlatformTextureSettings("Standalone");
-                        TextureImporterFormat textureFormat = platformSettings.overridden ? platformSettings.format : TextureImporterFormat.Automatic;
-                        if (textureFormat == TextureImporterFormat.Automatic) textureFormat = textureImporter.GetAutomaticFormat("Standalone");
-                        if (BPP.ContainsKey(textureFormat))
-                        {
-                            add = textureFormat.ToString();
-                            double mipmaps = 1;
-                            for (int i = 0; i < t.mipmapCount; i++) mipmaps += Math.Pow(0.25, i + 1);
-                            bytesCount = (long)(BPP[textureFormat] * t.width * t.height * (textureImporter.mipmapEnabled ? mipmaps : 1) / 8);
-                            //Debug.Log(bytesCount);
-                        }
-                        else
-                        {
-                            Debug.LogWarning("[Thry][VRAM] Does not have BPP for " + textureFormat);
-                        }
-                    }
-                    else
-                    {
-                        bytesCount = Profiler.GetRuntimeMemorySizeLong(t);
-                    }
-                }
-                else if (t is RenderTexture)
-                {
-                    RenderTexture rt = t as RenderTexture;
-                    double mipmaps = 1;
-                    for (int i = 0; i < rt.mipmapCount; i++) mipmaps += Math.Pow(0.25, i + 1);
-                    bytesCount = (long)((RT_BPP[rt.format] + rt.depth) * rt.width * rt.height * (rt.useMipMap ? mipmaps : 1) / 8);
-                }
-                else
-                {
-                    bytesCount = Profiler.GetRuntimeMemorySizeLong(t);
-                }
-
-                return (bytesCount, add);
             }
         }
     }

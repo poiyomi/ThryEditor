@@ -13,30 +13,8 @@ namespace Thry.ThryEditor
 {
     public class ShaderProperty : ShaderPart
     {
-        protected bool _doCustomDrawLogic = false;
-        protected bool _doForceIntoOneLine = false;
-        protected bool _doDrawTwoFields = false;
-
-        //Done for e.g. Vectors cause they draw in 2 lines for some fucking reasons
-        private bool _doCustomHeightOffset { set; get; } = false;
-        private float _customHeightOffset { set; get; } = 0;
-
         public string Keyword { private set; get; }
 
-        protected List<MaterialPropertyDrawer> _customDecorators = new List<MaterialPropertyDrawer>();
-        protected Rect[] _customDecoratorRects;
-        protected MaterialPropertyDrawer _drawer = null;
-        private InspectorPopup _enumPopup;
-        private GUIContent[] _enumNames;
-        private int[] _enumValues;
-        private static readonly Type s_propertyHandlerType = typeof(MaterialEditor).Assembly.GetType("UnityEditor.MaterialPropertyHandler");
-        private static readonly System.Reflection.MethodInfo s_getPropertyHandler = s_propertyHandlerType?.GetMethod("GetHandler",
-            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic, null, new[] { typeof(Shader), typeof(string) }, null);
-        private static readonly System.Reflection.FieldInfo s_decoratorDrawers = s_propertyHandlerType?.GetField("m_DecoratorDrawers",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-        private int _unityDecorators = -1;
-
-        bool _needsDrawerInitlization = true;
         bool _isAnimatedStateResolved = false;
         internal bool HasPlainAnimatedOwners { get; private set; }
         internal bool HasRenamedAnimatedOwners { get; private set; }
@@ -44,21 +22,13 @@ namespace Thry.ThryEditor
         internal bool AllOwnersAnimated { get; private set; }
         internal string AnimatedOwnersTooltip { get; private set; } = "";
 
-        public ShaderProperty(ShaderEditor shaderEditor, string propertyIdentifier, int xOffset, string displayName, string tooltip, int propertyIndex) : base(propertyIdentifier, xOffset, displayName, tooltip, shaderEditor)
+        public ShaderProperty(ShaderEditor shaderEditor, string propertyIdentifier, string displayName, string tooltip, int propertyIndex) : base(propertyIdentifier, displayName, tooltip, shaderEditor)
         {
             this.ShaderPropertyIndex = propertyIndex;
         }
 
-        public ShaderProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, int xOffset, string optionsRaw, bool forceOneLine, int propertyIndex) : base(shaderEditor, materialProperty, xOffset, displayName, optionsRaw, propertyIndex)
+        public ShaderProperty(ShaderEditor shaderEditor, MaterialProperty materialProperty, string displayName, string optionsRaw, int propertyIndex) : base(shaderEditor, materialProperty, displayName, optionsRaw, propertyIndex)
         {
-            this._doCustomDrawLogic = false;
-            this._doForceIntoOneLine = forceOneLine;
-        }
-
-        protected override void InitOptions()
-        {
-            base.InitOptions();
-            this._doDrawTwoFields = Options.reference_property != null;
         }
 
         public void SetKeyword(string keyword)
@@ -124,16 +94,6 @@ namespace Thry.ThryEditor
                 MaterialProperty.textureValue = value;
                 MaterialEditor.ApplyMaterialPropertyDrawers(ShaderEditor.Active.Materials);
             }
-        }
-
-        public enum DrawerType{ None, Toggle, Slider }
-        [PublicAPI]
-        public DrawerType GetDrawerType()
-        {
-            if (_drawer == null) return DrawerType.None;
-            if (_drawer.GetType().Name.IndexOf("Toggle", StringComparison.OrdinalIgnoreCase) != -1) return DrawerType.Toggle;
-            if (_drawer.GetType().Name.IndexOf("Slider", StringComparison.OrdinalIgnoreCase) != -1) return DrawerType.Slider;
-            return DrawerType.None;
         }
 
         public override void CopyFrom(Material src, bool applyDrawers = true, bool deepCopy = true, bool copyReferenceProperties = true, HashSet<ShaderPropertyType> skipPropertyTypes = null, HashSet<string> skipPropertyNames = null)
@@ -308,45 +268,6 @@ namespace Thry.ThryEditor
             if (Keyword != null) SetKeywordState(MyShaderUI.Materials, MaterialProperty.GetNumber() == 1);
         }
 
-        private static ShaderProperty _activeProperty;
-        public static void RegisterDrawer(MaterialPropertyDrawer drawer)
-        {
-            if(_activeProperty == null) return;
-            _activeProperty._drawer = drawer;
-        }
-        public static void RegisterDecorator(MaterialPropertyDrawer drawer)
-        {
-            if(_activeProperty == null) return;
-            if(_activeProperty._customDecorators.Contains(drawer) == false)
-            {
-                _activeProperty._customDecorators.Add(drawer);
-                _activeProperty._customDecoratorRects = new Rect[_activeProperty._customDecorators.Count];
-            }
-        }
-        public static void DisallowAnimation()
-        {
-            if(_activeProperty == null) return;
-            _activeProperty.IsAnimatable = false;
-        }
-
-        void InitializeDrawers()
-        {
-            if(!_needsDrawerInitlization) return;
-            if(MaterialProperty == null) return;
-            _needsDrawerInitlization = false;
-            // Makes Drawers and Decorators Register themself
-            _activeProperty = this;
-            MyMaterialEditor.GetPropertyHeight(MaterialProperty, MaterialProperty.displayName);
-            _activeProperty = null;
-
-            if (MaterialProperty.GetPropertyType() == ShaderPropertyType.Vector && _doForceIntoOneLine == false)
-            {
-                this._doCustomHeightOffset = _drawer == null;
-                this._customHeightOffset = -EditorGUIUtility.singleLineHeight;
-            }
-            UpdateIsAnimatedFromTag();
-        }
-
         internal override void EnsureAnimatedStateResolved()
         {
             if (_isAnimatedStateResolved) return;
@@ -440,162 +361,6 @@ namespace Thry.ThryEditor
             if (tag == "2" && !ShaderOptimizer.CanRename(name)) return "1";
             return tag == "0" ? "" : tag;
         }
-        protected override void GUILocaleEditing(bool isInHeader)
-        {
-            if(!isInHeader && _doEditLocale && ShaderEditor.Active.Locale.EditInUI && MaterialProperty != null)
-            {
-                EditorGUI.BeginChangeCheck();
-                Rect translationRect = EditorGUILayout.GetControlRect();
-                translationRect.x += 15;
-                translationRect.width -= 15;
-                string newTranslation = EditorGUI.DelayedTextField(translationRect, new GUIContent(MaterialProperty.name, ShaderEditor.GetMaterialPropertyDisplayNameWithoutOptions(MaterialProperty)), _content.text);
-                if(EditorGUI.EndChangeCheck())
-                {
-                    _content.text = newTranslation;
-                    Content = _content;
-                    ShaderEditor.Active.Locale.Set(MaterialProperty, newTranslation);
-                    ShaderEditor.Active.Locale.Save();
-                }
-            }
-        }
-
-        protected override void DrawInternal(GUIContent content, Rect? rect = null, bool useEditorIndent = false, bool isInHeader = false)
-        {
-            if(content == null)
-                content = GUIContent.none;
-
-            _drawnAsLabellessInline = rect != null && string.IsNullOrEmpty(content.text) && !isInHeader;
-
-            MyShaderUI.CurrentProperty = this;
-            InitializeDrawers();
-            PreDraw();
-            if (MyShaderUI.IsLockedMaterial)
-                EditorGUI.BeginDisabledGroup(!(IsAnimatable && (IsAnimated || IsRenaming)) && !IsExemptFromLockedDisabling);
-
-            using (useEditorIndent ? null : new GUILib.PropertyIndentScope(XOffset, alignToColumn: rect == null))
-            {
-
-            if (_customDecoratorRects != null && _doCustomDrawLogic)
-            {
-                for (int i = 0; i < _customDecoratorRects.Length; i++)
-                {
-                    float decoratorHeight = _customDecorators[i].GetPropertyHeight(MaterialProperty, content.text, MyMaterialEditor);
-                    if (decoratorHeight > 0)
-                        _customDecoratorRects[i] = EditorGUILayout.GetControlRect(false, GUILayout.Height(decoratorHeight));
-                    else
-                        _customDecoratorRects[i] = new Rect();
-                }
-            }
-
-            EditorGUI.BeginChangeCheck();
-
-            // Own the mixed-value flag for every branch below that draws one value control.
-            //
-            // MaterialProperty.BeginProperty is the ONLY place Unity sets EditorGUI.showMixedValue for a
-            // material property - and on 2022.1+ ShaderEditor.Draw wraps the whole property tree in
-            // UnityHelper.DetourMaterialPropertyVariantIcon, which detours BeginProperty and EndProperty to
-            // empty stubs to suppress Unity's material-variant chrome. The mixed-value flag is collateral:
-            // nothing sets it, so every property Unity draws by default (floats, ranges, colors, vectors)
-            // rendered a multi-selection as though all the materials agreed. Drawers are a second hole -
-            // BeginProperty does not run for them even un-detoured, and several of the drawers here never
-            // set the flag themselves (ByteSlider, MultiSlider, ThryIntRange, Ramp4, Curve, ...).
-            //
-            // Setting it here covers both, and EndProperty being a stub is why the reset below matters.
-            // Where Unity is left to set it (2021 and older), it sets the same value.
-            //
-            // Skipped for _doCustomDrawLogic (textures, render queue, VRC fallback, GI, instancing): those
-            // draw several sub-controls with independent mixed states and set the flag per control already.
-            bool drawAsMixedValue = !_doCustomDrawLogic && MaterialProperty != null && MaterialProperty.hasMixedValue;
-            if (drawAsMixedValue) EditorGUI.showMixedValue = true;
-
-            if (_doCustomDrawLogic)
-            {
-                DrawDefault();
-            }
-            else if (_doDrawTwoFields)
-            {
-                Rect r = useEditorIndent 
-                    ? EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight)
-                    : GUILib.GetPropertyRect(XOffset, EditorGUIUtility.singleLineHeight);
-                float labelWidth = (r.width - EditorGUIUtility.labelWidth) / 2;
-                r.width -= labelWidth;
-                DrawAlignedProperty(r, content);
-
-                r.x += r.width;
-                r.width = labelWidth;
-                float prevLabelW = EditorGUIUtility.labelWidth;
-                EditorGUIUtility.labelWidth = 0;
-
-                if (MyShaderUI.IsLockedMaterial) EditorGUI.EndDisabledGroup();
-                MyShaderUI.PropertyDictionary[Options.reference_property].Draw(r, new GUIContent());
-                if (MyShaderUI.IsLockedMaterial) EditorGUI.BeginDisabledGroup(false);
-                EditorGUIUtility.labelWidth = prevLabelW;
-            }
-            else if (_doForceIntoOneLine)
-            {
-                Rect r = useEditorIndent
-                    ? EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight)
-                    : GUILib.GetPropertyRect(XOffset, EditorGUIUtility.singleLineHeight);
-                DrawAlignedProperty(r, content);
-            }
-            else if (_doCustomHeightOffset)
-            {
-                float propHeight = MyMaterialEditor.GetPropertyHeight(this.MaterialProperty, content.text) + _customHeightOffset;
-                Rect r = useEditorIndent ? EditorGUILayout.GetControlRect(false, propHeight) : GUILib.GetPropertyRect(XOffset, propHeight);
-                DrawAlignedProperty(r, content);
-            }
-            else if (rect != null)
-            {
-                // Custom Drawing for Range, because it doesn't draw correctly if inside the big texture property
-                if (_drawer == null && MaterialProperty.GetPropertyType() == ShaderPropertyType.Range)
-                {
-                    EditorGUI.BeginChangeCheck();
-                    EditorGUI.showMixedValue = MaterialProperty.hasMixedValue;
-                    float newSliderValue = EditorGUI.Slider(rect.Value, content, MaterialProperty.floatValue, MaterialProperty.rangeLimits.x, MaterialProperty.rangeLimits.y);
-                    EditorGUI.showMixedValue = false;
-                    if (EditorGUI.EndChangeCheck()) MaterialProperty.floatValue = newSliderValue;
-                }
-                else
-                {
-                    DrawAlignedProperty(rect.Value, content);
-                }
-            }
-            else
-            {
-                float propHeight = MyMaterialEditor.GetPropertyHeight(this.MaterialProperty, content.text);
-                Rect r;
-                if (useEditorIndent)
-                    r = EditorGUILayout.GetControlRect(false, propHeight == -2 ? 0 : propHeight);
-                else
-                    r = GUILib.GetPropertyRect(XOffset, propHeight);
-                DrawAlignedProperty(r, content);
-            }
-
-            if (drawAsMixedValue) EditorGUI.showMixedValue = false;
-
-            if (_customDecorators != null && _doCustomDrawLogic)
-            {
-                for (int i = 0; i < _customDecorators.Count; i++)
-                {
-                    _customDecorators[i].OnGUI(_customDecoratorRects[i], MaterialProperty, content, MyMaterialEditor);
-                }
-            }
-
-            if(EditorGUI.EndChangeCheck())
-            {
-                Undo.SetCurrentGroupName($"Modify {content.text} of {ShaderEditor.Active.TargetName}");
-                RaisePropertyValueChanged();
-                ExecuteOnValueActions(ShaderEditor.Active.Materials);
-                AutomaticAnimatedMarking();
-            }
-
-            } // end PropertyIndentScope
-
-            if (rect == null) DrawingData.LastGuiObjectRect = GUILayoutUtility.GetLastRect();
-            else DrawingData.LastGuiObjectRect = rect.Value;
-            if (MyShaderUI.IsLockedMaterial)
-                EditorGUI.EndDisabledGroup();
-        }
 
         static readonly string[] s_animatedTexturePaths = { "_ST.x", "_ST.y", "_ST.z", "_ST.w" };
         static readonly string[] s_animatedColorPaths = { ".r", ".g", ".b", ".a" };
@@ -633,8 +398,8 @@ namespace Thry.ThryEditor
         {
             var value = MaterialEditor.GetMaterialProperty(targets, MaterialProperty.name);
             ShaderProperty projection = this is ShaderTextureProperty texture
-                ? new ShaderTextureProperty(MyShaderUI, value, _content.text, XOffset, _optionsRaw, texture.hasScaleOffset, false, ThryPropertyIndex)
-                : new ShaderProperty(MyShaderUI, value, _content.text, XOffset, _optionsRaw, false, ThryPropertyIndex);
+                ? new ShaderTextureProperty(MyShaderUI, value, _content.text, _optionsRaw, texture.hasScaleOffset, ThryPropertyIndex)
+                : new ShaderProperty(MyShaderUI, value, _content.text, _optionsRaw, ThryPropertyIndex);
             projection.MyShader = SectionLock.GetSourceShader(targets[0].shader) ?? targets[0].shader;
             projection.ShaderPropertyIndex = projection.MyShader.FindPropertyIndex(value.name);
             projection.UseMaterialEditorFor(targets);
@@ -740,145 +505,6 @@ namespace Thry.ThryEditor
             var declaration = RetainedDeclaration ?? RetainedShaderDeclarations.Get(MyShader, ShaderPropertyIndex);
             IsAnimatable &= declaration.IsAnimatable;
             if (declaration.Keyword != null) SetKeyword(declaration.Keyword);
-        }
-
-        protected virtual void PreDraw() { }
-
-        private void DrawAlignedProperty(Rect position, GUIContent label)
-        {
-            var type = MaterialProperty.GetPropertyType();
-            string drawerName = _drawer?.GetType().Name;
-            if (drawerName == "MaterialEnumDrawer" || drawerName == "MaterialKeywordEnumDrawer")
-            {
-                if (_enumPopup == null)
-                {
-                    var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-                    var typeInfo = _drawer.GetType();
-                    _enumNames = typeInfo.GetField(drawerName == "MaterialEnumDrawer" ? "names" : "keywords", flags)?.GetValue(_drawer) as GUIContent[];
-                    _enumValues = typeInfo.GetField("values", flags)?.GetValue(_drawer) as int[];
-                    _enumPopup = new InspectorPopup();
-                }
-                if (_enumNames != null)
-                {
-                    int selected = _enumValues == null ? (int)MaterialProperty.GetNumber() : Array.IndexOf(_enumValues, (int)MaterialProperty.GetNumber());
-                    EditorGUI.BeginChangeCheck();
-                    bool mixed = EditorGUI.showMixedValue;
-                    EditorGUI.showMixedValue = MaterialProperty.hasMixedValue;
-                    selected = _enumPopup.Draw(position, label, selected, _enumNames);
-                    EditorGUI.showMixedValue = mixed;
-                    if (EditorGUI.EndChangeCheck() && selected >= 0)
-                    {
-                        MyMaterialEditor.RegisterPropertyChangeUndo(label.text);
-                        MaterialProperty.SetNumber(_enumValues == null ? selected : _enumValues[selected]);
-                        if (drawerName == "MaterialKeywordEnumDrawer") _drawer.Apply(MaterialProperty);
-                    }
-                    return;
-                }
-            }
-            if (_drawer == null && type == ShaderPropertyType.Vector && GUILib.ValueColumnX > 0
-                && (_customDecorators == null || _customDecorators.Count == 0))
-            {
-                EditorGUI.BeginChangeCheck();
-                bool mixed = EditorGUI.showMixedValue;
-                EditorGUI.showMixedValue = MaterialProperty.hasMixedValue;
-                Vector4 value = GUILib.VectorField(position, label, MaterialProperty.vectorValue, 4);
-                EditorGUI.showMixedValue = mixed;
-                if (EditorGUI.EndChangeCheck())
-                {
-                    MyMaterialEditor.RegisterPropertyChangeUndo(label.text);
-                    MaterialProperty.vectorValue = value;
-                }
-                return;
-            }
-            if (drawerName == "MaterialToggleUIDrawer" || drawerName == "MaterialToggleDrawer" || drawerName == "MaterialToggleOffDrawer")
-            {
-                position.y += Mathf.Max(0, (position.height - 16) / 2);
-                position.height = Mathf.Min(position.height, 16);
-            }
-            if (GUILib.ValueColumnX > 0 && _drawer == null && (_customDecorators == null || _customDecorators.Count == 0)
-                && (type == ShaderPropertyType.Vector || type == ShaderPropertyType.Range) && !string.IsNullOrEmpty(label.text))
-            {
-                // MaterialEditor's vector and range controls reset labelWidth to Unity's default.
-                // Give them an already separated value rect so they cannot move the column boundary.
-                position = EditorGUI.PrefixLabel(position, label);
-                label = GUIContent.none;
-            }
-            // [PerRendererData] colors stay Unity's: they are shown disabled.
-            if (type == ShaderPropertyType.Color && _drawer == null && (_customDecorators == null || _customDecorators.Count == 0)
-                && !Config.Instance.useUnityColorPicker && (MaterialProperty.GetPropertyFlags() & ShaderPropertyFlags.PerRendererData) == 0
-                && !HasUnityDecorators(position))
-            {
-                // Unity's color field opens a picker without a hex field for HDR colors.
-                if (position.height > EditorGUIUtility.singleLineHeight) position.yMin = position.yMax - EditorGUIUtility.singleLineHeight;
-                // Like MaterialEditor.ShaderProperty: the animated and recording tint, and the keyframe context menu.
-                MyMaterialEditor.BeginAnimatedCheck(position, MaterialProperty);
-                try
-                {
-                    EditorGUI.BeginChangeCheck();
-                    bool mixed = EditorGUI.showMixedValue;
-                    EditorGUI.showMixedValue = MaterialProperty.hasMixedValue;
-                    Color value = ThryColorGUI.Field(position, label, MaterialProperty.colorValue, ThryColorFormat.ForProperty(MaterialProperty.GetPropertyFlags(), false));
-                    EditorGUI.showMixedValue = mixed;
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        MyMaterialEditor.RegisterPropertyChangeUndo(label.text);
-                        MaterialProperty.colorValue = value;
-                    }
-                }
-                finally { MyMaterialEditor.EndAnimatedCheck(); }
-                return;
-            }
-            MyMaterialEditor.ShaderProperty(position, MaterialProperty, label);
-        }
-
-        // Unity decorators such as [Space] and [Header] draw inside the rect only through MaterialEditor.ShaderProperty.
-        private bool HasUnityDecorators(Rect position)
-        {
-            if (s_getPropertyHandler == null || s_decoratorDrawers == null) return position.height > EditorGUIUtility.singleLineHeight + 1;
-            if (_unityDecorators < 0)
-            {
-                var handler = MyShader == null ? null : s_getPropertyHandler.Invoke(null, new object[] { MyShader, MaterialProperty.name });
-                _unityDecorators = handler != null && s_decoratorDrawers.GetValue(handler) is System.Collections.ICollection drawers && drawers.Count > 0 ? 1 : 0;
-            }
-            return _unityDecorators == 1;
-        }
-
-        protected virtual void DrawDefault() { }
-
-        // Where inside LastGuiObjectRect does the property's label actually sit?
-        // When _doCustomDrawLogic is true Thry reserves a separate rect for each decorator above,
-        // so the rect is just the property body and the label is at its top → 0.
-        // Otherwise Unity stacks every decorator ([Space], [Header], [ThryDecalPositioning], plus
-        // any other built-in or third-party decorator) above the drawer's body inside the rect.
-        // The drawer's body occupies the BOTTOM `drawerOwnHeight` of the rect, so the offset to
-        // where the label gets drawn is `rect.height - drawerOwnHeight`. This works whether the
-        // property uses a Unity drawer (Vector2, Ramp4, etc.) or Unity's default per-type
-        // rendering, and it implicitly covers decorators that don't register with Thry.
-        protected override float GetLabelYOffsetWithinRect()
-        {
-            if (_doCustomDrawLogic) return 0f;
-            float drawerOwnHeight;
-            if (_drawer != null)
-            {
-                string labelText = _content != null ? _content.text : (MaterialProperty != null ? MaterialProperty.displayName : "");
-                drawerOwnHeight = _drawer.GetPropertyHeight(MaterialProperty, labelText, MyMaterialEditor);
-            }
-            else
-            {
-                // No Unity drawer: Thry either renders the body in a single line (Vector squeeze,
-                // _doForceIntoOneLine, _doDrawTwoFields) or falls back to Unity's per-type default
-                // which is one line for the simple types we care about here.
-                drawerOwnHeight = EditorGUIUtility.singleLineHeight;
-            }
-            float offset = DrawingData.LastGuiObjectRect.height - drawerOwnHeight;
-            return Mathf.Max(0f, offset);
-        }
-
-        public override bool Search(string searchTerm, List<ShaderGroup> foundHeaders, bool isParentInSearch = false)
-        {
-            return isParentInSearch
-                || this.Content.text.IndexOf(searchTerm, System.StringComparison.OrdinalIgnoreCase) >= 0
-                || this.MaterialProperty?.name.IndexOf(searchTerm, System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 

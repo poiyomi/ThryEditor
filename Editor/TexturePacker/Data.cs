@@ -298,14 +298,6 @@ namespace Thry.ThryEditor.TexturePacker
             ColorTexture = Converter.ColorToTexture(Color, 16, 16, linear: true);
         }
 
-        public bool HasBeenModifiedExternally()
-        {
-            if (InputType != InputType.Texture) return false;
-            if (Texture == null) return false;
-            return _cachedTextureLastModifiedTime.TryGetValue(Texture, out DateTime cachedLastModified)
-                && cachedLastModified != TextureHelper.GetLastModifiedTime(Texture);
-        }
-
         static Dictionary<Texture2D, Texture2D> _cachedUncompressedTextures = new Dictionary<Texture2D, Texture2D>();
         static Dictionary<Texture2D, DateTime> _cachedTextureLastModifiedTime = new Dictionary<Texture2D, DateTime>();
         internal static long DecodedCacheBudgetBytes = 64L * 1024 * 1024;

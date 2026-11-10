@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 namespace Thry.ThryEditor
 {
     /// <summary>
-    /// Unity's internal eyedropper, for UI Toolkit and IMGUI hosts. Colors are display colors.
+    /// Unity's internal eyedropper, for UI Toolkit hosts. Colors are display colors.
     /// Exactly one of the picked and cancelled callbacks runs for every session.
     /// </summary>
     internal static class ThryEyeDropper
@@ -19,7 +19,7 @@ namespace Thry.ThryEditor
 
         static readonly Type DropperType, ViewType;
         static readonly MethodInfo StartMethod, EndMethod, PickedMethod, LastPickedMethod, GrabPixelsMethod;
-        static readonly PropertyInfo OpenedProperty, CancelledProperty, CurrentViewProperty, MouseOverViewProperty, ScreenPositionProperty, ActualViewProperty;
+        static readonly PropertyInfo OpenedProperty, CancelledProperty, MouseOverViewProperty, ScreenPositionProperty, ActualViewProperty;
         static readonly PropertyInfo ViewWindowProperty, ShowModeProperty, WindowsProperty;
         static readonly FieldInfo CoordinatesField, InstanceField, CancelledField, ParentField;
         static readonly object MainWindowMode;
@@ -77,7 +77,6 @@ namespace Thry.ThryEditor
                 CoordinatesField = DropperType.GetField("s_PickCoordinates", AnyStatic);
                 InstanceField = DropperType.GetField("s_Instance", AnyStatic);
                 CancelledField = DropperType.GetField("m_IsCancelled", AnyInstance);
-                CurrentViewProperty = ViewType.GetProperty("current", AnyStatic);
                 MouseOverViewProperty = ViewType.GetProperty("mouseOverView", AnyStatic);
                 ScreenPositionProperty = ViewType.GetProperty("screenPosition", AnyInstance);
                 GrabPixelsMethod = ViewType.GetMethod("GrabPixels", AnyInstance, null, new[] { typeof(RenderTexture), typeof(Rect) }, null);
@@ -127,19 +126,6 @@ namespace Thry.ThryEditor
             EnsurePolling();
         }
 
-        /// <summary>Same as <see cref="Begin"/> for IMGUI callers, during a MouseDown or ExecuteCommand pass.</summary>
-        internal static void BeginFromIMGUI(Action<Color> preview, Action<Color> picked, Action cancelled)
-        {
-            Cancel();
-            var view = Available && Event.current != null ? CurrentViewProperty?.GetValue(null) : null;
-            if (view == null) { cancelled?.Invoke(); return; }
-            var session = new Session { Preview = preview, Picked = picked, Cancelled = cancelled, View = view, Launched = true, Started = true };
-            s_Session = session;
-            EnsurePolling();
-            try { StartMethod.Invoke(null, new[] { view }); session.Opened = true; }
-            catch (TargetInvocationException e) { Debug.LogException(e.InnerException ?? e); Finish(session, false, default, true); }
-        }
-
         internal static void Cancel()
         {
             var session = s_Session;
@@ -171,7 +157,7 @@ namespace Thry.ThryEditor
             EditorApplication.update += Poll;
         }
 
-        // Safety net: commands can miss a host whose view went away, and IMGUI sessions have no commands at all.
+        // Safety net: commands can miss a host whose view went away.
         static void Poll()
         {
             var session = s_Session;

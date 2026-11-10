@@ -6,19 +6,6 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Thry.ThryEditor.Drawers
-{
-    public sealed class ThryMaskLevelsDecorator : MaterialPropertyDrawer
-    {
-        public ThryMaskLevelsDecorator(float channels) { }
-        public ThryMaskLevelsDecorator(float channels,string invert) { }
-        public ThryMaskLevelsDecorator(float channels,float optionalChannels,string toggle) { }
-        public override float GetPropertyHeight(MaterialProperty prop,string label,MaterialEditor editor)
-        { return 0; }
-        public override void OnGUI(Rect position,MaterialProperty prop,GUIContent label,MaterialEditor editor)
-        { }
-    }
-}
 namespace Thry.ThryEditor
 {
     internal sealed partial class RetainedFields

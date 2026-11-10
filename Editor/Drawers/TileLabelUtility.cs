@@ -74,49 +74,6 @@ namespace Thry.ThryEditor.Drawers
             return null;
         }
 
-        // Drop into the per-button render loop. Intercepts right-click on `buttonRect` and pops the
-        // Rename / Reset context menu. Safe to call every frame; only acts on MouseDown/ContextClick.
-        internal static void HandleRightClick(Rect buttonRect, Object[] targets, string propertyName, string defaultLabel)
-        {
-            if (!IsUdimProperty(propertyName)) return;
-            Event evt = Event.current;
-            if (evt == null) return;
-
-            if (evt.type == EventType.MouseDown && evt.button == 1 && buttonRect.Contains(evt.mousePosition))
-            {
-                Vector2 screenPos = GUIUtility.GUIToScreenPoint(evt.mousePosition);
-                ShowContextMenu(targets, propertyName, defaultLabel, screenPos);
-                evt.Use();
-            }
-            else if (evt.type == EventType.ContextClick && buttonRect.Contains(evt.mousePosition))
-            {
-                // Swallow so the host inspector's own context menu (if any) doesn't double-fire.
-                evt.Use();
-            }
-        }
-
-        static void ShowContextMenu(Object[] targets, string propertyName, string defaultLabel, Vector2 screenPos)
-        {
-            Object[] capturedTargets = new Object[targets != null ? targets.Length : 0];
-            if (targets != null) System.Array.Copy(targets, capturedTargets, targets.Length);
-            string canonical = CanonicalPropertyName(propertyName);
-            string runtimeName = canonical != propertyName ? propertyName : null;
-
-            var menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Rename..."), false, () =>
-            {
-                TileLabelRenamePopup.Show(capturedTargets, canonical, defaultLabel, screenPos);
-            });
-            menu.AddItem(new GUIContent("Reset to default label"), false, () =>
-            {
-                ApplyTagToTargets(capturedTargets, canonical, string.Empty);
-                // Clear any stale tag saved under the runtime (suffixed) name from before normalisation.
-                if (runtimeName != null)
-                    ApplyTagToTargets(capturedTargets, runtimeName, string.Empty);
-            });
-            menu.ShowAsContext();
-        }
-
         internal static void ApplyTagToTargets(Object[] targets, string canonicalPropertyName, string value)
         {
             if (targets == null || targets.Length == 0 || string.IsNullOrEmpty(canonicalPropertyName)) return;
@@ -226,7 +183,6 @@ namespace Thry.ThryEditor.Drawers
             System.Func<Object[]> _currentTargets;
             string _canonicalPropertyName;
             string _value;
-            bool _focusGrabbed;
 
             public static void Show(Object[] targets, string canonicalPropertyName, string defaultLabel, Vector2 screenPos, System.Func<Object[]> currentTargets = null)
             {
@@ -251,48 +207,6 @@ namespace Thry.ThryEditor.Drawers
                 return _targets.Where((target, index) => target is Material material && material != null
                     && _targetShaders != null && index < _targetShaders.Length && SectionLock.GetSourceShader(material.shader) == _targetShaders[index]
                     && current.Contains(target)).ToArray();
-            }
-
-            void OnGUI()
-            {
-                if (rootVisualElement.childCount > 0) return;
-                Event e = Event.current;
-                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
-                {
-                    Close();
-                    e.Use();
-                    return;
-                }
-                bool submitOnEnter = e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter);
-
-                GUILayout.Space(6);
-
-                GUI.SetNextControlName("LabelField");
-                _value = EditorGUILayout.TextField("Label", _value);
-                if (!_focusGrabbed)
-                {
-                    EditorGUI.FocusTextInControl("LabelField");
-                    _focusGrabbed = true;
-                }
-
-                GUILayout.Space(4);
-
-                GUILayout.BeginHorizontal();
-                GUILayout.FlexibleSpace();
-                bool cancel = GUILayout.Button("Cancel", GUILayout.Width(80));
-                bool ok = GUILayout.Button("OK", GUILayout.Width(80));
-                GUILayout.EndHorizontal();
-
-                if (cancel)
-                {
-                    Close();
-                    return;
-                }
-                if (ok || submitOnEnter)
-                {
-                    ApplyTagToTargets(CurrentTargets(), _canonicalPropertyName, _value);
-                    Close();
-                }
             }
 
             public void CreateGUI()

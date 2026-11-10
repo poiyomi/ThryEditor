@@ -68,15 +68,6 @@ namespace Thry.ThryEditor.Helpers
             return VRC_SDK_Type.NONE;
 #endif
         }
-
-        public static bool IsVRCSDKInstalled()
-        {
-#if VRC_SDK_VRCSDK3
-            return true;
-#else
-            return false;
-#endif
-        }
     }
 
 }

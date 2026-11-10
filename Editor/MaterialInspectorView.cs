@@ -14,6 +14,7 @@ namespace Thry.ThryEditor
     public sealed class MaterialInspectorView : VisualElement
     {
         private readonly MaterialEditor _editor;
+        internal MaterialEditor Editor => _editor;
         private readonly VisualElement _body;
         private IMGUIContainer _fallback;
         private readonly Label _loading = new Label("Loading shader inspector…") { name = "thry-inspector-loading" };
@@ -159,7 +160,7 @@ namespace Thry.ThryEditor
             _fallback = new IMGUIContainer(() =>
             {
                 // A shader can change between retained refreshes. Never let a
-                // still-attached native fallback initialize Thry's legacy UI.
+                // still-attached native fallback run Thry's ShaderGUI.
                 if (RetainedMaterialModel.HasValidTargets(_editor)) return;
                 drawInspector();
             });
@@ -173,7 +174,7 @@ namespace Thry.ThryEditor
                 EnableInClassList("thry-compact", evt.newRect.width < 420);
                 EnableInClassList("thry-narrow", evt.newRect.width < 310);
             });
-            RegisterCallback<DetachFromPanelEvent>(evt => { if (_shader != null) { _shader.HasRetainedToolbar = false; _shader.ShowDropdown = null; } });
+            RegisterCallback<DetachFromPanelEvent>(evt => { if (_shader != null) _shader.ShowSearch = null; });
             // The Inspector host and its material foldout are established on attach.
             // Build visible controls now rather than leaving the first paint empty
             // until the periodic refresh. Collapsed embedded materials still return early.
@@ -214,11 +215,6 @@ namespace Thry.ThryEditor
             field.RegisterCallback<NavigationSubmitEvent>(evt => {
                 evt.PreventDefaultHandling(); evt.StopImmediatePropagation(); open();
             }, TrickleDown.TrickleDown);
-        }
-
-        private void ShowDropdown(Rect anchor, GUIContent[] choices, int[] selected, Action<int> select)
-        {
-            ShowMenu(new Rect(_body.LocalToWorld(anchor.position), anchor.size), choices, selected, select, _body);
         }
 
         internal void ShowMenu(Rect anchor, GUIContent[] choices, int[] selected, Action<int> select, VisualElement target)
@@ -647,25 +643,25 @@ namespace Thry.ThryEditor
             }
             if (current != null)
             {
-                // Detaching clears these, so set them on every refresh
-                current.HasRetainedToolbar = true; current.ShowDropdown = ShowDropdown;
+                // Detaching clears this, so set it on every refresh
+                current.ShowSearch = LoadSearch;
                 _retained.Model.Renderers = FindRenderers(); _retained.Model.Refresh();
                 if (_retained.childCount == 0 || !ClassListContains("thry-filtering")) _retained.Synchronize();
             }
             else if (compatible)
             {
-                // A Thry shader waiting for its ShaderGUI must never initialize the
-                // legacy inspector just to bridge the first retained refresh.
+                // A Thry shader waiting for its ShaderGUI must never show the native
+                // fallback just to bridge the first retained refresh.
                 if (_loading.parent == null)
                 {
-                    if (_shader != null) { _shader.HasRetainedToolbar = false; _shader.ShowDropdown = null; }
+                    if (_shader != null) _shader.ShowSearch = null;
                     _shader = null; _crossProperties = null; _retained = null;
                     _body.Clear(); _body.Add(_loading);
                 }
             }
             else if (_fallback.parent == null)
             {
-                if (_shader != null) { _shader.HasRetainedToolbar = false; _shader.ShowDropdown = null; }
+                if (_shader != null) _shader.ShowSearch = null;
                 _shader = null; _crossProperties = null; _retained = null;
                 _body.Clear(); _body.Add(_fallback);
             }
@@ -706,9 +702,6 @@ namespace Thry.ThryEditor
                 : selectedCount > 1 ? selectedCount + " materials selected" : "Material editor";
             _state.EnableInClassList("thry-optimized", _shader.IsLockedMaterial);
             _state.style.display = editing || _shader.IsLockedMaterial || selectedCount > 1 ? DisplayStyle.Flex : DisplayStyle.None;
-            // Filtered controls have their own view; legacy search expansion must not
-            // modify the user's normal section/foldout state while they type.
-            if (_shader.IsInSearchMode) _shader.SearchFromView("");
             UpdateSearch();
 
             if (!_builtTools || _toolTheme != EditorGUIUtility.isProSkin)

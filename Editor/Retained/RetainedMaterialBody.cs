@@ -295,7 +295,7 @@ namespace Thry.ThryEditor
                     : SectionExtensions.Create(sectionName, new SectionExtensions.Context(Model, _fields));
                 if (extension != null) children.Add(extension);
                 // Sections and subsections organize their parent header's preset; only
-                // headers own named preset collections (matching the legacy inspector).
+                // headers own named preset collections.
                 if (group is ShaderHeader && Model.Shader.IsSectionedPresetEditor)
                 {
                     var presetName = new TextField("Preset name") { isDelayed = true, value = Presets.GetSectionPresetName(Model.Shader.Materials[0], group.MaterialProperty.name) };
@@ -346,9 +346,6 @@ namespace Thry.ThryEditor
 
         internal static string SectionCaption(ShaderPart part)
         {
-            // Retained views use separate changed-value dots. Reading the legacy
-            // marked Content would walk defaults just to add and strip an asterisk.
-            // The original label also preserves authored punctuation and live locale edits.
             return part.UnmarkedLabel;
         }
 

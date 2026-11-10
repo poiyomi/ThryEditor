@@ -5,12 +5,11 @@ using UnityEngine;
 
 namespace Thry.ThryEditor
 {
-    /// <summary>Shared visual tokens for retained and immediate-mode material controls.</summary>
+    /// <summary>Shared visual tokens for immediate-mode tool windows and inspector colors.</summary>
     public static class InspectorTheme
     {
         public const int HeaderHeight = 36;
         public const int SectionHeight = 30;
-        public const int FieldHeight = 22;
         public static Color Background => Skin(0x383838, 0xc8c8c8);
         public static Color Surface => Skin(0x454545, 0xdedede);
         public static Color NestedSurface => Skin(0x404040, 0xd5d5d5);
@@ -21,7 +20,6 @@ namespace Thry.ThryEditor
         public static Color Muted => Skin(0xa3a3a3, 0x5b5b5b);
         public static Color Input => Skin(0x2c2c2c, 0xdddddd);
         public static Color Accent => Skin(0x7aadd6, 0x3b78a8);
-        public static Color Excluded => Skin(0x3d3d3d, 0xcfcfcf);
         public static Color MonokaiPink => Skin(0xf92672, 0xb9144c);
         public static Color MonokaiGreen => Skin(0xa6e22e, 0x638f14);
         public static Color MonokaiYellow => Skin(0xe6db74, 0x82721e);
@@ -31,19 +29,16 @@ namespace Thry.ThryEditor
         public static Color Skin(int dark, int light) => Hex(EditorGUIUtility.isProSkin ? dark : light);
         private static Color Hex(int rgb) => new Color(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f);
 
-        private static GUIStyle _header, _nestedHeader, _section, _subsection, _button, _muted, _toolbarPopup;
+        private static GUIStyle _header, _section, _subsection, _button;
         private static bool _dark;
         private static readonly List<StylePair> Fields = new List<StylePair>();
         private static readonly List<Texture2D> Textures = new List<Texture2D>();
         private static int _depth;
 
         public static GUIStyle Header { get { Ensure(); return _header; } }
-        public static GUIStyle NestedHeader { get { Ensure(); return _nestedHeader; } }
         public static GUIStyle Section { get { Ensure(); return _section; } }
         public static GUIStyle Subsection { get { Ensure(); return _subsection; } }
         public static GUIStyle Button { get { Ensure(); return _button; } }
-        public static GUIStyle ToolbarPopup { get { Ensure(); return _toolbarPopup; } }
-        public static GUIStyle MutedLabel { get { Ensure(); return _muted; } }
 
         private static void Ensure()
         {
@@ -58,16 +53,9 @@ namespace Thry.ThryEditor
                 margin = new RectOffset(0, 0, 4, 4), contentOffset = Vector2.zero
             };
             _header.normal.textColor = Text;
-            _nestedHeader = new GUIStyle(EditorStyles.boldLabel) {
-                fontSize = 12, alignment = TextAnchor.MiddleLeft, fixedHeight = SectionHeight,
-                padding = new RectOffset(24, 8, 0, 0), margin = new RectOffset(0, 0, 0, 0), contentOffset = Vector2.zero
-            };
-            _nestedHeader.normal.textColor = Text;
             _section = new GUIStyle(_header) { fontSize = 12, fixedHeight = 0, padding = new RectOffset() };
             _subsection = new GUIStyle(EditorStyles.boldLabel) { alignment = TextAnchor.MiddleLeft, padding = new RectOffset(), fontSize = 11 };
             _subsection.normal.textColor = Text;
-            _muted = new GUIStyle(EditorStyles.miniLabel) { alignment = TextAnchor.MiddleLeft };
-            _muted.normal.textColor = Muted;
 
             var field = RoundedTexture(Input, Border);
             var focus = RoundedTexture(Input, Accent);
@@ -82,8 +70,6 @@ namespace Thry.ThryEditor
             var popup = new GUIStyle(EditorStyles.popup) { fixedHeight = 0, padding = new RectOffset(6, 18, 0, 0), border = new RectOffset(5, 16, 5, 5), alignment = TextAnchor.MiddleLeft };
             SetStates(popup, RoundedTexture(Input, Border, popup: true), RoundedTexture(Surface, Border, popup: true), RoundedTexture(Input, Accent, popup: true));
             Fields.Add(new StylePair(EditorStyles.popup, popup));
-            _toolbarPopup = new GUIStyle(popup) { fixedHeight = 24, padding = new RectOffset(8, 18, 0, 0) };
-            SetStates(_toolbarPopup, RoundedTexture(Surface, Surface, popup: true), RoundedTexture(Hover, Hover, popup: true), RoundedTexture(Surface, Accent, popup: true));
             var toggle = new GUIStyle(EditorStyles.toggle) {
                 fixedWidth = 16, fixedHeight = 16, border = new RectOffset(4, 4, 4, 4),
                 overflow = new RectOffset(), padding = new RectOffset(), margin = new RectOffset(),
@@ -180,55 +166,6 @@ namespace Thry.ThryEditor
         private static float SegmentDistance(Vector2 p, Vector2 a, Vector2 b)
         {
             return Vector2.Distance(p, a + (b - a) * Mathf.Clamp01(Vector2.Dot(p - a, b - a) / (b - a).sqrMagnitude));
-        }
-
-        public static void Fill(Rect rect, Color color, float radius = 5)
-        {
-            if (Event.current.type != EventType.Repaint || rect.width <= 0 || rect.height <= 0) return;
-            GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0, color, Vector4.zero, radius);
-        }
-
-        public static void Panel(Rect rect, Color color, float radius = 5)
-        {
-            Fill(rect, Border, radius);
-            Fill(new Rect(rect.x + 1, rect.y + 1, rect.width - 2, rect.height - 2), color, Mathf.Max(0, radius - 1));
-        }
-
-        internal static void DrawHeader(ShaderGroup group, Rect rect, GUIContent content, GUIStyle style)
-        {
-            bool excluded = SectionEditing.IsExcluded?.Invoke(group) == true;
-            Color surface = excluded ? Excluded : (rect.Contains(Event.current.mousePosition) ? Hover : Surface);
-            if (group.XOffset == 0) Fill(rect, surface, 6);
-            else
-            {
-                Color nested = excluded ? Excluded : rect.Contains(Event.current.mousePosition) ? Hover : NestedSurface;
-                Fill(new Rect(rect.x, rect.y + 1, rect.width, rect.height - 2), nested, 4);
-            }
-            GUI.Label(rect, content, style);
-        }
-
-        internal static void DrawSection(ShaderGroup group, Rect rect, bool expanded, bool hasHeader, bool subsection)
-        {
-            if (expanded) Fill(rect, Body, 5);
-            if (!hasHeader) return;
-            var header = new Rect(rect.x, rect.y, rect.width, SectionHeight);
-            bool excluded = SectionEditing.IsExcluded?.Invoke(group) == true;
-            Color color = excluded ? Excluded : header.Contains(Event.current.mousePosition) ? Hover : NestedSurface;
-            Fill(new Rect(header.x, header.y + 1, header.width, header.height - 2), color, 4);
-            if (expanded) Fill(new Rect(rect.x + 1, rect.y + SectionHeight, 1, Mathf.Max(0, rect.height - SectionHeight)), Border, 0);
-        }
-
-        internal static void Chevron(Rect rect, bool expanded)
-        {
-            if (Event.current.type != EventType.Repaint) return;
-            var old = Handles.color;
-            Handles.color = Muted * GUI.color;
-            float x = rect.x + 10, y = rect.center.y;
-            var a = expanded ? new Vector3(x - 3, y - 1) : new Vector3(x - 1, y - 3);
-            var b = expanded ? new Vector3(x, y + 2) : new Vector3(x + 2, y);
-            var c = expanded ? new Vector3(x + 3, y - 1) : new Vector3(x - 1, y + 3);
-            Handles.DrawAAPolyLine(1.6f, a, b, c);
-            Handles.color = old;
         }
     }
 }

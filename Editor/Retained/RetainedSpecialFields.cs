@@ -661,10 +661,14 @@ namespace Thry.ThryEditor
     }
 
     // Edits a Curve4 Bezier (start, handle at 1/3, handle at 2/3, end). Handles are drawn at a fixed length along
-    // the curve's direction; dragging one sets its height within Curve4Drawer's handle range.
+    // the curve's direction; dragging one sets its height within the handle range.
     internal sealed class RetainedCurve4 : VisualElement
     {
         const float HandleLength = 32;
+        // Handles may reach past the 0-1 box for ends up to 9x as steep as a straight line; the shader clamps
+        // the part of the curve that leaves the box.
+        const float HandleMin = -2, HandleMax = 3;
+        static float ClampHandle(float height) => Mathf.Clamp(height, HandleMin, HandleMax);
         // Parts: start point, start handle, end handle, end point.
         static readonly int[] PartMasks = { 1 | 2, 2, 4, 4 | 8 };
         static readonly CustomStyleProperty<float> Stroke = new CustomStyleProperty<float>("--ramp-stroke-width");
@@ -714,7 +718,7 @@ namespace Thry.ThryEditor
                 {
                     float value = Mathf.Clamp01(1 - (mouse.y - PlotInset) / PlotHeight);
                     int point = _part == 0 ? 0 : 3, handle = _part == 0 ? 1 : 2;
-                    v[point] = value; v[handle] = Drawers.Curve4Drawer.ClampHandle(_original[handle] + value - _original[point]);
+                    v[point] = value; v[handle] = ClampHandle(_original[handle] + value - _original[point]);
                 }
                 _write(v, PartMasks[_part]); MarkDirtyRepaint(); e.StopPropagation();
             });
@@ -733,9 +737,9 @@ namespace Thry.ThryEditor
                 }
                 if (_part >= 0 || (e.keyCode != KeyCode.UpArrow && e.keyCode != KeyCode.DownArrow)) return;
                 var v = _read(); float step = (e.shiftKey ? .1f : e.altKey ? .001f : .01f) * (e.keyCode == KeyCode.UpArrow ? 1 : -1);
-                v[_focusedPart] = _focusedPart == 1 || _focusedPart == 2 ? Drawers.Curve4Drawer.ClampHandle(v[_focusedPart] + step) : Mathf.Clamp01(v[_focusedPart] + step);
-                if (_focusedPart == 0) v[1] = Drawers.Curve4Drawer.ClampHandle(v[1] + step);
-                if (_focusedPart == 3) v[2] = Drawers.Curve4Drawer.ClampHandle(v[2] + step);
+                v[_focusedPart] = _focusedPart == 1 || _focusedPart == 2 ? ClampHandle(v[_focusedPart] + step) : Mathf.Clamp01(v[_focusedPart] + step);
+                if (_focusedPart == 0) v[1] = ClampHandle(v[1] + step);
+                if (_focusedPart == 3) v[2] = ClampHandle(v[2] + step);
                 _write(v, PartMasks[_focusedPart]); MarkDirtyRepaint(); e.StopPropagation(); e.PreventDefaultHandling();
             });
         }
@@ -757,8 +761,8 @@ namespace Thry.ThryEditor
         {
             Vector2 key = end ? Point(1, v.w) : Point(0, v.x);
             float run = (end ? key.x - mouse.x : mouse.x - key.x) / PlotWidth, rise = (key.y - mouse.y) / PlotHeight;
-            return run > 1e-4f ? Drawers.Curve4Drawer.ClampHandle((end ? v.w : v.x) + rise / run / 3)
-                : rise >= 0 ? Drawers.Curve4Drawer.HandleMax : Drawers.Curve4Drawer.HandleMin;
+            return run > 1e-4f ? ClampHandle((end ? v.w : v.x) + rise / run / 3)
+                : rise >= 0 ? HandleMax : HandleMin;
         }
         private void Draw(MeshGenerationContext context)
         {

@@ -136,34 +136,4 @@ namespace Thry.ThryEditor
             catch (TargetInvocationException e) when (e.InnerException is ExitGUIException) { throw e.InnerException; }
         }
     }
-
-    public partial class GradientEditor
-    {
-        public void CreateGUI()
-        {
-            if (_data == null || _prop == null) return;
-            var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
-            root.AddToClassList("thry-dialog"); root.AddToClassList("thry-gradient-editor");
-            minSize = new Vector2(320, _show_texture_options ? 310 : 180);
-            var title = new Label(RetainedText.Get("gradient", "Gradient")); title.AddToClassList("thry-title"); root.Add(title);
-            var field = new ThryGradientField { value = _data.Gradient }; field.AddToClassList("thry-gradient-preview"); root.Add(field);
-            field.RegisterValueChangedCallback(e => { _data.Gradient = e.newValue; UpdateGradientPreviewTexture(); });
-            if (_show_texture_options)
-            {
-                var size = new Vector2IntField(RetainedText.Get("texture_size", "Texture size")) { value = new Vector2Int(textureSettings.width, textureSettings.height) }; root.Add(size);
-                size.RegisterValueChangedCallback(e => { textureSettings.width = Mathf.Clamp(e.newValue.x, 1, 8192); textureSettings.height = Mathf.Clamp(e.newValue.y, 1, 8192); size.SetValueWithoutNotify(new Vector2Int(textureSettings.width, textureSettings.height)); UpdateGradientPreviewTexture(); });
-                var filter = new DropdownField(RetainedText.Get("filtering", "Filtering"), Enum.GetNames(typeof(FilterMode)).Select(name => RetainedText.EnumCaption(typeof(FilterMode), name)).ToList(), (int)textureSettings.filterMode); RetainedWindow.Dropdown(filter); root.Add(filter);
-                filter.RegisterValueChangedCallback(e => { textureSettings.filterMode = (FilterMode)filter.index; UpdateGradientPreviewTexture(); });
-                var wrap = new DropdownField(RetainedText.Get("wrap", "Wrap"), Enum.GetNames(typeof(TextureWrapMode)).Select(name => RetainedText.EnumCaption(typeof(TextureWrapMode), name)).ToList(), (int)textureSettings.wrapMode); RetainedWindow.Dropdown(wrap); root.Add(wrap);
-                wrap.RegisterValueChangedCallback(e => { textureSettings.wrapMode = (TextureWrapMode)wrap.index; UpdateGradientPreviewTexture(); });
-                var aniso = new SliderInt(RetainedText.Get("anisotropy", "Anisotropic filtering"), 0, 16) { value = textureSettings.ansioLevel, showInputField = true }; root.Add(aniso);
-                aniso.RegisterValueChangedCallback(e => { textureSettings.ansioLevel = e.newValue; UpdateGradientPreviewTexture(); });
-            }
-            var actions = new VisualElement(); actions.AddToClassList("thry-components"); actions.AddToClassList("thry-dialog-actions"); root.Add(actions);
-            var save = new Button(Close) { text = RetainedText.Get("save_and_close", "Save and close") }; save.AddToClassList("thry-primary-action"); actions.Add(save);
-            Action discard = () => { _prop.textureValue = _previous_property_texture; _gradient_has_been_edited = false; Close(); };
-            actions.Add(new Button(discard) { text = RetainedText.Get("discard", "Discard") });
-            RetainedWindow.Shortcuts(root, discard);
-        }
-    }
 }

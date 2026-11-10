@@ -16,7 +16,7 @@ namespace Thry.ThryEditor
         public static GUIStyle Modules => Get("puzzle");
         public static GUIStyle SectionLock => Get("lightning");
 
-        // Resolve during OnGUI so GUIStyles and imported textures are available.
+        // Resolved on use so imported textures are available.
         private static GUIStyle Get(string name)
         {
             string resource = "ThryToolbar/" + name + (EditorGUIUtility.isProSkin ? "-dark" : "-light");

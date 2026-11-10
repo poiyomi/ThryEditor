@@ -360,22 +360,6 @@ namespace Thry.ThryEditor.ShaderTranslations
             (t.MatchTargetShaderBasedOnRegex ? Regex.IsMatch(target.name, t.TargetShaderRegex) : t.TargetShader == target.name));
         }
 
-        public static void SuggestedTranslationButtonGUI(ShaderEditor editor)
-        {
-            if(editor.SuggestedTranslationDefinition != null)
-            {
-                GUILayoutUtility.GetRect(0, 5);
-                Color backup = GUI.backgroundColor;
-                GUI.backgroundColor = Color.green;
-                if(GUILayout.Button($"Apply {editor.SuggestedTranslationDefinition.Name}"))
-                {
-                    editor.ApplySuggestedTranslationDefinition();
-                }
-                GUI.backgroundColor = backup;
-                GUILayoutUtility.GetRect(0, 5);
-            }
-        }
-
         [MenuItem("Assets/Thry/Shaders/New Translator Definition", priority = 380)]
         static void CreateNewTranslationDefinition()
         {

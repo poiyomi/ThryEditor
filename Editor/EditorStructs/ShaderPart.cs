@@ -12,115 +12,6 @@ using static UnityEditor.MaterialProperty;
 
 namespace Thry.ThryEditor
 {
-    public class InputEvent
-    {
-        public bool HadMouseDownRepaint;
-        public bool HadMouseDown;
-        int _button;
-        bool _MouseClick;
-        bool _MouseLeftClickIgnoreLocked;
-        bool _MouseRightClickIgnoreLocked;
-        bool _MouseLeftClick;
-        bool _MouseRightClick;
-
-        public bool is_alt_down;
-
-        public bool is_drag_drop_event;
-        public bool is_drop_event;
-
-        public Vector2 mouse_position;
-        public Vector2 screen_mouse_position;
-
-        public EventType OriginalEventType;
-
-        public void Update(bool isLockedMaterial)
-        {
-            Event e = Event.current;
-            _button = e.button;
-            _MouseClick = e.type == EventType.MouseDown && !isLockedMaterial;
-            _MouseLeftClick = _MouseClick && _button == 0;
-            _MouseRightClick = _MouseClick && _button == 1;
-            _MouseLeftClickIgnoreLocked = e.type == EventType.MouseDown && _button == 0;
-            _MouseRightClickIgnoreLocked = e.type == EventType.MouseDown && _button == 1;
-            if (_MouseClick) HadMouseDown = _MouseClick;
-            if (HadMouseDown && e.type == EventType.Repaint)
-            {
-                HadMouseDownRepaint = true;
-                HadMouseDown = false;
-            }
-            is_alt_down = e.alt;
-            mouse_position = e.mousePosition;
-            screen_mouse_position = GUIUtility.GUIToScreenPoint(e.mousePosition);
-            is_drop_event = e.type == EventType.DragPerform;
-            is_drag_drop_event = is_drop_event || e.type == EventType.DragUpdated;
-            OriginalEventType = e.type;
-        }
-
-        public void Use()
-        {
-            _MouseClick = false;
-            _MouseLeftClick = false;
-            _MouseRightClick = false;
-            Event.current.Use();
-        }
-
-        // This is cursed. I need to look over this whole system at some point
-        public void PowerUse()
-        {
-            Use();
-            _MouseRightClickIgnoreLocked = false;
-            _MouseLeftClickIgnoreLocked = false;
-        }
-
-        public bool LeftClick_IgnoreLocked
-        {
-            get { return _MouseLeftClickIgnoreLocked && Event.current.type != EventType.Used; }
-        }
-
-        public bool RightClick_IgnoreLocked
-        {
-            get { return _MouseRightClickIgnoreLocked && Event.current.type != EventType.Used; }
-        }
-
-        public bool LeftClick_IgnoreLockedAndUnityUses
-        {
-            get { return _MouseLeftClickIgnoreLocked; }
-        }
-
-        public bool RightClick_IgnoreLockedAndUnityUses
-        {
-            get { return _MouseRightClickIgnoreLocked; }
-        }
-
-        public bool Click
-        {
-            get { return _MouseClick && Event.current.type != EventType.Used; }
-        }
-    }
-
-    public class XOffsetManager
-    {
-        private int _xOffset;
-        private int _tempXOffset = -1;
-        public XOffsetManager(int xOffset)
-        {
-            _xOffset = xOffset;
-        }
-        public static implicit operator int(XOffsetManager xOffsetManager)
-        {
-            if (xOffsetManager._tempXOffset != -1) return xOffsetManager._tempXOffset;
-            return xOffsetManager._xOffset;
-        }
-        public void SetTemporaryOffset(int value)
-        {
-            _tempXOffset = value;
-        }
-        public void ResetTemporaryOffset()
-        {
-            _tempXOffset = -1;
-        }
-    }
-    
     public abstract class ShaderPart
     {
         public ShaderPart Parent { private set; get; }
@@ -128,7 +19,7 @@ namespace Thry.ThryEditor
         internal void SetRetainedProperty(MaterialProperty value) { MaterialProperty = value; }
         public ShaderEditor MyShaderUI { protected set; get; }
         
-        protected GUIContent _content, _contentNonDefault;
+        protected GUIContent _content;
         internal string UnmarkedLabel => _content?.text ?? "";
         public GUIContent Content 
         {
@@ -138,34 +29,16 @@ namespace Thry.ThryEditor
             }
             get
             {
-                if (Config.Instance.showStarNextToNonDefaultProperties && !IsPropertyValueDefault)
-                {
-                    if (_contentNonDefault == null)
-                    {
-                        if (_content == null || string.IsNullOrWhiteSpace(_content.text))
-                            _contentNonDefault = GUIContent.none;
-                        else
-                            _contentNonDefault = new GUIContent(_content.text + '*');
-                    }
-                    return _contentNonDefault;
-                }
                 return _content;
             }
         }
-        public BetterTooltips.Tooltip Tooltip { protected set; get; }
-        /// <summary>
-        /// The plain text behind <see cref="Tooltip"/>. IMGUI draws the tooltip itself, retained
-        /// inspectors hand the text to UI Toolkit, so both need to read the same source.
-        /// </summary>
         public string TooltipText { protected set; get; } = "";
-        public System.Object PropertyData { protected set; get; } = null;
 
         public string  PropertyIdentifier { protected set; get; }
         public string CustomStringTagID { protected set; get; } = null;
 
         public bool IsHidden { protected set; get; } = false;
         internal void SetHidden(bool hidden) { IsHidden = hidden; }
-        public bool IsPreset { protected set; get; } = false;
 
         public bool IsExemptFromLockedDisabling { protected set; get; } = false;
         public bool IsAnimatable { protected set; get; } = true;
@@ -173,14 +46,10 @@ namespace Thry.ThryEditor
         public bool IsRenaming { protected set; get; } = false;
         bool CanRename => MaterialProperty != null && ShaderOptimizer.CanRename(MaterialProperty.name);
 
-        public bool DoReferencePropertiesExist { protected set; get; } = false;
-        public bool DoesReferencePropertyExist { protected set; get; } = false;
-
         public int ThryPropertyIndex { protected set; get; } = -1;
         public int ShaderPropertyId { protected set; get; } = -1;
         public int ShaderPropertyIndex { protected set; get; } = -1;
         private string[] ShaderPropertyAttributes = null;
-        protected string[] InitializedPropertyAttributes => ShaderPropertyAttributes;
         internal RetainedShaderDeclarations.Declaration RetainedDeclaration { get; private set; }
         
         /// <summary>
@@ -191,7 +60,7 @@ namespace Thry.ThryEditor
         public Shader MyShader { protected set; get; } = null;
 
         // Cross editing gives each owner set its own MaterialEditor, and creating one serializes every
-        // owner. Only IMGUI drawing and a few menu actions use it, so it is created on first use.
+        // owner. Only a few menu actions use it, so it is created on first use.
         private MaterialEditor _myMaterialEditor;
         private UnityEngine.Object[] _myMaterialEditorTargets;
         public MaterialEditor MyMaterialEditor
@@ -209,8 +78,10 @@ namespace Thry.ThryEditor
         }
         internal void UseMaterialEditorFor(UnityEngine.Object[] targets) { _myMaterialEditor = null; _myMaterialEditorTargets = targets; }
 
-        protected bool has_not_searchedFor = false; //used for property search
-        internal bool RetainedVisible => !SectionEditing.IsHidden(this) && !has_not_searchedFor &&
+        // A part that has nothing to show draws no chrome for itself. Only groups can be empty in this
+        // sense, so the base answer is always false; see ShaderGroup.HasDrawableContent.
+        protected virtual bool SkipDrawBecauseEmpty => false;
+        internal bool RetainedVisible => !SectionEditing.IsHidden(this) &&
             (SectionEditing.IsEditing(this) || (!SkipDrawBecauseEmpty && Options.condition_show.Test()));
         internal bool RetainedShownFor(Material material)
         {
@@ -219,12 +90,7 @@ namespace Thry.ThryEditor
             return true;
         }
 
-        // True when this property was drawn inline with an explicit rect and no label
-        protected bool _drawnAsLabellessInline = false;
-        protected bool _doEditLocale = false;
-
         GenericMenu _contextMenu;
-        public XOffsetManager XOffset { private set; get; }
 
         protected string _optionsRaw;
         protected bool _doOptionsNeedInitilization = true;
@@ -427,24 +293,6 @@ namespace Thry.ThryEditor
             IsExemptFromLockedDisabling = b;
         }
 
-        protected void SetReferenceProperty(string s)
-        {
-            Options.reference_property = s;
-            this.DoesReferencePropertyExist = Options.reference_property != null;
-        }
-
-        protected void SetReferenceProperties(string[] properties)
-        {
-            Options.reference_properties = properties;
-            this.DoReferencePropertiesExist = Options.reference_properties != null && Options.reference_properties.Length > 0;
-        }
-
-        protected void SetTooltip(string tooltip)
-        {
-            this.TooltipText = tooltip ?? "";
-            this.Tooltip.SetText(tooltip);
-        }
-
         public void UpdatedMaterialPropertyReference()
         {
             if(ThryPropertyIndex != -1)
@@ -468,37 +316,23 @@ namespace Thry.ThryEditor
             if (ShaderPropertyAttributes == null) return false;
             return ShaderPropertyAttributes.Contains(attribute, StringComparer.OrdinalIgnoreCase);
         }
-
-        public ShaderProperty TryFetchReferenceProperty()
-        {
-            if (string.IsNullOrWhiteSpace(Options.reference_property) == false && MyShaderUI.PropertyDictionary.TryGetValue(Options.reference_property, out ShaderProperty referenceProp))
-            {
-                return referenceProp;
-            }
-            return null;
-        }
 #endregion
         #region Initialization
-        public ShaderPart(string propertyIdentifier, int xOffset, string displayName, string tooltip, ShaderEditor shaderEditor)
+        public ShaderPart(string propertyIdentifier, string displayName, string tooltip, ShaderEditor shaderEditor)
         {
             this._optionsRaw = null;
             this.MyShaderUI = shaderEditor;
             this.PropertyIdentifier = propertyIdentifier;
-            this.XOffset = new XOffsetManager(xOffset);
             this.Content = new GUIContent(displayName);
             this.TooltipText = tooltip ?? "";
-            this.Tooltip = new BetterTooltips.Tooltip(tooltip);
-            this.IsPreset = shaderEditor.IsPresetEditor && Presets.IsPreset(shaderEditor.Materials[0], this);
         }
 
-        public ShaderPart(ShaderEditor shaderEditor, MaterialProperty prop, int xOffset, string displayName, string optionsRaw, int propertyIndex)
+        public ShaderPart(ShaderEditor shaderEditor, MaterialProperty prop, string displayName, string optionsRaw, int propertyIndex)
         {
             this._optionsRaw = optionsRaw;
             this.MyShaderUI = shaderEditor;
             this.MaterialProperty = prop;
-            this.XOffset = new XOffsetManager(xOffset);
             this.Content = new GUIContent(displayName);
-            this.IsPreset = shaderEditor.IsPresetEditor && Presets.IsPreset(shaderEditor.Materials[0], this);
 
             if (MaterialProperty == null)
                 return;
@@ -610,8 +444,7 @@ namespace Thry.ThryEditor
         }
 
         /// <summary>
-        /// Runs the one-time option setup. IMGUI does this on a part's first <see cref="Draw"/>, but
-        /// retained inspectors build visual elements and never draw a part, so they call this instead.
+        /// Runs the one-time option setup.
         /// </summary>
         internal void EnsureOptionsInitialized()
         {
@@ -625,11 +458,6 @@ namespace Thry.ThryEditor
             // A part built in code carries its tooltip from the constructor, one built from a shader
             // property carries it in `tooltip:`. The shader wins whenever it names one.
             if (!string.IsNullOrEmpty(Options.tooltip)) this.TooltipText = Options.tooltip;
-            this.Tooltip = new BetterTooltips.Tooltip(this.TooltipText);
-            this.DoReferencePropertiesExist = Options.reference_properties != null && Options.reference_properties.Length > 0;
-            this.DoesReferencePropertyExist = Options.reference_property != null;
-            this.XOffset.ResetTemporaryOffset();
-            this.XOffset = new XOffsetManager(Options.offset + XOffset);
             if(MaterialProperty == null) return;
             RetainedDeclaration = RetainedShaderDeclarations.Get(MyShader, ShaderPropertyIndex);
             this.ShaderPropertyAttributes = RetainedDeclaration.CopyAttributes();
@@ -750,236 +578,6 @@ namespace Thry.ThryEditor
         }
 
 #endregion
-#region Drawing
-
-        // A part that has nothing to show draws no chrome for itself. Only groups can be empty in this
-        // sense, so the base answer is always false; see ShaderGroup.HasDrawableContent.
-        protected virtual bool SkipDrawBecauseEmpty => false;
-
-        bool hasAddedDisabledGroup = false;
-        public void Draw(Rect? rect = null, GUIContent content = null, bool useEditorIndent = false, bool isInHeader = false)
-        {
-            if (_doOptionsNeedInitilization)
-                InitOptions();
-
-            bool editingSection = SectionEditing.IsEditing(this);
-            if (SectionEditing.IsHidden(this))
-                return;
-
-            if (has_not_searchedFor)
-                return;
-
-            if (SkipDrawBecauseEmpty && !editingSection)
-                return;
-
-            if (DrawingData.IsEnabled && Options.condition_enable != null)
-                hasAddedDisabledGroup = !Options.condition_enable.Test();
-
-            if (hasAddedDisabledGroup)
-            {
-                DrawingData.IsEnabled = !hasAddedDisabledGroup;
-                EditorGUI.BeginDisabledGroup(true);
-            }
-
-            if (editingSection || Options.condition_show.Test())
-            {
-                GUILocaleEditing(isInHeader);
-                PerformDraw(content, rect, useEditorIndent, isInHeader);
-            }
-                
-
-            if (hasAddedDisabledGroup)
-            {
-                hasAddedDisabledGroup = false;
-                DrawingData.IsEnabled = true;
-                EditorGUI.EndDisabledGroup();
-            }
-        }
-
-        protected virtual void GUILocaleEditing(bool isInHeader){}
-        
-        private void PerformDraw(GUIContent content, Rect? rect, bool useEditorIndent, bool isInHeader = false)
-        {
-            if (content == null) content = this.Content;
-            DrawingData.IconsPositioningCount = 0;
-
-            UpdatedMaterialPropertyReference();
-
-            // Every PerformDraw owns its label-color state for the duration of DrawInternal:
-            //   * animated → apply green/amber tint
-            //   * not animated → reset to the captured baseline so a tinted parent (e.g. an
-            //     animated ShaderTextureProperty wrapping reference sub-properties) doesn't bleed
-            //     its color into us. On exit we always restore exactly what was set on entry, so
-            //     the parent's tint resumes for its remaining inline draws (Tiling/Offset, etc.).
-            AnimatedLabelTint tint = AnimatedLabelTint.Begin(IsAnimatable && IsAnimated, IsRenaming);
-            try
-            {
-                DrawInternal(content, rect, useEditorIndent, isInHeader);
-            }
-            finally
-            {
-                tint.End();
-            }
-
-            CalculateIconPositions();
-            HandleRightClickToggles(isInHeader);
-
-            if (IsAnimatable && IsAnimated) DrawLockedAnimated();
-            if (IsPreset) DrawPresetProperty();
-
-            Tooltip.ConditionalDraw(DrawingData.TooltipCheckRect);
-
-            ExecuteClickEvents();
-        }
-
-        private struct AnimatedLabelTint
-        {
-            StyleColors _label, _foldout;
-
-            struct StyleColors
-            {
-                public Color normal, onNormal, hover, onHover, focused, onFocused, active, onActive;
-
-                public static StyleColors Capture(GUIStyle s) => new StyleColors
-                {
-                    normal = s.normal.textColor,
-                    onNormal = s.onNormal.textColor,
-                    hover = s.hover.textColor,
-                    onHover = s.onHover.textColor,
-                    focused = s.focused.textColor,
-                    onFocused = s.onFocused.textColor,
-                    active = s.active.textColor,
-                    onActive = s.onActive.textColor,
-                };
-
-                public void Restore(GUIStyle s)
-                {
-                    s.normal.textColor = normal;
-                    s.onNormal.textColor = onNormal;
-                    s.hover.textColor = hover;
-                    s.onHover.textColor = onHover;
-                    s.focused.textColor = focused;
-                    s.onFocused.textColor = onFocused;
-                    s.active.textColor = active;
-                    s.onActive.textColor = onActive;
-                }
-
-                public static void Apply(GUIStyle s, Color c)
-                {
-                    s.normal.textColor = c;
-                    s.onNormal.textColor = c;
-                    s.hover.textColor = c;
-                    s.onHover.textColor = c;
-                    s.focused.textColor = c;
-                    s.onFocused.textColor = c;
-                    s.active.textColor = c;
-                    s.onActive.textColor = c;
-                }
-            }
-
-            // Baseline (un-tinted) state captured once when no tint is active. Used to reset
-            // EditorStyles for nested non-animated draws so a tinted parent property doesn't
-            // bleed its color into independent sub-properties (texture reference props, etc.).
-            static StyleColors s_baselineLabel;
-            static StyleColors s_baselineFoldout;
-            static int s_depth;
-
-            public static AnimatedLabelTint Begin(bool isAnimated, bool isRenaming)
-            {
-                if (s_depth == 0)
-                {
-                    s_baselineLabel = StyleColors.Capture(EditorStyles.label);
-                    s_baselineFoldout = StyleColors.Capture(EditorStyles.foldout);
-                }
-                s_depth++;
-
-                var t = new AnimatedLabelTint
-                {
-                    _label = StyleColors.Capture(EditorStyles.label),
-                    _foldout = StyleColors.Capture(EditorStyles.foldout),
-                };
-                if (isAnimated)
-                {
-                    Color color = (isRenaming ? Styles.animatedRenamedIndicatorStyle : Styles.animatedIndicatorStyle).normal.textColor;
-                    StyleColors.Apply(EditorStyles.label, color);
-                    StyleColors.Apply(EditorStyles.foldout, color);
-                }
-                else
-                {
-                    s_baselineLabel.Restore(EditorStyles.label);
-                    s_baselineFoldout.Restore(EditorStyles.foldout);
-                }
-                return t;
-            }
-
-            public void End()
-            {
-                _label.Restore(EditorStyles.label);
-                _foldout.Restore(EditorStyles.foldout);
-                s_depth--;
-            }
-        }
-
-        private void CalculateIconPositions()
-        {
-            if (this is ShaderTextureProperty == false)
-            {
-                DrawingData.TooltipCheckRect = DrawingData.LastGuiObjectRect;
-                if (DrawingData.IconsPositioningCount == 0)
-                {
-                    DrawingData.IconsPositioningCount = 1;
-                    // Anchor to the top single-line of where the property's label actually sits.
-                    // When Unity (not Thry) renders stacked decorators inside the rect, the label
-                    // is pushed down by the decorator height — GetLabelYOffsetWithinRect reports
-                    // that offset so the A/RA icon stays aligned with the label text.
-                    float labelYOffset = GetLabelYOffsetWithinRect();
-                    float labelLineHeight = Mathf.Min(DrawingData.LastGuiObjectRect.height - labelYOffset, EditorGUIUtility.singleLineHeight);
-                    DrawingData.IconsPositioningHeights[0] = DrawingData.LastGuiObjectRect.y + labelYOffset + (labelLineHeight - 16) / 2f;
-                }
-            }
-            if (!_drawnAsLabellessInline)
-                DrawingData.TooltipCheckRect.width = EditorGUIUtility.labelWidth;
-        }
-
-        protected virtual float GetLabelYOffsetWithinRect() => 0f;
-
-        private void ExecuteClickEvents()
-        {
-            if (Event.current.type == EventType.MouseDown && DrawingData.LastGuiObjectRect.Contains(ShaderEditor.Input.mouse_position))
-            {
-                if ((ShaderEditor.Input.is_alt_down && Options.altClick != null)) Options.altClick.Perform(ShaderEditor.Active.Materials);
-                else if (Options.onClick != null) Options.onClick.Perform(ShaderEditor.Active.Materials);
-            }
-        }
-        
-        protected abstract void DrawInternal(GUIContent content, Rect? rect = null, bool useEditorIndent = false, bool isInHeader = false);
-        
-        private void DrawLockedAnimated()
-        {
-            GUIStyle style = IsRenaming ? Styles.animatedRenamedIndicatorStyle : Styles.animatedIndicatorStyle;
-            string text = IsRenaming ? "RA" : "A";
-            for (int i = 0; i < DrawingData.IconsPositioningCount; i++)
-            {
-                Rect r = new Rect(14, DrawingData.IconsPositioningHeights[i], 16, 16);
-                GUI.Label(r, text, style);
-            }
-        }
-
-        private void DrawPresetProperty()
-        {
-            bool animationOnly = Presets.GetPropertyMode(MyShaderUI.Materials[0], this) == Presets.PropertyMode.AnimationOnly;
-            var content = animationOnly
-                ? new GUIContent("PA", "Preset: animation only. Keeps each material's value.")
-                : new GUIContent("P", "Is part of preset");
-            var style = animationOnly ? Styles.presetAnimationOnlyIndicatorStyle : Styles.presetIndicatorStyle;
-            for (int i = 0; i < DrawingData.IconsPositioningCount; i++)
-            {
-                Rect r = new Rect(1, DrawingData.IconsPositioningHeights[i], 12, 16);
-                GUI.Label(r, content, style);
-            }
-        }
-
-#endregion
 #region ContextMenu
         private Material[] PropertyContextTargets()
         {
@@ -1023,67 +621,6 @@ namespace Thry.ThryEditor
             }
             return _contextMenu;
         }
-        protected virtual void HandleRightClickToggles(bool isInHeader)
-        {
-            if (this is ShaderGroup) return;
-            if (DrawingData.TooltipCheckRect.y < 25) return; // Happens in Layout event, with some dynamic properties
-            if (ShaderEditor.Input.RightClick_IgnoreLockedAndUnityUses && ShaderEditor.Input.OriginalEventType != EventType.Layout && DrawingData.TooltipCheckRect.Contains(Event.current.mousePosition))
-            {
-                Event.current.Use();
-                //Context menu
-                //Show context menu, if not open.
-                //If locked material only show menu for animated materials. Only show data retieving options in locked state
-                if (!ShaderEditor.Active.IsLockedMaterial || IsAnimated)
-                {
-                    _contextMenu = new GenericMenu();
-                    if(ShaderEditor.Active.Locale.EditInUI)
-                    {
-                        _contextMenu.AddItem(new GUIContent("Edit Text"), false, () => { _doEditLocale = !_doEditLocale; });
-                        _contextMenu.AddSeparator("");
-                    }
-                    if (IsAnimatable && !ShaderEditor.Active.IsLockedMaterial)
-                    {
-                        _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => { SetAnimated(!IsAnimated, false); });
-                        if (CanRename)
-                            _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => { SetAnimated(true, !IsRenaming); });
-                        _contextMenu.AddItem(new GUIContent("Locking Explanation"), false, () => { Application.OpenURL("https://www.poiyomi.com/general/locking"); });
-                        _contextMenu.AddSeparator("");
-                    }
-                    if (ShaderEditor.Active.IsPresetEditor)
-                    {
-                        AddPresetMenu(_contextMenu);
-                        if (MaterialProperty != null) _contextMenu.AddSeparator("");
-                    }
-
-                    // Null-check against a valid MaterialProperty. Otherwise, a NullReferenceException would be thrown.
-                    if (MaterialProperty != null)
-                    {
-                        _contextMenu.AddItem(new GUIContent("Copy Property Name"), false, () => { EditorGUIUtility.systemCopyBuffer = MaterialProperty.name; });
-                        _contextMenu.AddItem(new GUIContent("Copy Animated Property Name"), false, () => { EditorGUIUtility.systemCopyBuffer = GetAnimatedPropertyName(); });
-                        _contextMenu.AddItem(new GUIContent("Copy Animated Property Path"), false, CopyPropertyPath);
-                        _contextMenu.AddItem(new GUIContent("Copy Property as Keyframe"), false, CopyPropertyAsKeyframe);
-                        if (IsAnimationWindowRecording()) _contextMenu.AddItem(new GUIContent("Add Keyframe to Animation"), false, AddKeyToAnimationClip);
-                        bool isLockedInChildren = false;
-                        bool isLockedByAncestor = false;
-                        bool isOverriden = true;
-                        var targets = PropertyContextTargets();
-                        foreach (Material target in targets)
-                        {
-                            if (target == null) continue;
-                            int nameId = Shader.PropertyToID(MaterialProperty.name);
-                            isLockedInChildren |= target.IsPropertyLocked(nameId);
-                            isLockedByAncestor |= target.IsPropertyLockedByAncestor(nameId);
-                            isOverriden &= target.IsPropertyOverriden(nameId);
-                        }
-                        DoVariantMenuStuff(_contextMenu, isOverriden, isLockedByAncestor, isLockedInChildren, targets, true);
-                    }
-                    if (_contextMenu.GetItemCount() > 0) _contextMenu.ShowAsContext();
-                }
-            }
-        }
-
-        // static Type s_PropertyData = typeof(MaterialProperty).GetNestedType("PropertyData", BindingFlags.NonPublic);
-        // static MethodInfo s_HandleApplyRevert = s_PropertyData.GetMethod("HandleApplyRevert", BindingFlags.NonPublic | BindingFlags.Static);
 
         void DoVariantMenuStuff(GenericMenu menu, bool overriden, bool lockedByAncestor, bool isLockedInChildren, Material[] targets, bool allowLocking)
         {
@@ -1355,7 +892,6 @@ namespace Thry.ThryEditor
         {
             Undo.RecordObjects(MyShaderUI.Materials, "Change preset contents");
             Presets.SetPropertyMode(MyShaderUI.Materials[0], this, mode);
-            IsPreset = mode != Presets.PropertyMode.Excluded;
             ShaderEditor.RepaintActive();
         }
 
@@ -1688,8 +1224,6 @@ namespace Thry.ThryEditor
                 }
             RenderingPresets.MatchFallbackAfterPreset(this, targets);
         }
-
-        public abstract bool Search(string searchTerm, List<ShaderGroup> foundHeaders, bool isParentInSearch = false);
 #endregion
     }
     

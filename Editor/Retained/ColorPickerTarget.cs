@@ -7,9 +7,8 @@ using UnityEngine;
 namespace Thry.ThryEditor
 {
     /// <summary>
-    /// What a color picker or eyedropper session edits: a material color row, a plain color field,
-    /// or an IMGUI color control. The picker owns the editable state; the target owns writing,
-    /// restoring and undo.
+    /// What a color picker or eyedropper session edits: a material color row or a plain color field.
+    /// The picker owns the editable state; the target owns writing, restoring and undo.
     /// </summary>
     internal interface IColorPickerTarget
     {

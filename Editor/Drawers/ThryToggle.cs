@@ -8,8 +8,6 @@ namespace Thry.ThryEditor.Drawers
     public class ThryToggleDrawer : MaterialPropertyDrawer
     {
         public string keyword;
-        private bool isFirstGUICall = true;
-        public bool left = false;
         private bool hasKeyword = false;
 
         public ThryToggleDrawer()
@@ -19,16 +17,14 @@ namespace Thry.ThryEditor.Drawers
         //the reason for weird string thing here is that you cant have bools as params for drawers
         public ThryToggleDrawer(string keywordLeft)
         {
-            if (keywordLeft.Equals("true", StringComparison.OrdinalIgnoreCase)) left = true;
-            else if (keywordLeft.Equals("false", StringComparison.OrdinalIgnoreCase)) left = false;
-            else keyword = keywordLeft;
+            if (!keywordLeft.Equals("true", StringComparison.OrdinalIgnoreCase) && !keywordLeft.Equals("false", StringComparison.OrdinalIgnoreCase))
+                keyword = keywordLeft;
             hasKeyword = keyword != null;
         }
 
         public ThryToggleDrawer(string keyword, string left)
         {
             this.keyword = keyword;
-            this.left = left.Equals("true", StringComparison.OrdinalIgnoreCase);
             hasKeyword = keyword != null;
         }
 
@@ -36,31 +32,6 @@ namespace Thry.ThryEditor.Drawers
         {
             if ((prop.targets[0] as Material).IsLocked()) return;
             SetKeywordInternal(prop, on, "_ON");
-        }
-
-        protected void CheckKeyword(MaterialProperty prop)
-        {
-            if (ShaderEditor.Active != null && (prop.targets[0] as Material).IsLocked()) return;
-            if (prop.hasMixedValue)
-            {
-                foreach (Material m in prop.targets)
-                {
-                    if (m.GetNumber(prop) == 1)
-                        m.EnableKeyword(keyword);
-                    else
-                        m.DisableKeyword(keyword);
-                }
-            }
-            else
-            {
-                foreach (Material m in prop.targets)
-                {
-                    if (prop.GetNumber() == 1)
-                        m.EnableKeyword(keyword);
-                    else
-                        m.DisableKeyword(keyword);
-                }
-            }
         }
 
         static bool IsPropertyTypeSuitable(MaterialProperty prop)
@@ -71,72 +42,16 @@ namespace Thry.ThryEditor.Drawers
             ;
         }
 
-        public override float GetPropertyHeight(MaterialProperty prop, string label, MaterialEditor editor)
-        {
-            if (!IsPropertyTypeSuitable(prop))
-            {
-                return EditorGUIUtility.singleLineHeight * 2.5f;
-            }
-            if (hasKeyword)
-            {
-                CheckKeyword(prop);
-                ShaderProperty.DisallowAnimation();
-            }
-            ShaderProperty.RegisterDrawer(this);
-            return base.GetPropertyHeight(prop, label, editor);
-        }
-
         public override void OnGUI(Rect position, MaterialProperty prop, GUIContent label, MaterialEditor editor)
         {
-            if (!IsPropertyTypeSuitable(prop))
-            {
-                return;
-            }
-            if (isFirstGUICall && !ShaderEditor.Active.IsLockedMaterial)
-            {
-                if (hasKeyword) CheckKeyword(prop);
-                isFirstGUICall = false;
-            }
-            //why is this not inFirstGUICall ? cause it seems drawers are kept between different openings of the shader editor, so this needs to be set again every time the shader editor is reopened for that material
-            
-            // Tolerate the property being absent. Unity hands us properties from the material's current
-            // shader, while the dictionary is rebuilt by the editor separately, so for a frame after a
-            // shader swap the two can disagree - and a locked shader omits every property whose feature
-            // was disabled. Losing the keyword hookup for that frame is recoverable; throwing here takes
-            // down the whole inspector.
-            ShaderProperty shaderProperty;
-            if (ShaderEditor.Active.PropertyDictionary.TryGetValue(prop.name, out shaderProperty))
-                shaderProperty.SetKeyword(keyword);
-
-            if (hasKeyword)
-                ShaderEditor.Active.Editor.EndAnimatedCheck();
-            
+            if (!IsPropertyTypeSuitable(prop)) return;
             EditorGUI.BeginChangeCheck();
-
-            bool value = (Math.Abs(prop.GetNumber()) > 0.001f);
             EditorGUI.showMixedValue = prop.hasMixedValue;
-            position.y += Mathf.Max(0, (position.height - 16) / 2);
-            position.height = Mathf.Min(position.height, 16);
-            if (left) value = EditorGUI.ToggleLeft(position, label, value, Styles.upperLeft_richText);
-            else value = EditorGUI.Toggle(position, label, value);
+            bool value = EditorGUI.Toggle(position, label, Math.Abs(prop.GetNumber()) > 0.001f);
             EditorGUI.showMixedValue = false;
-            if (EditorGUI.EndChangeCheck())
-            {
-                bool wasRecording = UnityHelper.InAnimationRecording();
-                if (hasKeyword && wasRecording)
-                    UnityHelper.StopAnimationRecording();
-                
-                prop.SetNumber(value ? 1.0f : 0.0f);
-                if (hasKeyword)
-                    SetKeyword(prop, value);
-
-                if (hasKeyword && wasRecording)
-                    UnityHelper.StartAnimationRecording();
-            }
-
-            // Paired with the caller's EndAnimatedCheck
-            if (hasKeyword)
-                ShaderEditor.Active.Editor.BeginAnimatedCheck(prop);
+            if (!EditorGUI.EndChangeCheck()) return;
+            prop.SetNumber(value ? 1.0f : 0.0f);
+            if (hasKeyword) SetKeyword(prop, value);
         }
 
         public override void Apply(MaterialProperty prop)

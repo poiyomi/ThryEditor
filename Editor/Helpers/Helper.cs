@@ -39,11 +39,6 @@ namespace Thry.ThryEditor.Helpers
             return (long)(DateTime.UtcNow - UnixEpoch).TotalMilliseconds;
         }
 
-        public static long DatetimeToUnixSeconds(DateTime time)
-        {
-            return (long)(time - UnixEpoch).TotalSeconds;
-        }
-
         public static long GetUnityStartUpTimeStamp()
         {
             return GetCurrentUnixTimestampMillis() - (long)EditorApplication.timeSinceStartup * 1000;

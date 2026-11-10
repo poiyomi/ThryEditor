@@ -9,15 +9,15 @@ namespace Thry.ThryEditor
     ///
     /// Packages built on this UI can't be referenced from here — the dependency only runs the other
     /// way — so they register their buttons instead, usually from an [InitializeOnLoad] static
-    /// constructor. Registered buttons are drawn after the built-in ones.
+    /// constructor. Registered buttons come after the built-in ones.
     /// </summary>
     public static class TopBarButtons
     {
         public class Button
         {
             /// <summary>
-            /// Resolved at draw time rather than stored, so registering can't force the Icons class
-            /// to initialize before Unity's GUI is ready.
+            /// Resolved when the toolbar is built rather than stored, so registering can't load
+            /// textures before Unity's GUI is ready.
             /// </summary>
             public Func<GUIStyle> Icon;
 

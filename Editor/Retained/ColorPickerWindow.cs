@@ -151,7 +151,7 @@ namespace Thry.ThryEditor
 
         void AdoptExternalChange(double now)
         {
-            // An edit after the undo wins; an IMGUI target may still report its old value for a moment.
+            // An edit after the undo wins.
             if (State.Edits != _adoptEdits) { _adoptPending = false; return; }
             if (Target.IsValid && !ThryColorMath.Same(Target.Value, State.Raw))
             {
