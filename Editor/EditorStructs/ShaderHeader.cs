@@ -491,7 +491,7 @@ namespace Thry.ThryEditor
                 int undoGroup = Undo.GetCurrentGroup();
 
                 var defaults = new Material(SectionLock.GetSourceShader(materials[0].shader) ?? materials[0].shader);
-                try { property.CopyDefaultsFrom(defaults); }
+                try { property.CopyFrom(defaults, true); }
                 finally { Object.DestroyImmediate(defaults); }
                 IEnumerable<Material> linked_materials = MaterialLinker.GetLinked(property.MaterialProperty);
                 if (linked_materials != null)
