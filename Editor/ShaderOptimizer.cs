@@ -3707,7 +3707,7 @@ namespace Thry.ThryEditor
                 List<Material> materials = new List<Material>();
                 if (requestedBuildType == VRCSDKRequestedBuildType.Scene)
                 {
-                    if (UnityEngine.Object.FindObjectsOfType(typeof(VRC_SceneDescriptor)) is VRC_SceneDescriptor[] descriptors && descriptors.Length > 0){
+                    if (UnityEngine.Object.FindObjectsByType<VRC_SceneDescriptor>(FindObjectsSortMode.None).Length > 0){
                         // Include inactive objects and animation-swapped materials
                         IEnumerable<GameObject> roots = Enumerable.Range(0, UnityEngine.SceneManagement.SceneManager.sceneCount)
                             .Select(UnityEngine.SceneManagement.SceneManager.GetSceneAt)
