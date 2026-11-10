@@ -1684,7 +1684,6 @@ namespace Thry.ThryEditor
         }
 
         public abstract bool Search(string searchTerm, List<ShaderGroup> foundHeaders, bool isParentInSearch = false);
-        public abstract void FindUnusedTextures(List<string> unusedList, bool isEnabled);
 #endregion
     }
     

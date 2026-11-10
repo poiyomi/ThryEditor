@@ -1408,8 +1408,6 @@ namespace Thry
 
             int unboundTextures = MaterialCleaner.CountUnusedProperties(MaterialCleaner.CleanPropertyType.Texture, Materials);
             int unboundProperties = MaterialCleaner.CountAllUnusedProperties(Materials);
-            List<string> unusedTextures = new List<string>();
-            _mainGroup.FindUnusedTextures(unusedTextures, true);
             if (unboundTextures > 0 && !IsLockedMaterial)
             {
                 menu.AddItem(new GUIContent($"Unbound Textures: {unboundTextures}/List in console"), false, delegate ()
@@ -1424,21 +1422,6 @@ namespace Thry
             else
             {
                 menu.AddDisabledItem(new GUIContent($"Unbound textures: 0"));
-            }
-            if (unusedTextures.Count > 0 && !IsLockedMaterial)
-            {
-                menu.AddItem(new GUIContent($"Unused Textures: {unusedTextures.Count}/List in console"), false, delegate ()
-                {
-                    Out("Unused textures", unusedTextures.Select(s => $"↳{s}"));
-                });
-                menu.AddItem(new GUIContent($"Unused Textures: {unusedTextures.Count}/Remove"), false, delegate ()
-                {
-                    foreach (string t in unusedTextures) if (PropertyDictionary.ContainsKey(t)) PropertyDictionary[t].MaterialProperty.textureValue = null;
-                });
-            }
-            else
-            {
-                menu.AddDisabledItem(new GUIContent($"Unused textures: 0"));
             }
             if (unboundProperties > 0 && !IsLockedMaterial)
             {

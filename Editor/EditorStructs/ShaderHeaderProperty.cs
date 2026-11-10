@@ -60,10 +60,6 @@ namespace Thry.ThryEditor
             }
         }
 
-        public override void FindUnusedTextures(List<string> unusedList, bool isEnabled)
-        {
-        }
-
         public override void CopyFrom(Material src, bool applyDrawers = true, bool deepCopy = true, bool copyReferenceProperties = true, HashSet<ShaderPropertyType> skipPropertyTypes = null, HashSet<string> skipPropertyNames = null)
         {
             throw new NotImplementedException();

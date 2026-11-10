@@ -874,18 +874,6 @@ namespace Thry.ThryEditor
             return Mathf.Max(0f, offset);
         }
 
-        public override void FindUnusedTextures(List<string> unusedList, bool isEnabled)
-        {
-            if (isEnabled && Options.condition_enable != null)
-            {
-                isEnabled &= Options.condition_enable.Test();
-            }
-            if (!isEnabled && MaterialProperty != null && MaterialProperty.GetPropertyType() == ShaderPropertyType.Texture && MaterialProperty.textureValue != null)
-            {
-                unusedList.Add(MaterialProperty.name);
-            }
-        }
-
         public override bool Search(string searchTerm, List<ShaderGroup> foundHeaders, bool isParentInSearch = false)
         {
             return isParentInSearch

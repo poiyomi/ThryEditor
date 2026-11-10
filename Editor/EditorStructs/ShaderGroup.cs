@@ -505,16 +505,6 @@ namespace Thry.ThryEditor
             EditorGUILayout.EndVertical();
         }
 
-        public override void FindUnusedTextures(List<string> unusedList, bool isEnabled)
-        {
-            if (isEnabled && Options.condition_enable != null)
-            {
-                isEnabled &= Options.condition_enable.Test();
-            }
-            foreach (ShaderPart p in (this as ShaderGroup).Children)
-                p.FindUnusedTextures(unusedList, isEnabled);
-        }
-
         public void UpdateLinkedMaterials()
         {
             if(ShaderEditor.Active.IsInAnimationMode) return;
