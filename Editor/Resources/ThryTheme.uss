@@ -2943,6 +2943,28 @@
     text-overflow: ellipsis;
 }
 
+.thry-lock-manager > .thry-lock-unmarked {
+    flex-grow: 0;
+    flex-shrink: 0;
+    margin-bottom: var(--thry-space-4);
+}
+
+.thry-lock-unmarked .thry-components {
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+.thry-lock-unmarked .thry-components > Label {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+    margin-left: var(--thry-space-8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -unity-text-align: middle-left;
+}
+
 .thry-cross-materials {
     margin: var(--thry-space-2) 0;
     padding: var(--thry-space-2) var(--thry-space-4);

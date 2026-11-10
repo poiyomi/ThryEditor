@@ -3604,6 +3604,7 @@ namespace Thry.ThryEditor
             public bool OnPreprocessAvatar(GameObject avatarGameObject)
             {
                 if (Application.isPlaying) return true;
+                AnimatedPropertyCheck.LogUnmarked(avatarGameObject);
                 FlattenVariants(avatarGameObject);
                 List<Material> materials = GetAvatarMaterials(avatarGameObject);
                 if (SetLockedForAllMaterialsInternal(materials, 1, showProgressbar: true, showDialog: PersistentData.Get<bool>("ShowLockInDialog", true), allowCancel: false) == false) return false;

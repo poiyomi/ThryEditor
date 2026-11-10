@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -12,6 +13,8 @@ namespace Thry.ThryEditor
         ScrollView _retainedGroups;
         Label _retainedSummary;
         VisualElement _retainedNotice;
+        VisualElement _retainedUnmarked;
+        ScrollView _retainedUnmarkedRows;
 
         public void CreateGUI()
         {
@@ -33,6 +36,9 @@ namespace Thry.ThryEditor
             _retainedNotice = new VisualElement(); _retainedNotice.AddToClassList("thry-components"); root.Add(_retainedNotice);
             var stale = new HelpBox("Materials have changed since this scan.", HelpBoxMessageType.Info); stale.style.flexGrow = 1; _retainedNotice.Add(stale);
             _retainedNotice.Add(new Button(() => _pendingRescan = true) { text = "Re-scan" });
+            _retainedUnmarked = new VisualElement(); _retainedUnmarked.AddToClassList("thry-components"); root.Add(_retainedUnmarked);
+            _retainedUnmarkedRows = new ScrollView(); _retainedUnmarkedRows.AddToClassList("thry-lock-unmarked"); root.Add(_retainedUnmarkedRows);
+            RefreshRetainedUnmarked();
             var actions = new VisualElement(); actions.AddToClassList("thry-components"); root.Add(actions);
             actions.Add(new Button(() => Enqueue(PendingKind.Lock, AllShown, true)) { text = "Lock shown" });
             actions.Add(new Button(() => Enqueue(PendingKind.Unlock, AllShown, true)) { text = "Unlock shown" });
@@ -48,6 +54,34 @@ namespace Thry.ThryEditor
             if (_retainedNotice == null) return;
             DisplayStyle display = _hasScanned && _scannedVersion != s_databaseVersion ? DisplayStyle.Flex : DisplayStyle.None;
             if (_retainedNotice.style.display.value != display) _retainedNotice.style.display = display;
+        }
+
+        void RefreshRetainedUnmarked()
+        {
+            if (_retainedUnmarked == null) return;
+            _retainedUnmarked.Clear(); _retainedUnmarkedRows.Clear();
+            var items = _unmarked;
+            var display = items != null && items.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            _retainedUnmarked.style.display = display; _retainedUnmarkedRows.style.display = display;
+            if (display == DisplayStyle.None) return;
+            var notice = new HelpBox(items.Count == 1 ? "1 animated property is not marked" : items.Count + " animated properties are not marked", HelpBoxMessageType.Warning)
+                { tooltip = "Animation clips change these properties, but locking bakes them unless they are marked Animated." };
+            notice.style.flexGrow = 1; _retainedUnmarked.Add(notice);
+            var markable = items.Where(i => !i.Locked).ToList();
+            var markAll = new Button(() => _pendingMark = markable) { text = "Mark all" }; markAll.SetEnabled(markable.Count > 0); _retainedUnmarked.Add(markAll);
+            _retainedUnmarkedRows.style.height = Mathf.Min(112, items.Count * 28);
+            foreach (var item in items)
+            {
+                if (item.Material == null) continue;
+                var row = new VisualElement { tooltip = item.RendererPath + "\n" + item.ClipList(10) }; row.style.height = 28; row.AddToClassList("thry-components"); _retainedUnmarkedRows.Add(row);
+                var material = new Button(() => { Selection.activeObject = item.Material; EditorGUIUtility.PingObject(item.Material); }) { text = item.Material.name }; material.style.flexGrow = 1; material.AddToClassList("thry-lock-material-name"); row.Add(material);
+                row.Add(new Label(item.Property));
+                var clip = new Label(item.ClipList(1)); clip.AddToClassList("thry-muted"); row.Add(clip);
+                var action = item.Locked
+                    ? new Button(() => { _pendingKind = PendingKind.Unlock; _pendingMaterials = new List<Material> { item.Material }; }) { text = "Unlock", tooltip = "Unlock this material so the property can be marked" }
+                    : new Button(() => _pendingMark = new List<AnimatedPropertyCheck.Item> { item }) { text = "Mark", tooltip = item.Renamed ? "Mark as Renamed" : "Mark as Animated" };
+                action.style.width = 70; row.Add(action);
+            }
         }
 
         void RefreshRetainedList()

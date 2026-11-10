@@ -787,5 +787,39 @@ namespace Thry.ThryEditor
         }
 
         #endregion
+
+        #region Animated properties
+
+        /// <summary>
+        /// Runs <see cref="AnimatedPropertyCheck"/> on what the loaded scenes animate: every active object with
+        /// an Animator that does not sit under another one, which is where an avatar's root is.
+        /// </summary>
+        public static List<AnimatedPropertyCheck.Item> FindUnmarkedAnimatedProperties()
+        {
+            List<AnimatedPropertyCheck.Item> items = new List<AnimatedPropertyCheck.Item>();
+            HashSet<(Material, string)> listed = new HashSet<(Material, string)>();
+
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                Scene scene = SceneManager.GetSceneAt(i);
+                if (!scene.isLoaded) continue;
+
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    foreach (Animator animator in root.GetComponentsInChildren<Animator>(false))
+                    {
+                        Transform parent = animator.transform.parent;
+                        if (parent != null && parent.GetComponentInParent<Animator>() != null) continue;
+
+                        foreach (AnimatedPropertyCheck.Item item in AnimatedPropertyCheck.Find(animator.gameObject))
+                            if (listed.Add((item.Material, item.Property))) items.Add(item);
+                    }
+                }
+            }
+
+            return items;
+        }
+
+        #endregion
     }
 }

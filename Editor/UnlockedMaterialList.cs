@@ -48,6 +48,10 @@ namespace Thry.ThryEditor
         [NonSerialized] bool _pendingConfirm;
         [NonSerialized] bool _pendingRescan;
 
+        [NonSerialized] List<AnimatedPropertyCheck.Item> _unmarked;
+        [NonSerialized] List<AnimatedPropertyCheck.Item> _pendingMark;
+        [NonSerialized] bool _pendingUnmarkedCheck = true;
+
         enum PendingKind { None, Lock, Unlock }
 
         #endregion
@@ -72,19 +76,51 @@ namespace Thry.ThryEditor
             // Scans when genuinely opened for the first time, but not on a domain reload: the results
             // are serialized, so a script compile no longer costs a full project scan.
             if (_entries == null) _pendingRescan = true;
+
+            Undo.undoRedoEvent += OnUndoRedo;
         }
 
         void OnDisable()
         {
+            Undo.undoRedoEvent -= OnUndoRedo;
+
             // Releases the scene half of the ownership index. The prefab half is deliberately kept: rebuilding
             // it means re-walking every prefab's dependencies, which costs minutes on a large project, and it
             // holds only asset paths. MaterialLockScanner invalidates it when an asset change actually needs it.
             MaterialLockScanner.InvalidateOwnerIndex();
         }
 
+        // Marks and clips change in other windows, so the check runs again when this one is returned to.
+        void OnFocus()
+        {
+            _pendingUnmarkedCheck = true;
+        }
+
+        void OnUndoRedo(in UndoRedoInfo info)
+        {
+            if (info.undoName == AnimatedPropertyCheck.UndoName) _pendingUnmarkedCheck = true;
+        }
+
         void Update()
         {
             UpdateRetainedNotice();
+
+            if (_pendingMark != null)
+            {
+                List<AnimatedPropertyCheck.Item> mark = _pendingMark;
+                _pendingMark = null;
+                AnimatedPropertyCheck.Mark(mark);
+                _pendingUnmarkedCheck = true;
+            }
+
+            // A queued lock or unlock re-scans, which checks again afterwards.
+            if (_pendingUnmarkedCheck && _pendingKind == PendingKind.None)
+            {
+                _pendingUnmarkedCheck = false;
+                _unmarked = MaterialLockScanner.FindUnmarkedAnimatedProperties();
+                RefreshRetainedUnmarked();
+            }
+
             if (_pendingKind == PendingKind.None && !_pendingRescan && !_needsViewRebuild) return;
 
             PendingKind kind = _pendingKind;
@@ -133,6 +169,7 @@ namespace Thry.ThryEditor
             _hasScanned = true;
             _scannedVersion = s_databaseVersion;
             _needsViewRebuild = true;
+            _pendingUnmarkedCheck = true;
 
             // Re-importing the materials we just wrote can land a tick after the operation returns.
             // Adopting the version again then stops the window from immediately reporting itself stale
