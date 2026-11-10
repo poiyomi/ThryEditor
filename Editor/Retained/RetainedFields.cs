@@ -122,6 +122,14 @@ namespace Thry.ThryEditor
             var attributes = property.MyShader.GetPropertyAttributes(property.ShaderPropertyIndex).Select(a => new DrawerAttribute(a)).ToArray();
             return !IsLegacyStencilStatus(property, attributes);
         }
+        private bool HasAnimationKeyframes(ShaderProperty property)
+        {
+            foreach (var renderer in Model.Renderers)
+            {
+                if (property.HasAnimationKeyframes(renderer)) return true;
+            }
+            return false;
+        }
         internal static VisualElement Row(string label, out VisualElement value)
         {
             var row = new VisualElement(); row.AddToClassList("thry-property-row");
@@ -166,11 +174,10 @@ namespace Thry.ThryEditor
             TrackVisible(root, () => {
                 // Texture references have their own lock/animation state. Keep their
                 // container interactive and gate only the texture's actual controls.
-                root.SetEnabled(property is ShaderTextureProperty
-                    ? property.Options.condition_enable == null || property.Options.condition_enable.Test()
-                    : Model.CanEdit(property));
+                root.SetEnabled(property is ShaderTextureProperty ? property.Options.condition_enable == null || property.Options.condition_enable.Test() : Model.CanEdit(property));
                 root.EnableInClassList("thry-animated", property.IsAnimated);
-                root.EnableInClassList("thry-recording", Model.Shader.IsInAnimationMode && property.IsAnimated);
+                // While animating, a red edge marks properties the clip keys.
+                root.EnableInClassList("thry-animation-keyframed", Model.Shader.IsInAnimationMode && HasAnimationKeyframes(property));
             });
             if(attributes.Any(a=>a.Name=="PoiBakeColorAdjust"))return root;
             if (Presentation(root, property, attributes)) return root;
@@ -213,7 +220,15 @@ namespace Thry.ThryEditor
                     // ThryHDR changes only the picker, not the property's color-space flags or stored value.
                     var color = new ThryColorField { Format = Helpers.ThryColorFormat.ForProperty(property.MaterialProperty.GetPropertyFlags(), attributes.Any(a => a.Name == "ThryHDR")) };
                     Bind(color, property, p => p.colorValue, (p,v) => p.colorValue = v);
-                    RetainedColorPicker.Attach(color, property, Model); input.Add(color); break;
+                    RetainedColorPicker.Attach(color, property, Model); input.Add(color);
+                    // A color the shader lock keeps from changing stays at full strength so that it can still be read or eyedropped. Shows a "Lock" Icon instead of fading with the row.
+                    TrackVisible(color, () =>
+                    {
+                        bool locked = Model.IsLockedOut(property);
+                        color.Locked = locked;
+                        root.EnableInClassList("thry-locked-color", locked);
+                    });
+                    break;
                 case UnityEngine.Rendering.ShaderPropertyType.Vector:
                     var vector = attributes.FirstOrDefault(a => a.Name == "VectorLabel" || a.Name == "Vector2" || a.Name == "Vector3" || a.Name == "Vector31");
                     string[] labels = vector?.Name == "VectorLabel" ? vector.Args.Where(a => !a.Equals("link", StringComparison.OrdinalIgnoreCase)).ToArray() :

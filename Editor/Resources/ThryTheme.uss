@@ -805,6 +805,18 @@
     display: none;
 }
 
+/* Lock on a color the shader lock keeps from changing. C# draws it in black or white,
+   whichever contrasts with the swatch, and centers it in this 12px column. It sits at the
+   left so the HDR badge keeps the right and most of the swatch stays clear to eyedrop. */
+.thry-color-field .thry-color-field__lock {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: 12px;
+    color: var(--thry-muted-color);
+}
+
 .thry-material-controls .thry-property-value > .unity-toggle > .unity-toggle__input {
     height: var(--thry-control-height);
     margin-top: 0;
@@ -1193,9 +1205,20 @@
     -unity-text-align: middle-center;
 }
 
-.thry-recording > .thry-property-row > .thry-property-value {
+/* Animation mode: a red edge marks properties the clip keys. The negative margin moves
+   the edge into the label's empty right padding and the padding hands the space back,
+   so the edge sits clear of the control and the control doesn't move when it turns red. */
+.thry-animation-keyframed > .thry-property-row > .thry-property-value {
     border-left-width: var(--thry-border-width-strong);
     border-left-color: var(--thry-monokai-pink);
+    margin-left: -4px;
+    padding-left: var(--thry-space-2);
+}
+
+/* Inline references and pathing cells have no label beside them, only a 3-4px gap. */
+.thry-animation-keyframed > .thry-property-row.thry-inline > .thry-property-value,
+.pathing-cell .thry-animation-keyframed > .thry-property-row > .thry-property-value {
+    margin-left: -2px;
 }
 
 .thry-field-heading {
@@ -2249,7 +2272,7 @@
     color: #5b5b5b;
 }
 
-.thry-light .thry-recording > .thry-property-row > .thry-property-value {
+.thry-light .thry-animation-keyframed > .thry-property-row > .thry-property-value {
     border-left-color: #c2185b;
 }
 
@@ -2844,6 +2867,23 @@
 
 .thry-inspector .thry-material-controls .unity-disabled .unity-disabled {
     opacity: 1;
+}
+
+/* A locked color keeps its swatch at full strength so it can be read or eyedropped; the
+   lock in the swatch says why it can't change. Opacity can't be undone below an ancestor,
+   so the row's fade moves down the path to the swatch and lands on every sibling on the
+   way: the caption, the Theme Index dropdown and any decorators still fade as before. */
+.thry-inspector .thry-material-controls .thry-locked-color.unity-disabled,
+.thry-inspector .thry-material-controls .thry-locked-color.unity-disabled > .thry-property-row,
+.thry-inspector .thry-material-controls .thry-locked-color.unity-disabled > .thry-property-row > .thry-property-value,
+.thry-inspector .thry-material-controls .thry-locked-color.unity-disabled > .thry-property-row > .thry-property-value > .thry-color-field {
+    opacity: 1;
+}
+
+.thry-inspector .thry-material-controls .thry-locked-color.unity-disabled > *,
+.thry-inspector .thry-material-controls .thry-locked-color.unity-disabled > .thry-property-row > *,
+.thry-inspector .thry-material-controls .thry-locked-color.unity-disabled > .thry-property-row > .thry-property-value > * {
+    opacity: 0.5;
 }
 
 /* Texture foldouts remain interactive even when their assignment is locked. */

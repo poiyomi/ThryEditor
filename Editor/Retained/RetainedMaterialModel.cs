@@ -290,8 +290,7 @@ namespace Thry.ThryEditor
                     if (!(target is Material owner) || owner == null || !Shader.Materials.Contains(owner)
                         || !owner.HasProperty(part.MaterialProperty.name)) continue;
                     hasOwner = true;
-                    if (!part.IsExemptFromLockedDisabling && owner.IsLocked()
-                        && !(part.IsAnimatable && part is ShaderProperty property && !string.IsNullOrEmpty(property.GetOwnerAnimatedTag(owner)))) return false;
+                    if (IsLockedOn(part, owner)) return false;
                     if (owner.IsPropertyLockedByAncestor(part.MaterialProperty.name)) return false;
                 }
                 if (!hasOwner) return false;
@@ -307,6 +306,20 @@ namespace Thry.ThryEditor
                 if (parent is ShaderGroup group && !group.RetainedChildrenEnabled) return false;
             }
             return part.Options.condition_enable == null || part.Options.condition_enable.Test();
+        }
+
+        private static bool IsLockedOn(ShaderPart part, Material owner) => !part.IsExemptFromLockedDisabling && owner.IsLocked() && !(part.IsAnimatable && part is ShaderProperty property && !string.IsNullOrEmpty(property.GetOwnerAnimatedTag(owner)));
+
+        internal bool IsLockedOut(ShaderPart part)
+        {
+            if (part?.MaterialProperty == null) return false;
+            foreach (var target in part.MaterialProperty.targets)
+            {
+                if (!(target is Material owner) || owner == null || !Shader.Materials.Contains(owner)
+                    || !owner.HasProperty(part.MaterialProperty.name)) continue;
+                if (IsLockedOn(part, owner)) return true;
+            }
+            return false;
         }
 
         internal IEnumerable<Material> Owners(ShaderPart part) => part.MaterialProperty == null
