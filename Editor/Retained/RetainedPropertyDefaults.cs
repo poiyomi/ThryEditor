@@ -364,12 +364,24 @@ namespace Thry.ThryEditor
                     if (assigned != null && assigned != value.Texture) return true;
                     break;
                 case ShaderPropertyType.Color: if ((Vector4)(snapshot != null ? snapshot.colorValue : material.GetColor(name)) != value.Vector) return true; break;
-                case ShaderPropertyType.Vector: if ((snapshot != null ? snapshot.vectorValue : material.GetVector(name)) != value.Vector) return true; break;
-                case ShaderPropertyType.Int: if ((snapshot != null ? snapshot.intValue : material.GetInteger(name)) != value.Integer) return true; break;
-                default: if ((snapshot != null ? snapshot.floatValue : material.GetFloat(name)) != value.Number) return true; break;
+                case ShaderPropertyType.Vector:
+                    Vector4 vector = snapshot != null ? snapshot.vectorValue : material.GetVector(name);
+                    if (vector != value.Vector && !IsCreationDefault(name, vector)) return true;
+                    break;
+                case ShaderPropertyType.Int:
+                    int integer = snapshot != null ? snapshot.intValue : material.GetInteger(name);
+                    if (integer != value.Integer && !IsCreationDefault(name, new Vector4(integer, 0, 0, 0))) return true;
+                    break;
+                default:
+                    float number = snapshot != null ? snapshot.floatValue : material.GetFloat(name);
+                    if (number != value.Number && !IsCreationDefault(name, new Vector4(number, 0, 0, 0))) return true;
+                    break;
             }
             return false;
         }
+
+        private static bool IsCreationDefault(string name, Vector4 value)
+            => ShaderEditor.CreationDefaults.TryGetValue(name, out Vector4 created) && created == value;
 
         private static bool ReadTransform(ShaderProperty property, Material material)
         {

@@ -38,6 +38,12 @@ namespace Thry
         /// </summary>
         public static Func<Material, Shader, Shader, bool> OnBeforeAssignNewShader;
 
+        /// <summary>
+        /// Values a new material is created with where they differ from the shader's defaults, by property name
+        /// (numbers in x). The inspector doesn't mark them as changed.
+        /// </summary>
+        public static readonly Dictionary<string, Vector4> CreationDefaults = new Dictionary<string, Vector4>();
+
         // Stores the different shader properties
         private ShaderGroup _mainGroup;
         private RenderQueueProperty _renderQueueProperty;
