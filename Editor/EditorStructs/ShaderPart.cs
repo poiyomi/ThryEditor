@@ -212,6 +212,12 @@ namespace Thry.ThryEditor
         protected bool has_not_searchedFor = false; //used for property search
         internal bool RetainedVisible => !SectionEditing.IsHidden(this) && !has_not_searchedFor &&
             (SectionEditing.IsEditing(this) || (!SkipDrawBecauseEmpty && Options.condition_show.Test()));
+        internal bool RetainedShownFor(Material material)
+        {
+            for (var part = this; part != null; part = part.Parent)
+                if (!part.Options.condition_show.TestFor(material)) return false;
+            return true;
+        }
 
         // True when this property was drawn inline with an explicit rect and no label
         protected bool _drawnAsLabellessInline = false;

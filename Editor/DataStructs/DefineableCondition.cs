@@ -19,7 +19,12 @@ namespace Thry.ThryEditor
             Material _material;
             bool _forceUseMaterialInsteadOfEditor;
 
-            public Material Material => _forceUseMaterialInsteadOfEditor ? _material : ShaderEditor.Active?.Materials[0];
+            // Set while an inspector condition is tested against one material of the selection.
+            internal static Material Selected { get; set; }
+
+            public Material SelectedMaterial => _forceUseMaterialInsteadOfEditor ? null : Selected;
+            public Material Material => _forceUseMaterialInsteadOfEditor ? _material
+                : Selected is Material selected ? selected : ShaderEditor.Active?.Materials[0];
 
             // Set when evaluating for SectionLock, which only removes sections that are switched off.
             public bool SectionsOnly { get; private set; }
@@ -98,6 +103,7 @@ namespace Thry.ThryEditor
                     if (_type == DataType.MATERIAL_PROPERTY)
                     {
                         if (_materialReference.Overrides != null && _materialReference.Overrides.TryGetValue(_key, out float overridden)) return overridden;
+                        if (_materialReference.SelectedMaterial is Material selected && TryGetValue(selected, _key, out object selectedValue)) return selectedValue;
                         MaterialProperty prop = _materialReference.GetMaterialProperty(_key);
                         if (prop == null)
                         {
@@ -125,6 +131,50 @@ namespace Thry.ThryEditor
                     return 0;
                 }
             }
+
+            static bool TryGetValue(Material material, string key, out object value)
+            {
+                Shader shader = material.shader;
+                int index = shader != null ? shader.FindPropertyIndex(key) : -1;
+                if (index < 0)
+                {
+                    value = null;
+                    return false;
+                }
+                switch (shader.GetPropertyType(index))
+                {
+                    case ShaderPropertyType.Texture:
+                        Texture texture = material.GetTexture(key);
+                        value = texture != null ? texture.name : "null";
+                        break;
+                    case ShaderPropertyType.Int:
+                        value = (float)material.GetInteger(key);
+                        break;
+                    default:
+                        value = material.GetFloat(key);
+                        break;
+                }
+                return true;
+            }
+
+            public bool DiffersAcross(Material[] materials)
+            {
+                switch (_type)
+                {
+                    case DataType.CONDITION:
+                        return _condition.ReadsMixedValue(materials);
+                    case DataType.RENDERQUEUE:
+                        for (int i = 1; i < materials.Length; i++)
+                            if (materials[i] != null && materials[0] != null && materials[i].renderQueue != materials[0].renderQueue) return true;
+                        return false;
+                    case DataType.MATERIAL_PROPERTY:
+                        MaterialProperty prop = _materialReference.GetMaterialProperty(_key);
+                        return prop != null && prop.hasMixedValue;
+                    default:
+                        return false;
+                }
+            }
+
             public bool IsConstant => _isConstant;
 
             public bool IsVersion => _type == DataType.THRY_EDITOR_VERSION || _type == DataType.VRC_SDK_VERSION;
@@ -245,6 +295,7 @@ namespace Thry.ThryEditor
             protected override bool IsConstant => _isConstant;
             protected override bool ReadsSectionLockIgnoredValue => _left.IsIgnoredBySectionLock || _right.IsIgnoredBySectionLock
                 || _left.IsAnimatedInLock || _right.IsAnimatedInLock;
+            protected override bool ReadsMixedValue(Material[] materials) => _left.DiffersAcross(materials) || _right.DiffersAcross(materials);
 
             public Comparison(ComparisonData left, ComparisonData right, ComparisonType compareType)
             {
@@ -376,6 +427,7 @@ namespace Thry.ThryEditor
             private MaterialRenference _materialReference;
 
             protected override bool IsConstant => _type == BooleanType.TRUE || _type == BooleanType.FALSE || _type == BooleanType.NONE;
+            protected override bool ReadsMixedValue(Material[] materials) => _type == BooleanType.PROPERTY_IS_ANIMATED || _type == BooleanType.PROPERTY_IS_NOT_ANIMATED;
 
             public BooleanCondition(bool value)
             {
@@ -475,6 +527,7 @@ namespace Thry.ThryEditor
 
             protected override bool IsConstant => _isConstant;
             protected override bool ReadsSectionLockIgnoredValue => _condition1.ReadsSectionLockIgnoredValue || _condition2.ReadsSectionLockIgnoredValue;
+            protected override bool ReadsMixedValue(Material[] materials) => _condition1.ReadsMixedValue(materials) || _condition2.ReadsMixedValue(materials);
 
             public Combination(CombinationType type, DefineableCondition condition1, DefineableCondition condition2)
             {
@@ -511,6 +564,7 @@ namespace Thry.ThryEditor
 
             protected override bool IsConstant => _condition.IsConstant;
             protected override bool ReadsSectionLockIgnoredValue => _condition.ReadsSectionLockIgnoredValue;
+            protected override bool ReadsMixedValue(Material[] materials) => _condition.ReadsMixedValue(materials);
 
             public Inversion(DefineableCondition condition)
             {
@@ -530,21 +584,75 @@ namespace Thry.ThryEditor
             }
         }
 
+        // Inspector values of a multi-material selection come from the first material. When the
+        // condition reads values that differ, it holds if it holds for any selected material.
+        private class AnySelected : DefineableCondition
+        {
+            private DefineableCondition _condition;
+
+            protected override bool IsConstant => _condition.IsConstant;
+            protected override bool ReadsSectionLockIgnoredValue => _condition.ReadsSectionLockIgnoredValue;
+            protected override bool ReadsMixedValue(Material[] materials) => _condition.ReadsMixedValue(materials);
+
+            public AnySelected(DefineableCondition condition)
+            {
+                _condition = condition;
+            }
+
+            public override bool Test()
+            {
+                if (_condition.Test()) return true;
+                if (MaterialRenference.Selected is Material) return false;
+                Material[] materials = ShaderEditor.Active?.Materials;
+                if (materials == null || materials.Length < 2 || !_condition.ReadsMixedValue(materials)) return false;
+                foreach (Material material in materials)
+                    if (material != null && _condition.TestFor(material)) return true;
+                return false;
+            }
+
+            public override string ToString()
+            {
+                return _condition.ToString();
+            }
+        }
+
         protected abstract bool IsConstant { get; }
         protected virtual bool ReadsSectionLockIgnoredValue => false;
+        protected virtual bool ReadsMixedValue(Material[] materials) => false;
         public abstract bool Test();
+
+        /// <summary>Tests an inspector condition against one material of the selection.</summary>
+        public bool TestFor(Material material)
+        {
+            Material previous = MaterialRenference.Selected;
+            MaterialRenference.Selected = material;
+            try
+            {
+                return Test();
+            }
+            finally
+            {
+                MaterialRenference.Selected = previous;
+            }
+        }
 
         /// <summary>True when the condition reads nothing from the material, like the '0==0' blocks.</summary>
         public bool IsConstantCondition => IsConstant;
 
         private static DefineableCondition ParseForThryParser(string s)
         {
-            return ParseInternal(s, MaterialRenference.Default);
+            return ForSelection(ParseInternal(s, MaterialRenference.Default));
         }
 
         public static DefineableCondition Parse(string s, Material useThisMaterialInsteadOfOpenEditor = null)
         {
-            return ParseInternal(s, new MaterialRenference(useThisMaterialInsteadOfOpenEditor));
+            DefineableCondition condition = ParseInternal(s, new MaterialRenference(useThisMaterialInsteadOfOpenEditor));
+            return useThisMaterialInsteadOfOpenEditor == null ? ForSelection(condition) : condition;
+        }
+
+        static DefineableCondition ForSelection(DefineableCondition condition)
+        {
+            return condition.IsConstant ? condition : new AnySelected(condition);
         }
 
         /// <summary>

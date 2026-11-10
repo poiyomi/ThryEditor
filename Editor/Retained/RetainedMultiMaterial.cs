@@ -117,7 +117,9 @@ namespace Thry.ThryEditor
                         var targets = affected();
                         bool editable = Model.CanEdit(property) && root.enabledInHierarchy;
                         var selection = RetainedMultiMaterial.SelectedMaterials(Model);
+                        int shown = targets.Count(property.RetainedShownFor);
                         e.tooltip = (editable ? "Edits affect " : "Read only · property exists on ") + targets.Length + " of " + selection.Length + " selected materials."
+                            + (shown < targets.Length ? " Shown for " + shown + " of them." : "")
                             + (property.MaterialProperty.hasMixedValue ? " Different values are selected." : "") + "\n"
                             + string.Join("\n", selection.Select(m => RetainedMultiMaterial.MaterialName(m) + ": "
                                 + (targets.Contains(m) ? RetainedMultiMaterial.DisplayValue(RetainedMultiMaterial.Value(m, property.MaterialProperty)) : "property not available")));
@@ -127,7 +129,7 @@ namespace Thry.ThryEditor
                 var targetsNow = affected(); int total = RetainedMultiMaterial.SelectedMaterials(Model).Length;
                 bool mixed = property.MaterialProperty.hasMixedValue;
                 bool partial = targetsNow.Length != total;
-                badgeVisible = mixed || partial;
+                badgeVisible = mixed || partial || !targetsNow.All(property.RetainedShownFor);
                 badge.style.display = badgeVisible ? DisplayStyle.Flex : DisplayStyle.None;
                 positionBadge();
                 // Labels also refresh their ordinary tooltip later in the property update list;
