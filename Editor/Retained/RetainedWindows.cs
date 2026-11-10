@@ -153,10 +153,10 @@ namespace Thry.ThryEditor
                 new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes","staggeringRowColors"},
                 new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming","useUnityColorPicker"},
                 new[]{"Avatar fixes","autoSetAnchorOverride","humanBoneAnchor","anchorOverrideObjectName"},
-                new[]{"Textures & gradients","default_texture_type","texturePackerCompressionWithAlphaOverwrite","texturePackerCompressionNoAlphaOverwrite","gradientEditorCompressionOverwrite","gradient_name"},
+                new[]{"Textures & gradients","texturePackerCompressionWithAlphaOverwrite","texturePackerCompressionNoAlphaOverwrite","gradientEditorCompressionOverwrite","gradient_name"},
                 new[]{"Texture packing","inlinePackerChrunchCompression","inlinePackerSaveLocation","inlinePackerSaveLocationCustom"},
                 new[]{"Shader optimization","forceAsyncCompilationPreview","saveAfterLockUnlock","fixKeywordsWhenLocking","lockedShaderCacheBudgetMB"},
-                new[]{"Developer","loggingLevel","showManualReloadButton","enableDeveloperMode","disableUnlockedShaderStrippingOnBuild"}
+                new[]{"Developer","loggingLevel","enableDeveloperMode","disableUnlockedShaderStrippingOnBuild"}
             };
             var sections = new List<SearchSection>();
             foreach(var group in groups)
