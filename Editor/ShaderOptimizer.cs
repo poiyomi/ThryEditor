@@ -1284,7 +1284,7 @@ namespace Thry.ThryEditor
             {
                 stringBuilder.Append("|rq:");
                 foreach (string condition in ifexConditions.RenderQueue)
-                    stringBuilder.Append(DefineableCondition.Parse(condition, m).Test() ? '1' : '0');
+                    stringBuilder.Append(DefineableCondition.ParseForLock(condition, m).Test() ? '1' : '0');
             }
 
             // Values the generated text can't contain (stencil and blend state, inspector state, DoNotLock
@@ -1382,7 +1382,7 @@ namespace Thry.ThryEditor
             {
                 stringBuilder.Append("|animifex:");
                 foreach (string condition in animatedConditions)
-                    stringBuilder.Append(DefineableCondition.Parse(condition, m).Test() ? '1' : '0');
+                    stringBuilder.Append(DefineableCondition.ParseForLock(condition, m).Test() ? '1' : '0');
             }
 
             // https://forum.unity.com/threads/hash-function-for-game.452779/
@@ -2425,7 +2425,7 @@ namespace Thry.ThryEditor
                     {
                         if (!doExclude) // if already excluding, only track depth
                         {
-                            var condition = DefineableCondition.Parse(lineParsed.Substring(6), material);
+                            var condition = DefineableCondition.ParseForLock(lineParsed.Substring(6), material);
                             if (condition.Test())
                             {
                                 doExclude = true;
@@ -2767,7 +2767,7 @@ namespace Thry.ThryEditor
                     {
                         if (!doExclude)
                         {
-                            var condition = DefineableCondition.Parse(lineParsed.Substring(6), material);
+                            var condition = DefineableCondition.ParseForLock(lineParsed.Substring(6), material);
                             if (condition.Test())
                             {
                                 doExclude = true;

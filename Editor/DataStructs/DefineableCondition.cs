@@ -25,14 +25,17 @@ namespace Thry.ThryEditor
             public bool SectionsOnly { get; private set; }
             // Values SectionLock reads instead of the material's.
             public IReadOnlyDictionary<string, float> Overrides { get; private set; }
+            // Set when evaluating for a lock, which keeps the code of animated properties.
+            public bool KeepAnimated { get; private set; }
 
             static MaterialRenference _defaultMaterialRenference = new MaterialRenference(null);
             public static MaterialRenference Default => _defaultMaterialRenference;
 
-            public MaterialRenference(Material useThisMaterialInsteadOfOpenEditor, bool sectionsOnly, IReadOnlyDictionary<string, float> overrides = null) : this(useThisMaterialInsteadOfOpenEditor)
+            public MaterialRenference(Material useThisMaterialInsteadOfOpenEditor, bool sectionsOnly, IReadOnlyDictionary<string, float> overrides = null, bool keepAnimated = false) : this(useThisMaterialInsteadOfOpenEditor)
             {
                 SectionsOnly = sectionsOnly;
                 Overrides = overrides;
+                KeepAnimated = keepAnimated;
             }
 
             public MaterialRenference(Material useThisMaterialInsteadOfOpenEditor)
@@ -157,6 +160,19 @@ namespace Thry.ThryEditor
                 }
             }
 
+            // A property the inspector can't mark Animated keeps going by its value, whatever its tag says.
+            public bool IsAnimatedInLock
+            {
+                get
+                {
+                    if (_type != DataType.MATERIAL_PROPERTY || _materialReference == null || !_materialReference.KeepAnimated) return false;
+                    Material material = _materialReference.Material;
+                    if (material == null || !ShaderOptimizer.IsAnimated(material, _key)) return false;
+                    int index = material.shader.FindPropertyIndex(_key);
+                    return index >= 0 && RetainedShaderDeclarations.Get(material.shader, index).IsAnimatable;
+                }
+            }
+
             public ComparisonData(string data, MaterialRenference materialRenference)
             {
                 _materialReference = materialRenference;
@@ -227,7 +243,8 @@ namespace Thry.ThryEditor
             private bool _isErrorLogged = false;
 
             protected override bool IsConstant => _isConstant;
-            protected override bool ReadsSectionLockIgnoredValue => _left.IsIgnoredBySectionLock || _right.IsIgnoredBySectionLock;
+            protected override bool ReadsSectionLockIgnoredValue => _left.IsIgnoredBySectionLock || _right.IsIgnoredBySectionLock
+                || _left.IsAnimatedInLock || _right.IsAnimatedInLock;
 
             public Comparison(ComparisonData left, ComparisonData right, ComparisonType compareType)
             {
@@ -531,12 +548,28 @@ namespace Thry.ThryEditor
         }
 
         /// <summary>
+        /// Parses an //ifex condition for the lock. A comparison on a property the material has marked Animated
+        /// never counts as met, so its code stays in. A condition that asks isAnimated() is taken as written.
+        /// </summary>
+        public static DefineableCondition ParseForLock(string s, Material material)
+        {
+            return ParseInternal(s, new MaterialRenference(material, sectionsOnly: false, null, KeepsAnimated(s)));
+        }
+
+        /// <summary>
         /// Parses an //ifex condition for SectionLock. Comparisons on sliders, colors, vectors and textures
         /// never count as met, so only section switches, enums, animated tags and the render queue remove code.
+        /// Animated properties are treated as in ParseForLock.
         /// </summary>
         public static DefineableCondition ParseForSectionLock(string s, Material material, IReadOnlyDictionary<string, float> overrides = null)
         {
-            return ParseInternal(s, new MaterialRenference(material, sectionsOnly: true, overrides));
+            return ParseInternal(s, new MaterialRenference(material, sectionsOnly: true, overrides, KeepsAnimated(s)));
+        }
+
+        // isAnimated() marks code that has to go once the property can change, like a shortcut for its off value
+        static bool KeepsAnimated(string condition)
+        {
+            return condition.IndexOf("isAnimated(", StringComparison.Ordinal) < 0;
         }
 
         protected static DefineableCondition ParseInternal(string s, MaterialRenference materialRenference, int start = 0, int end = -1)
