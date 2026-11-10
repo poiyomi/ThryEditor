@@ -2353,7 +2353,9 @@
 }
 
 .thry-filter-group {
-    margin: 0 0 var(--thry-space-3) 0;
+    margin: 0 0 var(--thry-space-8) 0;
+    border-top-width: var(--thry-border-width);
+    border-top-color: var(--thry-border-color);
 }
 
 .thry-filter-breadcrumb {
@@ -2361,10 +2363,8 @@
     -unity-font-style: bold;
     font-size: var(--thry-type-body-small);
     color: #b8b8b8;
-    margin: 0 0 var(--thry-space-4) 0;
-    padding: var(--thry-space-5) var(--thry-space-4);
-    border-bottom-width: var(--thry-border-width);
-    border-bottom-color: var(--thry-border-color);
+    margin: 0;
+    padding: var(--thry-space-5) var(--thry-space-4) var(--thry-space-2) var(--thry-space-4);
 }
 
 .thry-filter-control {
@@ -2385,7 +2385,10 @@
 
 .thry-light .thry-filter-breadcrumb {
     color: #444;
-    border-bottom-color: #aaa;
+}
+
+.thry-light .thry-filter-group {
+    border-top-color: #aaa;
 }
 
 .thry-status-filter {
