@@ -156,6 +156,8 @@ namespace Thry.ThryEditor
             public bool[] SwitchDeclaredInt;
             public bool[] SwitchMustBake;
             public bool[] SwitchExempt;
+            // [Gamma] floats, which Unity hands to the shader converted to linear.
+            public bool[] SwitchGamma;
             // Used as an index ("x[_Channel]"). A constant index outside the vector fails to compile even in code that
             // never runs, so those are only baked for values 0-3.
             public bool[] SwitchIndexes;
@@ -310,6 +312,7 @@ namespace Thry.ThryEditor
             public int[] Ids;
             public bool[] IsSwitch;
             public bool[] Exempt;
+            public bool[] Gamma;
             public float[] RangeMax;
             // First index of each property name, like Shader.FindPropertyIndex.
             public Dictionary<string, int> Index = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -326,6 +329,7 @@ namespace Thry.ThryEditor
                 Ids = new int[count],
                 IsSwitch = new bool[count],
                 Exempt = new bool[count],
+                Gamma = new bool[count],
                 RangeMax = new float[count],
             };
             for (int i = 0; i < count; i++)
@@ -337,6 +341,8 @@ namespace Thry.ThryEditor
                 facts.Ids[i] = Shader.PropertyToID(name);
                 facts.IsSwitch[i] = IsSwitchProperty(shader, i);
                 facts.Exempt[i] = IsExemptFromLocking(shader, i);
+                facts.Gamma[i] = (type == ShaderPropertyType.Float || type == ShaderPropertyType.Range)
+                    && (shader.GetPropertyFlags(i) & ShaderPropertyFlags.Gamma) != 0;
                 facts.RangeMax[i] = type == ShaderPropertyType.Range ? shader.GetPropertyRangeLimits(i).y : float.NaN;
                 if (!facts.Index.ContainsKey(name)) facts.Index[name] = i;
                 facts.PropertyVariables.Add(name);
@@ -772,6 +778,7 @@ namespace Thry.ThryEditor
             info.SwitchDeclaredInt = new bool[switches.Count];
             info.SwitchMustBake = new bool[switches.Count];
             info.SwitchExempt = new bool[switches.Count];
+            info.SwitchGamma = new bool[switches.Count];
             info.SwitchIndexes = new bool[switches.Count];
             info.SwitchBound = new float[switches.Count];
             for (int s = 0; s < switches.Count; s++)
@@ -784,6 +791,7 @@ namespace Thry.ThryEditor
                 info.SwitchDeclaredInt[s] = info.DeclaredTypes.TryGetValue(name, out string declared) && (declared == "int" || declared == "uint");
                 info.SwitchMustBake[s] = referencedWithOptimizer.Contains(name);
                 info.SwitchExempt[s] = facts.Exempt[index];
+                info.SwitchGamma[s] = facts.Gamma[index];
                 info.SwitchIndexes[s] = indexes.Contains(name);
                 info.SwitchBound[s] = info.SwitchMustBake[s] && !constantOutsideAttributes.Contains(name) ? facts.RangeMax[index] : float.NaN;
             }
@@ -1038,7 +1046,9 @@ namespace Thry.ThryEditor
         static string Literal(Material material, int switchIndex, SourceInfo info)
         {
             int id = info.SwitchIds[switchIndex];
-            return Literal(info.SwitchIsInt[switchIndex] ? material.GetInteger(id) : material.GetFloat(id), switchIndex, info);
+            float value = info.SwitchIsInt[switchIndex] ? material.GetInteger(id) : material.GetFloat(id);
+            if (info.SwitchGamma[switchIndex] && PlayerSettings.colorSpace == ColorSpace.Linear) value = Mathf.GammaToLinearSpace(value);
+            return Literal(value, switchIndex, info);
         }
 
         static string Literal(float value, int switchIndex, SourceInfo info)

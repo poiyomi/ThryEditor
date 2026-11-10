@@ -1339,7 +1339,7 @@ namespace Thry.ThryEditor
                             break;
                         case ShaderPropertyType.Range:
                         case ShaderPropertyType.Float:
-                            AppendNumber(stringBuilder, m.GetFloat(propName));
+                            AppendNumber(stringBuilder, ToShaderFloat(prop, m.GetFloat(propName)));
                             break;
                         case ShaderPropertyType.Int:
                             stringBuilder.Append(m.GetInteger(propName)
@@ -1391,6 +1391,14 @@ namespace Thry.ThryEditor
             byte[] bytes = Encoding.UTF8.GetBytes(stringBuilder.ToString());
             using (var sha = new MD5CryptoServiceProvider())
                 return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLower();
+        }
+
+        // Unity hands a [Gamma] float to the shader converted to linear
+        static float ToShaderFloat(MaterialProperty prop, float value)
+        {
+            if (PlayerSettings.colorSpace == ColorSpace.Linear && prop.GetPropertyFlags().HasFlag(ShaderPropertyFlags.Gamma))
+                return Mathf.GammaToLinearSpace(value);
+            return value;
         }
 
         // Lock defines PROP_<NAME> even for animated textures
@@ -1796,7 +1804,7 @@ namespace Thry.ThryEditor
                         propData = new PropertyData();
                         propData.type = PropertyType.Float;
                         propData.name = prop.name;
-                        propData.value = new Vector4(prop.floatValue, 0, 0, 0);
+                        propData.value = new Vector4(ToShaderFloat(prop, prop.floatValue), 0, 0, 0);
                         constantProps.Add(propData);
                         break;
                     case ShaderPropertyType.Int:
