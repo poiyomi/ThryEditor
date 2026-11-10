@@ -258,6 +258,9 @@ namespace Thry.ThryEditor
                             if (!Model.CanEdit(property)) return;
                             Model.Shader.ActivateRetained();
                             var prefab = findPrefab(); if (prefab == null) return;
+                            var spawner = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Poi.Tools.Decorators.PoiPrefabSpawnerDrawer")).FirstOrDefault(t => t != null)
+                                ?.GetMethod("Spawn", new[] { typeof(GameObject), typeof(Material[]), typeof(Renderer[]) });
+                            if (spawner != null) { spawner.Invoke(null, new object[] { prefab, PresentationTargets(property), Model.Renderers }); return; }
                             var instance=PrefabUtility.InstantiatePrefab(prefab); if (instance == null) return;
                             Undo.RegisterCreatedObjectUndo(instance,"Spawn "+prefab.name); Selection.activeObject=instance; EditorGUIUtility.PingObject(instance);
                         }) {name="action-"+property.MaterialProperty.name,text=spawnLabel};
