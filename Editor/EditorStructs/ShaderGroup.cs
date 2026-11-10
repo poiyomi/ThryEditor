@@ -544,7 +544,8 @@ namespace Thry.ThryEditor
             Material[] materials = MyShaderUI.Materials;
 
             var menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Reset"), false, delegate()
+            if (MyShaderUI.IsLockedMaterial) menu.AddDisabledItem(new GUIContent("Reset"));
+            else menu.AddItem(new GUIContent("Reset"), false, delegate()
             {
                 section.ResetSection(materials);
             });

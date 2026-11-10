@@ -478,7 +478,14 @@ namespace Thry.ThryEditor
             var menu = new GenericMenu();
             property.AddPresetMenu(menu);
             if (menu.GetItemCount() > 0) menu.AddSeparator("");
-            menu.AddItem(new GUIContent("Reset"), false, delegate ()
+            bool canEdit = !property.MyShaderUI.IsLockedMaterial;
+            bool canPaste = canEdit && Mediator.copy_part != null;
+            void AddItem(string text, bool enabled, GenericMenu.MenuFunction action)
+            {
+                if (enabled) menu.AddItem(new GUIContent(text), false, action);
+                else menu.AddDisabledItem(new GUIContent(text));
+            }
+            AddItem("Reset", canEdit, delegate ()
             {
                 ThryLogger.LogDetail("ShaderHeader", $"Resetting '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
                 int undoGroup = Undo.GetCurrentGroup();
@@ -501,7 +508,7 @@ namespace Thry.ThryEditor
                 ThryLogger.LogDetail("ShaderHeader", $"Copying '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
                 Mediator.copy_part = property;
             });
-            menu.AddItem(new GUIContent("Paste"), false, delegate ()
+            AddItem("Paste", canPaste, delegate ()
             {
                 if (Mediator.copy_part != null)
                 {
@@ -516,7 +523,7 @@ namespace Thry.ThryEditor
                     Undo.CollapseUndoOperations(undoGroup);
                 }
             });
-            menu.AddItem(new GUIContent("Paste without Textures"), false, delegate ()
+            AddItem("Paste without Textures", canPaste, delegate ()
             {
                 if (Mediator.copy_part != null)
                 {
@@ -532,7 +539,7 @@ namespace Thry.ThryEditor
                     Undo.CollapseUndoOperations(undoGroup);
                 }
             });
-            menu.AddItem(new GUIContent("Paste Special..."), false, () =>
+            AddItem("Paste Special...", canPaste, () =>
             {
                 if(Mediator.copy_part == null) return;
                 
@@ -570,7 +577,7 @@ namespace Thry.ThryEditor
                 EditorGUIUtility.systemCopyBuffer = json;
                 ThryLogger.LogDetail("ShaderHeader", $"Copied section '{property.Content.text}' of {materials[0].name} as text ({json.Length} chars)");
             });
-            menu.AddItem(new GUIContent("Paste from Text"), false, () =>
+            AddItem("Paste from Text", canEdit, () =>
             {
                 string clip = EditorGUIUtility.systemCopyBuffer;
                 if (!MaterialTextSerializer.TryDeserialize(clip, out var data))
