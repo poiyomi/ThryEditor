@@ -9376,6 +9376,13 @@
 .thry-inspector .thry-mask-map-use:hover {
     color: var(--thry-value-color);
 }
+/* A result's name, the path above a group and a hidden match's name go to their place in the inspector. */
+.thry-inspector .thry-search-matches.thry-material-controls Label.thry-property-label:hover,
+.thry-inspector .thry-search-matches.thry-material-controls .thry-texture-heading-row .thry-texture-caption:hover,
+.thry-inspector .thry-search-matches .thry-search-link:hover {
+    color: var(--thry-accent-color);
+    cursor: link;
+}
 
 /* ===== Global Mask channel map ===== */
 .thry-mask-map {

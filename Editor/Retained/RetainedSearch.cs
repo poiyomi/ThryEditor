@@ -14,7 +14,7 @@ namespace Thry.ThryEditor
         sealed class Match
         {
             internal ShaderProperty Property;
-            internal ShaderPart Owner;
+            internal ShaderPart Owner, Section;
             internal string Path;
             internal string Type, Caption, RootCaption;
             // Upper-case label, name and section words, then tooltip and dropdown choices from PrimaryLength on.
@@ -47,6 +47,11 @@ namespace Thry.ThryEditor
         readonly List<VisualElement> _rows = new List<VisualElement>();
         readonly IVisualElementScheduledItem _buildSchedule;
         VisualElement _firstResult;
+        Label _pressed;
+        Vector2 _pressPosition;
+        int _pressPointer;
+        float _pressSlop;
+        bool _pressMoved, _pressSwallowed;
         ScrollView _anchorScroll;
         VisualElement _anchorRow;
         float _anchorY, _anchorOffset, _anchorBottomGap;
@@ -79,6 +84,10 @@ namespace Thry.ThryEditor
                 AlignColumns();
                 if (_anchorPending) schedule.Execute(RestoreScrollAnchor).StartingIn(1);
             });
+            _results.RegisterCallback<PointerDownEvent>(PressLink, TrickleDown.TrickleDown);
+            _results.RegisterCallback<MouseDownEvent>(e => { if (_pressSwallowed && e.button == 0 && e.target == _pressed) e.StopPropagation(); }, TrickleDown.TrickleDown);
+            _results.RegisterCallback<PointerMoveEvent>(DragLink, TrickleDown.TrickleDown);
+            _results.RegisterCallback<PointerUpEvent>(ReleaseLink, TrickleDown.TrickleDown);
             _buildSchedule = schedule.Execute(BuildNext).Every(80); _buildSchedule.Pause();
             RegisterCallback<DetachFromPanelEvent>(e => { Observe(null); _buildSchedule.Pause(); });
             style.display = DisplayStyle.None;
@@ -359,8 +368,8 @@ namespace Thry.ThryEditor
                 {
                     section = new VisualElement(); section.AddToClassList("thry-filter-group"); _results.Add(section);
                     sectionPath = match.Path;
-                    var breadcrumb = new Label(string.IsNullOrEmpty(match.Path) ? T("general", "General") : match.Path) { tooltip = match.Path };
-                    breadcrumb.AddToClassList("thry-filter-breadcrumb"); section.Add(breadcrumb);
+                    var breadcrumb = new Label(string.IsNullOrEmpty(match.Path) ? T("general", "General") : match.Path) { tooltip = match.Path, userData = match.Section };
+                    breadcrumb.AddToClassList("thry-filter-breadcrumb"); breadcrumb.EnableInClassList("thry-search-link", match.Section != null); section.Add(breadcrumb);
                 }
                 var wrapper = new VisualElement { name = "filtered-property-" + match.Property.MaterialProperty.name };
                 wrapper.AddToClassList("thry-filter-control"); section.Add(wrapper);
@@ -448,8 +457,8 @@ namespace Thry.ThryEditor
             var row = new VisualElement { name = "hidden-property-" + match.Property.MaterialProperty.name };
             row.AddToClassList("thry-search-hidden-row");
             var title = new VisualElement(); title.AddToClassList("thry-search-hidden-title"); row.Add(title);
-            var caption = new Label(Highlight(match.Caption, pattern)) { enableRichText = true, tooltip = match.Property.TooltipText };
-            caption.AddToClassList("thry-search-hidden-caption"); title.Add(caption);
+            var caption = new Label(Highlight(match.Caption, pattern)) { enableRichText = true, tooltip = match.Property.TooltipText, userData = match.Property };
+            caption.AddToClassList("thry-search-hidden-caption"); caption.AddToClassList("thry-search-link"); title.Add(caption);
             if (match.Path.Length > 0)
             {
                 var path = new Label(match.Path) { tooltip = match.Path };
@@ -466,6 +475,65 @@ namespace Thry.ThryEditor
             reason.AddToClassList("thry-search-hidden-reason"); row.Add(reason);
             _rows.Add(row);
             return row;
+        }
+        // A result's name, a breadcrumb and a hidden match's name go to their place in the inspector when
+        // clicked. The press still reaches the name, so dragging a number's name scrubs it as usual.
+        void PressLink(PointerDownEvent e)
+        {
+            Unpress();
+            var label = e.target as Label;
+            if (label == null || e.button != 0 || e.altKey || e.ctrlKey || e.shiftKey || e.commandKey) return;
+            bool texture = label.ClassListContains("thry-texture-caption");
+            if (!texture && !label.ClassListContains("thry-property-label") && !label.ClassListContains("thry-search-link")) return;
+            bool scrubs = label.enabledInHierarchy && label.ClassListContains(BaseField<float>.labelDraggerVariantUssClassName);
+            // A texture's name sits inside its fold-out button, which would toggle as well. Pressing the name of
+            // a number that differs between materials writes one value to all of them before any drag.
+            _pressSwallowed = texture || (scrubs && LinkTarget(label)?.MaterialProperty?.hasMixedValue == true);
+            _pressed = label; _pressPosition = e.position; _pressPointer = e.pointerId; _pressMoved = false;
+            // Any movement on a number's name already changes the value.
+            _pressSlop = scrubs && !_pressSwallowed ? 0 : 4;
+            // A captured pointer reports to its owner alone in Unity 2022.3.
+            label.RegisterCallback<PointerMoveEvent>(DragLink); label.RegisterCallback<PointerUpEvent>(ReleaseLink);
+            if (_pressSwallowed) e.StopPropagation();
+        }
+        void DragLink(PointerMoveEvent e)
+        {
+            if (_pressed != null && e.pointerId == _pressPointer && ((Vector2)e.position - _pressPosition).magnitude > _pressSlop) _pressMoved = true;
+        }
+        void ReleaseLink(PointerUpEvent e)
+        {
+            var label = _pressed;
+            if (label == null || e.pointerId != _pressPointer || e.button != 0) return;
+            bool clicked = !_pressMoved && ((Vector2)e.position - _pressPosition).magnitude <= _pressSlop && label.worldBound.Contains(e.position);
+            Unpress();
+            // Leaving search removes the results, so let this event finish on them first.
+            if (clicked) schedule.Execute(() => Go(label));
+        }
+        void Unpress()
+        {
+            if (_pressed == null) return;
+            _pressed.UnregisterCallback<PointerMoveEvent>(DragLink); _pressed.UnregisterCallback<PointerUpEvent>(ReleaseLink);
+            _pressed = null; _pressSwallowed = false;
+        }
+        ShaderPart LinkTarget(VisualElement link)
+        {
+            var part = link.userData as ShaderPart;
+            for (var element = link.parent; part == null && element != null && element != _results; element = element.parent)
+                part = element.userData as ShaderProperty ?? (element.userData as ShaderProperty[])?.FirstOrDefault();
+            return part;
+        }
+        internal bool Go(VisualElement link)
+        {
+            var part = link.panel == null ? null : LinkTarget(link);
+            if (part == null) return false;
+            part.MyShaderUI?.ActivateRetained();
+            // Only a breadcrumb targets a section, and its matches are inside it.
+            var group = part as ShaderGroup;
+            bool expanded = group != null && group.RetainedExpanded;
+            group?.ExpandForNavigation(true);
+            if (_view.Navigate(part)) return true;
+            group?.ExpandForNavigation(expanded);
+            return false;
         }
         void AlignColumns()
         {
@@ -539,7 +607,7 @@ namespace Thry.ThryEditor
                     string caption = Clean(RetainedText.PropertyCaption(displayed));
                     string primary = (caption + " " + displayed.MaterialProperty.name + " " + string.Join(" ", context.Select(p => Clean(p.Content.text)))).ToUpperInvariant();
                     string rootCaption = ancestry.Where(p => p is ShaderGroup && roots.Contains((ShaderGroup)p)).Select(p => Clean(p.Content.text)).FirstOrDefault() ?? "";
-                    _metadata.Add(new Match { Property = displayed, Owner = displayedOwner, Path = path, Type = PropertyType(displayed), Caption = caption,
+                    _metadata.Add(new Match { Property = displayed, Owner = displayedOwner, Section = ancestry.LastOrDefault(), Path = path, Type = PropertyType(displayed), Caption = caption,
                         Text = secondary.Length == 0 ? primary : primary + "\n" + secondary, PrimaryLength = primary.Length, RootCaption = rootCaption });
                 }
             }

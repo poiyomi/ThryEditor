@@ -92,7 +92,7 @@ namespace Thry.ThryEditor
             var navigationGroup = new VisualElement { name = "thry-navigation-group" };
             navigationGroup.AddToClassList("thry-navigation-group");
             var navigation = new VisualElement(); navigation.AddToClassList("thry-navigation");
-            _search = new ToolbarSearchField { name = "thry-search", tooltip = "Filter properties and edit them here. Combine the type and changed filters, or type t:texture, is:changed, is:animated, or is:missing. Escape clears all filters. Ctrl+F jumps here." };
+            _search = new ToolbarSearchField { name = "thry-search", tooltip = "Filter properties and edit them here. Click a name to go to that property. Combine the type and changed filters, or type t:texture, is:changed, is:animated, or is:missing. Escape clears all filters. Ctrl+F jumps here." };
             _search.AddToClassList("thry-search");
             var searchIcon = _search.Q(className: "unity-search-field-base__search-button");
             searchIcon.style.backgroundImage = StyleKeyword.None;
@@ -770,7 +770,7 @@ namespace Thry.ThryEditor
             _typeFilter.SetValueWithoutNotify(_typeFilter.choices[Mathf.Max(0, typeIndex)]);
             _statusFilter.SetValueWithoutNotify(_statusFilter.choices[Mathf.Max(0, statusIndex)]);
             _placeholder.text = Text("search", "Search...");
-            _search.tooltip = Text("search_help", "Filter properties and edit them here. Combine type and status filters. Escape clears all filters. Ctrl+F jumps here.");
+            _search.tooltip = Text("search_help", "Filter properties and edit them here. Click a name to go to that property. Combine type and status filters. Escape clears all filters. Ctrl+F jumps here.");
             _typeFilter.tooltip = Text("type_filter_help", "Filter by property type.");
             _statusFilter.tooltip = Text("status_filter_help", "Filter by value or state. Assigned textures finds texture assignments, independent of tiling and offset.");
             _savedFilters.tooltip = Text("saved_searches", "Favorites and saved searches");
