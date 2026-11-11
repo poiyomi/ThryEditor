@@ -5538,8 +5538,21 @@
     height: var(--thry-curve4-height);
 }
 
+/* A result whose control is not built yet takes the room of a property row, so little moves when it is. */
 .thry-filter-pending {
     min-height: var(--thry-control-height);
+    margin: var(--thry-space-1) 0;
+}
+
+.thry-inspector .thry-filter-placeholder {
+    height: var(--thry-control-height);
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+    color: var(--thry-caption-color);
+    font-size: var(--thry-font-size);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .thry-search .unity-search-field-base__search-button {

@@ -25,7 +25,7 @@ namespace Thry.ThryEditor
         sealed class PendingField
         {
             internal VisualElement Element;
-            internal Action Build;
+            internal Action Build, Name;
         }
         readonly MaterialInspectorView _view;
         readonly Label _summary;
@@ -52,7 +52,7 @@ namespace Thry.ThryEditor
         int _pressPointer;
         float _pressSlop;
         bool _pressMoved, _pressSwallowed;
-        ScrollView _anchorScroll;
+        ScrollView _scroll, _anchorScroll;
         VisualElement _anchorRow;
         float _anchorY, _anchorOffset, _anchorBottomGap;
         bool _anchorPending, _anchorBottom;
@@ -81,6 +81,7 @@ namespace Thry.ThryEditor
             _results = new VisualElement(); _results.AddToClassList("thry-search-matches"); _results.AddToClassList("thry-material-controls"); Add(_results);
             _results.RegisterCallback<GeometryChangedEvent>(e => {
                 _buildNeedsScan = true;
+                if (_pendingBuild.Count > 0 && _buildSchedule.isActive) _buildSchedule.ExecuteLater(0);
                 AlignColumns();
                 if (_anchorPending) schedule.Execute(RestoreScrollAnchor).StartingIn(1);
             });
@@ -89,9 +90,18 @@ namespace Thry.ThryEditor
             _results.RegisterCallback<PointerMoveEvent>(DragLink, TrickleDown.TrickleDown);
             _results.RegisterCallback<PointerUpEvent>(ReleaseLink, TrickleDown.TrickleDown);
             _buildSchedule = schedule.Execute(BuildNext).Every(80); _buildSchedule.Pause();
-            RegisterCallback<DetachFromPanelEvent>(e => { Observe(null); _buildSchedule.Pause(); });
+            RegisterCallback<AttachToPanelEvent>(e => {
+                _scroll = GetFirstAncestorOfType<ScrollView>();
+                if (_scroll != null) _scroll.verticalScroller.valueChanged += Scrolled;
+            });
+            RegisterCallback<DetachFromPanelEvent>(e => {
+                Observe(null); _buildSchedule.Pause();
+                if (_scroll != null) _scroll.verticalScroller.valueChanged -= Scrolled;
+                _scroll = null;
+            });
             style.display = DisplayStyle.None;
         }
+        void Scrolled(float value) { if (_pendingBuild.Count > 0 && _buildSchedule.isActive) _buildSchedule.ExecuteLater(0); }
         internal void PauseBuild() { _buildSchedule.Pause(); _anchorPending = false; }
         internal void Invalidate() => InvalidateState();
         internal void RefreshLanguage()
@@ -126,27 +136,42 @@ namespace Thry.ThryEditor
             if (!_buildNeedsScan && _idlePendingCount == _pendingBuild.Count
                 && _idleViewport == viewport && _idleResultsBounds == resultBounds) return;
             HydrationScanCount++;
-            viewport.yMin -= 200; viewport.yMax += 200;
+            viewport.yMin -= 400; viewport.yMax += 400;
             double start = EditorApplication.timeSinceStartup;
             int count = 0;
-            for (int pass = 0; pass < 2 && count < 8; pass++)
+            // A control builds in about a millisecond, so the budget, not a row count, bounds a pass.
+            bool spent = false;
+            for (int pass = 0; pass < 2 && !spent; pass++)
             {
-                for (int i = 0; i < _pendingBuild.Count && count < 8; i++)
+                for (int i = 0; i < _pendingBuild.Count; i++)
                 {
                     var pending = _pendingBuild[i];
                     Rect bounds = pending.Element.worldBound;
                     if (pending.Element.layout.width <= 0 || !(pass == 0 ? visibleViewport : viewport).Overlaps(bounds)) continue;
+                    // Out of time: the rows still in view show their name until their control is built.
+                    if (spent) { pending.Name(); continue; }
                     if (count == 0 && !_anchorPending) CaptureScrollAnchor(inspectorScroll, visibleViewport);
                     _pendingBuild.RemoveAt(i--); pending.Build(); count++;
-                    if (EditorApplication.timeSinceStartup - start > .005) break;
+                    spent = EditorApplication.timeSinceStartup - start > .008;
+                    if (spent && pass > 0) break;
                 }
-                if (EditorApplication.timeSinceStartup - start > .005) break;
             }
             if (_anchorPending) schedule.Execute(RestoreScrollAnchor).StartingIn(1);
             _buildNeedsScan = count > 0;
             _idleViewport = visibleViewport; _idleResultsBounds = resultBounds; _idlePendingCount = _pendingBuild.Count;
-            _buildSchedule.Every(count > 0 ? 16 : 80);
+            _buildSchedule.Every(count > 0 ? 16 : 40);
             if (_pendingBuild.Count == 0) _buildSchedule.Pause();
+        }
+        // New results have no layout yet, so the first screen is taken in order instead of waiting for one.
+        void BuildFirst()
+        {
+            float room = _scroll == null ? 0 : _scroll.contentViewport.layout.height;
+            if (!(room > 0) || _scroll.scrollOffset.y > room) return;
+            int rows = Mathf.Min(_pendingBuild.Count, Mathf.CeilToInt((_scroll.scrollOffset.y + room) / 18f));
+            double start = EditorApplication.timeSinceStartup;
+            int built = 0;
+            while (built < rows && EditorApplication.timeSinceStartup - start < .03) _pendingBuild[built++].Build();
+            _pendingBuild.RemoveRange(0, built);
         }
         void CaptureScrollAnchor(ScrollView scroll, Rect viewport)
         {
@@ -376,6 +401,7 @@ namespace Thry.ThryEditor
                 _rows.Add(wrapper);
                 if (_firstResult == null) _firstResult = wrapper;
                 wrapper.AddToClassList("thry-filter-pending");
+                Label placeholder = null;
                 wrapper.focusable = true; wrapper.tabIndex = 0;
                 wrapper.RegisterCallback<FocusInEvent>(e => {
                     if (e.target != wrapper) return;
@@ -388,7 +414,12 @@ namespace Thry.ThryEditor
                     var input = backwards ? inputs.LastOrDefault() : inputs.FirstOrDefault();
                     input?.Focus();
                 });
-                _pendingBuild.Add(new PendingField { Element = wrapper, Build = () => {
+                _pendingBuild.Add(new PendingField { Element = wrapper, Name = () => {
+                    if (placeholder != null) return;
+                    placeholder = new Label(Highlight(match.Caption, highlight)) { enableRichText = true, pickingMode = PickingMode.Ignore };
+                    placeholder.AddToClassList("thry-filter-placeholder"); wrapper.Add(placeholder);
+                }, Build = () => {
+                    placeholder?.RemoveFromHierarchy();
                     wrapper.Add(_fields.Field(match.Property));
                     InstallHighlights(wrapper, highlight);
                     wrapper.focusable = false;
@@ -399,8 +430,8 @@ namespace Thry.ThryEditor
                     });
                 }});
             }
-            BuildNext();
-            if (_pendingBuild.Count > 0) _buildSchedule.Resume();
+            BuildFirst();
+            if (_pendingBuild.Count > 0) { _buildSchedule.Every(16); _buildSchedule.Resume(); }
             _results.schedule.Execute(AlignColumns).StartingIn(0);
         }
         bool IsEditingResult()
