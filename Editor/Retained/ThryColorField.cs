@@ -17,11 +17,11 @@ namespace Thry.ThryEditor
         const float BadgeMinWidth = 40f;
         const float BadgeMinIntensity = .05f;
 
-        readonly VisualElement _swatch, _alpha, _alphaFill;
+        readonly VisualElement _swatch, _alpha, _alphaFill, _lock;
         readonly Label _intensity, _mixed;
         readonly Button _eyeDropper;
         ThryColorFormat _format = ThryColorFormat.Ldr();
-        bool _showEyeDropper = true, _narrow;
+        bool _showEyeDropper = true, _narrow, _locked;
         Color? _previewOverride;
 
         internal event Action<ThryColorField> OpenRequested;
@@ -50,6 +50,11 @@ namespace Thry.ThryEditor
             _mixed = new Label("—") { pickingMode = PickingMode.Ignore };
             _mixed.AddToClassList(UssClass + "__mixed");
             _swatch.Add(_mixed);
+            // Drawn rather than an image so its color can follow the swatch's contrast.
+            _lock = new VisualElement { pickingMode = PickingMode.Ignore };
+            _lock.AddToClassList(UssClass + "__lock");
+            _lock.generateVisualContent += DrawLock;
+            _swatch.Add(_lock);
 
             // A mouse tool; keyboard users open the picker, which has its own eyedropper.
             _eyeDropper = new Button(() => { if (CanRequest()) EyeDropperRequested?.Invoke(this); }) { focusable = false };
@@ -110,6 +115,12 @@ namespace Thry.ThryEditor
             set { _previewOverride = value; Refresh(); }
         }
 
+        internal bool Locked
+        {
+            get => _locked;
+            set { if (_locked == value) return; _locked = value; Refresh(); }
+        }
+
         internal VisualElement Swatch => _swatch;
 
         public override void SetValueWithoutNotify(Color newValue)
@@ -137,6 +148,7 @@ namespace Thry.ThryEditor
             bool mixed = showMixedValue;
             var preview = PreviewColor;
             var fill = preview; fill.a = 1;
+            var contrast = ThryColorMath.Luminance(fill) > .5f ? Color.black : Color.white;
             _swatch.style.backgroundColor = mixed ? new StyleColor(StyleKeyword.Null) : new StyleColor(fill);
             _mixed.style.display = Shown(mixed);
             bool alpha = _format.Alpha && !mixed;
@@ -148,9 +160,45 @@ namespace Thry.ThryEditor
             if (badge)
             {
                 _intensity.text = "+" + intensity.ToString("0.0", CultureInfo.InvariantCulture);
-                _intensity.style.color = ThryColorMath.Luminance(fill) > .5f ? Color.black : Color.white;
+                _intensity.style.color = contrast;
+            }
+            _lock.style.display = Shown(_locked);
+            if (_locked)
+            {
+                _lock.style.color = mixed ? new StyleColor(StyleKeyword.Null) : new StyleColor(contrast);
+                _lock.MarkDirtyRepaint();
             }
             _eyeDropper.style.display = Shown(_showEyeDropper && ThryEyeDropper.Available);
+        }
+
+        void DrawLock(MeshGenerationContext context)
+        {
+            var rect = _lock.contentRect;
+            float scale = Mathf.Min(rect.width, rect.height) / 12f;
+            if (scale <= 0) return;
+            var origin = rect.center - new Vector2(6, 6) * scale;
+            Vector2 At(float x, float y) => origin + new Vector2(x, y) * scale;
+            var painter = context.painter2D;
+            var color = _lock.resolvedStyle.color;
+            painter.lineWidth = 1.5f * scale;
+            painter.lineCap = LineCap.Butt;
+            painter.strokeColor = color;
+            painter.BeginPath();
+            painter.MoveTo(At(3.5f, 6f));
+            painter.LineTo(At(3.5f, 4.5f));
+            painter.Arc(At(6f, 4.5f), 2.5f * scale, 180, 360);
+            painter.LineTo(At(8.5f, 6f));
+            painter.Stroke();
+            float radius = 1.2f * scale;
+            Vector2 min = At(2f, 5.5f), max = At(10f, 11f);
+            painter.fillColor = color;
+            painter.BeginPath();
+            painter.Arc(new Vector2(min.x + radius, min.y + radius), radius, 180, 270);
+            painter.Arc(new Vector2(max.x - radius, min.y + radius), radius, 270, 360);
+            painter.Arc(new Vector2(max.x - radius, max.y - radius), radius, 0, 90);
+            painter.Arc(new Vector2(min.x + radius, max.y - radius), radius, 90, 180);
+            painter.ClosePath();
+            painter.Fill();
         }
 
         // Visible parts leave display to the theme, which hides the eyedropper in pathing cells and disabled rows.
@@ -166,6 +214,7 @@ namespace Thry.ThryEditor
             float intensity = BadgeIntensity;
             if (intensity >= BadgeMinIntensity)
                 text += " · " + RetainedText.Get("color_field_intensity", "Intensity") + " +" + intensity.ToString("0.0", CultureInfo.InvariantCulture);
+            if (_locked) text += "\n" + RetainedText.Get("color_field_locked", "Locked: Not marked as Animated. Tag this prop as either A/RA in order to animate this property when Locked.");
             return text;
         }
     }

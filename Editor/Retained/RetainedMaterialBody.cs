@@ -461,9 +461,12 @@ namespace Thry.ThryEditor
                 RetainedFields.SynchronizeValue(queue, value, Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value)); });
             queue.RegisterValueChangedCallback(e => Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),m => m.renderQueue = e.newValue)); Add(row);
             var footer = new VisualElement(); footer.AddToClassList("thry-footer");
-            var credit = new Label("@UI Made by Thryrallo"); credit.AddToClassList("thry-footer-credit"); footer.Add(credit);
-            credit.RegisterCallback<PointerUpEvent>(e => { if (e.button == 0) Application.OpenURL("https://www.twitter.com/thryrallo"); });
-            var thry = new Button(() => Application.OpenURL("https://www.twitter.com/thryrallo")) { tooltip = "Thryrallo" };
+            var credit = new VisualElement(); credit.AddToClassList("thry-footer-credit"); footer.Add(credit);
+            var designed = new Label("UI 3.0 by Poiyomi Labs"); designed.AddToClassList("thry-footer-credit-line"); credit.Add(designed);
+            var original = new Label("Original UI by Thryrallo"); original.AddToClassList("thry-footer-credit-line"); credit.Add(original);
+            original.RegisterCallback<PointerUpEvent>(e => { if (e.button == 0) Application.OpenURL("https://www.x.com/Thryrallo"); });
+            credit.RegisterCallback<PointerUpEvent>(e => { if (e.button == 0) Application.OpenURL("https://www.github.com/poiyomi/ThryEditor"); });
+            var thry = new Button(() => Application.OpenURL("https://www.x.com/Thryrallo")) { tooltip = "Thryrallo" };
             thry.Add(new Image { image = Icons.thryIcon.normal.background, scaleMode = ScaleMode.ScaleToFit }); footer.Add(thry);
             foreach(var item in Model.Shader.RetainedFooters)
             {

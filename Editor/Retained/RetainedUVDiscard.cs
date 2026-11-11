@@ -28,14 +28,23 @@ namespace Thry.ThryEditor
         internal static bool CanBuild(ShaderGroup group, RetainedMaterialModel model)
         {
             var prefix = Prefix(group);
-            return prefix != null && Enumerable.Range(0, 16).All(i => model.Shader.PropertyDictionary.ContainsKey(prefix + i / 4 + "_" + i % 4));
+            return prefix != null && Enumerable.Range(0, 16).All(i => Tile(model, prefix, i) != null);
+        }
+        // Locking renames Renamed (RA) tiles with the material's suffix, e.g. _UDIMDiscardRow3_1_MySuffix.
+        static ShaderProperty Tile(RetainedMaterialModel model, string prefix, int index)
+        {
+            var properties = model.Shader.PropertyDictionary;
+            string name = prefix + index / 4 + "_" + index % 4;
+            if (properties.TryGetValue(name, out var tile)) return tile;
+            string suffix = model.Shader.RenamedPropertySuffix;
+            return !string.IsNullOrEmpty(suffix) && properties.TryGetValue(name + "_" + suffix, out tile) ? tile : null;
         }
         internal RetainedUVDiscard(RetainedMaterialModel model, RetainedFields fields, ShaderGroup group, Action<VisualElement, ShaderPart> addOriginal)
         {
             this.model = model; this.fields = fields;
             string prefix = Prefix(group);
             name = "uv-discard-" + prefix;
-            tiles = Enumerable.Range(0, 16).Select(i => model.Shader.PropertyDictionary[prefix + i / 4 + "_" + i % 4]).ToArray();
+            tiles = Enumerable.Range(0, 16).Select(i => Tile(model, prefix, i)).ToArray();
             bool inserted = false;
             foreach (var child in group.Children)
             {
@@ -123,7 +132,7 @@ namespace Thry.ThryEditor
                 cells[i].EnableInClassList("thry-uv-discarded", discarded && !mixed);
                 cells[i].EnableInClassList("thry-uv-mixed", mixed || p.HasMixedAnimatedOwners);
                 cells[i].SetEnabled(model.CanEdit(p));
-                cells[i].tooltip = "Toggle discard" + " · " + i % 4 + ", " + i / 4 + "\n" + string.Join(" / ", labels.Where(label => !string.IsNullOrEmpty(label))) + "\n" + (mixed ? "Mixed discard values" : discarded ? "Discarded" : "Visible") + "\n" + p.MaterialProperty.name + "\n" + p.AnimatedOwnersTooltip;
+                cells[i].tooltip = "Toggle Discard" + " · " + i % 4 + ", " + i / 4 + "\n" + "UDIM " + (1001 + i % 4 + 10 * (i / 4)) + "\n" + string.Join(" / ", labels.Where(label => !string.IsNullOrEmpty(label))) + "\n" + (mixed ? "Mixed Discard Values" : discarded ? "Discarded" : "Visible") + "\n" + p.MaterialProperty.name + "\n" + p.AnimatedOwnersTooltip;
             }
         }
     }

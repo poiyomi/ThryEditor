@@ -367,24 +367,52 @@ namespace Thry.ThryEditor
         static readonly string[] s_animatedVectorPaths = { ".x", ".y", ".z", ".w" };
         static readonly string[] s_animatedFloatPaths = { "" };
 
+        private string _keyframePathsName, _keyframePathsSuffix;
+        private string[] _keyframePaths;
+
+        // Marks whether the clip being previewed or recorded on a property in the Shader UI.
+        internal bool HasAnimationKeyframes(Renderer renderer)
+        {
+            if (renderer == null || MaterialProperty == null) return false;
+            string name = MaterialProperty.name;
+            string suffix = IsRenaming && !MyShaderUI.IsLockedMaterial && !string.IsNullOrEmpty(MyShaderUI.RenamedPropertySuffix) ? MyShaderUI.RenamedPropertySuffix : null;
+            if (_keyframePaths == null || _keyframePathsName != name || _keyframePathsSuffix != suffix)
+            {
+                string[] components;
+                switch (MaterialProperty.GetPropertyType())
+                {
+                    case ShaderPropertyType.Texture: components = s_animatedTexturePaths; break;
+                    case ShaderPropertyType.Color: components = s_animatedColorPaths; break;
+                    case ShaderPropertyType.Vector: components = s_animatedVectorPaths; break;
+                    default: components = s_animatedFloatPaths; break;
+                }
+                var paths = new List<string>(components.Length * 2);
+                foreach (string component in components)
+                {
+                    paths.Add("material." + name + component);
+                }
+                if (suffix != null)
+                {
+                    foreach (string component in components)
+                    {
+                        paths.Add("material." + name + "_" + suffix + component);
+                    }
+                }
+                _keyframePaths = paths.ToArray();
+                _keyframePathsName = name;
+                _keyframePathsSuffix = suffix;
+            }
+            foreach (string path in _keyframePaths)
+            {
+                if (AnimationMode.IsPropertyAnimated(renderer, path)) return true;
+            }
+            return false;
+        }
+
         private void AutomaticAnimatedMarking()
         {
-            if (!Config.Instance.autoMarkPropertiesAnimated || MyShaderUI.ActiveRenderer == null || !MyShaderUI.IsInAnimationMode || !IsAnimatable || IsAnimated) return;
-            string[] paths;
-            switch (MaterialProperty.GetPropertyType())
-            {
-                case ShaderPropertyType.Texture: paths = s_animatedTexturePaths; break;
-                case ShaderPropertyType.Color: paths = s_animatedColorPaths; break;
-                case ShaderPropertyType.Vector: paths = s_animatedVectorPaths; break;
-                default: paths = s_animatedFloatPaths; break;
-            }
-            string name = "material." + MaterialProperty.name;
-            foreach (string path in paths)
-            {
-                if (!AnimationMode.IsPropertyAnimated(MyShaderUI.ActiveRenderer, name + path)) continue;
-                SetAnimated(true, false);
-                return;
-            }
+            if (!Config.Instance.autoMarkPropertiesAnimated || !MyShaderUI.IsInAnimationMode || !IsAnimatable || IsAnimated) return;
+            if (HasAnimationKeyframes(MyShaderUI.ActiveRenderer)) SetAnimated(true, false);
         }
 
         private ShaderProperty _retainedProjectionSource;
