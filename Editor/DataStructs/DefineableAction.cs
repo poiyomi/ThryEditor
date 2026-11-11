@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Thry.ThryEditor.Helpers;
 using UnityEditor;
@@ -23,6 +24,15 @@ namespace Thry.ThryEditor
                     string[] set = Regex.Split(data, @"=");
                     if (set.Length > 1)
                         MaterialHelper.SetValueAdvanced(set[0].Trim(), set[1].Trim(), targets);
+                    break;
+                case DefineableActionType.SET_PROPERTY_IF_DEFAULT:
+                    string[] setIfDefault = Regex.Split(data, @"=");
+                    if (setIfDefault.Length > 1 && ShaderEditor.Active.PropertyDictionary.TryGetValue(setIfDefault[0].Trim(), out ShaderProperty untouched))
+                    {
+                        Material[] atDefault = (targets ?? ShaderEditor.Active.Materials).Where(untouched.IsDefaultOn).ToArray();
+                        if (atDefault.Length > 0)
+                            MaterialHelper.SetValueAdvanced(setIfDefault[0].Trim(), setIfDefault[1].Trim(), atDefault);
+                    }
                     break;
                 case DefineableActionType.SET_TAG:
                     string[] keyValue = Regex.Split(data, @"=");
@@ -118,6 +128,7 @@ namespace Thry.ThryEditor
         SET_SHADER,
         SET_TAG,
         OPEN_EDITOR,
+        SET_PROPERTY_IF_DEFAULT,
     }
 
 

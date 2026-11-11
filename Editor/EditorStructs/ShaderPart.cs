@@ -253,6 +253,13 @@ namespace Thry.ThryEditor
             }
         }
 
+        public bool IsDefaultOn(Material material)
+        {
+            if (MaterialProperty == null || material == null || !material.HasProperty(MaterialProperty.name))
+                return false;
+            return IsDefaultValue(MaterialHelper.GetValue(MaterialEditor.GetMaterialProperty(new UnityEngine.Object[] { material }, MaterialProperty.name)));
+        }
+
         public string Note
         {
             get
