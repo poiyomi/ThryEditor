@@ -1177,6 +1177,15 @@
     color: var(--thry-muted-color);
 }
 
+.thry-footer-credit > .thry-footer-credit-line {
+    font-size: var(--thry-type-caption);
+    color: var(--thry-muted-color);
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
 .thry-footer Button {
     width: var(--thry-footer-button-size);
     height: var(--thry-footer-button-size);
