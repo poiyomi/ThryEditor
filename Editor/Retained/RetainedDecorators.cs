@@ -217,6 +217,36 @@ namespace Thry.ThryEditor
                     Track(button,()=>button.SetEnabled(!pending && RetainedMaterialModel.HasValidTargets(Model.Editor) && Model.CanEdit(property)
                         && PresentationTargets(property).Any(m=>(bool)check.Invoke(null,new object[]{m}))));root.Add(button);
                 }
+                if (attribute.Name == "PoiBlackWhiteMeasure")
+                {
+                    var type = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Poi.Tools.PoiBlackWhiteMeasure")).FirstOrDefault(t => t != null);
+                    var measure = type?.GetMethod("Measure"); var check = type?.GetMethod("CanMeasure");
+                    if (measure == null || check == null) continue;
+                    var button = new Button(() =>
+                    {
+                        if (!RetainedMaterialModel.HasValidTargets(Model.Editor) || !Model.CanEdit(property)) return;
+                        try { foreach (var material in PresentationTargets(property)) measure.Invoke(null, new object[] { material }); }
+                        catch (TargetInvocationException exception) { Debug.LogException(exception.InnerException ?? exception); }
+                        Model.Notify();
+                    }) { name = "black-white-measure", tooltip = "Sets Texture Range from the main texture." };
+                    button.AddToClassList("thry-action-button");
+                    Track(button, () =>
+                    {
+                        button.text = RetainedText.PropertyCaption(property);
+                        button.SetEnabled(RetainedMaterialModel.HasValidTargets(Model.Editor) && Model.CanEdit(property)
+                            && PresentationTargets(property).Any(m => (bool)check.Invoke(null, new object[] { m })));
+                    });
+                    root.Add(button);
+                }
+                if (attribute.Name == "PoiBlackWhitePick")
+                {
+                    var type = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Poi.Tools.PoiBlackWhiteMeasure")).FirstOrDefault(t => t != null);
+                    var create = type?.GetMethod("CreatePickPanel");
+                    if (create == null) continue;
+                    var panel = (VisualElement)create.Invoke(null, new object[] { (Func<System.Collections.Generic.IEnumerable<Material>>)(() => PresentationTargets(property)) });
+                    Track(panel, () => (panel.userData as Action)?.Invoke());
+                    root.Add(panel);
+                }
                 if (attribute.Name == "ThryDecalBakeAll")
                 {
                     AddDecalBakeAll(root, property);

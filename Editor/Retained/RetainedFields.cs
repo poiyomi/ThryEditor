@@ -180,7 +180,7 @@ namespace Thry.ThryEditor
                 // While animating, a red edge marks properties the clip keys.
                 root.EnableInClassList("thry-animation-keyframed", Model.Shader.IsInAnimationMode && HasAnimationKeyframes(property));
             });
-            if(attributes.Any(a=>a.Name=="PoiBakeColorAdjust"))return root;
+            if(attributes.Any(a=>a.Name=="PoiBakeColorAdjust"||a.Name=="PoiBlackWhiteMeasure"||a.Name=="PoiBlackWhitePick"))return root;
             if (Presentation(root, property, attributes)) return root;
             var texture = property as ShaderTextureProperty;
             if (texture != null) { Texture(root, texture, attributes); return root; }
