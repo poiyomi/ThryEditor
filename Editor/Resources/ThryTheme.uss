@@ -9582,6 +9582,70 @@
     display: none;
 }
 
+/* Render queue beside the rendering mode: a number captioned inside its box like that dropdown.
+   The caption opens the list of named queues. */
+.thry-inspector .thry-action-row > .thry-queue-field {
+    flex-direction: row;
+    align-items: center;
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: auto;
+    height: var(--thry-section-height);
+    margin: 0 1px var(--thry-space-2) var(--thry-space-5);
+}
+
+.thry-inspector .thry-action-row > .thry-queue-field > .unity-integer-field {
+    width: 96px;
+    height: var(--thry-section-height);
+    margin: 0;
+}
+
+.thry-inspector .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input {
+    flex-direction: row;
+    align-items: center;
+    height: var(--thry-section-height);
+    min-height: var(--thry-section-height);
+    margin: 0;
+    padding: 0 var(--thry-space-6) 0 0;
+    background-color: var(--thry-action-background);
+    border-color: var(--thry-action-background);
+    color: var(--thry-action-text-color);
+    -unity-text-align: middle-right;
+}
+
+.thry-inspector .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:hover {
+    background-color: var(--thry-action-hover-background);
+    border-color: var(--thry-action-hover-background);
+}
+
+.thry-inspector .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:focus {
+    border-color: var(--thry-focus-color);
+}
+
+.thry-inspector .thry-queue-field .unity-text-element--inner-input-field-component {
+    flex-grow: 1;
+    -unity-text-align: middle-right;
+}
+
+.thry-inspector .thry-queue-field .thry-queue-caption {
+    align-self: stretch;
+    margin: 0;
+    padding: 0 var(--thry-space-6) 0 var(--thry-space-10);
+    -unity-text-align: middle-left;
+}
+
+.thry-inspector .thry-queue-field .thry-queue-caption:hover {
+    color: var(--thry-value-color);
+}
+
+.thry-inspector .thry-queue-field .thry-queue-caption:focus {
+    color: var(--thry-accent-color);
+}
+
+.thry-inspector .thry-queue-field > .thry-preset-indicator {
+    align-self: center;
+}
+
 /* A theme index beside a color is a chip: the theme color it follows, or an empty square while off. */
 .thry-inspector .thry-with-reference > .thry-theme-chip-host {
     flex-grow: 0;

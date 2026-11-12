@@ -73,6 +73,51 @@ namespace Thry.ThryEditor
                 _fields.Track(caption, () => caption.text = RetainedText.Get(Model.Shader, "rendering", "Rendering"));
                 actionRow.Add(renderingMode);
             }
+            var queueBox = new VisualElement(); queueBox.AddToClassList("thry-queue-field");
+            var queueField = new UnityEngine.UIElements.IntegerField { name = "thry-render-queue", isDelayed = true };
+            // The caption is the named-queue picker; the number beside it stays a plain number box.
+            var queueCaption = new Label { name = "thry-render-queue-preset", focusable = true, tabIndex = 0 };
+            queueCaption.AddToClassList("thry-rendering-caption"); queueCaption.AddToClassList("thry-queue-caption");
+            queueField.Q(className: UnityEngine.UIElements.IntegerField.inputUssClassName)?.Insert(0, queueCaption);
+            string[] queueNames = { RetainedText.Get(Model.Shader, "queue_shader", "From Shader"), RetainedText.Get(Model.Shader, "queue_background", "Background"), RetainedText.Get(Model.Shader, "queue_geometry", "Geometry"), RetainedText.Get(Model.Shader, "queue_alpha_test", "AlphaTest"), RetainedText.Get(Model.Shader, "queue_transparent", "Transparent"), RetainedText.Get(Model.Shader, "queue_overlay", "Overlay") };
+            int[] queueValues = { -1, 1000, 2000, 2450, 3000, 4000 };
+            Action pickQueue = () =>
+            {
+                int current = Model.Shader.Materials[0].renderQueue;
+                bool mixedQueue = Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != current);
+                RetainedMenu.Open(queueBox.worldBound, queueCaption, queueNames.Select((label, i) => new RetainedMenu.Item
+                {
+                    Text = label, Checked = !mixedQueue && queueValues[i] == current,
+                    Action = () => Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"), m => m.renderQueue = queueValues[i])
+                }));
+            };
+            queueCaption.RegisterCallback<PointerDownEvent>(e =>
+            {
+                if (e.button != 0) return;
+                Helpers.EventExtensions.PreventDefaultHandling(e); e.StopImmediatePropagation(); pickQueue();
+            }, TrickleDown.TrickleDown);
+            queueCaption.RegisterCallback<NavigationSubmitEvent>(e =>
+            {
+                Helpers.EventExtensions.PreventDefaultHandling(e); e.StopImmediatePropagation(); pickQueue();
+            }, TrickleDown.TrickleDown);
+            queueBox.Add(queueField);
+            _fields.DecoratePreset(queueBox, Model.Shader.RetainedQueue, true);
+            _fields.Track(queueBox, () =>
+            {
+                queueBox.style.display = Config.Instance.showRenderQueue ? DisplayStyle.Flex : DisplayStyle.None;
+                queueCaption.text = RetainedText.Get(Model.Shader, "queue", "Queue");
+                int value = Model.Shader.Materials[0].renderQueue;
+                bool mixed = Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value);
+                RetainedFields.SynchronizeValue(queueField, value, mixed);
+                int index = Array.IndexOf(queueValues, value);
+                // A queue matching no named one is described by its offset from the nearest, as Unity
+                // does: 2225 reads "Geometry +225".
+                string tooltip = RetainedText.Get(Model.Shader, "render_queue", "Render Queue")
+                    + (mixed ? "" : ": " + (index < 0 ? Helpers.RenderQueueHelper.GetDisplayName(value, queueNames, queueValues) : queueNames[index]));
+                if (queueBox.tooltip != tooltip) queueBox.tooltip = tooltip;
+            });
+            queueField.RegisterValueChangedCallback(e => Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"), m => m.renderQueue = e.newValue));
+            actionRow.Add(queueBox);
             if (shader.RetainedOptimizer != null)
             {
                 var variantNotice = new HelpBox("Material variants can't be locked. Clear Parent above to lock this material.", HelpBoxMessageType.Info) { name = "thry-variant-notice" };
@@ -512,29 +557,6 @@ namespace Thry.ThryEditor
                 matchFallback.style.flexShrink = 0; matchFallback.style.marginTop = 0; matchFallback.style.marginRight = 0; matchFallback.style.marginBottom = 0;
                 input.Add(matchFallback); Add(fallbackRow);
             }
-            var row = RetainedFields.Row(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),out input);
-            _fields.DecoratePreset(row, Model.Shader.RetainedQueue);
-            _fields.Track(row, () => row.style.display = Config.Instance.showRenderQueue ? DisplayStyle.Flex : DisplayStyle.None);
-            input.AddToClassList("thry-components");
-            string[] queueNames = { RetainedText.Get(Model.Shader, "queue_shader", "From Shader"), RetainedText.Get(Model.Shader, "queue_background", "Background"), RetainedText.Get(Model.Shader, "queue_geometry", "Geometry"), RetainedText.Get(Model.Shader, "queue_alpha_test", "AlphaTest"), RetainedText.Get(Model.Shader, "queue_transparent", "Transparent"), RetainedText.Get(Model.Shader, "queue_overlay", "Overlay") };
-            int[] queueValues = { -1, 1000, 2000, 2450, 3000, 4000 };
-            var queuePreset = new DropdownField(queueNames.ToList(), 0); _view.UseInspectorMenu(queuePreset); input.Add(queuePreset); queuePreset.style.flexGrow = 1;
-            queuePreset.style.flexBasis = 0; queuePreset.style.flexShrink = 1; queuePreset.style.minWidth = 0;
-            _fields.TrackVisible(queuePreset, () => {
-                int value = Model.Shader.Materials[0].renderQueue;
-                int index = Array.IndexOf(queueValues, value);
-                // A queue matching no preset is named by its offset from the nearest one, as Unity
-                // does: 2225 reads "Geometry +225". The word "Custom" named nothing at all.
-                RetainedFields.SynchronizeValue(queuePreset, index < 0 ? Helpers.RenderQueueHelper.GetDisplayName(value, queueNames, queueValues) : queueNames[index],
-                    Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value)); });
-            queuePreset.RegisterValueChangedCallback(e => { if (queuePreset.index >= 0) Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"), m => m.renderQueue = queueValues[queuePreset.index]);
-            });
-            var queue = new UnityEngine.UIElements.IntegerField { name = "thry-render-queue" }; input.Add(queue);
-            queue.style.width = 64;
-            queue.style.flexShrink = 0;
-            _fields.TrackVisible(queue, () => { int value = Model.Shader.Materials[0].renderQueue;
-                RetainedFields.SynchronizeValue(queue, value, Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value)); });
-            queue.RegisterValueChangedCallback(e => Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),m => m.renderQueue = e.newValue)); Add(row);
             var footer = new VisualElement(); footer.AddToClassList("thry-footer");
             var credit = new VisualElement(); credit.AddToClassList("thry-footer-credit"); footer.Add(credit);
             var designed = new Label("UI 3.0 by Poiyomi Labs"); designed.AddToClassList("thry-footer-credit-line"); credit.Add(designed);
