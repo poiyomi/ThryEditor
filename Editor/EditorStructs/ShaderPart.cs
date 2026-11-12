@@ -595,56 +595,50 @@ namespace Thry.ThryEditor
                 .Distinct().ToArray();
         }
 
-        internal GenericMenu RetainedContextMenu()
+        // Native menus ignore tooltips, so a retained menu icon rides in one.
+        internal const string MenuIconReset = "thry-icon:reset", MenuIconCopy = "thry-icon:copy", MenuIconPaste = "thry-icon:paste";
+
+        internal GenericMenu RetainedContextMenu(Action<GenericMenu> addClipboard = null, Action<GenericMenu> addFavorite = null)
         {
             _contextMenu = new GenericMenu();
-            if (MyShaderUI.Locale.EditInUI)
-                _contextMenu.AddItem(new GUIContent("Edit label"), false, () => RetainedTextPrompt.Open("Edit label", Content.text, value =>
-                {
-                    MyShaderUI.Locale.Set(MaterialProperty, value); MyShaderUI.Locale.Save(); MyShaderUI.Reload();
-                }));
+            var targets = MaterialProperty != null ? PropertyContextTargets() : Array.Empty<Material>();
+            bool lockedByAncestor = targets.Any(m => m.IsPropertyLockedByAncestor(ShaderPropertyId));
+            bool editable = targets.Length > 0 && !lockedByAncestor && GUI.enabled;
+            if (editable) DoRegularMenu(_contextMenu, targets.All(m => m.IsPropertyOverriden(ShaderPropertyId)), targets);
+            addClipboard?.Invoke(_contextMenu);
+            if (IsAnimatable && !MyShaderUI.IsLockedMaterial)
+            {
+                _contextMenu.AddSeparator("");
+                _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => SetAnimated(!IsAnimated, false));
+                if (CanRename)
+                    _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => SetAnimated(true, !IsRenaming));
+            }
+            _contextMenu.AddSeparator("");
+            if (MaterialProperty != null)
+            {
+                _contextMenu.AddItem(new GUIContent("Copy as/Property Name"), false, () => EditorGUIUtility.systemCopyBuffer = MaterialProperty.name);
+                _contextMenu.AddItem(new GUIContent("Copy as/Animated Property Name"), false, () => EditorGUIUtility.systemCopyBuffer = GetAnimatedPropertyName());
+                _contextMenu.AddItem(new GUIContent("Copy as/Animated Property Path"), false, CopyPropertyPath);
+                _contextMenu.AddItem(new GUIContent("Copy as/Keyframe"), false, CopyPropertyAsKeyframe);
+                if (IsAnimationWindowRecording()) _contextMenu.AddItem(new GUIContent("Add Keyframe to Animation"), false, AddKeyToAnimationClip);
+            }
+            AddPresetMenu(_contextMenu);
+            if (editable) DoLockPropertiesMenu(_contextMenu, !targets.Any(m => m.IsPropertyLocked(ShaderPropertyId)), targets, true);
+            else if (lockedByAncestor && targets.Length == 1)
+                _contextMenu.AddItem(Styles.lockOriginContent, false, () => GotoLockOriginAction(targets));
+            _contextMenu.AddSeparator("");
+            addFavorite?.Invoke(_contextMenu);
             if (Config.Instance.showNotes)
                 _contextMenu.AddItem(new GUIContent("Set note"), false, () =>
                 {
                     var window = ScriptableObject.CreateInstance<SetNotePopup>(); window.Init(this, new Rect()); window.ShowUtility();
                 });
-            if (IsAnimatable && !MyShaderUI.IsLockedMaterial)
-            {
-                _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => SetAnimated(!IsAnimated, false));
-                if (CanRename)
-                    _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => SetAnimated(true, !IsRenaming));
-            }
-            AddPresetMenu(_contextMenu);
-            if (MaterialProperty != null)
-            {
-                _contextMenu.AddItem(new GUIContent("Copy Property Name"), false, () => EditorGUIUtility.systemCopyBuffer = MaterialProperty.name);
-                _contextMenu.AddItem(new GUIContent("Copy Animated Property Name"), false, () => EditorGUIUtility.systemCopyBuffer = GetAnimatedPropertyName());
-                _contextMenu.AddItem(new GUIContent("Copy Animated Property Path"), false, CopyPropertyPath);
-                _contextMenu.AddItem(new GUIContent("Copy Property as Keyframe"), false, CopyPropertyAsKeyframe);
-                if (IsAnimationWindowRecording()) _contextMenu.AddItem(new GUIContent("Add Keyframe to Animation"), false, AddKeyToAnimationClip);
-                var targets = PropertyContextTargets();
-                DoVariantMenuStuff(_contextMenu, targets.All(m => m.IsPropertyOverriden(ShaderPropertyId)),
-                    targets.Any(m => m.IsPropertyLockedByAncestor(ShaderPropertyId)), targets.Any(m => m.IsPropertyLocked(ShaderPropertyId)), targets, true);
-            }
+            if (MyShaderUI.Locale.EditInUI)
+                _contextMenu.AddItem(new GUIContent("Edit label"), false, () => RetainedTextPrompt.Open("Edit label", Content.text, value =>
+                {
+                    MyShaderUI.Locale.Set(MaterialProperty, value); MyShaderUI.Locale.Save(); MyShaderUI.Reload();
+                }));
             return _contextMenu;
-        }
-
-        void DoVariantMenuStuff(GenericMenu menu, bool overriden, bool lockedByAncestor, bool isLockedInChildren, Material[] targets, bool allowLocking)
-        {
-            if (targets.Length == 0) return;
-            if (lockedByAncestor)
-            {
-                if (targets.Length != 1)
-                    return;
-
-                _contextMenu.AddSeparator("");
-                menu.AddItem(Styles.lockOriginContent, false, () => GotoLockOriginAction(targets));
-            }
-            else if (GUI.enabled)
-            {
-                DoRegularMenu(menu, overriden, targets);
-                DoLockPropertiesMenu(menu, !isLockedInChildren, targets, allowLocking);
-            }
         }
 
         void DoRegularMenu(GenericMenu menu, bool isOverriden, Material[] targets)
@@ -653,18 +647,18 @@ namespace Thry.ThryEditor
 
             if (isOverriden)
             {
-                _contextMenu.AddSeparator("");
                 HandleApplyRevert(menu, singleEditing, targets);
+                menu.AddSeparator("");
             }
 
             DisplayMode displayMode = GetDisplayMode(targets);
             if (displayMode == DisplayMode.Material)
-            {
-                menu.AddSeparator("");
-                menu.AddItem(Styles.resetContent, false, ResetMaterialProperties);
-            }
+                menu.AddItem(new GUIContent(Styles.resetContent.text, MenuIconReset), false, ResetMaterialProperties);
             else if (displayMode == DisplayMode.Variant)
+            {
                 HandleRevertAll(menu, singleEditing, targets);
+                menu.AddSeparator("");
+            }
         }
 
         enum DisplayMode { Material, Variant, Mixed };
@@ -688,9 +682,6 @@ namespace Thry.ThryEditor
 
         void DoLockPropertiesMenu(GenericMenu menu, bool lockValue, Material[] targets, bool allowLocking)
         {
-            if (menu.GetItemCount() != 0)
-                menu.AddSeparator("");
-
             if (allowLocking)
             {
                 menu.AddItem(Styles.lockContent, !lockValue, () => { SetLockedProperty(targets, lockValue); });

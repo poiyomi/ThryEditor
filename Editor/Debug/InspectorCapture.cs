@@ -40,21 +40,27 @@ namespace Thry.ThryEditor
         /// <returns>Task completed when the process finishes</returns>
         public static async Task CaptureWindow(EditorWindow window, string saveDirectory)
         {
-            var texture = await ScreenshotAsync(window);
-            if(texture == null)
-                return;
-            var bytes = texture.EncodeToPNG();
             var filename = $"{window.GetType().Name}_{DateTime.Now.ToString("HH-mm-ss")}.png";
             var finalPath = $"{saveDirectory}/{filename}";
             if(Directory.Exists(saveDirectory))
-            {
-                await File.WriteAllBytesAsync(finalPath, bytes);
-                Debug.Log($"Saved screenshot to {finalPath}");
-            }
+                await CaptureWindowToFile(window, finalPath);
             else
-            {
                 Debug.LogError($"Can't save screenshot {finalPath} because directory doesn't exist.");
-            }
+        }
+
+        /// <summary>
+        /// Captures the window and saves it as a png at the given path
+        /// </summary>
+        /// <param name="window">window to screenshot</param>
+        /// <param name="path">File to write, including its name</param>
+        /// <returns>Task completed when the process finishes</returns>
+        public static async Task CaptureWindowToFile(EditorWindow window, string path)
+        {
+            var texture = await ScreenshotAsync(window);
+            if(texture == null)
+                return;
+            await File.WriteAllBytesAsync(path, texture.EncodeToPNG());
+            Debug.Log($"Saved screenshot to {path}");
         }
 
         /// <summary>

@@ -17,6 +17,7 @@ namespace Thry.ThryEditor
             internal Action Action;
             internal bool Separator;
             internal List<Item> Children;
+            internal Action<Painter2D, VisualElement> IconDraw;
         }
         readonly List<VisualElement> _rows = new List<VisualElement>();
         readonly List<Label> _captions = new List<Label>();
@@ -70,6 +71,49 @@ namespace Thry.ThryEditor
             menu._scroll.contentContainer.Focus();
             menu.schedule.Execute(() => { if (!menu._closed && menu._selected >= 0) menu._scroll.ScrollTo(menu._rows[menu._selected]); });
         }
+        // Drops separators that open or close the list or repeat, which optional groups leave behind.
+        internal static void TrimSeparators(List<Item> items)
+        {
+            bool Plain(Item item) => item.Separator && string.IsNullOrEmpty(item.Text);
+            for (int i = items.Count - 1; i >= 0; i--)
+                if (Plain(items[i]) && (i == 0 || i == items.Count - 1 || Plain(items[i - 1]))) items.RemoveAt(i);
+        }
+        internal static Action<Painter2D, VisualElement> IconFor(string key)
+        {
+            switch (key)
+            {
+                case ShaderPart.MenuIconReset: return DrawResetIcon;
+                case ShaderPart.MenuIconCopy: return DrawCopyIcon;
+                case ShaderPart.MenuIconPaste: return DrawPasteIcon;
+                default: return null;
+            }
+        }
+        static void Stroke(Painter2D painter, VisualElement icon)
+        {
+            painter.strokeColor = icon.resolvedStyle.color;
+            painter.lineWidth = 1.5f; painter.lineCap = LineCap.Round; painter.lineJoin = LineJoin.Round;
+        }
+        static void DrawResetIcon(Painter2D painter, VisualElement icon)
+        {
+            Stroke(painter, icon);
+            var center = new Vector2(9, 9.5f);
+            painter.BeginPath(); painter.Arc(center, 5.5f, 20, 290); painter.Stroke();
+            float end = 290 * Mathf.Deg2Rad;
+            var tip = center + new Vector2(Mathf.Cos(end), Mathf.Sin(end)) * 5.5f;
+            painter.BeginPath(); painter.MoveTo(tip + new Vector2(-3.6f, -1.4f)); painter.LineTo(tip); painter.LineTo(tip + new Vector2(-1.2f, 3.6f)); painter.Stroke();
+        }
+        static void DrawCopyIcon(Painter2D painter, VisualElement icon)
+        {
+            Stroke(painter, icon);
+            painter.BeginPath(); painter.MoveTo(new Vector2(7, 7)); painter.LineTo(new Vector2(14.5f, 7)); painter.LineTo(new Vector2(14.5f, 14.5f)); painter.LineTo(new Vector2(7, 14.5f)); painter.ClosePath(); painter.Stroke();
+            painter.BeginPath(); painter.MoveTo(new Vector2(4.5f, 11)); painter.LineTo(new Vector2(3.5f, 11)); painter.LineTo(new Vector2(3.5f, 3.5f)); painter.LineTo(new Vector2(11, 3.5f)); painter.LineTo(new Vector2(11, 4.5f)); painter.Stroke();
+        }
+        static void DrawPasteIcon(Painter2D painter, VisualElement icon)
+        {
+            Stroke(painter, icon);
+            painter.BeginPath(); painter.MoveTo(new Vector2(6.5f, 4.5f)); painter.LineTo(new Vector2(4.5f, 4.5f)); painter.LineTo(new Vector2(4.5f, 15)); painter.LineTo(new Vector2(13.5f, 15)); painter.LineTo(new Vector2(13.5f, 4.5f)); painter.LineTo(new Vector2(11.5f, 4.5f)); painter.Stroke();
+            painter.BeginPath(); painter.MoveTo(new Vector2(6.5f, 3)); painter.LineTo(new Vector2(11.5f, 3)); painter.LineTo(new Vector2(11.5f, 6)); painter.LineTo(new Vector2(6.5f, 6)); painter.ClosePath(); painter.Stroke();
+        }
         // Mirrors --thry-menu-item-height in ThryTheme.uss.
         static int RowHeight => Mathf.Clamp(InspectorAppearancePreferences.Shared.Get(Config.Instance).inspectorPropertyHeight, 18, 22) + 4;
         static bool Enabled(Item item) => !item.Separator && (item.Action != null || item.Children != null);
@@ -88,7 +132,7 @@ namespace Thry.ThryEditor
                     level = branch.Children;
                 }
                 level.Add(new Item { Text = path[path.Length - 1], Action = original.Action, Checked = original.Checked,
-                    Separator = original.Separator, Children = original.Children });
+                    Separator = original.Separator, Children = original.Children, IconDraw = original.IconDraw });
             }
             return root.ToArray();
         }
@@ -144,6 +188,7 @@ namespace Thry.ThryEditor
                 var back = new Button(Back) { text = "\u2039 " + RetainedText.Get("back", "Back"), name = "thry-menu-back" };
                 back.AddToClassList("thry-menu-back"); _scroll.Add(back);
             }
+            bool icons = _items.Any(item => item.IconDraw != null);
             for (int i = 0; i < _items.Length; i++)
             {
                 int index = i; var item = _items[i]; var row = new VisualElement();
@@ -151,6 +196,13 @@ namespace Thry.ThryEditor
                 if (!item.Separator)
                 {
                     var check = new Label(item.Checked ? "\u2713" : ""); check.AddToClassList("thry-menu-check"); row.Add(check);
+                    if (icons)
+                    {
+                        var icon = new VisualElement { pickingMode = PickingMode.Ignore };
+                        icon.AddToClassList("thry-menu-icon");
+                        if (item.IconDraw != null) icon.generateVisualContent += context => item.IconDraw(context.painter2D, icon);
+                        row.Add(icon);
+                    }
                     var caption = new Label(item.Text) { tooltip = item.Text }; caption.style.flexGrow = 1; row.Add(caption); _captions.Add(caption);
                     if (item.Children != null) row.Add(new Label("\u203a"));
                     row.EnableInClassList("thry-menu-disabled", !Enabled(item));

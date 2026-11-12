@@ -13,17 +13,15 @@ namespace Thry.ThryEditor
         {
         }
 
-        internal static GenericMenu RetainedHeaderMenu(ShaderGroup property, Material[] materials)
+        internal static GenericMenu RetainedHeaderMenu(ShaderGroup property, Material[] materials, System.Action<GenericMenu> addSearch = null)
         {
             var menu = new GenericMenu();
-            property.AddPresetMenu(menu);
-            if (menu.GetItemCount() > 0) menu.AddSeparator("");
             bool canEdit = !property.MyShaderUI.IsLockedMaterial;
             bool canPaste = canEdit && Mediator.copy_part != null;
-            void AddItem(string text, bool enabled, GenericMenu.MenuFunction action)
+            void AddItem(string text, bool enabled, GenericMenu.MenuFunction action, string icon = null)
             {
-                if (enabled) menu.AddItem(new GUIContent(text), false, action);
-                else menu.AddDisabledItem(new GUIContent(text));
+                if (enabled) menu.AddItem(new GUIContent(text, icon), false, action);
+                else menu.AddDisabledItem(new GUIContent(text, icon));
             }
             AddItem("Reset", canEdit, delegate ()
             {
@@ -41,13 +39,12 @@ namespace Thry.ThryEditor
 
                 Undo.SetCurrentGroupName($"Reset {property.Content.text} of {ShaderEditor.Active.Materials[0].name}");
                 Undo.CollapseUndoOperations(undoGroup);
-            });
-            menu.AddSeparator("");
-            menu.AddItem(new GUIContent("Copy"), false, delegate ()
+            }, MenuIconReset);
+            AddItem("Copy", true, delegate ()
             {
                 ThryLogger.LogDetail("ShaderHeader", $"Copying '{property.Content.text}' of {ShaderEditor.Active.Materials[0].name}");
                 Mediator.copy_part = property;
-            });
+            }, MenuIconCopy);
             AddItem("Paste", canPaste, delegate ()
             {
                 if (Mediator.copy_part != null)
@@ -62,7 +59,7 @@ namespace Thry.ThryEditor
                     Undo.SetCurrentGroupName($"Paste {property.Content.text} of {ShaderEditor.Active.Materials[0].name}");
                     Undo.CollapseUndoOperations(undoGroup);
                 }
-            });
+            }, MenuIconPaste);
             AddItem("Paste without Textures", canPaste, delegate ()
             {
                 if (Mediator.copy_part != null)
@@ -150,8 +147,13 @@ namespace Thry.ThryEditor
                 ThryLogger.LogDetail("ShaderHeader", $"Pasted {applied} properties from text onto '{property.Content.text}'");
             });
             menu.AddSeparator("");
+            property.AddPresetMenu(menu);
+            menu.AddSeparator("");
+            addSearch?.Invoke(menu);
+            SectionExtensions.ExtendMenu(property.MaterialProperty?.name, materials, menu);
             if(Config.Instance.showNotes)
             {
+                menu.AddSeparator("");
                 menu.AddItem(new GUIContent("Set Note"), false, () =>
                 {
                     var popup = ScriptableObject.CreateInstance<SetNotePopup>();
@@ -160,12 +162,6 @@ namespace Thry.ThryEditor
                 });
                 //menu.AddItem(new GUIContent("Clear Note"), false, () => { Note = null; }); // Too easy to missclick when there's no undo?
             }
-            else
-            {
-                menu.AddDisabledItem(new GUIContent("Set Note"));
-                //menu.AddDisabledItem(new GUIContent("Clear Note"));
-            }
-            SectionExtensions.ExtendMenu(property.MaterialProperty?.name, materials, menu);
 
             return menu;
         }

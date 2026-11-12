@@ -150,7 +150,7 @@ namespace Thry.ThryEditor
             });
             return row;
         }
-        internal VisualElement Field(ShaderProperty property, bool inline = false)
+        internal VisualElement Field(ShaderProperty property, bool inline = false, bool chip = false)
         {
             // Must run before the property or its attributes are read.
             if (!CanRenderProperty(property))
@@ -206,13 +206,18 @@ namespace Thry.ThryEditor
             if (!inline && property.Options.reference_property != null)
             {
                 foreach (var reference in ScopedReferences(property, property.Options.reference_property))
-                { input.AddToClassList("thry-with-reference"); input.Add(Field(reference,true)); }
+                { input.AddToClassList("thry-with-reference"); input.Add(Field(reference, true, true)); }
             }
             var maskSources = attributes.FirstOrDefault(a => a.Name == "ThryMaskSources");
             if (maskSources != null) { MaskSources(input, property, maskSources); return root; }
             if (Special(input, property, attributes)) return root;
             var enumeration = attributes.FirstOrDefault(a => a.Name == "ThryWideEnum" || a.Name == "Enum" || a.Name == "KeywordEnum");
-            if (enumeration != null) { Enumeration(input, property, enumeration); return root; }
+            if (enumeration != null)
+            {
+                Enumeration(input, property, enumeration, !inline, chip);
+                if (input.Q(className: "thry-theme-chip") != null) root.AddToClassList("thry-theme-chip-host");
+                return root;
+            }
             if (attributes.Any(a => a.Name.Contains("Toggle"))) { Toggle(input, property); return root; }
             if (property.MaterialProperty.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Int)
             {
@@ -258,6 +263,35 @@ namespace Thry.ThryEditor
                     var number = new FloatField(); Bind(number, property, p => p.GetNumber(), (p,v) => p.SetNumber(v)); input.Add(number); break;
             }
             return root;
+        }
+        // A theme index beside a color: a chip that shows the theme color it follows and stays blank while off.
+        private void ThemeChip(DropdownField field, ShaderProperty property, float[] values)
+        {
+            field.AddToClassList("thry-theme-chip");
+            var input = field.Q(className: BasePopupField<string, string>.inputUssClassName);
+            var swatch = new VisualElement { pickingMode = PickingMode.Ignore }; swatch.AddToClassList("thry-theme-chip-swatch");
+            var tag = new Label { pickingMode = PickingMode.Ignore }; tag.AddToClassList("thry-theme-chip-tag");
+            input.Insert(0, swatch); input.Insert(1, tag);
+            TrackVisible(swatch, () =>
+            {
+                bool mixed = property.MaterialProperty.hasMixedValue;
+                int value = mixed ? -1 : (int)property.MaterialProperty.GetNumber();
+                ShaderProperty theme = null;
+                bool themed = value >= 1 && value <= 4 && Model.Shader.PropertyDictionary.TryGetValue("_GlobalThemeColor" + (value - 1), out theme) && theme.MaterialProperty != null;
+                field.EnableInClassList("thry-theme-chip-off", value == 0);
+                swatch.style.display = themed || value == 0 ? DisplayStyle.Flex : DisplayStyle.None;
+                if (themed)
+                {
+                    var color = Helpers.ThryColorMath.Preview(theme.MaterialProperty.colorValue, RetainedColorPicker.Format(theme.MaterialProperty));
+                    color.a = 1; swatch.style.backgroundColor = color;
+                }
+                else swatch.style.backgroundColor = StyleKeyword.Null;
+                string text = mixed ? "\u2014" : value <= 0 ? "" : value <= 4 ? (value - 1).ToString() : value <= 8 ? "CC" + (value - 5) : "AL" + (value - 9);
+                if (tag.text != text) tag.text = text;
+                tag.style.display = text.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+                string tooltip = field.value;
+                if (field.tooltip != tooltip) field.tooltip = tooltip;
+            }, field);
         }
         // An int slider whose number field shows a symbol or word for 0. The field takes the place of the
         // slider's own one, so it is laid out and styled the same.
@@ -538,7 +572,7 @@ namespace Thry.ThryEditor
             }
             if (linkToggle != null) vector.Add(linkToggle);
         }
-        internal void Enumeration(VisualElement parent, ShaderProperty property, DrawerAttribute attribute)
+        internal void Enumeration(VisualElement parent, ShaderProperty property, DrawerAttribute attribute, bool buttons = false, bool chip = false)
         {
             string[] names; float[] values;
             // ThryWideEnum also accepts (enumType, unusedInteger). Do not confuse
@@ -557,6 +591,40 @@ namespace Thry.ThryEditor
                 || property.MaterialProperty.name == "_PathSourceDirB" || property.MaterialProperty.name == "_PathSourceDirA")
                 names = names.Select(n => n == "UV X Axis" ? "X axis" : n == "UV Y Axis" ? "Y axis" : n).ToArray();
             names = names.Select(n => Model.Shader.Locale.Get(n,n)).ToArray();
+            bool channels = new[] { "R", "G", "B", "A" }.All(channel => names.Contains(channel));
+            if (buttons && names.Length >= 2 && names.Length <= (channels ? 6 : 4) && names.Sum(n => n.Length) <= 22 && !(property.Options.on_value_actions?.Length > 0)
+                && EnumLabels.Resolve(property.MaterialProperty.name, property.MaterialProperty.targets) == null)
+            {
+                var group = new VisualElement { name = "value-" + property.MaterialProperty.name }; group.AddToClassList("thry-enum-buttons");
+                group.EnableInClassList("thry-channel-buttons", channels);
+                BindProperty(group, property);
+                var choices = new Button[names.Length];
+                for (int i = 0; i < names.Length; i++)
+                {
+                    float value = values[i];
+                    var choice = choices[i] = new Button(() => { if (Model.CanEdit(property)) Model.Number(property, value); }) { text = names[i] };
+                    // A hover that repeats the label is noise; it only names a choice whose label is cut off.
+                    choice.RegisterCallback<GeometryChangedEvent>(e =>
+                    {
+                        bool clipped = choice.MeasureTextSize(choice.text, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x > choice.contentRect.width + .5f;
+                        string tooltip = clipped ? choice.text : null;
+                        if (choice.tooltip != tooltip) choice.tooltip = tooltip;
+                    });
+                    if (channels && names[i].Length == 1 && "RGBA".Contains(names[i])) choices[i].AddToClassList("thry-channel-" + names[i].ToLowerInvariant());
+                    group.Add(choices[i]);
+                }
+                TrackVisible(group, () =>
+                {
+                    bool editable = Model.CanEdit(property), mixed = property.MaterialProperty.hasMixedValue;
+                    int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber());
+                    for (int i = 0; i < choices.Length; i++)
+                    {
+                        choices[i].SetEnabled(editable);
+                        choices[i].EnableInClassList("thry-selected", !mixed && i == selected);
+                    }
+                });
+                parent.Add(group); return;
+            }
             var labels = new EnumLabels.Source(property.MaterialProperty.name, names);
             var field = new DropdownField(names.ToList(), 0); field.AddToClassList("thry-input"); field.name = "value-" + property.MaterialProperty.name;
             BindProperty(field, property);
@@ -566,6 +634,7 @@ namespace Thry.ThryEditor
                 int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber()); SynchronizeValue(field, selected < 0 ? "—" : names[selected], property.MaterialProperty.hasMixedValue);
             });
             field.RegisterValueChangedCallback(e => { int index = Array.IndexOf(names, e.newValue); if(index >= 0) Model.Number(property, values[index]); }); parent.Add(field);
+            if (chip && values.Length == 13 && property.MaterialProperty.name.EndsWith("ThemeIndex", StringComparison.Ordinal)) ThemeChip(field, property, values);
         }
         private static readonly Dictionary<string,Type> EnumTypes = new Dictionary<string,Type>();
         private static Type ResolveEnumType(string name)
@@ -849,10 +918,8 @@ namespace Thry.ThryEditor
         private void ShowPropertyMenu(VisualElement element, ShaderProperty property, Vector2 position, Action<GenericMenu> extendMenu = null)
         {
             Model.Shader.ActivateRetained();
-            var menu = property.RetainedContextMenu();
-            RetainedPropertyClipboard.AddMenu(menu, Model, property);
-            menu.AddSeparator("");
-            menu.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "favorite", "Favorite")), _view.IsFavorite(property), () => _view.ToggleFavorite(property));
+            var menu = property.RetainedContextMenu(clipboard => RetainedPropertyClipboard.AddMenu(clipboard, Model, property),
+                favorite => favorite.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "favorite", "Favorite")), _view.IsFavorite(property), () => _view.ToggleFavorite(property)));
             extendMenu?.Invoke(menu);
             _view.ShowLegacyMenu(menu, element, new Rect(position, Vector2.zero));
         }

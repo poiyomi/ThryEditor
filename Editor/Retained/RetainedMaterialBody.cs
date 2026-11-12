@@ -60,6 +60,64 @@ namespace Thry.ThryEditor
             var materialActions = new VisualElement { name = "thry-material-actions" };
             materialActions.AddToClassList("thry-material-actions");
             Add(materialActions);
+            var actionRow = new VisualElement { name = "thry-action-row" };
+            actionRow.AddToClassList("thry-action-row");
+            if (shader.RetainedPreset != null)
+            {
+                var renderingMode = _fields.Field(shader.RetainedPreset, true);
+                renderingMode.AddToClassList("thry-rendering-mode");
+                renderingMode.tooltip = "Rendering mode";
+                var caption = new Label { pickingMode = PickingMode.Ignore };
+                caption.AddToClassList("thry-rendering-caption"); caption.AddToClassList("thry-dropdown-caption");
+                renderingMode.Q(className: BasePopupField<string, string>.inputUssClassName)?.Insert(0, caption);
+                _fields.Track(caption, () => caption.text = RetainedText.Get(Model.Shader, "rendering", "Rendering"));
+                actionRow.Add(renderingMode);
+            }
+            var queueBox = new VisualElement(); queueBox.AddToClassList("thry-queue-field");
+            var queueField = new UnityEngine.UIElements.IntegerField { name = "thry-render-queue", isDelayed = true };
+            // The caption is the named-queue picker; the number beside it stays a plain number box.
+            var queueCaption = new Label { name = "thry-render-queue-preset", focusable = true, tabIndex = 0 };
+            queueCaption.AddToClassList("thry-rendering-caption"); queueCaption.AddToClassList("thry-queue-caption");
+            queueField.Q(className: UnityEngine.UIElements.IntegerField.inputUssClassName)?.Insert(0, queueCaption);
+            string[] queueNames = { RetainedText.Get(Model.Shader, "queue_shader", "From Shader"), RetainedText.Get(Model.Shader, "queue_background", "Background"), RetainedText.Get(Model.Shader, "queue_geometry", "Geometry"), RetainedText.Get(Model.Shader, "queue_alpha_test", "AlphaTest"), RetainedText.Get(Model.Shader, "queue_transparent", "Transparent"), RetainedText.Get(Model.Shader, "queue_overlay", "Overlay") };
+            int[] queueValues = { -1, 1000, 2000, 2450, 3000, 4000 };
+            Action pickQueue = () =>
+            {
+                int current = Model.Shader.Materials[0].renderQueue;
+                bool mixedQueue = Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != current);
+                RetainedMenu.Open(queueBox.worldBound, queueCaption, queueNames.Select((label, i) => new RetainedMenu.Item
+                {
+                    Text = label, Checked = !mixedQueue && queueValues[i] == current,
+                    Action = () => Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"), m => m.renderQueue = queueValues[i])
+                }));
+            };
+            queueCaption.RegisterCallback<PointerDownEvent>(e =>
+            {
+                if (e.button != 0) return;
+                Helpers.EventExtensions.PreventDefaultHandling(e); e.StopImmediatePropagation(); pickQueue();
+            }, TrickleDown.TrickleDown);
+            queueCaption.RegisterCallback<NavigationSubmitEvent>(e =>
+            {
+                Helpers.EventExtensions.PreventDefaultHandling(e); e.StopImmediatePropagation(); pickQueue();
+            }, TrickleDown.TrickleDown);
+            queueBox.Add(queueField);
+            _fields.DecoratePreset(queueBox, Model.Shader.RetainedQueue, true);
+            _fields.Track(queueBox, () =>
+            {
+                queueBox.style.display = Config.Instance.showRenderQueue ? DisplayStyle.Flex : DisplayStyle.None;
+                queueCaption.text = RetainedText.Get(Model.Shader, "queue", "Queue");
+                int value = Model.Shader.Materials[0].renderQueue;
+                bool mixed = Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value);
+                RetainedFields.SynchronizeValue(queueField, value, mixed);
+                int index = Array.IndexOf(queueValues, value);
+                // A queue matching no named one is described by its offset from the nearest, as Unity
+                // does: 2225 reads "Geometry +225".
+                string tooltip = RetainedText.Get(Model.Shader, "render_queue", "Render Queue")
+                    + (mixed ? "" : ": " + (index < 0 ? Helpers.RenderQueueHelper.GetDisplayName(value, queueNames, queueValues) : queueNames[index]));
+                if (queueBox.tooltip != tooltip) queueBox.tooltip = tooltip;
+            });
+            queueField.RegisterValueChangedCallback(e => Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"), m => m.renderQueue = e.newValue));
+            actionRow.Add(queueBox);
             if (shader.RetainedOptimizer != null)
             {
                 var variantNotice = new HelpBox("Material variants can't be locked. Clear Parent above to lock this material.", HelpBoxMessageType.Info) { name = "thry-variant-notice" };
@@ -77,7 +135,19 @@ namespace Thry.ThryEditor
                     shader.Reload(); Model.Notify();
                 }) { name = "thry-lock-button" };
                 button.AddToClassList("thry-lock-button");
-                _fields.Track(button, () => button.text = shader.IsLockedMaterial ? RetainedText.Get(Model.Shader, "unlock_shader", "Unlock Shader") : RetainedText.Get(Model.Shader, "lock_shader", "Lock In Optimized Shader")); materialActions.Add(button);
+                var lockIcon = new VisualElement { pickingMode = PickingMode.Ignore }; lockIcon.AddToClassList("thry-lock-icon");
+                lockIcon.generateVisualContent += context => DrawPadlock(context.painter2D, lockIcon, shader.IsLockedMaterial);
+                var lockText = new Label { pickingMode = PickingMode.Ignore };
+                button.Add(lockIcon); button.Add(lockText);
+                bool? drawnOpen = null;
+                _fields.Track(button, () =>
+                {
+                    bool locked = shader.IsLockedMaterial;
+                    lockText.text = locked ? RetainedText.Get(Model.Shader, "unlock_short", "Unlock") : RetainedText.Get(Model.Shader, "lock_short", "Lock");
+                    button.tooltip = locked ? RetainedText.Get(Model.Shader, "unlock_shader", "Unlock Shader") : RetainedText.Get(Model.Shader, "lock_shader", "Lock In Optimized Shader");
+                    if (drawnOpen != locked) { drawnOpen = locked; lockIcon.MarkDirtyRepaint(); }
+                }); actionRow.Add(button);
+                materialActions.Add(actionRow);
                 _fields.Track(variantNotice, () =>
                 {
                     bool variant = shader.Materials.Any(m => m != null && m.isVariant);
@@ -127,22 +197,33 @@ namespace Thry.ThryEditor
                     });
                 }
             }
-            var presetRow = new VisualElement(); presetRow.AddToClassList("thry-presets-row");
-            Button presets = null;
-            presets = new Button(() => {
-                var names = Presets.GetFullPresetNames();
-                var window=ScriptableObject.CreateInstance<PresetsPopupGUI>();window.Init("_full_",names,Presets.GetFullPresetGuids(),shader);window.titleContent=new GUIContent(RetainedText.Get(Model.Shader, "presets", "Presets"));window.ShowUtility();
-            }) { name = "thry-presets-button", text = RetainedText.Get(Model.Shader, "presets", "Presets") }; presetRow.Add(presets);
-            if(shader.RetainedPreset != null)
-            {
-                var renderingMode = _fields.Field(shader.RetainedPreset, true);
-                renderingMode.AddToClassList("thry-rendering-mode");
-                renderingMode.tooltip = "Rendering mode";
-                presetRow.Add(renderingMode);
-            }
-            materialActions.Add(presetRow);
+            if (actionRow.parent == null && actionRow.childCount > 0) materialActions.Add(actionRow);
             foreach (var child in shader.RetainedRoot.Children) AddPart(this, child, 0);
             AddFooter();
+        }
+        private static void DrawPadlock(Painter2D painter, VisualElement icon, bool open)
+        {
+            float unit = icon.contentRect.width / 14f;
+            if (unit <= 0) return;
+            Vector2 P(float x, float y) => new Vector2(x * unit, y * unit);
+            painter.strokeColor = icon.resolvedStyle.color;
+            painter.fillColor = icon.resolvedStyle.color;
+            painter.lineWidth = 1.5f * unit;
+            painter.lineCap = LineCap.Round;
+            painter.lineJoin = LineJoin.Round;
+            painter.BeginPath();
+            painter.MoveTo(P(4.25f, 6.5f)); painter.LineTo(P(4.25f, 4.5f));
+            painter.Arc(P(7, 4.5f), 2.75f * unit, 180, open ? 320 : 360);
+            if (!open) painter.LineTo(P(9.75f, 6.5f));
+            painter.Stroke();
+            painter.BeginPath();
+            painter.MoveTo(P(3.7f, 6.5f));
+            painter.LineTo(P(10.3f, 6.5f)); painter.ArcTo(P(11.5f, 6.5f), P(11.5f, 7.7f), 1.2f * unit);
+            painter.LineTo(P(11.5f, 11.3f)); painter.ArcTo(P(11.5f, 12.5f), P(10.3f, 12.5f), 1.2f * unit);
+            painter.LineTo(P(3.7f, 12.5f)); painter.ArcTo(P(2.5f, 12.5f), P(2.5f, 11.3f), 1.2f * unit);
+            painter.LineTo(P(2.5f, 7.7f)); painter.ArcTo(P(2.5f, 6.5f), P(3.7f, 6.5f), 1.2f * unit);
+            painter.ClosePath();
+            painter.Fill();
         }
         private void AddPart(VisualElement parent, ShaderPart part, int depth)
         {
@@ -155,7 +236,8 @@ namespace Thry.ThryEditor
             root.EnableInClassList("thry-root-section", depth == 0);
             var header = new VisualElement(); header.AddToClassList("thry-section-header"); root.Add(header);
             var changedProperties = SectionProperties(group);
-            var fold = new Button { tooltip = "Expand or collapse section" }; fold.AddToClassList("thry-fold-arrow");
+            var fold = new Button { tooltip = "Expand or collapse section. Alt+click also opens or closes everything inside." }; fold.AddToClassList("thry-fold-arrow");
+            fold.clickable.activators.Add(new ManipulatorActivationFilter { button = MouseButton.LeftMouse, modifiers = EventModifiers.Alt });
             var foldIcon = HeaderIcon("caret-right"); fold.Add(foldIcon); header.Add(fold);
             if (_editing && SectionEditing.IsEditing(group))
             {
@@ -254,9 +336,8 @@ namespace Thry.ThryEditor
                 if (current.Lit != null) _fields.TrackVisible(button, () => button.EnableInClassList("thry-linked", current.Lit()));
             }
             var menu = HeaderAction("menu", "Section actions", () => {
-                var actions = ShaderHeader.RetainedHeaderMenu(group, Model.Shader.Materials);
-                actions.AddSeparator("");
-                actions.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "search_section", "Search in this section")), false, () => _view.SearchSection(group));
+                var actions = ShaderHeader.RetainedHeaderMenu(group, Model.Shader.Materials,
+                    search => search.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "search_section", "Search in this section")), false, () => _view.SearchSection(group)));
                 _view.ShowLegacyMenu(actions, header);
             }); header.Add(menu);
             var children = new VisualElement(); children.AddToClassList("thry-section-content"); root.Add(children);
@@ -312,14 +393,19 @@ namespace Thry.ThryEditor
                     AddPart(children,child,depth+1);
                 }
             };
-            Action expand = () => { Model.SetExpanded(group, !group.RetainedExpanded); update(); };
-            fold.clicked += expand;
+            Action<bool> expand = everything =>
+            {
+                if (everything) Model.SetExpandedDeep(group, !group.RetainedExpanded);
+                else Model.SetExpanded(group, !group.RetainedExpanded);
+                update();
+            };
+            fold.clickable.clickedWithEventInfo += e => expand(e is IPointerEvent pointer ? pointer.altKey : e is IMouseEvent mouse && mouse.altKey);
             header.RegisterCallback<PointerDownEvent>(e =>
             {
                 if (e.button != 0) return;
                 for (var target = e.target as VisualElement; target != null && target != header; target = target.parent)
                     if (target is Button || target is Toggle || target.ClassListContains("unity-base-field")) return;
-                expand(); e.StopPropagation();
+                expand(e.altKey); e.StopPropagation();
             });
             _fields.Track(root,update); parent.Add(root);
         }
@@ -437,29 +523,6 @@ namespace Thry.ThryEditor
                 matchFallback.style.flexShrink = 0; matchFallback.style.marginTop = 0; matchFallback.style.marginRight = 0; matchFallback.style.marginBottom = 0;
                 input.Add(matchFallback); Add(fallbackRow);
             }
-            var row = RetainedFields.Row(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),out input);
-            _fields.DecoratePreset(row, Model.Shader.RetainedQueue);
-            _fields.Track(row, () => row.style.display = Config.Instance.showRenderQueue ? DisplayStyle.Flex : DisplayStyle.None);
-            input.AddToClassList("thry-components");
-            string[] queueNames = { RetainedText.Get(Model.Shader, "queue_shader", "From Shader"), RetainedText.Get(Model.Shader, "queue_background", "Background"), RetainedText.Get(Model.Shader, "queue_geometry", "Geometry"), RetainedText.Get(Model.Shader, "queue_alpha_test", "AlphaTest"), RetainedText.Get(Model.Shader, "queue_transparent", "Transparent"), RetainedText.Get(Model.Shader, "queue_overlay", "Overlay") };
-            int[] queueValues = { -1, 1000, 2000, 2450, 3000, 4000 };
-            var queuePreset = new DropdownField(queueNames.ToList(), 0); _view.UseInspectorMenu(queuePreset); input.Add(queuePreset); queuePreset.style.flexGrow = 1;
-            queuePreset.style.flexBasis = 0; queuePreset.style.flexShrink = 1; queuePreset.style.minWidth = 0;
-            _fields.TrackVisible(queuePreset, () => {
-                int value = Model.Shader.Materials[0].renderQueue;
-                int index = Array.IndexOf(queueValues, value);
-                // A queue matching no preset is named by its offset from the nearest one, as Unity
-                // does: 2225 reads "Geometry +225". The word "Custom" named nothing at all.
-                RetainedFields.SynchronizeValue(queuePreset, index < 0 ? Helpers.RenderQueueHelper.GetDisplayName(value, queueNames, queueValues) : queueNames[index],
-                    Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value)); });
-                queuePreset.RegisterValueChangedCallback(e => { if (queuePreset.index >= 0) Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"), m => m.renderQueue = queueValues[queuePreset.index]);
-            });
-            var queue = new UnityEngine.UIElements.IntegerField { name = "thry-render-queue" }; input.Add(queue);
-            queue.style.width = 64;
-            queue.style.flexShrink = 0;
-            _fields.TrackVisible(queue, () => { int value = Model.Shader.Materials[0].renderQueue;
-                RetainedFields.SynchronizeValue(queue, value, Model.Shader.Materials.Skip(1).Any(m => m.renderQueue != value)); });
-            queue.RegisterValueChangedCallback(e => Model.Mutate(RetainedText.Get(Model.Shader, "render_queue", "Render Queue"),m => m.renderQueue = e.newValue)); Add(row);
             var footer = new VisualElement(); footer.AddToClassList("thry-footer");
             var credit = new VisualElement(); credit.AddToClassList("thry-footer-credit"); footer.Add(credit);
             var designed = new Label("UI 3.0 by Poiyomi Labs"); designed.AddToClassList("thry-footer-credit-line"); credit.Add(designed);
@@ -467,14 +530,27 @@ namespace Thry.ThryEditor
             original.RegisterCallback<PointerUpEvent>(e => { if (e.button == 0) Application.OpenURL("https://www.x.com/Thryrallo"); });
             credit.RegisterCallback<PointerUpEvent>(e => { if (e.button == 0) Application.OpenURL("https://www.github.com/poiyomi/ThryEditor"); });
             var thry = new Button(() => Application.OpenURL("https://www.x.com/Thryrallo")) { tooltip = "Thryrallo" };
-            thry.Add(new Image { image = Icons.thryIcon.normal.background, scaleMode = ScaleMode.ScaleToFit }); footer.Add(thry);
+            var links = new VisualElement(); links.AddToClassList("thry-footer-links"); footer.Add(links);
+            thry.Add(new Image { image = Icons.thryIcon.normal.background, scaleMode = ScaleMode.ScaleToFit }); links.Add(thry);
             foreach(var item in Model.Shader.RetainedFooters)
             {
                 var data = item.Data; if(data == null) continue;
                 var button = new Button(() => data.action?.Perform(Model.Shader.Materials)) { tooltip = data.hover };
                 if(data.texture != null) button.Add(new Image { image = data.texture.loaded_texture, scaleMode = ScaleMode.ScaleToFit }); else button.text = data.text;
-                footer.Add(button);
+                links.Add(button);
             }
+            // A row that cannot hold every icon is split evenly, so one never wraps by itself.
+            footer.RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                int count = links.childCount;
+                if (count == 0 || e.newRect.width <= 0 || Mathf.Approximately(e.oldRect.width, e.newRect.width)) return;
+                var first = links[0];
+                float each = first.resolvedStyle.width + first.resolvedStyle.marginLeft + first.resolvedStyle.marginRight;
+                if (!(each > 0)) return;
+                footer.EnableInClassList("thry-footer-stacked", e.newRect.width < credit.resolvedStyle.minWidth.value + count * each);
+                int rows = Mathf.CeilToInt(count / (float)Mathf.Max(1, Mathf.FloorToInt(e.newRect.width / each)));
+                links.style.maxWidth = Mathf.CeilToInt(count / (float)rows) * each;
+            });
             Add(footer);
         }
     }

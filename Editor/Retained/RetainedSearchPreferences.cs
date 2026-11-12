@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -9,11 +8,9 @@ namespace Thry.ThryEditor
     // Editor preferences are intentionally separate from serialized material values.
     internal static class RetainedSearchPreferences
     {
-        [Serializable] internal sealed class SavedFilter { public string name, query; }
         [Serializable] sealed class State
         {
             public List<string> favorites = new List<string>();
-            public List<SavedFilter> filters = new List<SavedFilter>();
         }
         static readonly Dictionary<string, State> Cache = new Dictionary<string, State>();
         sealed class InspectorState { internal Shader Shader; internal State State; internal string Key; }
@@ -47,14 +44,5 @@ namespace Thry.ThryEditor
             if (!favorites.Remove(name)) favorites.Add(name);
             Write(property.MyShaderUI);
         }
-        internal static SavedFilter[] Filters(ShaderEditor shader) => Read(shader).filters.ToArray();
-        internal static void Save(ShaderEditor shader, string name, string query)
-        {
-            name = (name ?? "").Trim(); if (name.Length == 0 || string.IsNullOrWhiteSpace(query)) return;
-            var filters = Read(shader).filters; filters.RemoveAll(f => f.name == name);
-            filters.Add(new SavedFilter { name = name, query = query }); Write(shader);
-        }
-        internal static void Remove(ShaderEditor shader, string name)
-        { Read(shader).filters.RemoveAll(f => f.name == name); Write(shader); }
     }
 }

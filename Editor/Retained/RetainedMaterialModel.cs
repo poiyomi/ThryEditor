@@ -474,6 +474,25 @@ namespace Thry.ThryEditor
             Changed?.Invoke();
         }
 
+        internal void SetExpandedDeep(ShaderGroup group, bool expanded)
+        {
+            if (!HasValidTargets(Editor)) return;
+            Shader.ActivateRetained();
+            bool persisted = false;
+            var pending = new Stack<ShaderGroup>();
+            pending.Push(group);
+            while (pending.Count > 0)
+            {
+                var next = pending.Pop();
+                next.RetainedExpanded = expanded;
+                persisted |= next.PersistsExpanded;
+                foreach (var child in next.Children.OfType<ShaderGroup>()) pending.Push(child);
+            }
+            if (persisted && !Shader.IsInAnimationMode) { Editor.PropertiesChanged(); RecordEdit(); }
+            Refresh();
+            Changed?.Invoke();
+        }
+
         internal void Notify() { if (!HasValidTargets(Editor)) return; Refresh(true); Changed?.Invoke(); }
     }
 }

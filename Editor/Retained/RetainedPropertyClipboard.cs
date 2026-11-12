@@ -18,11 +18,10 @@ namespace Thry.ThryEditor
         internal static void AddMenu(GenericMenu menu, RetainedMaterialModel model, ShaderProperty property)
         {
             var p = property.MaterialProperty;
-            menu.AddSeparator("");
             if (!p.hasMixedValue)
-                menu.AddItem(new GUIContent("Copy Value"), false, () => Copy(property.MaterialProperty));
-            else menu.AddDisabledItem(new GUIContent("Copy Value (mixed values)"));
-            AddPaste(menu, "Paste Value", model, property, false);
+                menu.AddItem(new GUIContent("Copy Value", ShaderPart.MenuIconCopy), false, () => Copy(property.MaterialProperty));
+            else menu.AddDisabledItem(new GUIContent("Copy Value (mixed values)", ShaderPart.MenuIconCopy));
+            AddPaste(menu, new GUIContent("Paste Value", ShaderPart.MenuIconPaste), model, property, false);
             if (p.GetPropertyType() == ShaderPropertyType.Color)
             {
                 if (!p.hasMixedValue)
@@ -38,7 +37,7 @@ namespace Thry.ThryEditor
                         menu.AddItem(new GUIContent("Copy Tiling and Offset"), false,
                             () => EditorGUIUtility.systemCopyBuffer = Format("Vector4", property.MaterialProperty.textureScaleAndOffset));
                     else menu.AddDisabledItem(new GUIContent("Copy Tiling and Offset"));
-                    AddPaste(menu, "Paste Tiling and Offset", model, property, true);
+                    AddPaste(menu, new GUIContent("Paste Tiling and Offset"), model, property, true);
                 }
                 if (model.CanEdit(property))
                     menu.AddItem(new GUIContent("Clear Texture"), false, () => model.Edit(property, target =>
@@ -50,17 +49,17 @@ namespace Thry.ThryEditor
             }
         }
 
-        static void AddPaste(GenericMenu menu, string label, RetainedMaterialModel model, ShaderProperty property, bool transform)
+        static void AddPaste(GenericMenu menu, GUIContent label, RetainedMaterialModel model, ShaderProperty property, bool transform)
         {
             if (model.CanEdit(property) && TryRead(property.MaterialProperty, transform, out _))
-                menu.AddItem(new GUIContent(label), false, () =>
+                menu.AddItem(label, false, () =>
                 {
                     // Revalidate both the clipboard and editability when an open menu is used.
                     // Hex keeps each owner's own alpha and intensity, so it is applied per owner.
                     if (TryRead(property.MaterialProperty, transform, out var apply))
                         model.Edit(property, apply, !transform && property.MaterialProperty.GetPropertyType() == ShaderPropertyType.Color && IsHex(ClipboardText));
                 });
-            else menu.AddDisabledItem(new GUIContent(label));
+            else menu.AddDisabledItem(label);
         }
 
         internal static void Copy(MaterialProperty p)

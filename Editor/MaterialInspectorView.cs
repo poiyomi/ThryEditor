@@ -26,6 +26,7 @@ namespace Thry.ThryEditor
         private readonly Func<MaterialProperty[]> _propertyProvider;
         private readonly VisualElement _chrome, _tools;
         private readonly Label _title, _version, _state, _placeholder;
+        private readonly Button _titleButton;
         private readonly Button _versionUpdate;
         const string UpdateVersionKey = "Poiyomi.PackageManager.UpdateVersion";
         const string UpdateMenuItem = "Poi/Pro/Update to Latest";
@@ -35,12 +36,11 @@ namespace Thry.ThryEditor
         static readonly string[] SearchTypes = { "", "t:texture", "t:color", "t:number", "t:vector", "t:toggle" };
         static readonly string[] SearchStates = { "", "is:changed", "is:assigned", "is:empty", "is:animated", "is:missing", "is:favorite" };
         bool _typeFromQuery, _statusFromQuery, _multipleQueryTypes, _multipleQueryStates;
-        private readonly Button _savedFilters;
+        private readonly VisualElement _typeIcon, _statusIcon;
         private readonly RetainedSearch _propertySearch;
         private readonly RetainedNavigation _navigation;
         private ShaderEditor _shader;
-        private bool _builtTools;
-        private bool _toolTheme;
+        private bool _builtTools, _toolTheme;
         private readonly IVisualElementScheduledItem _searchRefresh;
         private readonly IVisualElementScheduledItem _rowBandRefresh;
         private bool _searchPending;
@@ -69,7 +69,10 @@ namespace Thry.ThryEditor
             var masthead = new VisualElement(); masthead.AddToClassList("thry-masthead");
             var branding = new VisualElement(); branding.AddToClassList("thry-branding");
             var titleRow = new VisualElement(); titleRow.AddToClassList("thry-title-row");
-            _title = new Label("Material"); _title.AddToClassList("thry-title");
+            _titleButton = new Button(ShowVariants) { name = "thry-title-button" }; _titleButton.AddToClassList("thry-title-button");
+            _title = new Label("Material") { pickingMode = PickingMode.Ignore }; _title.AddToClassList("thry-title");
+            var titleCaret = RetainedMaterialBody.HeaderIcon("caret-down"); titleCaret.AddToClassList("thry-title-caret");
+            _titleButton.Add(_title); _titleButton.Add(titleCaret);
             _version = new Label(); _version.AddToClassList("thry-version");
             _versionUpdate = new Button(() => EditorApplication.ExecuteMenuItem(UpdateMenuItem));
             _versionUpdate.AddToClassList("thry-version-update");
@@ -83,7 +86,7 @@ namespace Thry.ThryEditor
                 painter.BeginPath(); painter.MoveTo(center + new Vector2(0, 5)); painter.LineTo(center + new Vector2(0, -5)); painter.Stroke();
                 painter.BeginPath(); painter.MoveTo(center + new Vector2(-4, -1)); painter.LineTo(center + new Vector2(0, -5)); painter.LineTo(center + new Vector2(4, -1)); painter.Stroke();
             };
-            titleRow.Add(_title); titleRow.Add(_version); titleRow.Add(_versionUpdate);
+            titleRow.Add(_titleButton); titleRow.Add(_version); titleRow.Add(_versionUpdate);
             _state = new Label(); _state.AddToClassList("thry-state");
             branding.Add(titleRow); branding.Add(_state); masthead.Add(branding);
             _tools = new VisualElement { name = "thry-tools" }; _tools.AddToClassList("thry-tools");
@@ -145,14 +148,12 @@ namespace Thry.ThryEditor
             var filters = new VisualElement(); filters.AddToClassList("thry-search-filters");
             _typeFilter = new DropdownField(new List<string> { "All types", "Textures", "Colors", "Numbers", "Vectors", "Toggles" }, 0)
                 { name = "thry-type-filter", tooltip = "Filter by property type. Combine Textures with Changed only to find assigned or modified textures." };
-            _typeFilter.AddToClassList("thry-type-picker"); UseInspectorMenu(_typeFilter);
+            _typeFilter.AddToClassList("thry-filter-button"); _typeIcon = AddFilterIcon(_typeFilter, DrawTypeIcon); UseInspectorMenu(_typeFilter);
             _typeFilter.RegisterValueChangedCallback(evt => SelectSearchFilter(true)); filters.Add(_typeFilter);
             _statusFilter = new DropdownField(new List<string> { "Any status", "Changed only", "Assigned textures", "Empty textures", "Animated", "Missing references", "Favorites" }, 0)
                 { name = "thry-status-filter", tooltip = "Filter by value or state. Assigned textures finds actual texture assignments, independent of tiling and offset." };
-            _statusFilter.AddToClassList("thry-status-filter"); UseInspectorMenu(_statusFilter);
+            _statusFilter.AddToClassList("thry-filter-button"); _statusIcon = AddFilterIcon(_statusFilter, DrawStatusIcon); UseInspectorMenu(_statusFilter);
             _statusFilter.RegisterValueChangedCallback(evt => SelectSearchFilter(false)); filters.Add(_statusFilter);
-            _savedFilters = new Button(ShowSavedFilters) { name = "thry-saved-filters", text = "☆", tooltip = "Favorites and saved searches" };
-            _savedFilters.AddToClassList("thry-saved-filters"); filters.Add(_savedFilters);
             navigation.Add(filters); navigationGroup.Add(navigation);
             _chrome.Add(navigationGroup); Add(_chrome);
             _propertySearch = new RetainedSearch(this, ClearSearch);
@@ -208,7 +209,10 @@ namespace Thry.ThryEditor
                     items.Add(new RetainedMenu.Item { Separator = true });
                     items.AddRange(extra.Select(a => new RetainedMenu.Item { Text = a.Text, Action = a.Run }));
                 }
-                RetainedMenu.Open(field.worldBound, field, items);
+                Rect anchor = field.worldBound;
+                var caption = field.Q(className: "thry-dropdown-caption");
+                if (caption != null) anchor.xMin = caption.worldBound.xMax;
+                RetainedMenu.Open(anchor, field, items);
             };
             field.RegisterCallback<PointerDownEvent>(evt => {
                 if (evt.button != 0) return;
@@ -238,6 +242,30 @@ namespace Thry.ThryEditor
             return button;
         }
 
+        private Button AddDrawnTool(string name, string className, Action<Painter2D, VisualElement> draw, Action action)
+        {
+            var button = AddTool(name, null, action);
+            button.Clear(); button.AddToClassList(className);
+            var icon = new VisualElement { pickingMode = PickingMode.Ignore };
+            icon.style.width = 18; icon.style.height = 18;
+            icon.generateVisualContent += context => draw(context.painter2D, icon);
+            button.Add(icon);
+            return button;
+        }
+
+        private void AddPresetsTool()
+        {
+            var presets = AddTool("Presets", Resources.Load<Texture2D>("ThryToolbar/header-presets"), () =>
+            {
+                var window = ScriptableObject.CreateInstance<PresetsPopupGUI>();
+                window.Init("_full_", Presets.GetFullPresetNames(), Presets.GetFullPresetGuids(), _shader);
+                window.titleContent = new GUIContent(Text("presets", "Presets"));
+                window.ShowUtility();
+            });
+            presets.AddToClassList("thry-presets-tool");
+            presets.tooltip = Text("presets", "Presets");
+        }
+
         // The strip-disabled-sections switch: full color while on, dimmed while off. Only touched when the state, the
         // shader or the language changes.
         private string _sectionLockToolState;
@@ -255,30 +283,10 @@ namespace Thry.ThryEditor
             tool.tooltip = SectionLockService.ToolbarTooltip;
         }
 
-        private void AddCollapseTool()
-        {
-            var collapse = AddTool("Collapse all", null, () => _shader.CollapseCategories());
-            collapse.name = "thry-collapse-all";
-            collapse.tooltip = Text("collapse_all", "Collapse all sections");
-            collapse.Clear(); collapse.AddToClassList("thry-collapse-tool");
-            var icon = new VisualElement { pickingMode = PickingMode.Ignore };
-            icon.style.width = 18; icon.style.height = 18;
-            icon.generateVisualContent += context => {
-                var painter = context.painter2D;
-                painter.lineWidth = 2; painter.strokeColor = icon.resolvedStyle.color;
-                painter.lineCap = LineCap.Round; painter.lineJoin = LineJoin.Round;
-                for (int y = 0; y <= 6; y += 6) {
-                    painter.BeginPath(); painter.MoveTo(new Vector2(4, 8 + y));
-                    painter.LineTo(new Vector2(9, 3 + y)); painter.LineTo(new Vector2(14, 8 + y)); painter.Stroke();
-                }
-            };
-            collapse.Add(icon);
-        }
-
         private void AddLanguageTool()
         {
             Button language = null;
-            language = AddTool("Language", null, () => {
+            language = AddDrawnTool("Language", "thry-language-tool", DrawLanguageIcon, () => {
                 var source = _shader;
                 if (source?.Locale == null) return;
                 RetainedMenu.Open(language.worldBound, language, source.Locale.LanguageNames.Select((label, index) => new RetainedMenu.Item {
@@ -289,23 +297,53 @@ namespace Thry.ThryEditor
                     }
                 }));
             });
-            language.Clear(); language.AddToClassList("thry-language-tool");
-            var icon = new VisualElement { pickingMode = PickingMode.Ignore };
-            icon.style.width = 18; icon.style.height = 18;
-            icon.generateVisualContent += context => {
-                var painter = context.painter2D;
-                painter.lineWidth = 1.4f; painter.strokeColor = icon.resolvedStyle.color;
-                painter.BeginPath(); painter.Arc(new Vector2(9, 9), 6.5f, 0, 360); painter.Stroke();
-                painter.BeginPath(); painter.MoveTo(new Vector2(2.5f, 9)); painter.LineTo(new Vector2(15.5f, 9)); painter.Stroke();
-                painter.BeginPath();
-                for (int i = 0; i <= 24; i++) {
-                    float angle = i * Mathf.PI / 12;
-                    var point = new Vector2(9 + Mathf.Cos(angle) * 3, 9 + Mathf.Sin(angle) * 6.5f);
-                    if (i == 0) painter.MoveTo(point); else painter.LineTo(point);
+        }
+
+        // Variants are the shaders published beside this one, such as Poiyomi Pro Outline Early or Poiyomi Pro URP.
+        private void ShowVariants()
+        {
+            if (_shader == null || _shader.IsLockedMaterial || !RetainedMaterialModel.HasValidTargets(_editor)) return;
+            var names = _shader.Materials.Select(DisplayShaderName).Distinct(StringComparer.Ordinal).ToArray();
+            string current = names.Length == 1 ? names[0] : null;
+            string first = names.FirstOrDefault(n => !string.IsNullOrEmpty(n));
+            if (first == null) return;
+            string folder = first.Substring(0, first.LastIndexOf('/') + 1);
+            var variants = ShaderUtil.GetAllShaderInfo().Select(info => info.name)
+                .Where(n => n.StartsWith(folder, StringComparison.Ordinal) && n.IndexOf('/', folder.Length) < 0)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToArray();
+            if (variants.Length < 2) return;
+            var items = new List<RetainedMenu.Item>();
+            foreach (bool urp in new[] { false, true })
+                foreach (string variant in variants)
+                {
+                    string leaf = variant.Substring(folder.Length);
+                    if ((" " + leaf + " ").Contains(" URP ") != urp) continue;
+                    string target = variant;
+                    items.Add(new RetainedMenu.Item { Text = (urp ? "URP/" : "") + leaf, Checked = variant == current, Action = () =>
+                    {
+                        var shader = Shader.Find(target);
+                        if (shader != null && RetainedMaterialModel.HasValidTargets(_editor)) _editor.SetShader(shader);
+                    } });
                 }
-                painter.Stroke();
-            };
-            language.Add(icon);
+            RetainedMenu.Open(_titleButton.worldBound, _titleButton, items);
+        }
+
+        private const string ScreenshotFolderKey = "Thry.Inspector.ScreenshotFolder";
+        private async void ScreenshotInspector()
+        {
+            var window = Resources.FindObjectsOfTypeAll<EditorWindow>()
+                .FirstOrDefault(candidate => candidate.rootVisualElement.panel == panel && candidate.rootVisualElement.Contains(this));
+            if (window == null || _shader == null) return;
+            string folder = EditorPrefs.GetString(ScreenshotFolderKey, "");
+            if (!System.IO.Directory.Exists(folder)) folder = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string name = _shader.Materials.FirstOrDefault(material => material != null)?.name ?? "Inspector";
+            name = string.Concat(name.Split(System.IO.Path.GetInvalidFileNameChars()));
+            string path = EditorUtility.SaveFilePanel(Text("screenshot_inspector", "Screenshot Inspector"), folder, name + ".png", "png");
+            if (string.IsNullOrEmpty(path)) return;
+            EditorPrefs.SetString(ScreenshotFolderKey, System.IO.Path.GetDirectoryName(path));
+            // The save dialog has to leave the screen before the window is read back.
+            await System.Threading.Tasks.Task.Delay(250);
+            if (window != null) await InspectorCapture.CaptureWindowToFile(window, path);
         }
 
         internal void RequestRowBands() => _rowBandRefresh.ExecuteLater(0);
@@ -478,41 +516,70 @@ namespace Thry.ThryEditor
             RetainedSearchPreferences.ToggleFavorite(property);
             _propertySearch.Invalidate(); ApplySearchNow();
         }
-        private void ShowSavedFilters()
+        private static VisualElement AddFilterIcon(DropdownField field, Action<Painter2D, VisualElement> draw)
         {
-            if (_shader == null) return;
-            var items = new List<RetainedMenu.Item>();
-            items.Add(new RetainedMenu.Item { Text = Text("favorites", "Favorites"), Action = () => LoadSearch("is:favorite") });
-            string query = CurrentQuery();
-            items.Add(new RetainedMenu.Item { Text = Text("save_current_search", "Save current search…"), Action = string.IsNullOrWhiteSpace(query) ? (Action)null :
-                () => RetainedTextPrompt.Open(Text("save_search", "Save search"), RetainedSearch.TextQuery(query), name => RetainedSearchPreferences.Save(_shader, name, query)) });
-            var saved = RetainedSearchPreferences.Filters(_shader);
-            if (saved.Length > 0) items.Add(new RetainedMenu.Item { Separator = true });
-            foreach (var filter in saved)
-            {
-                var entry = filter;
-                items.Add(new RetainedMenu.Item { Text = entry.name, Action = () => LoadSearch(entry.query) });
-                items.Add(new RetainedMenu.Item { Text = Text("remove_saved_search", "Remove saved search") + "/" + entry.name, Action = () => RetainedSearchPreferences.Remove(_shader, entry.name) });
-            }
-            RetainedMenu.Open(_savedFilters.worldBound, _savedFilters, items);
+            var icon = new VisualElement { pickingMode = PickingMode.Ignore };
+            icon.AddToClassList("thry-filter-icon");
+            icon.generateVisualContent += context => draw(context.painter2D, icon);
+            field.Q(className: BasePopupField<string, string>.inputUssClassName).Insert(0, icon);
+            field.RegisterCallback<PointerEnterEvent>(e => icon.MarkDirtyRepaint());
+            field.RegisterCallback<PointerLeaveEvent>(e => icon.MarkDirtyRepaint());
+            return icon;
         }
-        private void LoadSearch(string query)
+        private static void DrawTypeIcon(Painter2D painter, VisualElement icon)
         {
-            _sectionScope = null;
-            _typeFilter.SetValueWithoutNotify(_typeFilter.choices[0]);
-            _statusFilter.SetValueWithoutNotify(_statusFilter.choices[0]);
-            _search.SetValueWithoutNotify(query ?? "");
-            SynchronizeQueryFilters();
-            // Saved single constraints have a dedicated visible control. Leave deliberate
-            // combinations in the text, with the dropdown explicitly reporting Multiple.
-            var tokens = (_search.value ?? "").Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            _search.SetValueWithoutNotify(string.Join(" ", tokens.Where(token =>
-                !(!_multipleQueryTypes && SearchTypes.Skip(1).Contains(token, StringComparer.OrdinalIgnoreCase))
-                && !(!_multipleQueryStates && SearchStates.Skip(1).Contains(token, StringComparer.OrdinalIgnoreCase)))));
-            if (!_multipleQueryTypes) _typeFromQuery = false;
-            if (!_multipleQueryStates) _statusFromQuery = false;
-            _placeholder.style.display = string.IsNullOrEmpty(_search.value) ? DisplayStyle.Flex : DisplayStyle.None;
-            ApplySearchNow(); _search.Focus();
+            painter.strokeColor = icon.resolvedStyle.color;
+            painter.lineWidth = 1.5f; painter.lineCap = LineCap.Round; painter.lineJoin = LineJoin.Round;
+            painter.BeginPath(); painter.MoveTo(new Vector2(9, 2.5f)); painter.LineTo(new Vector2(12.8f, 8)); painter.LineTo(new Vector2(5.2f, 8)); painter.ClosePath(); painter.Stroke();
+            painter.BeginPath(); painter.MoveTo(new Vector2(2.8f, 10.8f)); painter.LineTo(new Vector2(7.6f, 10.8f)); painter.LineTo(new Vector2(7.6f, 15.6f)); painter.LineTo(new Vector2(2.8f, 15.6f)); painter.ClosePath(); painter.Stroke();
+            painter.BeginPath(); painter.Arc(new Vector2(12.7f, 13.2f), 2.6f, 0, 360); painter.Stroke();
+        }
+        private static void DrawStatusIcon(Painter2D painter, VisualElement icon)
+        {
+            painter.strokeColor = icon.resolvedStyle.color;
+            painter.lineWidth = 1.5f; painter.lineCap = LineCap.Round; painter.lineJoin = LineJoin.Round;
+            painter.BeginPath(); painter.MoveTo(new Vector2(2.8f, 3.6f)); painter.LineTo(new Vector2(15.2f, 3.6f)); painter.LineTo(new Vector2(10.6f, 9.4f));
+            painter.LineTo(new Vector2(10.6f, 14.6f)); painter.LineTo(new Vector2(7.4f, 13)); painter.LineTo(new Vector2(7.4f, 9.4f)); painter.ClosePath(); painter.Stroke();
+        }
+        private static void DrawCollapseIcon(Painter2D painter, VisualElement icon)
+        {
+            painter.strokeColor = icon.resolvedStyle.color;
+            painter.lineWidth = 2; painter.lineCap = LineCap.Round; painter.lineJoin = LineJoin.Round;
+            for (int y = 0; y <= 6; y += 6)
+            {
+                painter.BeginPath(); painter.MoveTo(new Vector2(4, 8 + y)); painter.LineTo(new Vector2(9, 3 + y)); painter.LineTo(new Vector2(14, 8 + y)); painter.Stroke();
+            }
+        }
+        private static void DrawLanguageIcon(Painter2D painter, VisualElement icon)
+        {
+            painter.strokeColor = icon.resolvedStyle.color;
+            painter.lineWidth = 1.4f;
+            painter.BeginPath(); painter.Arc(new Vector2(9, 9), 6.5f, 0, 360); painter.Stroke();
+            painter.BeginPath(); painter.MoveTo(new Vector2(2.5f, 9)); painter.LineTo(new Vector2(15.5f, 9)); painter.Stroke();
+            painter.BeginPath();
+            for (int i = 0; i <= 24; i++)
+            {
+                float angle = i * Mathf.PI / 12;
+                var point = new Vector2(9 + Mathf.Cos(angle) * 3, 9 + Mathf.Sin(angle) * 6.5f);
+                if (i == 0) painter.MoveTo(point); else painter.LineTo(point);
+            }
+            painter.Stroke();
+        }
+        private void UpdateFilterButtons()
+        {
+            UpdateFilterButton(_typeFilter, _typeIcon, Text("type_filter_help", "Filter by property type."));
+            UpdateFilterButton(_statusFilter, _statusIcon, Text("status_filter_help", "Filter by value or state. Assigned textures finds texture assignments, independent of tiling and offset."));
+        }
+        private static void UpdateFilterButton(DropdownField field, VisualElement icon, string help)
+        {
+            bool active = field.index > 0;
+            if (field.ClassListContains("thry-filter-active") != active)
+            {
+                field.EnableInClassList("thry-filter-active", active);
+                icon.MarkDirtyRepaint();
+            }
+            string tooltip = field.value + "\n" + help;
+            if (field.tooltip != tooltip) field.tooltip = tooltip;
         }
         private void ClearSearch()
         {
@@ -557,6 +624,7 @@ namespace Thry.ThryEditor
                 source.DropDown(position);
                 return;
             }
+            RetainedMenu.TrimSeparators(choices);
             RetainedMenu.Open(position, target, choices);
         }
         private bool TryConvertLegacyMenu(GenericMenu source, VisualElement target, out List<RetainedMenu.Item> choices)
@@ -581,7 +649,7 @@ namespace Thry.ThryEditor
                 var callback2 = type.GetField("func2",flags).GetValue(item) as GenericMenu.MenuFunction2;
                 var data = type.GetField("userData",flags).GetValue(item);
                 var part = target.userData as ShaderPart ?? target.parent?.userData as ShaderPart;
-                choices.Add(new RetainedMenu.Item { Text = label.text == "Reset" && part != null ? RetainedValueDetails.ResetLabel(part) : label.text, Checked = (bool)type.GetField("on",flags).GetValue(item),
+                choices.Add(new RetainedMenu.Item { Text = label.text == "Reset" && part != null ? RetainedValueDetails.ResetLabel(part) : label.text, Checked = (bool)type.GetField("on",flags).GetValue(item), IconDraw = RetainedMenu.IconFor(label.tooltip),
                     Action = callback == null && callback2 == null ? (Action)null : () => { _shader.ActivateRetained(); if(callback != null) callback(); else callback2(data); _retained.Model.Notify(); } });
             }
             return true;
@@ -705,7 +773,9 @@ namespace Thry.ThryEditor
             string shaderName = shaderNames.FirstOrDefault();
             bool mixedPoiyomi = shaderNames.Length > 1 && shaderNames.All(n => n.Split('/').Last().StartsWith("Poiyomi", StringComparison.OrdinalIgnoreCase));
             _title.text = mixedPoiyomi ? "Poiyomi Mixed" : !string.IsNullOrEmpty(shaderName) ? shaderName.Split('/').Last() : version.Success ? title.Substring(0, version.Index) : title;
-            _title.tooltip = mixedPoiyomi ? string.Join("\n", shaderNames) : shaderName ?? _title.text;
+            bool canSwitch = !_shader.IsLockedMaterial;
+            _titleButton.tooltip = mixedPoiyomi ? string.Join("\n", shaderNames) : (shaderName ?? _title.text) + (canSwitch ? "\n" + Text("switch_variant", "Click to switch to another variant.") : "");
+            _titleButton.EnableInClassList("thry-title-fixed", !canSwitch);
             _version.text = version.Value.Trim();
             _version.style.display = mixedPoiyomi ? DisplayStyle.None : DisplayStyle.Flex;
             // The package manager in com.poiyomi.pro publishes this; installs without it never offer an update
@@ -723,11 +793,15 @@ namespace Thry.ThryEditor
             _state.style.display = editing || _shader.IsLockedMaterial || selectedCount > 1 ? DisplayStyle.Flex : DisplayStyle.None;
             UpdateSearch();
 
+            UpdateFilterButtons();
             if (!_builtTools || _toolTheme != EditorGUIUtility.isProSkin)
             {
                 _toolTheme = EditorGUIUtility.isProSkin;
                 _tools.Clear();
-                AddCollapseTool();
+                AddPresetsTool();
+                var collapse = AddDrawnTool("Collapse all", "thry-collapse-tool", DrawCollapseIcon, () => _shader.CollapseCategories());
+                collapse.name = "thry-collapse-all";
+                collapse.tooltip = Text("collapse_all", "Collapse all sections");
                 foreach (var extra in TopBarButtons.All)
                 {
                     var button = extra;
@@ -738,14 +812,11 @@ namespace Thry.ThryEditor
                     SectionLockService.SetEnabled(!SectionLockService.Enabled);
                     UpdateSectionLockTool();
                 });
-                sectionLock.name = "thry-tool-section-lock";
                 // Clicking would focus it, and the focus outline reads as an on state.
                 sectionLock.focusable = false;
                 _sectionLockToolState = null;
-                var screenshot = AddTool("Screenshot", ToolbarIcons.Camera?.normal.background, () =>
-                    InspectorCapture.CaptureActiveInspector(Environment.GetFolderPath(Environment.SpecialFolder.Desktop)));
-                screenshot.name = "thry-tool-screenshot";
-                screenshot.tooltip = "Save a screenshot of the material settings to your desktop.";
+                var screenshot = AddTool("Screenshot", ToolbarIcons.Camera?.normal.background, ScreenshotInspector);
+                screenshot.tooltip = Text("screenshot_inspector", "Screenshot Inspector");
                 Button toolsButton = null;
                 toolsButton = AddTool("Tools", ToolbarIcons.Tools?.normal.background, () =>
                     ShowLegacyMenu(_shader.RetainedToolsMenu(), toolsButton));
@@ -771,10 +842,9 @@ namespace Thry.ThryEditor
             _statusFilter.SetValueWithoutNotify(_statusFilter.choices[Mathf.Max(0, statusIndex)]);
             _placeholder.text = Text("search", "Search...");
             _search.tooltip = Text("search_help", "Filter properties and edit them here. Click a name to go to that property. Combine type and status filters. Escape clears all filters. Ctrl+F jumps here.");
-            _typeFilter.tooltip = Text("type_filter_help", "Filter by property type.");
-            _statusFilter.tooltip = Text("status_filter_help", "Filter by value or state. Assigned textures finds texture assignments, independent of tiling and offset.");
-            _savedFilters.tooltip = Text("saved_searches", "Favorites and saved searches");
             _propertySearch.RefreshLanguage();
+            var presets = _tools.Q<Button>("thry-tool-presets");
+            if (presets != null) presets.tooltip = Text("presets", "Presets");
         }
     }
 }
