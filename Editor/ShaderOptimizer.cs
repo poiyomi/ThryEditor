@@ -884,8 +884,22 @@ namespace Thry.ThryEditor
             return !string.IsNullOrEmpty(guid) && s_materialsChangedByLockUnlock.Remove(guid);
         }
         
+        // Raised with the unlocked materials a lock is about to process, before asset editing starts.
+        // A subscriber can still regenerate a source shader here.
+        public static event Action<IReadOnlyList<Material>> BeforeLock;
+
         private static bool SetLockedForAllMaterialsInternal(IEnumerable<Material> materials, int lockState, bool showProgressbar = false, bool showDialog = false, bool allowCancel = true, MaterialProperty shaderOptimizerProp = null)
         {
+            if (lockState == 1 && BeforeLock != null)
+            {
+                List<Material> unlocked = materials.Where(m => m != null && !m.IsLocked()).Distinct().ToList();
+                if (unlocked.Count > 0)
+                {
+                    try { BeforeLock(unlocked); }
+                    catch (Exception e) { Debug.LogException(e); }
+                }
+            }
+
             // Clear stale state from previous operations
             s_applyStructsLater.Clear();
             s_lockedShaderNamesThisBatch.Clear();
