@@ -597,6 +597,9 @@ are using Poiyomi Shaders, this folder is very important!
                 return 0;
             }
 
+            // Entries a material in Assets still uses after this run. They are tried again next session.
+            HashSet<string> unmoved = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             // Locked shader path -> material paths using it, from the import database
             Dictionary<string, List<string>> users = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             foreach (string guid in AssetDatabase.FindAssets("t:Material"))
@@ -618,7 +621,11 @@ are using Poiyomi Shaders, this folder is very important!
                 string entry = Path.GetDirectoryName(shaderPath).Replace('\\', '/');
                 EntryInfo info = ReadEntry(entry) ?? new EntryInfo();
                 Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(shaderPath);
-                if (shader == null) continue;
+                if (shader == null)
+                {
+                    unmoved.Add(entry);
+                    continue;
+                }
 
                 bool entryMoved = false;
                 foreach (IGrouping<string, string> group in pair.Value.GroupBy(p => GetRoot(p), StringComparer.OrdinalIgnoreCase))
@@ -639,6 +646,7 @@ are using Poiyomi Shaders, this folder is very important!
                         if (!string.IsNullOrEmpty(error))
                         {
                             ThryLogger.LogWarn("Could not move locked shader " + entry + " to " + target + ": " + error);
+                            unmoved.Add(entry);
                             continue;
                         }
                         entryMoved = true;
@@ -655,6 +663,7 @@ are using Poiyomi Shaders, this folder is very important!
                     if (copy == null || copy.IsBroken())
                     {
                         ThryLogger.LogWarn("Could not copy locked shader " + shaderPath + " to " + target);
+                        if (IsInCache(entry)) unmoved.Add(entry);
                         continue;
                     }
                     EntryInfo existing = ReadEntry(target);
@@ -676,11 +685,40 @@ are using Poiyomi Shaders, this folder is very important!
 
             // Whatever is left in CacheRoot is used by nothing, or only by materials outside Assets
             CollectGarbage();
+
+            // What stays belongs to materials outside Assets, so it must not ask for this move again
+            foreach (string left in GetAllEntryDirectories())
+            {
+                if (unmoved.Contains(left)) continue;
+                EntryInfo leftInfo = ReadEntry(left);
+                if (leftInfo != null && leftInfo.UserGuids.RemoveAll(IsAssetsMaterial) == 0) continue;
+                WriteEntry(left, leftInfo ?? new EntryInfo());
+            }
             RemoveEmptyCacheRoot();
 
             if (moved > 0)
                 ThryLogger.Log("Moved " + moved + " locked shader" + (moved == 1 ? "" : "s") + " from " + CacheRoot + " to OptimizedShaders folders next to their materials.");
             return moved;
+        }
+
+        /// <summary>
+        /// True when CacheRoot holds an entry a material in Assets may use: one whose sidecar lists such a
+        /// material, or one that arrived without a sidecar. Entries of materials outside Assets stay there.
+        /// </summary>
+        internal static bool HasEntriesToMove()
+        {
+            foreach (string entry in GetAllEntryDirectories())
+            {
+                EntryInfo info = ReadEntry(entry);
+                if (info == null || info.UserGuids.Any(IsAssetsMaterial)) return true;
+            }
+            return false;
+        }
+
+        static bool IsAssetsMaterial(string guid)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            return path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && !IsInCache(path);
         }
 
         static void RemoveEmptyCacheRoot()
@@ -746,7 +784,7 @@ are using Poiyomi Shaders, this folder is very important!
             SessionState.SetBool(SessionKey, true);
             try
             {
-                LockedShaderCache.MoveEntriesBesideMaterials();
+                if (LockedShaderCache.HasEntriesToMove()) LockedShaderCache.MoveEntriesBesideMaterials();
             }
             catch (Exception e)
             {
