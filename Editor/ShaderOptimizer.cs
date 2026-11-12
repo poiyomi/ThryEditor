@@ -339,33 +339,37 @@ namespace Thry.ThryEditor
                 switch (type)
                     {
                         case PropertyType.Float:
+                            float x = Finite(value.x);
                             string constantValue;
                             // Special Handling for ints
                             if (lastDeclarationType == "int")
-                                constantValue = value.x.ToString("F0", CultureInfo.InvariantCulture);
+                                constantValue = x.ToString("F0", CultureInfo.InvariantCulture);
                             else
-                                constantValue = value.x.ToString("0.0####################", CultureInfo.InvariantCulture);
+                                constantValue = x.ToString("0.0####################", CultureInfo.InvariantCulture);
 
                             // Wrap negative literals in parentheses so callers like `-_Prop` don't
                             // collapse into `--1.25` (parsed as pre-decrement on a non-l-value).
-                            if (value.x < 0)
+                            if (x < 0)
                                 sb.Append("(").Append(constantValue).Append(")");
                             else
                                 sb.Append(constantValue);
                             break;
                         case PropertyType.Vector:
                             sb.Append("float4(");
-                            sb.Append(value.x.ToString(CultureInfo.InvariantCulture));
+                            sb.Append(Finite(value.x).ToString(CultureInfo.InvariantCulture));
                             sb.Append(",");
-                            sb.Append(value.y.ToString(CultureInfo.InvariantCulture));
+                            sb.Append(Finite(value.y).ToString(CultureInfo.InvariantCulture));
                             sb.Append(",");
-                            sb.Append(value.z.ToString(CultureInfo.InvariantCulture));
+                            sb.Append(Finite(value.z).ToString(CultureInfo.InvariantCulture));
                             sb.Append(",");
-                            sb.Append(value.w.ToString(CultureInfo.InvariantCulture));
+                            sb.Append(Finite(value.w).ToString(CultureInfo.InvariantCulture));
                             sb.Append(")");
                             break;
                     }
             }
+
+            // NaN and infinity print as words, which no shader compiles
+            internal static float Finite(float value) => float.IsNaN(value) || float.IsInfinity(value) ? 0 : value;
         }
 
         public class Macro

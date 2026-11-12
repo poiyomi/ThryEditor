@@ -1053,6 +1053,7 @@ namespace Thry.ThryEditor
 
         static string Literal(float value, int switchIndex, SourceInfo info)
         {
+            value = ShaderOptimizer.PropertyData.Finite(value);
             // Integer literals only where the code declares an integer, so float expressions keep float division.
             string literal = info.SwitchDeclaredInt[switchIndex]
                 ? ((int)value).ToString(CultureInfo.InvariantCulture)
