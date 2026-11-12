@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -38,7 +39,9 @@ namespace Thry.ThryEditor
         [InspectorName("All (Split)")] AllSplit,
         Unlocked,
         Locked,
-        [InspectorName("Needs Attention")] NeedsAttention
+        [InspectorName("Needs Attention")] NeedsAttention,
+        /// <summary>Locked from an older version of a shader that has since been updated.</summary>
+        Outdated
     }
 
     /// <summary>
@@ -70,6 +73,14 @@ namespace Thry.ThryEditor
         /// </summary>
         public Material VariantRoot;
 
+        /// <summary>
+        /// The version of the shader this material was locked from, when the installed shader now carries
+        /// another one. Empty otherwise.
+        /// </summary>
+        public string LockedVersion;
+
+        public bool IsOutdated { get { return !string.IsNullOrEmpty(LockedVersion); } }
+        public bool CanRelock { get { return IsOutdated && State == MaterialLockState.Locked && !IsReadOnly; } }
         public bool IsVariant { get { return VariantRoot != null && VariantRoot != Material; } }
         public bool CanLock { get { return State == MaterialLockState.Unlocked && !IsReadOnly; } }
         public bool CanUnlock { get { return State != MaterialLockState.Unlocked && !IsReadOnly; } }
@@ -140,6 +151,7 @@ namespace Thry.ThryEditor
             // Shaders can be installed or removed between scans, so resolution must not be cached across them.
             s_shaderByGuid.Clear();
             s_shaderByName.Clear();
+            s_versionLabels.Clear();
             // Drops the scene half of the ownership index only. The prefab half is the expensive one and now
             // survives until an asset change actually invalidates it - see OwnerIndexWatcher.
             InvalidateOwnerIndex();
@@ -183,6 +195,12 @@ namespace Thry.ThryEditor
             }
 
             return entries;
+        }
+
+        static bool VersionsDiffer(Shader locked, Shader installed, out string lockedVersion, out string installedVersion)
+        {
+            lockedVersion = VersionLabel(locked); installedVersion = VersionLabel(installed);
+            return lockedVersion != null && installedVersion != null && lockedVersion != installedVersion;
         }
 
         /// <summary>
@@ -242,6 +260,7 @@ namespace Thry.ThryEditor
             {
                 entry.State = MaterialLockState.Locked;
                 entry.Shader = ResolveOriginalShader(m, out entry.RecordedShaderName);
+                if (VersionsDiffer(shader, entry.Shader, out string lockedVersion, out _)) entry.LockedVersion = lockedVersion;
                 return entry;
             }
 
@@ -257,6 +276,26 @@ namespace Thry.ThryEditor
 
         static readonly Dictionary<string, Shader> s_shaderByGuid = new Dictionary<string, Shader>();
         static readonly Dictionary<string, Shader> s_shaderByName = new Dictionary<string, Shader>();
+        static readonly Dictionary<Shader, string> s_versionLabels = new Dictionary<Shader, string>();
+        static readonly Regex s_richText = new Regex("<[^>]+>");
+        static readonly Regex s_versionNumber = new Regex(@"\d+(\.\d+)+");
+
+        // The header label a shader was generated with. A locked shader keeps the one it was locked from.
+        static string VersionLabel(Shader shader)
+        {
+            if (shader == null) return null;
+            if (s_versionLabels.TryGetValue(shader, out string label)) return label;
+
+            int index = shader.FindPropertyIndex("shader_master_label");
+            if (index >= 0)
+            {
+                label = s_richText.Replace(shader.GetPropertyDescription(index), "").Trim();
+                Match number = s_versionNumber.Match(label);
+                if (number.Success) label = number.Value;
+            }
+            s_versionLabels[shader] = string.IsNullOrEmpty(label) ? null : label;
+            return s_versionLabels[shader];
+        }
 
         /// <summary>
         /// Resolves the shader a locked material was locked from using only what the material records.
@@ -322,6 +361,7 @@ namespace Thry.ThryEditor
                 case MaterialLockFilter.Unlocked: return entry.State == MaterialLockState.Unlocked;
                 case MaterialLockFilter.Locked: return entry.State != MaterialLockState.Unlocked;
                 case MaterialLockFilter.NeedsAttention: return entry.NeedsAttention || entry.IsReadOnly;
+                case MaterialLockFilter.Outdated: return entry.IsOutdated;
                 default: return true;
             }
         }
@@ -435,6 +475,15 @@ namespace Thry.ThryEditor
                 if (locking ? !e.CanLock : !e.CanUnlock) continue;
                 if (e.Material != null && e.Target != null) targets.Add(e.Target);
             }
+            return targets.ToList();
+        }
+
+        /// <summary>The distinct materials a relock would be applied to.</summary>
+        public static List<Material> CollectRelockTargets(IEnumerable<MaterialLockEntry> entries)
+        {
+            HashSet<Material> targets = new HashSet<Material>();
+            foreach (MaterialLockEntry e in entries)
+                if (e.CanRelock && e.Material != null && e.Target != null) targets.Add(e.Target);
             return targets.ToList();
         }
 

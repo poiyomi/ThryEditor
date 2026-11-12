@@ -458,6 +458,12 @@ namespace Thry.ThryEditor
             return SetLockedForAllMaterialsInternal(materials, 0, progressBarType != ProgressBar.None, false, progressBarType == ProgressBar.Cancellable);
         }
 
+        public static bool RelockMaterials(IEnumerable<Material> materials, ProgressBar progressBarType = ProgressBar.None)
+        {
+            var list = materials.ToList();
+            return UnlockMaterials(list, progressBarType) && LockMaterials(list, progressBarType);
+        }
+
 #endregion
 #region MenuItems
         // ifex indenting

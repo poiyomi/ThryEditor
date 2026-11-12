@@ -15,6 +15,7 @@ namespace Thry.ThryEditor
         VisualElement _retainedNotice;
         VisualElement _retainedUnmarked;
         ScrollView _retainedUnmarkedRows;
+        Button _retainedRelock;
 
         public void CreateGUI()
         {
@@ -42,6 +43,8 @@ namespace Thry.ThryEditor
             var actions = new VisualElement(); actions.AddToClassList("thry-components"); root.Add(actions);
             actions.Add(new Button(() => Enqueue(PendingKind.Lock, AllShown, true)) { text = "Lock shown" });
             actions.Add(new Button(() => Enqueue(PendingKind.Unlock, AllShown, true)) { text = "Unlock shown" });
+            _retainedRelock = new Button(() => Enqueue(PendingKind.Relock, AllShown, true)) { text = "Relock outdated", tooltip = "Relock the shown materials that were locked with an older shader version" };
+            actions.Add(_retainedRelock);
             actions.Add(new Button(() => { SetAllExpanded(true); RefreshRetainedList(); }) { text = "Expand all" });
             actions.Add(new Button(() => { SetAllExpanded(false); RefreshRetainedList(); }) { text = "Collapse all" });
             _retainedGroups = new ScrollView(); _retainedGroups.style.flexGrow = 1; root.Add(_retainedGroups);
@@ -90,6 +93,8 @@ namespace Thry.ThryEditor
             UpdateRetainedNotice();
             _retainedSummary.text = _scanCancelled ? _summaryText + " · Scan cancelled; showing partial results" : _summaryText;
             _retainedGroups.Clear();
+            _retainedRelock.style.display = _entries != null && _entries.Any(e => e != null && e.CanRelock) ? DisplayStyle.Flex : DisplayStyle.None;
+            _retainedRelock.SetEnabled(_groups.Any(g => g.Entries.Any(e => e.CanRelock)));
             if (_entries == null) { _retainedGroups.Add(new Label("Scanning materials…")); return; }
             if (_groups.Count == 0) { _retainedGroups.Add(new Label("No materials match these filters.")); return; }
             string lastSection = null;
@@ -113,17 +118,20 @@ namespace Thry.ThryEditor
                         var row = new VisualElement(); row.AddToClassList("thry-components");
                         var material = new Button(() => { var entry = (MaterialLockEntry)row.userData; Selection.activeObject = entry.Material; EditorGUIUtility.PingObject(entry.Material); }) { name = "material" }; material.style.flexGrow = 1; material.AddToClassList("thry-lock-material-name"); row.Add(material);
                         var state = new Label { name = "state" }; state.style.minWidth = 90; state.style.alignSelf = Align.Center; row.Add(state);
+                        var relock = new Button(() => Enqueue(PendingKind.Relock, new[] { (MaterialLockEntry)row.userData })) { name = "relock", text = "Relock", tooltip = "Unlock this material and lock it again with the installed shader version" }; relock.style.width = 70; row.Add(relock);
                         var action = new Button(() => { var entry = (MaterialLockEntry)row.userData; Enqueue(entry.CanLock ? PendingKind.Lock : PendingKind.Unlock, new[] { entry }); }) { name = "action" }; action.style.width = 70; row.Add(action);
                         return row;
                     }, (row, index) =>
                     {
                         var entry = group.Entries[index]; row.userData = entry;
                         row.Q<Button>("material").text = entry.Name; row.tooltip = entry.AssetPath;
-                        row.Q<Label>("state").text = entry.IsReadOnly ? "Read-only" : entry.IsVariant ? "Variant" : entry.State.ToString();
+                        row.Q<Label>("state").text = entry.IsReadOnly ? "Read-only" : entry.IsVariant ? "Variant" : entry.IsOutdated ? "Locked " + entry.LockedVersion : entry.State.ToString();
+                        row.Q<Button>("relock").style.display = entry.CanRelock ? DisplayStyle.Flex : DisplayStyle.None;
                         var action = row.Q<Button>("action"); action.text = entry.CanLock ? "Lock" : entry.State == MaterialLockState.Orphaned ? "Recover" : "Unlock"; action.SetEnabled(entry.CanLock || entry.CanUnlock);
                         action.tooltip = ActionTooltip(entry, entry.CanLock);
                         row.Q<Label>("state").tooltip = entry.IsVariant || entry.IsReadOnly ? action.tooltip
-                            : entry.State == MaterialLockState.Orphaned ? "The generated shader is missing. Recover restores the original shader when available." : entry.State.ToString();
+                            : entry.State == MaterialLockState.Orphaned ? "The generated shader is missing. Recover restores the original shader when available."
+                            : entry.IsOutdated ? "Locked with shader version " + entry.LockedVersion + ". The installed shader is newer." : entry.State.ToString();
                     });
                     list.selectionType = SelectionType.None;
                     list.style.height = Mathf.Min(420, group.Entries.Count * 28);

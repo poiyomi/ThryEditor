@@ -52,7 +52,7 @@ namespace Thry.ThryEditor
         [NonSerialized] List<AnimatedPropertyCheck.Item> _pendingMark;
         [NonSerialized] bool _pendingUnmarkedCheck = true;
 
-        enum PendingKind { None, Lock, Unlock }
+        enum PendingKind { None, Lock, Unlock, Relock }
 
         #endregion
 
@@ -139,13 +139,15 @@ namespace Thry.ThryEditor
                 {
                     if (kind == PendingKind.Lock)
                         ShaderOptimizer.LockMaterials(materials, ShaderOptimizer.ProgressBar.Cancellable);
+                    else if (kind == PendingKind.Relock)
+                        ShaderOptimizer.RelockMaterials(materials, ShaderOptimizer.ProgressBar.Cancellable);
                     else
                         ShaderOptimizer.UnlockMaterials(materials, ShaderOptimizer.ProgressBar.Cancellable);
                 }
                 catch (Exception e)
                 {
                     // A failure here must not leave the window unable to refresh itself.
-                    ThryLogger.LogErr("Material Lock Manager", $"{(kind == PendingKind.Lock ? "Locking" : "Unlocking")} failed: {e}");
+                    ThryLogger.LogErr("Material Lock Manager", $"{(kind == PendingKind.Lock ? "Locking" : kind == PendingKind.Relock ? "Relocking" : "Unlocking")} failed: {e}");
                 }
                 rescan = true;
             }
@@ -220,6 +222,8 @@ namespace Thry.ThryEditor
 
             _summaryText = $"{total} material{(total == 1 ? "" : "s")}  ·  {locked} locked  ·  {total - locked} unlocked";
             if (attention > 0) _summaryText += $"  ·  {attention} need attention";
+            int outdated = _entries.Count(e => e.IsOutdated);
+            if (outdated > 0) _summaryText += $"  ·  {outdated} locked with an older version";
             if (_shownCount != total) _summaryText += $"     (showing {_shownCount})";
         }
 
@@ -237,6 +241,11 @@ namespace Thry.ThryEditor
                     $"Lock {count} {plural}?\n\nEach one gets its own generated shader, so this can take a while on a large selection.",
                     "Lock", "Cancel");
 
+            if (kind == PendingKind.Relock)
+                return EditorUtility.DisplayDialog("Relock Materials",
+                    $"Relock {count} {plural}?\n\nEach one is unlocked, brought up to the installed shader version and locked again. The look changes wherever the update changed it.",
+                    "Relock", "Cancel");
+
             return EditorUtility.DisplayDialog("Unlock Materials",
                 $"Unlock {count} {plural}?\n\nUnlocked materials compile every shader feature they expose, so a large selection takes longer to load in the editor.",
                 "Unlock", "Cancel");
@@ -248,7 +257,9 @@ namespace Thry.ThryEditor
         /// </summary>
         void Enqueue(PendingKind kind, IEnumerable<MaterialLockEntry> entries, bool confirm = false)
         {
-            List<Material> targets = MaterialLockScanner.CollectTargets(entries, kind == PendingKind.Lock);
+            List<Material> targets = kind == PendingKind.Relock
+                ? MaterialLockScanner.CollectRelockTargets(entries)
+                : MaterialLockScanner.CollectTargets(entries, kind == PendingKind.Lock);
             if (targets.Count == 0) return;
 
             _pendingKind = kind;
