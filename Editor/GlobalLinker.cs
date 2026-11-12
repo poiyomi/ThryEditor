@@ -111,6 +111,8 @@ namespace Thry.ThryEditor
             // Establish the baseline after a domain reload before Unity restores an undo snapshot.
             Load();
             Undo.undoRedoPerformed += OnUndoRedoPerformed;
+            AssemblyReloadEvents.beforeAssemblyReload += SaveIfQueued;
+            EditorApplication.quitting += SaveIfQueued;
             EditorApplication.projectChanged += s_singleMaterialFiles.Clear;
         }
 
@@ -173,6 +175,11 @@ namespace Thry.ThryEditor
 
         private static void Save()
         {
+            if (s_saveQueued)
+            {
+                s_saveQueued = false;
+                EditorApplication.update -= SaveWhenEditsStop;
+            }
             GlobalLinksData data = new GlobalLinksData();
             data.links = s_data.ToArray();
             string json = Parser.Serialize(data, prettyPrint: true);
@@ -180,8 +187,28 @@ namespace Thry.ThryEditor
             SyncUndoState(json);
         }
 
+        // A slider drag changes the link on every step, and a save rewrites every link in the project
+        private static void SaveSoon()
+        {
+            s_saveAt = EditorApplication.timeSinceStartup + 0.5;
+            if (s_saveQueued) return;
+            s_saveQueued = true;
+            EditorApplication.update += SaveWhenEditsStop;
+        }
+
+        private static void SaveWhenEditsStop()
+        {
+            if (EditorApplication.timeSinceStartup >= s_saveAt) Save();
+        }
+
+        private static void SaveIfQueued()
+        {
+            if (s_saveQueued && s_data != null) Save();
+        }
+
         public static void InvalidateCache()
         {
+            SaveIfQueued();
             s_data = null;
         }
 
@@ -265,6 +292,7 @@ namespace Thry.ThryEditor
             // Resolve again if the database cache has been reloaded.
             link = s_data.FirstOrDefault(l => l.id == link.id);
             if (link == null || link.includeTextures == includeTextures) return;
+            SaveIfQueued();
             Undo.IncrementCurrentGroup();
             int undoGroup = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName("Change Global Link Include Textures");
@@ -380,7 +408,7 @@ namespace Thry.ThryEditor
                 }
             }
             if (!changed) return;
-            Save();
+            SaveSoon();
             RequestRepaint(reloadUI);
         }
 
@@ -758,7 +786,20 @@ namespace Thry.ThryEditor
             }
             TextureKeywords.Sync(material);
             EditorUtility.SetDirty(material);
-            MaterialEditor.ApplyMaterialPropertyDrawers(material);
+            ApplyDrawers(link, material);
+        }
+
+        // Unity's own helper reads every property of the shader, which takes milliseconds per material on a large one
+        private static void ApplyDrawers(GlobalLink link, Material material)
+        {
+            var targets = new UnityEngine.Object[] { material };
+            foreach (GlobalLinkPropertyValue pv in link.properties)
+            {
+                if (!material.HasProperty(pv.name)) continue;
+                if (RetainedMaterialModel.TryApplyPropertyDrawer(material.shader, targets, pv.name)) continue;
+                MaterialEditor.ApplyMaterialPropertyDrawers(material);
+                return;
+            }
         }
 
         /// <param name="reloadUI">

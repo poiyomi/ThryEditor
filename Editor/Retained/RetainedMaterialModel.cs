@@ -426,18 +426,21 @@ namespace Thry.ThryEditor
                 .Where(m => m != null && Shader.Materials.Contains(m) && m.HasProperty(property.name)).GroupBy(m => m.shader))
             {
                 var targets = group.Cast<UnityEngine.Object>().ToArray();
-                if (GetPropertyHandler == null || PropertyDrawer == null || DrawersDisabled == null)
-                {
-                    MaterialEditor.ApplyMaterialPropertyDrawers(targets);
-                    continue;
-                }
-                var handler = GetPropertyHandler.Invoke(null, new object[] { group.Key, property.name });
-                var drawer = handler == null ? null : PropertyDrawer.GetValue(handler) as MaterialPropertyDrawer;
-                if (drawer == null) continue;
-                // Projections can span different shaders or a subset of the selection.
-                // Apply uses a fresh value snapshot with only this shader's owners.
-                drawer.Apply(MaterialEditor.GetMaterialProperty(targets, property.name));
+                if (!TryApplyPropertyDrawer(group.Key, targets, property.name)) MaterialEditor.ApplyMaterialPropertyDrawers(targets);
             }
+        }
+
+        // False when this Unity version hides the handler API, so the caller runs the bulk helper
+        internal static bool TryApplyPropertyDrawer(Shader shader, UnityEngine.Object[] targets, string property)
+        {
+            if (GetPropertyHandler == null || PropertyDrawer == null || DrawersDisabled == null) return false;
+            if ((bool)DrawersDisabled.GetValue(null)) return true;
+            var handler = GetPropertyHandler.Invoke(null, new object[] { shader, property });
+            var drawer = handler == null ? null : PropertyDrawer.GetValue(handler) as MaterialPropertyDrawer;
+            // Projections can span different shaders or a subset of the selection.
+            // Apply uses a fresh value snapshot with only this shader's owners.
+            if (drawer != null) drawer.Apply(MaterialEditor.GetMaterialProperty(targets, property));
+            return true;
         }
 
         internal void Number(ShaderProperty property, float value) => EditSingleProperty(property, p => p.SetNumber(value));
