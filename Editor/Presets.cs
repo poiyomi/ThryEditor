@@ -692,7 +692,6 @@ namespace Thry.ThryEditor
             Undo.RecordObjects(shaderEditor.Materials, "Apply preset");
             ApplyPresetInternal(shaderEditor, preset, preset, parent);
             GlobalLinker.PropagateAfterPreset(shaderEditor, preset, parent);
-            PropagateLinkedMaterials(shaderEditor, preset, parent);
             foreach (Material m in shaderEditor.Materials)
             {
                 MaterialEditor.ApplyMaterialPropertyDrawers(m);
@@ -730,7 +729,6 @@ namespace Thry.ThryEditor
                 shaderEditor.Reload();
             }
             GlobalLinker.PropagateAfterPreset(shaderEditor, appliedPreset.preset, appliedPreset.parent);
-            PropagateLinkedMaterials(shaderEditor, appliedPreset.preset, appliedPreset.parent);
             foreach (Material m in shaderEditor.Materials)
             {
                 MaterialEditor.ApplyMaterialPropertyDrawers(m);
@@ -905,7 +903,6 @@ namespace Thry.ThryEditor
             {
                 ApplyPresetInternal(shaderEditor, preset, preset, parent);
                 GlobalLinker.PropagateAfterPreset(shaderEditor, preset, parent);
-                PropagateLinkedMaterials(shaderEditor, preset, parent);
             }
             shaderEditor.ApplyDrawers();
             shaderEditor.Reload();
@@ -1054,43 +1051,6 @@ namespace Thry.ThryEditor
             foreach (string name in names.Distinct())
                 if (dictionary.TryGetValue(name, out ShaderProperty reference) && !group.Children.Contains(reference))
                     yield return reference;
-        }
-
-        static void PropagateLinkedMaterials(ShaderEditor shaderEditor, Material preset, ShaderPart parent)
-        {
-            if (shaderEditor.IsInAnimationMode) return;
-
-            if (AnimationOnlyProperties(shaderEditor, preset).Count > 0)
-            {
-                var affected = new HashSet<ShaderProperty>();
-                CollectPresetProperties(shaderEditor, preset, parent, affected);
-                foreach (var group in PresetLinkGroups(shaderEditor, preset, parent, affected))
-                {
-                    var linked = MaterialLinker.GetLinked(group.MaterialProperty);
-                    if (linked == null) continue;
-                    var groupProperties = PropertiesInGroup(shaderEditor, preset, group, affected);
-                    foreach (Material target in linked)
-                    {
-                        if (shaderEditor.Materials.Contains(target)) continue;
-                        Undo.RecordObject(target, "Apply linked preset");
-                        CopyPresetPropertiesToMaterial(preset, target, (Material)group.MaterialProperty.targets[0], groupProperties);
-                        MaterialEditor.ApplyMaterialPropertyDrawers(target);
-                    }
-                }
-                return;
-            }
-
-            if (!IsMaterialSectionedPreset(preset))
-            {
-                foreach (ShaderPart part in shaderEditor.ShaderParts)
-                {
-                    if (part is ShaderGroup group && IsPreset(preset, part)) group.UpdateLinkedMaterials();
-                }
-            }
-            else if (parent is ShaderGroup group)
-            {
-                group.UpdateLinkedMaterials();
-            }
         }
 
         internal static HashSet<string> AnimationOnlyProperties(ShaderEditor editor, Material preset)

@@ -170,8 +170,48 @@ namespace Thry.ThryEditor
                 if (parsed?.links != null) s_data = new List<GlobalLink>(parsed.links);
             }
             if (s_data == null) s_data = new List<GlobalLink>();
+            ConvertMaterialLinks();
             SyncUndoState(Parser.Serialize(new GlobalLinksData { links = s_data.ToArray() }, prettyPrint: true));
         }
+
+        // The Material Linker that came before Global Links kept [section, material guid, material guid, ...] groups
+        // and copied the edited material's section to the rest. A converted link stores no values of its own until
+        // the first edit, so converting changes no material.
+        private static void ConvertMaterialLinks()
+        {
+            if (!System.IO.File.Exists(PATH.LINKED_MATERIALS_FILE)) return;
+            try
+            {
+                string raw = System.IO.File.ReadAllText(PATH.LINKED_MATERIALS_FILE);
+                string[][] groups = string.IsNullOrWhiteSpace(raw) ? null : Parser.Deserialize<string[][]>(raw);
+                bool converted = false;
+                if (groups != null)
+                    foreach (string[] group in groups)
+                    {
+                        if (group == null || group.Length < 3 || string.IsNullOrEmpty(group[0])) continue;
+                        string section = group[0];
+                        List<GlobalLink> sectionLinks = s_data.Where(l => l != null && l.sectionPropertyName == section).ToList();
+                        // A material follows one link per section
+                        var taken = new HashSet<string>(sectionLinks.Where(l => l.subscribedMaterialGuids != null).SelectMany(l => l.subscribedMaterialGuids));
+                        string[] guids = group.Skip(1).Where(g => !string.IsNullOrEmpty(g) && taken.Add(g)).ToArray();
+                        if (guids.Length < 2) continue;
+                        string name = "Material Link";
+                        for (int i = 2; sectionLinks.Any(l => l.name == name); i++) name = "Material Link " + i;
+                        s_data.Add(new GlobalLink { name = name, sectionPropertyName = section, includeTextures = true, subscribedMaterialGuids = guids });
+                        converted = true;
+                    }
+                // The old file goes only once its links are in the new one
+                if (converted) Save();
+                System.IO.File.Delete(PATH.LINKED_MATERIALS_FILE);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        private static bool s_saveQueued;
+        private static double s_saveAt;
 
         private static void Save()
         {
@@ -497,7 +537,8 @@ namespace Thry.ThryEditor
                     int index = stored.FindIndex(p => p.name == value.name);
                     if (animationOnly.Contains(value.name))
                     {
-                        if (index < 0) continue;
+                        // A link converted from a Material Link stores nothing yet; the animation state still goes out
+                        if (index < 0) { updates.Add(value); continue; }
                         var previous = stored[index];
                         changed |= !previous.hasAnimatedTag || previous.animatedTag != value.animatedTag;
                         previous.hasAnimatedTag = value.hasAnimatedTag;

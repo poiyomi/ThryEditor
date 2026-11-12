@@ -833,7 +833,6 @@ namespace Thry
             ShaderOptimizer.DeleteTags(Materials);
             for(int i = 0; i < Materials.Length; i++)
             {
-                MaterialLinker.UnlinkAll(Materials[i]);
                 NoteContainers[i]?.ClearAllNotes();
             }
 

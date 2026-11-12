@@ -375,14 +375,6 @@ namespace Thry.ThryEditor
             }
             return sb.ToString();
         }
-
-        public void UpdateLinkedMaterials()
-        {
-            if(ShaderEditor.Active.IsInAnimationMode) return;
-            IEnumerable<Material> linked_materials = MaterialLinker.GetLinked(MaterialProperty);
-            if (linked_materials != null)
-                this.CopyTo(linked_materials.ToArray());
-        }
     }
 
 }

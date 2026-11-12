@@ -405,7 +405,6 @@ namespace Thry.ThryEditor
                     for(var parent = property.Parent as ShaderGroup; parent != null; parent = parent.Parent as ShaderGroup)
                     {
                         if (parent.MaterialProperty == null) continue;
-                        parent.UpdateLinkedMaterials();
                         GlobalLinker.OnSectionChanged(parent, reloadUI: false);
                     }
                 using (RetainedEditMetrics.Measure(RetainedEditMetrics.Phase.EditorInvalidation)) Editor.PropertiesChanged();

@@ -31,10 +31,6 @@ namespace Thry.ThryEditor
                 var defaults = new Material(SectionLock.GetSourceShader(materials[0].shader) ?? materials[0].shader);
                 try { property.CopyFrom(defaults, true); }
                 finally { Object.DestroyImmediate(defaults); }
-                IEnumerable<Material> linked_materials = MaterialLinker.GetLinked(property.MaterialProperty);
-                if (linked_materials != null)
-                    foreach (Material m in linked_materials)
-                        property.CopyTo(m, true);
                 GlobalLinker.OnSectionChanged(property);
 
                 Undo.SetCurrentGroupName($"Reset {property.Content.text} of {ShaderEditor.Active.Materials[0].name}");
@@ -53,7 +49,6 @@ namespace Thry.ThryEditor
                     int undoGroup = Undo.GetCurrentGroup();
 
                     property.CopyFrom(Mediator.copy_part);
-                    property.UpdateLinkedMaterials();
                     GlobalLinker.OnSectionChanged(property);
 
                     Undo.SetCurrentGroupName($"Paste {property.Content.text} of {ShaderEditor.Active.Materials[0].name}");
@@ -69,7 +64,6 @@ namespace Thry.ThryEditor
 
                     var propsToIgnore = new HashSet<ShaderPropertyType> { ShaderPropertyType.Texture };
                     property.CopyFrom(Mediator.copy_part, skipPropertyTypes: propsToIgnore);
-                    property.UpdateLinkedMaterials();
                     GlobalLinker.OnSectionChanged(property);
 
                     Undo.SetCurrentGroupName($"Paste* {property.Content.text} of {ShaderEditor.Active.Materials[0].name}");
@@ -93,7 +87,6 @@ namespace Thry.ThryEditor
                         int undoGroup = Undo.GetCurrentGroup();
 
                         property.CopyFrom(Mediator.copy_part, skipPropertyNames: ignoreProperties);
-                        property.UpdateLinkedMaterials();
                         GlobalLinker.OnSectionChanged(property);
 
                         Undo.SetCurrentGroupName($"Paste** {property.Content.text} of {ShaderEditor.Active.Materials[0].name}");
@@ -136,7 +129,6 @@ namespace Thry.ThryEditor
 
                 MaterialTextSerializer.KeepAnimatedTags(property.MyShaderUI, appliedNames,
                     () => property.CopyFrom(scratch, skipPropertyTypes: MaterialTextSerializer.SkipTextures, skipPropertyNames: skipNames));
-                property.UpdateLinkedMaterials();
                 GlobalLinker.OnSectionChanged(property);
 
                 Object.DestroyImmediate(scratch);
