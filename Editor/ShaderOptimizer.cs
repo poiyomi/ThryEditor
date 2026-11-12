@@ -2344,7 +2344,7 @@ namespace Thry.ThryEditor
                 {
                     if(doStrip)
                     {
-                        savedTextures.Add(("_stripped_tex_" + propName, AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(material.GetTexture(propName)))));
+                        savedTextures.Add(("_stripped_tex_" + propName, TextureReference(material.GetTexture(propName))));
                         Vector2 scale = prop.FindPropertyRelative("second.m_Scale").vector2Value;
                         Vector2 offset = prop.FindPropertyRelative("second.m_Offset").vector2Value;
                         savedTextures.Add(("_stripped_st_" + propName, FormatTextureST(new Vector4(scale.x, scale.y, offset.x, offset.y))));
@@ -2390,6 +2390,27 @@ namespace Thry.ThryEditor
             }
 
             return true;
+        }
+
+        // A texture stored inside another file, such as one embedded in an FBX, shares that file's GUID
+        // with everything else in it, so it is saved as GUID:fileID
+        static string TextureReference(Texture texture)
+        {
+            if (texture == null || !AssetDatabase.TryGetGUIDAndLocalFileIdentifier(texture, out string guid, out long fileId)) return "";
+            return AssetDatabase.IsMainAsset(texture) ? guid : guid + ":" + fileId.ToString(CultureInfo.InvariantCulture);
+        }
+
+        static Texture LoadTextureReference(string reference)
+        {
+            int separator = reference.IndexOf(':');
+            if (separator < 0) return AssetDatabase.LoadAssetAtPath<Texture>(AssetDatabase.GUIDToAssetPath(reference));
+            string fileId = reference.Substring(separator + 1);
+            foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GUIDToAssetPath(reference.Substring(0, separator))))
+            {
+                if (asset is Texture texture && AssetDatabase.TryGetGUIDAndLocalFileIdentifier(texture, out _, out long id)
+                    && id.ToString(CultureInfo.InvariantCulture) == fileId) return texture;
+            }
+            return null;
         }
 
         // Preprocess each file for macros and includes
@@ -3264,7 +3285,7 @@ namespace Thry.ThryEditor
                 if (!string.IsNullOrWhiteSpace(guid))
                 {
                     material.SetOverrideTag("_stripped_tex_" + tex, "");
-                    material.SetTexture(tex, AssetDatabase.LoadAssetAtPath<Texture>(AssetDatabase.GUIDToAssetPath(guid)));
+                    material.SetTexture(tex, LoadTextureReference(guid));
                 }
                 string st = material.GetTag("_stripped_st_" + tex, false);
                 if (!string.IsNullOrWhiteSpace(st))
