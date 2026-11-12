@@ -122,6 +122,40 @@ namespace Thry.ThryEditor
             {
                 var variantNotice = new HelpBox("Material variants can't be locked. Clear Parent above to lock this material.", HelpBoxMessageType.Info) { name = "thry-variant-notice" };
                 materialActions.Add(variantNotice);
+                var relockNotice = new HelpBox("", HelpBoxMessageType.Info) { name = "thry-relock-notice" };
+                var relockText = relockNotice.Q<Label>(className: HelpBox.labelUssClassName);
+                relockText.style.flexGrow = 1; relockText.style.flexShrink = 1;
+                var outdated = new List<Material>();
+                var relock = new Button(() =>
+                {
+                    shader.ActivateRetained();
+                    ShaderOptimizer.RelockMaterials(outdated, ShaderOptimizer.ProgressBar.Uncancellable);
+                    shader.Reload(); Model.Notify();
+                }) { name = "thry-relock-button", text = "Relock", tooltip = "Unlock, update to the installed shader version and lock again. The look changes wherever the update changed it." };
+                relock.style.flexShrink = 0; relock.style.alignSelf = Align.Center;
+                relockNotice.Add(relock);
+                materialActions.Add(relockNotice);
+                int relockKey = -1;
+                _fields.Track(relockNotice, () =>
+                {
+                    int key = shader.IsLockedMaterial ? 1 : 0;
+                    if (key != 0) foreach (var m in shader.Materials) key = key * 31 + (m == null ? 0 : m.GetHashCode() * 397 ^ (m.shader != null ? m.shader.GetHashCode() : 0));
+                    if (key == relockKey) return;
+                    relockKey = key; outdated.Clear();
+                    string lockedVersion = null, installedVersion = null; bool sameVersion = true;
+                    if (shader.IsLockedMaterial)
+                        foreach (var m in shader.Materials.Distinct())
+                        {
+                            if (!MaterialLockScanner.IsLockOutdated(m, out string from, out string to)) continue;
+                            sameVersion &= outdated.Count == 0 || (from == lockedVersion && to == installedVersion);
+                            lockedVersion = from; installedVersion = to; outdated.Add(m);
+                        }
+                    relockNotice.style.display = outdated.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+                    if (outdated.Count == 0) return;
+                    relockNotice.text = sameVersion && outdated.Count == shader.Materials.Distinct().Count()
+                        ? "Locked with " + lockedVersion + ". The installed shader is " + installedVersion + "."
+                        : outdated.Count + (outdated.Count == 1 ? " material is" : " materials are") + " locked with a different shader version than the installed one.";
+                });
                 var button = new Button(() =>
                 {
                     shader.ActivateRetained();

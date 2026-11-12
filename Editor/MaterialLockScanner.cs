@@ -203,6 +203,14 @@ namespace Thry.ThryEditor
             return lockedVersion != null && installedVersion != null && lockedVersion != installedVersion;
         }
 
+        // True for a locked material whose shader was locked from another version than the installed one
+        internal static bool IsLockOutdated(Material material, out string lockedVersion, out string installedVersion)
+        {
+            lockedVersion = installedVersion = null;
+            if (material == null || material.shader == null || !ShaderOptimizer.IsShaderLocked(material.shader)) return false;
+            return VersionsDiffer(material.shader, ResolveOriginalShader(material, out _), out lockedVersion, out installedVersion);
+        }
+
         /// <summary>
         /// Returns null for materials the optimizer has no business touching.
         /// Mirrors <see cref="ShaderOptimizer.IsMaterialLocked"/>, minus its guessing fallback.
