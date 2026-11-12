@@ -200,7 +200,7 @@
     --thry-toggle-on-disabled-background: #445d33;
     --thry-toggle-on-border-color: var(--thry-monokai-green);
     --thry-toggle-on-disabled-border-color: #7f9c48;
-    --thry-toggle-on-border-width: var(--thry-border-width-strong);
+    --thry-toggle-on-border-width: var(--thry-border-width);
     --thry-toggle-on-text-color: #ffffff;
     --thry-toggle-on-disabled-text-color: var(--thry-muted-color);
 }
@@ -225,7 +225,7 @@
     --thry-uv-discard-disabled-background: #6e3d50;
     --thry-uv-discard-border-color: #ffa1c5;
     --thry-uv-discard-disabled-border-color: #b57a94;
-    --thry-uv-discard-border-width: var(--thry-border-width-strong);
+    --thry-uv-discard-border-width: var(--thry-border-width);
     --thry-uv-discard-text-color: #ffffff;
     --thry-uv-discard-disabled-text-color: var(--thry-muted-color);
 }
@@ -8510,7 +8510,8 @@
    the multi-value on state, hover, focus and press keep the outline, and these
    rules follow the light-skin tile rule to win the specificity tie. The outline
    also wins over the mixed-animation purple edge; the Mixed badge still shows.
-   Padding gives back the extra side border so the label stays put. */
+   The outline matches the regular border width, so the label needs no padding
+   change; a wider outline would need the padding reduced by the extra width. */
 .thry-inspector Button.thry-uv-cell.thry-uv-discarded {
     --thry-button-background: var(--thry-uv-discard-background);
     --thry-button-hover-background: var(--thry-uv-discard-hover-background);
@@ -8518,7 +8519,6 @@
     --thry-button-disabled-background: var(--thry-uv-discard-disabled-background);
     border-width: var(--thry-uv-discard-border-width);
     border-color: var(--thry-uv-discard-border-color);
-    padding: 0 var(--thry-space-3);
 }
 
 .thry-inspector Button.thry-uv-cell.thry-uv-discarded:hover,
@@ -8569,8 +8569,9 @@
 /* On state for both skins, colored by the --thry-toggle-on-* tokens. Hover, focus
    and press keep the outline so the state does not flicker away while clicking;
    these rules come after the light-skin block to win the specificity ties.
-   Padding gives back the extra border width so the label does not move or clip
-   inside the fixed property height. Adjust both together. */
+   The outline matches the regular border width, so the label needs no padding
+   change; a wider outline would need the padding reduced by the extra width so
+   the label does not move or clip inside the fixed property height. */
 .thry-inspector .thry-multi-value-controls > Button.thry-selected {
     --thry-button-background: var(--thry-toggle-on-background);
     --thry-button-hover-background: var(--thry-toggle-on-hover-background);
@@ -8578,7 +8579,6 @@
     --thry-button-disabled-background: var(--thry-toggle-on-disabled-background);
     border-width: var(--thry-toggle-on-border-width);
     border-color: var(--thry-toggle-on-border-color);
-    padding: var(--thry-space-1) var(--thry-space-3);
     color: var(--thry-toggle-on-text-color);
     -unity-font-style: bold;
 }
@@ -9419,7 +9419,8 @@
 }
 
 /* An enum with two to four short choices shows every choice as a button. The picked
-   one uses the shared selected-button surface and keeps it on locked materials. */
+   one uses the same fill and outline as the ButtonVector on state (RGBA Color
+   Masking) and keeps them on locked materials. */
 .thry-inspector .thry-enum-buttons {
     flex-direction: row;
     flex-grow: 1;
@@ -9443,13 +9444,28 @@
     -unity-text-align: middle-center;
 }
 
+/* The outline shares the tiles' width token, which matches the regular border, so
+   the label needs no padding change. Hover, focus and press keep the outline. */
 .thry-inspector .thry-enum-buttons > Button.thry-selected {
-    color: var(--thry-value-color);
+    --thry-button-background: var(--thry-toggle-on-background);
+    --thry-button-hover-background: var(--thry-toggle-on-hover-background);
+    --thry-button-pressed-background: var(--thry-toggle-on-pressed-background);
+    --thry-button-disabled-background: var(--thry-toggle-on-disabled-background);
+    border-width: var(--thry-toggle-on-border-width);
+    border-color: var(--thry-toggle-on-border-color);
+    color: var(--thry-toggle-on-text-color);
     -unity-font-style: bold;
 }
 
+.thry-inspector .thry-enum-buttons > Button.thry-selected:hover,
+.thry-inspector .thry-enum-buttons > Button.thry-selected:focus,
+.thry-inspector .thry-enum-buttons > Button.thry-selected:enabled:active {
+    border-color: var(--thry-toggle-on-border-color);
+}
+
 .thry-inspector .thry-enum-buttons > Button.thry-selected:disabled {
-    --thry-button-disabled-background: var(--thry-selection-background);
+    border-color: var(--thry-toggle-on-disabled-border-color);
+    color: var(--thry-toggle-on-disabled-text-color);
 }
 
 /* The type and status filters are icon buttons at the end of the search strip. Each
@@ -9520,6 +9536,12 @@
 
 .thry-inspector .thry-enum-buttons > Button.thry-channel-a {
     color: var(--thry-channel-a-color);
+}
+
+/* A tinted letter is unreadable on the green fill, so the picked channel uses the
+   on-state text. This follows the tint rules to win the specificity tie. */
+.thry-inspector .thry-channel-buttons > Button.thry-selected {
+    color: var(--thry-toggle-on-text-color);
 }
 
 /* Footer icons sit beside the credit while they fit. Below that they move under it,
