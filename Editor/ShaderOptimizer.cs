@@ -2375,7 +2375,7 @@ namespace Thry.ThryEditor
             material.SetOverrideTag("RenderType", renderType);
             material.renderQueue = renderQueue;
             MaterialHelper.ApplyOverrideTags(material, preservedTags);
-
+            FillNonModifiableTextures(material, shader, applyStruct.newShaderPath);
 
             material.SetOverrideTag("OriginalKeywords", string.Join(" ", material.shaderKeywords));
             // Remove ALL keywords
@@ -2390,6 +2390,29 @@ namespace Thry.ThryEditor
             }
 
             return true;
+        }
+
+        // The importer hands its own shader the non-modifiable textures (Poiyomi's DFG lookup tables). A locked
+        // shader is a new asset without them, so a material that never saved those slots gets them here.
+        static void FillNonModifiableTextures(Material material, Shader source, string lockedShaderPath)
+        {
+            ShaderImporter importer = null;
+            string lockedText = null;
+            int count = source.GetPropertyCount();
+            for (int i = 0; i < count; i++)
+            {
+                if (source.GetPropertyType(i) != ShaderPropertyType.Texture
+                    || (source.GetPropertyFlags(i) & ShaderPropertyFlags.NonModifiableTextureData) == 0) continue;
+                string name = source.GetPropertyName(i);
+                if (!material.HasProperty(name) || material.GetTexture(name) != null) continue;
+                // The Properties block names it once. Any further mention is the code using it.
+                if (lockedText == null) lockedText = File.ReadAllText(lockedShaderPath);
+                if (Regex.Matches(lockedText, @"\b" + Regex.Escape(name) + @"\b").Count < 2) continue;
+                if (importer == null) importer = AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(source)) as ShaderImporter;
+                if (importer == null) return;
+                Texture texture = importer.GetNonModifiableTexture(name);
+                if (texture != null) material.SetTexture(name, texture);
+            }
         }
 
         // A texture stored inside another file, such as one embedded in an FBX, shares that file's GUID
