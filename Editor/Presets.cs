@@ -497,22 +497,27 @@ namespace Thry.ThryEditor
             {
                 if(importedAssets.Length > 0)
                 {
-                    // Check if any presets were imported, iterate over all imported materials
-                    foreach (string asset in importedAssets.Where(IsMaterialAssetPath))
+                    // Only materials whose file could carry the preset tag are loaded
+                    string[] materialPaths = importedAssets.Where(IsMaterialAssetPath).ToArray();
+                    bool[] couldBePreset = new bool[materialPaths.Length];
+                    Parallel.For(0, materialPaths.Length, i => couldBePreset[i] = CouldBePreset(materialPaths[i]));
+                    for (int i = 0; i < materialPaths.Length; i++)
                     {
-                        Material material = AssetDatabase.LoadAssetAtPath<Material>(asset);
-                        if (material == null) continue;
+                        string asset = materialPaths[i];
+                        if (couldBePreset[i])
+                        {
+                            Material material = AssetDatabase.LoadAssetAtPath<Material>(asset);
+                            if (material == null) continue;
+                            if (IsPreset(material))
+                            {
+                                RemovePreset(material);
+                                AddPreset(material);
+                            }
+                        }
                         string guid = AssetDatabase.AssetPathToGUID(asset);
                         // Skip the log for re-imports triggered by the ShaderOptimizer. Those aren't
                         // user-driven material changes and would otherwise fire for every materials.
-                        if (!ShaderOptimizer.ConsumeLockUnlockMaterialChange(guid)) ThryLogger.LogDetail($"Material Changed: {material.name} ({guid})");
-                        // Check if asset is preset
-                        if (IsPreset(material))
-                        {
-                            // Add preset
-                            RemovePreset(material);
-                            AddPreset(material);
-                        }
+                        if (!ShaderOptimizer.ConsumeLockUnlockMaterialChange(guid)) ThryLogger.LogDetail($"Material Changed: {Path.GetFileNameWithoutExtension(asset)} ({guid})");
                         KnownMaterials.Add(guid);
                     }
                 }
