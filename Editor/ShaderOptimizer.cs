@@ -858,9 +858,9 @@ namespace Thry.ThryEditor
         private static Dictionary<string, List<string>> s_materialsByShaderGuid;
         private static readonly HashSet<string> s_unlockedSinceScan = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Per batch only: the dependency hash misses included files
-        private static readonly Dictionary<string, IfexConditions> s_ifexConditionsThisBatch = new Dictionary<string, IfexConditions>();
-        private static readonly Dictionary<string, TextReferences> s_textReferencesThisBatch = new Dictionary<string, TextReferences>();
+        // Kept between batches. Each scan is redone once the shader or an include it inlines changes on disk.
+        private static readonly Dictionary<string, IfexConditions> s_ifexConditions = new Dictionary<string, IfexConditions>();
+        private static readonly Dictionary<string, TextReferences> s_textReferences = new Dictionary<string, TextReferences>();
 
         // Settings whose generated text matched a cached shader, keyed by the locked shader name their hash
         // would have had, so later materials in the batch with the same settings skip generating it again
@@ -888,8 +888,6 @@ namespace Thry.ThryEditor
             s_cacheEntriesTouchedThisBatch.Clear();
             s_entriesToDeleteThisBatch.Clear();
             if (s_materialsByShaderGuid == null) s_unlockedSinceScan.Clear();
-            s_ifexConditionsThisBatch.Clear();
-            s_textReferencesThisBatch.Clear();
             s_textMatchesThisBatch.Clear();
             s_contentIndexThisBatch.Clear();
             // Not s_materialsToVerifyLock: an earlier batch may still need it
@@ -1419,22 +1417,49 @@ namespace Thry.ThryEditor
             sb.Append(m.GetTexture(prop.name) != null ? "tex" : "notex");
         }
 
+        // The write time and size of every file a scan read
+        class ScannedFiles
+        {
+            readonly List<(string path, long time, long length)> _files = new List<(string, long, long)>();
+
+            public ScannedFiles(IEnumerable<string> paths)
+            {
+                foreach (string path in paths) _files.Add(Stamp(path));
+            }
+
+            public bool Unchanged()
+            {
+                foreach (var file in _files)
+                    if (Stamp(file.path) != file) return false;
+                return true;
+            }
+
+            static (string, long, long) Stamp(string path)
+            {
+                if (!File.Exists(path)) return (path, 0, -1);
+                FileInfo info = new FileInfo(path);
+                return (path, info.LastWriteTimeUtc.Ticks, info.Length);
+            }
+        }
+
         class IfexConditions
         {
             public string[] RenderQueue;
             public Dictionary<string, List<string>> ByIdentifier = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            public ScannedFiles Files;
         }
 
         static readonly Regex s_ifexIdentifierRegex = new Regex(@"[A-Za-z_][A-Za-z0-9_]*", RegexOptions.Compiled);
 
         static IfexConditions GetIfexConditions(string shaderPath)
         {
-            if (s_ifexConditionsThisBatch.TryGetValue(shaderPath, out IfexConditions cached)) return cached;
+            if (s_ifexConditions.TryGetValue(shaderPath, out IfexConditions cached) && cached.Files.Unchanged()) return cached;
 
             SortedSet<string> conditions = new SortedSet<string>(StringComparer.Ordinal);
-            CollectIfexConditions(shaderPath, conditions, new HashSet<string>());
+            HashSet<string> visited = new HashSet<string>();
+            CollectIfexConditions(shaderPath, conditions, visited);
 
-            IfexConditions result = new IfexConditions();
+            IfexConditions result = new IfexConditions { Files = new ScannedFiles(visited) };
             List<string> renderQueueConditions = new List<string>();
             foreach (string condition in conditions)
             {
@@ -1454,7 +1479,7 @@ namespace Thry.ThryEditor
             }
             result.RenderQueue = renderQueueConditions.ToArray();
 
-            s_ifexConditionsThisBatch[shaderPath] = result;
+            s_ifexConditions[shaderPath] = result;
             return result;
         }
 
@@ -1493,6 +1518,7 @@ namespace Thry.ThryEditor
             public bool CoversAll;
             public readonly HashSet<string> Identifiers = new HashSet<string>(StringComparer.Ordinal);
             public readonly HashSet<string> Exempt = new HashSet<string>(StringComparer.Ordinal);
+            public ScannedFiles Files;
 
             public bool CanChangeText(MaterialProperty prop, IfexConditions ifexConditions)
             {
@@ -1512,10 +1538,12 @@ namespace Thry.ThryEditor
         static TextReferences GetTextReferences(Shader shader)
         {
             string shaderPath = AssetDatabase.GetAssetPath(shader);
-            if (s_textReferencesThisBatch.TryGetValue(shaderPath, out TextReferences cached)) return cached;
+            if (s_textReferences.TryGetValue(shaderPath, out TextReferences cached) && cached.Files.Unchanged()) return cached;
 
             TextReferences result = new TextReferences();
-            CollectTextReferences(shaderPath, result, new HashSet<string>(), false);
+            HashSet<string> visited = new HashSet<string>();
+            CollectTextReferences(shaderPath, result, visited, false);
+            result.Files = new ScannedFiles(visited);
             for (int i = 0; i < shader.GetPropertyCount(); i++)
             {
                 if (shader.GetPropertyDescription(i).EndsWith(ExemptFromLockingSuffix, StringComparison.Ordinal)
@@ -1524,7 +1552,7 @@ namespace Thry.ThryEditor
                     result.Exempt.Add(shader.GetPropertyName(i));
             }
 
-            s_textReferencesThisBatch[shaderPath] = result;
+            s_textReferences[shaderPath] = result;
             return result;
         }
 
