@@ -9668,7 +9668,7 @@
     align-self: center;
 }
 
-/* A theme index beside a color is a chip: the theme color it follows, or an empty square while off. */
+/* A theme index beside a color is a small dropdown captioned Theme. A picked theme adds its color and number. */
 .thry-inspector .thry-with-reference > .thry-theme-chip-host {
     flex-grow: 0;
     flex-basis: auto;
@@ -9679,30 +9679,37 @@
     display: none;
 }
 
+/* Other dropdowns are only as tall as their text; beside a color swatch that reads as too small. */
 .thry-inspector .thry-theme-chip > .unity-base-popup-field__input {
     flex-direction: row;
     align-items: center;
+    align-self: stretch;
     min-width: 0;
-    padding-left: var(--thry-space-4);
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-left: var(--thry-space-6);
+}
+
+.thry-inspector .thry-theme-chip-caption {
+    flex-shrink: 0;
+    margin: 0 var(--thry-space-4) 0 0;
+    padding: 0;
+    font-size: var(--thry-font-size);
+    color: var(--thry-muted-color);
 }
 
 .thry-inspector .thry-theme-chip-swatch {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     flex-shrink: 0;
     border-width: 1px;
-    border-radius: var(--thry-radius-compact);
+    border-radius: 5px;
     border-color: var(--thry-control-border-color);
 }
 
-.thry-inspector .thry-theme-chip-off .thry-theme-chip-swatch {
-    border-color: var(--thry-muted-color);
-    opacity: .55;
-}
-
 .thry-inspector .thry-theme-chip-tag {
-    margin: 0 0 0 var(--thry-space-4);
+    margin: 0 var(--thry-space-4) 0 var(--thry-space-3);
     padding: 0;
-    font-size: var(--thry-type-small);
+    font-size: var(--thry-font-size);
     color: var(--thry-value-color);
 }

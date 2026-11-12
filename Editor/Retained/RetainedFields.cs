@@ -264,32 +264,34 @@ namespace Thry.ThryEditor
             }
             return root;
         }
-        // A theme index beside a color: a chip that shows the theme color it follows and stays blank while off.
-        private void ThemeChip(DropdownField field, ShaderProperty property, float[] values)
+        // A theme index beside a color: a small dropdown captioned Theme, which adds the theme's color and number while one is picked.
+        private void ThemeChip(DropdownField field, ShaderProperty property)
         {
             field.AddToClassList("thry-theme-chip");
             var input = field.Q(className: BasePopupField<string, string>.inputUssClassName);
+            var caption = new Label { pickingMode = PickingMode.Ignore }; caption.AddToClassList("thry-theme-chip-caption");
             var swatch = new VisualElement { pickingMode = PickingMode.Ignore }; swatch.AddToClassList("thry-theme-chip-swatch");
             var tag = new Label { pickingMode = PickingMode.Ignore }; tag.AddToClassList("thry-theme-chip-tag");
-            input.Insert(0, swatch); input.Insert(1, tag);
+            input.Insert(0, caption); input.Insert(1, swatch); input.Insert(2, tag);
             TrackVisible(swatch, () =>
             {
+                string name = RetainedText.Get(Model.Shader, "theme", "Theme");
+                if (caption.text != name) caption.text = name;
                 bool mixed = property.MaterialProperty.hasMixedValue;
                 int value = mixed ? -1 : (int)property.MaterialProperty.GetNumber();
                 ShaderProperty theme = null;
                 bool themed = value >= 1 && value <= 4 && Model.Shader.PropertyDictionary.TryGetValue("_GlobalThemeColor" + (value - 1), out theme) && theme.MaterialProperty != null;
-                field.EnableInClassList("thry-theme-chip-off", value == 0);
-                swatch.style.display = themed || value == 0 ? DisplayStyle.Flex : DisplayStyle.None;
+                swatch.style.display = themed ? DisplayStyle.Flex : DisplayStyle.None;
                 if (themed)
                 {
                     var color = Helpers.ThryColorMath.Preview(theme.MaterialProperty.colorValue, RetainedColorPicker.Format(theme.MaterialProperty));
                     color.a = 1; swatch.style.backgroundColor = color;
                 }
-                else swatch.style.backgroundColor = StyleKeyword.Null;
-                string text = mixed ? "\u2014" : value <= 0 ? "" : value <= 4 ? (value - 1).ToString() : value <= 8 ? "CC" + (value - 5) : "AL" + (value - 9);
+                string text = mixed ? "\u2014" : value <= 0 ? "" : value <= 4 ? (value - 1).ToString() : value <= 8 ? "CC " + (value - 5) : "AL " + (value - 9);
                 if (tag.text != text) tag.text = text;
                 tag.style.display = text.Length > 0 ? DisplayStyle.Flex : DisplayStyle.None;
-                string tooltip = field.value;
+                string tooltip = mixed || value <= 0 ? RetainedText.Get(Model.Shader, "theme_off_help", "Use a color from Global Themes in place of this one.")
+                    : string.Format(RetainedText.Get(Model.Shader, "theme_on_help", "{0} is used in place of this color."), field.value);
                 if (field.tooltip != tooltip) field.tooltip = tooltip;
             }, field);
         }
@@ -634,7 +636,7 @@ namespace Thry.ThryEditor
                 int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber()); SynchronizeValue(field, selected < 0 ? "—" : names[selected], property.MaterialProperty.hasMixedValue);
             });
             field.RegisterValueChangedCallback(e => { int index = Array.IndexOf(names, e.newValue); if(index >= 0) Model.Number(property, values[index]); }); parent.Add(field);
-            if (chip && values.Length == 13 && property.MaterialProperty.name.EndsWith("ThemeIndex", StringComparison.Ordinal)) ThemeChip(field, property, values);
+            if (chip && values.Length == 13 && property.MaterialProperty.name.EndsWith("ThemeIndex", StringComparison.Ordinal)) ThemeChip(field, property);
         }
         private static readonly Dictionary<string,Type> EnumTypes = new Dictionary<string,Type>();
         private static Type ResolveEnumType(string name)
