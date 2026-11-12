@@ -3751,30 +3751,101 @@ namespace Thry.ThryEditor
             // Variants can't be locked, so the avatar clone gets flattened copies and the project keeps its variants
             static void FlattenVariants(GameObject avatarGameObject)
             {
+                Renderer[] renderers = avatarGameObject.GetComponentsInChildren<Renderer>(true);
                 Dictionary<Material, Material> copies = new Dictionary<Material, Material>();
-                foreach (Renderer renderer in avatarGameObject.GetComponentsInChildren<Renderer>(true))
+                List<Material> baked = new List<Material>();
+                int folders = 0;
+                foreach (Material m in renderers.SelectMany(r => r.sharedMaterials).Distinct())
+                {
+                    if (m == null || !m.isVariant || m.shader.IsBroken() || !IsShaderUsingThryOptimizer(m.shader)) continue;
+                    if (!AssetDatabase.IsValidFolder(TempFolder)) AssetDatabase.CreateFolder("Assets", TempFolder.Substring("Assets/".Length));
+                    // One folder per copy, so the file name, and with it the rename suffix, stays the variant's name
+                    string folder = AssetDatabase.GUIDToAssetPath(AssetDatabase.CreateFolder(TempFolder, (folders++).ToString()));
+                    Material copy = Object.Instantiate(m);
+                    AssetDatabase.CreateAsset(copy, folder + "/" + m.name + ".mat");
+                    copy.parent = null;
+                    copies.Add(m, copy);
+                    if (m.IsLocked()) baked.Add(m);
+                }
+                UnlockBakedCopies(copies, baked);
+
+                foreach (Renderer renderer in renderers)
                 {
                     Material[] sharedMaterials = renderer.sharedMaterials;
                     bool changed = false;
                     for (int i = 0; i < sharedMaterials.Length; i++)
                     {
-                        Material m = sharedMaterials[i];
-                        if (m == null || !m.isVariant || m.IsLocked() || m.shader.IsBroken() || !IsShaderUsingThryOptimizer(m.shader)) continue;
-                        if (!copies.TryGetValue(m, out Material copy))
-                        {
-                            if (!AssetDatabase.IsValidFolder(TempFolder)) AssetDatabase.CreateFolder("Assets", TempFolder.Substring("Assets/".Length));
-                            // One folder per copy, so the file name, and with it the rename suffix, stays the variant's name
-                            string folder = AssetDatabase.GUIDToAssetPath(AssetDatabase.CreateFolder(TempFolder, copies.Count.ToString()));
-                            copy = Object.Instantiate(m);
-                            AssetDatabase.CreateAsset(copy, folder + "/" + m.name + ".mat");
-                            copy.parent = null;
-                            copies.Add(m, copy);
-                        }
+                        if (sharedMaterials[i] == null || !copies.TryGetValue(sharedMaterials[i], out Material copy)) continue;
                         sharedMaterials[i] = copy;
                         changed = true;
                     }
                     if (changed) renderer.sharedMaterials = sharedMaterials;
                 }
+            }
+
+            // A variant of a locked material carries the parent's shader, with the parent's values baked in. Its
+            // copy goes back to the original shader so the lock that follows bakes the variant's own values. A copy
+            // that would bake to the parent's shader anyway is dropped: that variant already looks right.
+            static void UnlockBakedCopies(Dictionary<Material, Material> copies, List<Material> baked)
+            {
+                foreach (Material m in baked) CopyLockTags(m, copies[m]);
+                // Without a saved original shader the unlock would stop on a dialog
+                foreach (Material m in baked.Where(m => GetOriginalShader(copies[m], false).IsBroken()).ToList())
+                {
+                    copies.Remove(m);
+                    baked.Remove(m);
+                }
+                if (baked.Count == 0) return;
+
+                SetLockedForAllMaterialsInternal(baked.Select(m => copies[m]).ToList(), 0);
+                foreach (Material m in baked)
+                {
+                    Material copy = copies[m];
+                    string parentHash = Path.GetFileName(Path.GetDirectoryName(AssetDatabase.GetAssetPath(m.shader)));
+                    if (copy.IsLocked() || MaterialToShaderPropertyHash(copy, MaterialEditor.GetMaterialProperties(new Object[] { copy })) == parentHash)
+                        copies.Remove(m);
+                }
+            }
+
+            // A variant does not see its parent's override tags, and those hold the lock's state: the original
+            // shader, the textures the lock took out and which properties are animated
+            static void CopyLockTags(Material variant, Material copy)
+            {
+                HashSet<string> own = new HashSet<string>(OwnTagNames(copy));
+                HashSet<string> assigned = new HashSet<string>();
+                SerializedProperty textures = new SerializedObject(copy).FindProperty("m_SavedProperties.m_TexEnvs");
+                for (int i = 0; i < textures.arraySize; i++)
+                {
+                    SerializedProperty slot = textures.GetArrayElementAtIndex(i);
+                    if (slot.FindPropertyRelative("second.m_Texture").objectReferenceValue != null) assigned.Add(slot.FindPropertyRelative("first").stringValue);
+                }
+
+                for (Material parent = variant.parent; parent != null; parent = parent.parent)
+                {
+                    foreach (string tag in OwnTagNames(parent))
+                    {
+                        string slot = tag.StartsWith("_stripped_tex_", StringComparison.Ordinal) ? tag.Substring("_stripped_tex_".Length)
+                            : tag.StartsWith("_stripped_st_", StringComparison.Ordinal) ? tag.Substring("_stripped_st_".Length) : null;
+                        // A texture the variant assigns itself wins over the one the parent's lock put away
+                        if (slot != null && assigned.Contains(slot)) continue;
+                        bool lockState = slot != null || tag == TAG_ORIGINAL_SHADER || tag == TAG_ORIGINAL_SHADER_GUID || tag == TAG_LOCKED_RENAME_SUFFIX
+                            || tag == "OriginalKeywords" || tag.EndsWith(AnimatedTagSuffix, StringComparison.Ordinal);
+                        if (lockState && own.Add(tag)) copy.SetOverrideTag(tag, parent.GetTag(tag, false, string.Empty));
+                    }
+                }
+            }
+
+            static List<string> OwnTagNames(Material material)
+            {
+                List<string> names = new List<string>();
+                SerializedProperty it = new SerializedObject(material).GetIterator();
+                while (it.Next(true))
+                {
+                    if (it.name != "stringTagMap") continue;
+                    for (int i = 0; i < it.arraySize; i++) names.Add(it.GetArrayElementAtIndex(i).displayName);
+                    break;
+                }
+                return names;
             }
         }
 #endif
