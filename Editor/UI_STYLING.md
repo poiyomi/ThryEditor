@@ -10,7 +10,7 @@ Changes update attached inspectors, menus, and retained tool windows immediately
 
 ## Third-Party Themes
 
-A theme is a stylesheet whose file name ends in `.thrytheme.uss`, placed anywhere in Assets or in a package. Installing one changes nothing until it is chosen in Poi/Thry/Settings → Theme → Inspector Theme, which lists Default and every installed theme by file name without the suffix. `RetainedTheme` then attaches the chosen theme after `ThryTheme.uss` on every inspector, menu, and retained window, so its rules win over base rules with the same selector. Keep theme files outside `_PoiyomiShaders` so reinstalling or updating Poiyomi does not remove them. ThryEditor ships no theme files.
+A theme is a stylesheet whose file name ends in `.thrytheme.uss`, placed anywhere in Assets or in a package. Installing one changes nothing until it is chosen in Poi/Thry/Settings → Theme → Inspector Theme, which lists Default and every installed theme by file name without the suffix. `RetainedTheme` then attaches the chosen theme after `ThryTheme.uss` on every inspector, menu, and retained window, so its rules win over base rules with the same selector. Keep theme files outside `_PoiyomiShaders` so reinstalling or updating Poiyomi does not remove them. ThryEditor ships one sample, `Examples/Themes/Classic.thrytheme.uss`, a Unity 2017–style theme for both skins that uses the gradient hooks below; copy it outside the Poiyomi folder and rename it to start a theme of your own.
 
 One theme is active at a time. The choice is saved with the other Theme settings, so it follows "Use shared appearance on this computer", and Reset appearance returns to Default. If two themes share a name, the one in Assets wins over one in a package. Adding, editing, renaming, or deleting a theme updates open inspectors, windows, and the dropdown. A chosen theme that is no longer installed stays listed as not found and the default look is used until it returns or another theme is chosen.
 
@@ -36,6 +36,16 @@ Override tokens rather than control rules. Token names are what themes rely on, 
 ```
 
 A gray slider other than zero sets the surface, panel, input, section, and action-button tokens with three-class selectors, which win over a theme's values for those tokens. Leave the sliders at zero with a theme that recolors surfaces, or match those selectors in the theme. To restyle a specific control, the theme's selector must be at least as specific as the base rule it replaces. IMGUI drawers and the C# colors in `Styles.cs` are not affected by themes.
+
+### Gradient Hooks
+
+USS has no gradients, so themes get two custom properties instead: `--thry-gradient-top` and `--thry-gradient-bottom`. Set either or both on a `Button`, a dropdown (`.unity-base-popup-field__input`), a text input (`.unity-base-text-field__input`), or a section header (`.thry-section-header`), and `RetainedGradient` paints a vertical gradient on that surface. One property alone paints a flat color. The colors become a small generated texture set as the surface's inline background image, so the gradient fills the padding, follows the rounded corners, sits over the background color, and stays under the border, text, and children. It replaces any background image a rule gives the surface. Colors may be translucent, which tints the background instead of replacing it. (Drawing the gradient as a mesh instead left flat strips at the sides of text inputs and headers, because a surface with hidden overflow clips its own drawing to its content box.)
+
+- A surface whose background color is transparent is not painted, so icon, link, and search buttons stay clear.
+- Set the properties on the surface's own selector; like every custom property read in C#, they are not inherited from a parent rule. Pseudo-classes such as `:hover`, `:disabled`, and `:active` work; also give the surface's normal state a gradient, as Classic does, so a state's colors are replaced when it ends.
+- With an opaque gradient, a button's background color only shows through its border, so Classic sets the button fill tokens to its outline colors.
+
+`ThryTheme.uss` sets neither property. The painters are installed only while the chosen theme's file mentions `--thry-gradient`, so the default theme and themes without gradients cost nothing. While a gradient theme is active, each inspector or window is scanned for new surfaces after its layout changes.
 
 ## Monokai palette
 
