@@ -100,7 +100,7 @@ The first block is the shape, sizing, spacing, and typography source for the ret
 
 Button, subheader, and small-panel radii inherit the control radius by default. Each can be overridden independently. Spacing tokens keep the existing pixel values as their names so the migration is easy to audit; changing a value affects its uses throughout the stylesheet. Geometry needed for joined edges, asset aspect ratios, tiny icons, virtualization, and native control internals remains explicit rather than being forced onto one universal size.
 
-Ramp height uses a length such as `54px`. Ramp stroke width and handle radius use unitless numbers because the custom drawing code consumes them directly. Its paint and drag coordinates share the same inset so larger handles remain aligned with interactions.
+Ramp height uses a length such as `54px`. Ramp stroke width and handle radius use unitless numbers because the custom drawing code consumes them directly. Its paint and drag coordinates share the same inset so larger handles remain aligned with interactions. The light skin darkens the line to #3775a8 and the anchors to #404040, which keep 3.9:1 and 5.2:1 against its #b8b8b8 ramp background; the dark-skin colors measure about 1.2:1 there. The same colors paint the four-point curve editor (`.thry-curve4`), and the active anchor uses the line color.
 
 The palette below these settings retains the original neutral dark/light colors. Additional Studio roles, including primary actions, slider handles, and disabled fields, live in the final section. Component rules follow in labeled sections; remaining component-specific palette details still live in this same file.
 

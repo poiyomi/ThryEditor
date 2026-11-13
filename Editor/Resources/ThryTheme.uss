@@ -62,6 +62,14 @@
     --thry-space-20: 20px;
 }
 
+/* Light-skin ramp and curve paint. The dark-skin line and anchor colors measure about 1.2:1 on the
+   light ramp background (#b8b8b8); these reach 3.9:1 for the line and 5.2:1 for the anchors. The
+   active anchor is drawn in the line color, so the anchors stay neutral to tell it apart. */
+.thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
+    --thry-ramp-line-color: #3775a8;
+    --thry-ramp-handle-color: #404040;
+}
+
 /* Monokai accents shared by inspector controls and companion windows.
    Light-skin counterparts keep small labels legible on light surfaces.
    Neutral surfaces continue to use the shared Poiyomi gray theme below. */
