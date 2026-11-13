@@ -8630,6 +8630,36 @@
     border-color: var(--thry-focus-color);
 }
 
+
+/* The rendering dropdown and render queue box sit beside the Lock button, so in the light skin they use
+   its raised surface rather than the toolbar gray, which looked heavy next to it. Keep these colors
+   in step with the in-row action buttons above. */
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field__input,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input {
+    background-color: #e6e6e6;
+    border-color: #a8a8a8;
+}
+
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field__input:hover,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:hover {
+    background-color: #f0f0f0;
+    border-color: #a8a8a8;
+}
+
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field__input:focus,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field:focus > .unity-base-popup-field__input,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:focus {
+    border-color: var(--thry-focus-color);
+}
+
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field__input:disabled,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:disabled {
+    background-color: var(--thry-disabled-background);
+    border-color: var(--thry-disabled-border);
+    color: var(--thry-muted-color);
+}
+
+
 /* Scene texture inspection shares the live Poi appearance and button states. */
 .thry-inspector.thry-scene-texture-overlay {
     position: absolute;
