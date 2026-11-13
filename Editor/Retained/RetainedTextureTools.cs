@@ -36,10 +36,11 @@ namespace Thry.ThryEditor
                 {
                     if (!canApply()) return;
                     bool gammaColorSpace = attribute.Args.Any(a => a.Equals("gamma", StringComparison.OrdinalIgnoreCase));
-                    string path = PATH.TEXTURES_DIR + "/Gradients/" + Guid.NewGuid().ToString("N") + ".png";
                     var target = Model.Editor.target as Material;
+                    string path = RetainedToolTexture.Path(PATH.TEXTURES_DIR + "/Gradients", target, property.MaterialProperty.name);
                     bool colorSlot = target != null && MaskLevelsBaker.ExpectsSrgb(target.shader, property.MaterialProperty.name);
                     var asset = RetainedGradientOutput.Save(gradient, output, outputDirection, gammaColorSpace, colorSlot, path);
+                    RetainedToolTexture.Claim(asset, target, property.MaterialProperty.name);
                     if (!property.Options.force_texture_options) FileHelper.SaveValueToFile(settingsKey, Parser.Serialize(output), PATH.PERSISTENT_DATA);
                     FileHelper.SaveValueToFile(settingsKey + "_direction", outputDirection.ToString(), PATH.PERSISTENT_DATA);
                     Model.Edit(property, p => p.textureValue = asset);
@@ -82,7 +83,7 @@ namespace Thry.ThryEditor
                 var texture = Converter.CurveToTexture(result, settings, window.Vertical);
                 try
                 {
-                    var asset = TextureHelper.SaveTextureAsPNG(texture, PATH.TEXTURES_DIR + "/curves/" + Guid.NewGuid().ToString("N") + ".png", settings);
+                    var asset = TextureHelper.SaveTextureAsPNG(texture, RetainedToolTexture.Path(PATH.TEXTURES_DIR + "/curves", targets[0], id), settings);
                     var importer = (TextureImporter)AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(asset));
                     importer.textureType = TextureImporterType.Default;
                     importer.sRGBTexture = false; importer.mipmapEnabled = false;
@@ -92,6 +93,7 @@ namespace Thry.ThryEditor
                     importer.isReadable = false;
                     importer.SaveAndReimport();
                     asset = AssetDatabase.LoadAssetAtPath<Texture>(importer.assetPath);
+                    RetainedToolTexture.Claim(asset, targets[0], id);
                     string json = JsonUtility.ToJson(new CurveData { curve = result, vertical = window.Vertical });
                     Undo.IncrementCurrentGroup(); int group = Undo.GetCurrentGroup();
                     Model.Edit(property, p =>
@@ -146,6 +148,40 @@ namespace Thry.ThryEditor
             }
         }
         [Serializable] private class CurveData { public AnimationCurve curve; public bool vertical; }
+    }
+
+    // Gradient and curve textures are named after their material and slot. Editing a slot again overwrites the file
+    // made for it, so a material keeps one file per slot. A copy of the material is a different owner and gets its own.
+    internal static class RetainedToolTexture
+    {
+        const string OwnerPrefix = "tool_texture_owner_";
+
+        static string Owner(Material material, string property)
+        {
+            string guid = material == null ? "" : AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(material));
+            return string.IsNullOrEmpty(guid) ? null : guid + "|" + property;
+        }
+
+        internal static string Path(string folder, Material material, string property)
+        {
+            string owner = Owner(material, property);
+            string current = material == null ? "" : AssetDatabase.GetAssetPath(material.GetTexture(property));
+            if (owner != null && current.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                && FileHelper.LoadValueFromFile(OwnerPrefix + AssetDatabase.AssetPathToGUID(current), PATH.PERSISTENT_DATA) == owner)
+                return current;
+            string name = (material != null ? material.name : "Material") + "_" + property.TrimStart('_');
+            foreach (char invalid in System.IO.Path.GetInvalidFileNameChars()) name = name.Replace(invalid, '_');
+            string path = folder + "/" + name + ".png";
+            for (int i = 1; System.IO.File.Exists(path) || System.IO.File.Exists(path + ".meta"); i++) path = folder + "/" + name + " " + i + ".png";
+            return path;
+        }
+
+        internal static void Claim(Texture texture, Material material, string property)
+        {
+            string owner = Owner(material, property);
+            string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(texture));
+            if (owner != null && !string.IsNullOrEmpty(guid)) FileHelper.SaveValueToFile(OwnerPrefix + guid, owner, PATH.PERSISTENT_DATA);
+        }
     }
 }
 
