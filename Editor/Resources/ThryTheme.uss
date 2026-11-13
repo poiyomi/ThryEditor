@@ -3679,6 +3679,10 @@
     font-size: var(--thry-type-small);
 }
 
+.thry-preset-browser-header .thry-preset-changes-toggle.thry-preset-preview-toggle {
+    margin-left: var(--thry-space-4);
+}
+
 .thry-preset-browser-header .thry-preset-changes-toggle.thry-preset-changes-toggle-on {
     background-color: var(--thry-selection-background);
     border-color: var(--thry-accent-color);

@@ -874,7 +874,12 @@ namespace Thry.ThryEditor
                             changes.Add(prefix + caption + " / Animation: " + AnimationCaption(beforeAnimation) + " → " + AnimationCaption(afterAnimation));
                     }
                 }
-                finally { UnityEngine.Object.DestroyImmediate(preview); }
+                finally
+                {
+                    // Copying values onto the scratch material leaves undo steps behind
+                    Undo.ClearUndo(preview);
+                    UnityEngine.Object.DestroyImmediate(preview);
+                }
             }
             return changes;
         }
@@ -906,6 +911,63 @@ namespace Thry.ThryEditor
             }
             shaderEditor.ApplyDrawers();
             shaderEditor.Reload();
+        }
+
+        // A copy of the material with the presets applied, as Apply would leave it. Global links are not followed.
+        internal static Material PreviewMaterial(Material target, IList<Material> presets, string sectionHeader)
+        {
+            var preview = new Material(target) { hideFlags = HideFlags.HideAndDontSave };
+            ShaderEditor editor = ShaderEditor.CreateTemporary(preview);
+            try
+            {
+                editor.ShaderParts.Add(new RenderQueueProperty(editor));
+                editor.ShaderParts.Add(new VRCFallbackProperty(editor));
+                ShaderPart parent = sectionHeader == null ? null
+                    : editor.ShaderParts.OfType<ShaderGroup>().FirstOrDefault(g => g.MaterialProperty?.name == sectionHeader);
+                if (sectionHeader == null || parent != null)
+                    foreach (Material preset in presets) ApplyPresetInternal(editor, preset, preset, parent);
+            }
+            finally { editor.ReleaseTemporary(); }
+            ShaderEditor.FixKeywords(new[] { preview });
+            // Property setters record undo steps even for a copy
+            Undo.ClearUndo(preview);
+            return preview;
+        }
+
+        // Puts a previewed material back. When it was edited while the preview showed, those edits are kept.
+        internal static void EndPreview(Material target, Material original, Material shown, bool edited)
+        {
+            if (!edited) { target.CopyPropertiesFromMaterial(original); return; }
+            Shader shader = SectionLock.GetSourceShader(target.shader) ?? target.shader;
+            for (int i = 0; i < shader.GetPropertyCount(); i++)
+            {
+                string name = shader.GetPropertyName(i);
+                switch (shader.GetPropertyType(i))
+                {
+                    case UnityEngine.Rendering.ShaderPropertyType.Texture:
+                        if (target.GetTexture(name) == shown.GetTexture(name)) target.SetTexture(name, original.GetTexture(name));
+                        if (target.GetTextureScale(name) == shown.GetTextureScale(name)) target.SetTextureScale(name, original.GetTextureScale(name));
+                        if (target.GetTextureOffset(name) == shown.GetTextureOffset(name)) target.SetTextureOffset(name, original.GetTextureOffset(name));
+                        break;
+                    case UnityEngine.Rendering.ShaderPropertyType.Color:
+                        if (target.GetColor(name) == shown.GetColor(name)) target.SetColor(name, original.GetColor(name));
+                        break;
+                    case UnityEngine.Rendering.ShaderPropertyType.Vector:
+                        if (target.GetVector(name) == shown.GetVector(name)) target.SetVector(name, original.GetVector(name));
+                        break;
+                    case UnityEngine.Rendering.ShaderPropertyType.Int:
+                        if (target.GetInteger(name) == shown.GetInteger(name)) target.SetInteger(name, original.GetInteger(name));
+                        break;
+                    default:
+                        if (target.GetFloat(name) == shown.GetFloat(name)) target.SetFloat(name, original.GetFloat(name));
+                        break;
+                }
+                string tag = name + ShaderOptimizer.AnimatedTagSuffix;
+                if (target.GetTag(tag, false, "") == shown.GetTag(tag, false, "")) target.SetOverrideTag(tag, original.GetTag(tag, false, ""));
+            }
+            if (target.renderQueue == shown.renderQueue)
+                target.renderQueue = original.renderQueue == original.shader.renderQueue ? -1 : original.renderQueue;
+            ShaderEditor.FixKeywords(new[] { target });
         }
 
         internal static bool ApplyPresetToMaterial(Material target, Material preset, string sectionHeader = null)
@@ -1349,6 +1411,7 @@ namespace Thry.ThryEditor
         void ApplyStaged()
         {
             if (_save || !CanApplyBrowser()) return;
+            StopMaterialPreview();
             shaderEditor.ActivateRetained();
             _parent = CurrentBrowserParent();
             var originals = _browserTargets.Select(m => new Material(m)).ToArray();

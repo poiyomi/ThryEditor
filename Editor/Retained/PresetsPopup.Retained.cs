@@ -42,8 +42,12 @@ namespace Thry.ThryEditor
         Label _browserEmpty, _browserSummary;
         ScrollView _browserChangesList;
         VisualElement _browserChanges;
-        Button _browserChangesToggle;
-        bool _browserChangesOpen;
+        Button _browserChangesToggle, _browserPreviewToggle;
+        bool _browserChangesOpen, _browserPreviewOn;
+        Material[] _previewOriginals, _previewShown;
+        int[] _previewDirtyCounts;
+        bool[] _previewWasDirty;
+        string _previewSignature = "";
         Button _browserApply;
         IVisualElementScheduledItem _browserWatch;
         string _browserStateSignature;
@@ -107,8 +111,47 @@ namespace Thry.ThryEditor
         }
 
         void OnEnable() { EditorApplication.projectChanged += BrowserAssetsChanged; }
-        void OnDisable() { EditorApplication.projectChanged -= BrowserAssetsChanged; _browserWatch?.Pause(); }
+        // Runs on close and before a script reload, so a preview never outlives the browser
+        void OnDisable() { EditorApplication.projectChanged -= BrowserAssetsChanged; _browserWatch?.Pause(); StopMaterialPreview(); }
         void BrowserAssetsChanged() { _browserAssetsDirty = true; _browserStateSignature = null; }
+
+        // Shows the picked presets on the materials themselves. Their own state is kept aside and put back whenever the
+        // picks change and when the browser closes, so nothing stays on a material without Apply.
+        void SyncMaterialPreview()
+        {
+            string wanted = _browserPreviewOn && CanApplyBrowser() ? string.Join(";", tickedPresets.Select(m => m.GetObjectId().ToString())) : "";
+            if (wanted == _previewSignature) return;
+            StopMaterialPreview();
+            if (wanted.Length == 0) return;
+            string section = CurrentBrowserParent()?.MaterialProperty?.name;
+            if (_parent != null && section == null) return;
+            _previewSignature = wanted;
+            _previewOriginals = _browserTargets.Select(m => new Material(m) { hideFlags = HideFlags.HideAndDontSave }).ToArray();
+            _previewShown = _browserTargets.Select(m => Presets.PreviewMaterial(m, tickedPresets, section)).ToArray();
+            _previewWasDirty = _browserTargets.Select(m => EditorUtility.IsDirty(m)).ToArray();
+            for (int i = 0; i < _browserTargets.Length; i++) _browserTargets[i].CopyPropertiesFromMaterial(_previewShown[i]);
+            _previewDirtyCounts = _browserTargets.Select(m => EditorUtility.GetDirtyCount(m)).ToArray();
+            UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+        }
+
+        void StopMaterialPreview()
+        {
+            _previewSignature = "";
+            if (_previewOriginals == null) return;
+            for (int i = 0; i < _previewOriginals.Length; i++)
+            {
+                var target = _browserTargets[i];
+                if (target != null)
+                {
+                    Presets.EndPreview(target, _previewOriginals[i], _previewShown[i], EditorUtility.GetDirtyCount(target) != _previewDirtyCounts[i]);
+                    // A save during the preview wrote the previewed values to the file
+                    if (_previewWasDirty[i] && !EditorUtility.IsDirty(target)) EditorUtility.SetDirty(target);
+                }
+                DestroyImmediate(_previewOriginals[i]); DestroyImmediate(_previewShown[i]);
+            }
+            _previewOriginals = _previewShown = null;
+            UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+        }
 
         void BuildPresetBrowser()
         {
@@ -147,6 +190,14 @@ namespace Thry.ThryEditor
                 _browserStateSignature = null; UpdatePreview();
             }) { name = "preset-changes-toggle", text = PresetText("preset_changes", "Changes"), tooltip = PresetText("preset_changes_hint", "Show what the picked presets change") };
             _browserChangesToggle.AddToClassList("thry-preset-changes-toggle"); heading.Add(_browserChangesToggle);
+            _browserPreviewOn = RetainedUiState.Get("presets", "/preview", true);
+            _browserPreviewToggle = new Button(() =>
+            {
+                _browserPreviewOn = !_browserPreviewOn;
+                RetainedUiState.Set("presets", "/preview", _browserPreviewOn);
+                _browserStateSignature = null; UpdatePreview();
+            }) { name = "preset-preview-toggle", text = PresetText("preset_show_on_material", "Preview"), tooltip = PresetText("preset_show_on_material_hint", "Show the picked presets on the material until you apply or cancel") };
+            _browserPreviewToggle.AddToClassList("thry-preset-changes-toggle"); _browserPreviewToggle.AddToClassList("thry-preset-preview-toggle"); heading.Add(_browserPreviewToggle);
 
             var body = new VisualElement(); body.AddToClassList("thry-preset-browser-body"); root.Add(body);
             var library = new VisualElement(); library.AddToClassList("thry-preset-browser-library"); body.Add(library);
@@ -266,7 +317,7 @@ namespace Thry.ThryEditor
         string BrowserStateSignature()
         {
             Func<Material, string> key = m => m == null ? "missing" : m.GetObjectId() + ":" + EditorUtility.GetDirtyCount(m) + ":" + SectionLock.GetSourceShader(m.shader).GetObjectId();
-            return BrowserTargetsAvailable() + "|" + _browserChangesOpen + "|" + string.Join(";", (_browserTargets ?? Array.Empty<Material>()).Select(key))
+            return BrowserTargetsAvailable() + "|" + _browserChangesOpen + "|" + _browserPreviewOn + "|" + string.Join(";", (_browserTargets ?? Array.Empty<Material>()).Select(key))
                 + "|" + string.Join(";", tickedPresets.Select(key));
         }
 
@@ -280,6 +331,7 @@ namespace Thry.ThryEditor
                     entry.Material = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(entry.Guid));
                 tickedPresets.RemoveAll(m => m == null);
             }
+            SyncMaterialPreview();
             string signature = BrowserStateSignature();
             if (_browserStateSignature == signature) return;
             _browserStateSignature = signature;
@@ -297,11 +349,13 @@ namespace Thry.ThryEditor
             _browserApply.SetEnabled(valid);
 
             _browserChangesToggle.EnableInClassList("thry-preset-changes-toggle-on", _browserChangesOpen);
+            _browserPreviewToggle.EnableInClassList("thry-preset-changes-toggle-on", _browserPreviewOn);
             _browserChanges.style.display = _browserChangesOpen ? DisplayStyle.Flex : DisplayStyle.None;
             _browserChangesList.Clear();
             if (!_browserChangesOpen) return;
             if (!valid) { _browserChangesList.Add(BrowserLabel(PresetText("preset_changes_empty", "Pick a preset to see what it changes."), "thry-preset-change-row")); return; }
-            var changes = Presets.PreviewChanges(shaderEditor, _browserTargets, tickedPresets, CurrentBrowserParent());
+            // While a preview shows, the materials already hold the presets' values
+            var changes = Presets.PreviewChanges(shaderEditor, _previewOriginals ?? _browserTargets, tickedPresets, CurrentBrowserParent());
             if (changes.Count == 0) _browserChangesList.Add(BrowserLabel(PresetText("preset_no_changes", "Nothing changes on this material."), "thry-preset-change-row"));
             foreach (var change in changes) _browserChangesList.Add(BrowserLabel(change, "thry-preset-change-row"));
         }
