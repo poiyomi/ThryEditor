@@ -493,60 +493,6 @@ namespace Thry.ThryEditor
             return Selection.objects.Length == 1 && Selection.objects[0] is Shader;
         }
 
-        //---GameObject + Children Locking
-
-        [MenuItem("GameObject/Thry/Materials/Unlock All", false,0)]
-        static void UnlockAllChildren()
-        {
-            SetLockForAllChildrenInternal(Selection.gameObjects, 0, true);
-        }
-
-        [MenuItem("GameObject/Thry/Materials/Lock All", false,0)]
-        static void LockAllChildren()
-        {
-            SetLockForAllChildrenInternal(Selection.gameObjects, 1, true);
-        }
-
-        [MenuItem("GameObject/Thry/Materials/Unlock Renderers", false,0)]
-        static void UnlockRenderersOnly()
-        {
-            SetLockForAllChildrenRenderersOnlyInternal(Selection.gameObjects, 0, true);
-        }
-
-        [MenuItem("GameObject/Thry/Materials/Lock Renderers", false,0)]
-        static void LockRenderersOnly()
-        {
-            SetLockForAllChildrenRenderersOnlyInternal(Selection.gameObjects, 1, true);
-        }
-
-        //---Asset Unlocking
-
-        [MenuItem("Assets/Thry/Materials/Unlock All", false, 303)]
-        static void UnlockAllMaterials()
-        {
-            SetLockedForAllMaterialsInternal(GetSelectedLockableMaterials(), 0, true);
-        }
-
-        [MenuItem("Assets/Thry/Materials/Unlock All", true)]
-        static bool UnlockAllMaterialsValidator()
-        {
-            return AreSelectedObjectsMaterials();
-        }
-
-        //---Asset Locking
-
-        [MenuItem("Assets/Thry/Materials/Lock All", false, 303)]
-        static void LockAllMaterials()
-        {
-            SetLockedForAllMaterialsInternal(GetSelectedLockableMaterials(), 1, true);
-        }
-
-        [MenuItem("Assets/Thry/Materials/Lock All", true)]
-        static bool LockAllMaterialsValidator()
-        {
-            return AreSelectedObjectsMaterials();
-        }
-
         //This does not work for folders on the left side of the project explorer, because they are not exposed to Selection
         internal static IEnumerable<string> GetSelectedFolders()
         {
@@ -577,49 +523,6 @@ namespace Thry.ThryEditor
             foreach (string f in folders) materials.AddRange(FindMaterials(f, recursive));
 
             return materials;
-        }
-
-        //----Folder Lock
-
-        [MenuItem("Assets/Thry/Materials/Lock Folder", false, 303)]
-        static void LockFolder()
-        {
-            SetLockedForAllMaterialsInternal(FindMaterials(GetSelectedFolders()), 1, true);
-        }
-
-        [MenuItem("Assets/Thry/Materials/Lock Folder", true)]
-        static bool LockFolderValidator()
-        {
-            return GetSelectedFolders().Any();
-        }
-
-        //-----Folder Unlock
-        [MenuItem("Assets/Thry/Materials/Unlock Folder", false, 303)]
-        static void UnLockFolder()
-        {
-            SetLockedForAllMaterialsInternal(FindMaterials(GetSelectedFolders()), 0, true);
-        }
-
-        [MenuItem("Assets/Thry/Materials/Unlock Folder", true)]
-        static bool UnLockFolderValidator()
-        {
-            return GetSelectedFolders().Any();
-        }
-
-        //----Folder Unlock
-
-        static bool AreSelectedObjectsMaterials()
-        {
-            if (Selection.assetGUIDs != null && Selection.assetGUIDs.Length > 0)
-            {
-                return Selection.assetGUIDs.All(g => AssetDatabase.GetMainAssetTypeAtPath(AssetDatabase.GUIDToAssetPath(g)) == typeof(Material));
-            }
-            return false;
-        }
-
-        static IEnumerable<Material> GetSelectedLockableMaterials()
-        {
-            return Selection.assetGUIDs.Select(g => AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(g))).Where(m => m != null && (m.IsLocked() || !m.shader.IsBroken() && IsShaderUsingThryOptimizer(m.shader)));
         }
         #endregion
 
@@ -814,13 +717,6 @@ namespace Thry.ThryEditor
         public static bool SetLockedForAllMaterials(IEnumerable<Material> materials, int lockState, bool showProgressbar = false, bool showDialog = false, bool allowCancel = true, MaterialProperty shaderOptimizerProp = null)
         {
             return SetLockedForAllMaterialsInternal(materials, lockState, showProgressbar, showDialog, allowCancel, shaderOptimizerProp);
-        }
-
-        private static bool SetLockForAllChildrenRenderersOnlyInternal(GameObject[] objects, int lockState, bool showProgressbar = false, bool showDialog = false, bool allowCancel = true)
-        {
-            IEnumerable<Material> materials = objects.Where(o => o != null).SelectMany(o => o.GetComponentsInChildren<Renderer>(true)).SelectMany(r => r.sharedMaterials).Where(m => m != null);
-
-            return SetLockedForAllMaterialsInternal(materials, lockState, showProgressbar, showDialog, allowCancel);
         }
 
         private static bool SetLockForAllChildrenInternal(GameObject[] objects, int lockState, bool showProgressbar = false, bool showDialog = false, bool allowCancel = true)

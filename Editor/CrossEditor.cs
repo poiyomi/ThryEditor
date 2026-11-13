@@ -33,12 +33,6 @@ namespace Thry.ThryEditor
             return Selection.objects.Any(o => o is Material) || ShaderOptimizer.GetSelectedFolders().Any();
         }
 
-        [MenuItem("GameObject/Thry/Materials/Open All in Cross Shader Editor", false, 10)]
-        private static void OpenAllInCrossShaderEditor()
-        {
-            GetInstance().UpdateTargets(Selection.gameObjects.SelectMany(o => o.GetComponentsInChildren<Renderer>(true)).SelectMany(r => r.sharedMaterials));
-        }
-
         List<Material> _materialList = new List<Material>();
         List<Material> _targets = new List<Material>();
         HashSet<Material> _incompatibleMaterials = new HashSet<Material>();
