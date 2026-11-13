@@ -9207,6 +9207,10 @@
     color: var(--thry-caption-color);
     white-space: normal;
 }
+.thry-inspector .thry-outline-bake-warning > Button {
+    align-self: flex-start;
+    margin: var(--thry-space-4) 0 0 0;
+}
 
 /* Search results matched by tooltip or dropdown choice, and matches hidden by other settings. */
 .thry-inspector .thry-search-band {
