@@ -1040,26 +1040,6 @@
     border-width: var(--thry-border-width);
 }
 
-.thry-section-switch {
-    margin: 0 var(--thry-space-5) 0 0;
-}
-
-.thry-section-switch .unity-toggle__checkmark {
-    width: 30px;
-    height: 16px;
-    border-radius: var(--thry-radius-switch);
-    background-image: none;
-}
-
-.thry-excluded {
-    background-color: #3d3d3d;
-    color: #858585;
-}
-
-.thry-excluded .thry-section-title {
-    color: #858585;
-}
-
 .thry-texture-label {
     flex-direction: row;
     align-items: center;
@@ -1102,21 +1082,6 @@
     height: var(--thry-section-height);
     margin: 0 0 var(--thry-space-3);
     border-width: var(--thry-border-width);
-    border-radius: var(--thry-radius-button);
-}
-
-.thry-section-toolbar {
-    flex-direction: row;
-    padding: var(--thry-space-2);
-    margin-bottom: var(--thry-space-6);
-}
-
-.thry-section-toolbar Button {
-    flex-grow: 1;
-    flex-basis: 0;
-    margin: 0 var(--thry-space-1);
-    height: var(--thry-toolbar-height);
-    border-width: 0;
     border-radius: var(--thry-radius-button);
 }
 
@@ -1393,15 +1358,6 @@
     border-width: 0;
 }
 
-.thry-switch-knob {
-    position: absolute;
-    top: 2px;
-    width: 10px;
-    height: 10px;
-    border-radius: var(--thry-radius-panel);
-    background-color: #bcbcbc;
-}
-
 .thry-note {
     font-size: var(--thry-type-caption);
     color: var(--thry-muted-color);
@@ -1471,10 +1427,6 @@
 .thry-light .thry-material-controls .unity-toggle__checkmark {
     background-color: #e4e4e4;
     border-color: #999999;
-}
-
-.thry-light .thry-excluded {
-    background-color: #ababab;
 }
 
 .thry-texture-workspace {
@@ -1642,10 +1594,6 @@
     flex-shrink: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.thry-excluded .thry-header-action, .thry-excluded .thry-fold-arrow, .thry-excluded .thry-header-reference {
-    opacity: .55;
 }
 
 .thry-window > .thry-components {
@@ -2249,10 +2197,6 @@
     color: #5d5d5d;
 }
 
-.thry-light .thry-excluded, .thry-light .thry-excluded .thry-section-title {
-    color: #5b5b5b;
-}
-
 .thry-light .thry-footer-credit, .thry-light .thry-note, .thry-light .thry-muted, .thry-light .thry-asset-size {
     color: #5b5b5b;
 }
@@ -2267,10 +2211,6 @@
 
 .thry-light .thry-ramp {
     background-color: #b8b8b8;
-}
-
-.thry-light .thry-switch-knob {
-    background-color: #5d5d5d;
 }
 
 .thry-light .thry-texture-summary {

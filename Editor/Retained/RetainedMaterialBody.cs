@@ -14,7 +14,6 @@ namespace Thry.ThryEditor
         private RetainedFields _fields;
         private readonly RetainedViewport _viewport;
         private int _revision = -1;
-        private bool _editing;
         private Texture2D _expandedCaret, _collapsedCaret;
         internal RetainedMaterialBody(RetainedMaterialModel model, MaterialInspectorView view)
         {
@@ -32,10 +31,9 @@ namespace Thry.ThryEditor
         {
             Model.Shader.ActivateRetained();
             EnableInClassList("thry-material-locked", Model.Shader.IsLockedMaterial);
-            bool editing = Model.Shader.RootCategories.Any(g => SectionEditing.IsEditing(g));
-            if (_revision != Model.Shader.RetainedRevision || editing != _editing)
+            if (_revision != Model.Shader.RetainedRevision)
             {
-                _revision = Model.Shader.RetainedRevision; _editing = editing;
+                _revision = Model.Shader.RetainedRevision;
                 // Track initializes bindings immediately, and attachment initializes
                 // them again. Build belongs to the same synchronized snapshot as the
                 // final pass, so section dots can share those default comparisons.
@@ -56,7 +54,6 @@ namespace Thry.ThryEditor
             _fields.Track(queueWarning, () => queueWarning.style.display =
                 GrabPassQueueWarning.HasAffected(Model.Shader.Materials) ? DisplayStyle.Flex : DisplayStyle.None);
             Add(Presets.CreateEditorControls(Model, _fields));
-            var toolbar = SectionEditing.CreateToolbar?.Invoke(shader); if(toolbar != null) Add(toolbar);
             var materialActions = new VisualElement { name = "thry-material-actions" };
             materialActions.AddToClassList("thry-material-actions");
             Add(materialActions);
@@ -273,13 +270,6 @@ namespace Thry.ThryEditor
             var fold = new Button { tooltip = "Expand or collapse section. Alt+click also opens or closes everything inside." }; fold.AddToClassList("thry-fold-arrow");
             fold.clickable.activators.Add(new ManipulatorActivationFilter { button = MouseButton.LeftMouse, modifiers = EventModifiers.Alt });
             var foldIcon = HeaderIcon("caret-right"); fold.Add(foldIcon); header.Add(fold);
-            if (_editing && SectionEditing.IsEditing(group))
-            {
-                var toggle = new Toggle { tooltip = "Include this section in the shared shader" }; toggle.AddToClassList("thry-section-switch");
-                var knob=new VisualElement();knob.AddToClassList("thry-switch-knob");toggle.Q(className:"unity-toggle__checkmark").Add(knob);
-                _fields.Track(toggle, () => {toggle.SetValueWithoutNotify(SectionEditing.IsExcluded?.Invoke(group) != true);knob.style.left=toggle.value?14:2;});
-                toggle.RegisterValueChangedCallback(e => { SectionEditing.SetIncluded?.Invoke(group,e.newValue); Synchronize(); }); header.Add(toggle);
-            }
             var references = new List<string>();
             if (group.Options.reference_property != null) references.Add(group.Options.reference_property);
             if (group.Options.reference_properties != null) references.AddRange(group.Options.reference_properties);
@@ -386,27 +376,26 @@ namespace Thry.ThryEditor
                 bool category = depth != 0 || Model.Shader.FocusedCategory == null || group.MaterialProperty.name == Model.Shader.FocusedCategory;
                 root.style.display = category && group.RetainedVisible ? DisplayStyle.Flex : DisplayStyle.None;
                 root.EnableInClassList("thry-section-after-property", depth > 0 && !positioning && FollowsProperty(root));
-                header.EnableInClassList("thry-excluded", SectionEditing.IsExcluded?.Invoke(group) == true);
                 root.EnableInClassList("thry-section-open", group.RetainedExpanded);
                 children.SetEnabled(group.RetainedChildrenEnabled && (group.Options.condition_enable == null || group.Options.condition_enable.Test()));
                 children.style.display = group.RetainedExpanded ? DisplayStyle.Flex : DisplayStyle.None;
                 foldIcon.image = group.RetainedExpanded ? _expandedCaret : _collapsedCaret;
                 if (!group.RetainedExpanded || built) return;
                 built = true;
-                if (!_editing && RetainedPathing.CanBuild(group, Model))
+                if (RetainedPathing.CanBuild(group, Model))
                 {
                     children.Add(new RetainedPathing(Model, _fields, group,
                         (container, child) => AddPart(container, child, depth + 1)));
                     return;
                 }
-                if (!_editing && RetainedUVDiscard.CanBuild(group, Model))
+                if (RetainedUVDiscard.CanBuild(group, Model))
                 {
                     children.Add(new RetainedUVDiscard(Model, _fields, group,
                         (container, child) => AddPart(container, child, depth + 1)));
                     return;
                 }
                 string sectionName = group.MaterialProperty?.name;
-                var extension = _editing || !SectionExtensions.Has(sectionName) ? null
+                var extension = !SectionExtensions.Has(sectionName) ? null
                     : SectionExtensions.Create(sectionName, new SectionExtensions.Context(Model, _fields));
                 if (extension != null) children.Add(extension);
                 // Sections and subsections organize their parent header's preset; only

@@ -216,7 +216,6 @@ namespace Thry.ThryEditor
                 stamp = stamp * 31 + (shader.IsLockedMaterial ? 1 : 0);
                 foreach (var material in shader.Materials)
                     if (material != null) stamp = (stamp * 31 + material.GetObjectId()) * 31 + EditorUtility.GetDirtyCount(material);
-                foreach (var group in shader.RootCategories) stamp = stamp * 31 + (SectionEditing.IsEditing(group) ? 1 : 0);
                 return stamp;
             }
         }
@@ -729,8 +728,7 @@ namespace Thry.ThryEditor
             ShaderPart hiddenBy = null;
             for (ShaderPart part = property; part != null; part = part == property ? owner ?? property.Parent : part.Parent)
             {
-                if (SectionEditing.IsHidden(part)) return null;
-                if (SectionEditing.IsEditing(part) || part.Options.condition_show.Test()) continue;
+                if (part.Options.condition_show.Test()) continue;
                 if (part.Options.condition_show.IsConstantCondition) return null;
                 if (hiddenBy == null) hiddenBy = part;
             }
@@ -751,7 +749,7 @@ namespace Thry.ThryEditor
         {
             if (!property.RetainedVisible) return false;
             for (var part = owner ?? property.Parent; part != null; part = part.Parent)
-                if (SectionEditing.IsHidden(part) || (!SectionEditing.IsEditing(part) && !part.Options.condition_show.Test())) return false;
+                if (!part.Options.condition_show.Test()) return false;
             return true;
         }
         static bool AncestorsEnabled(ShaderProperty property, ShaderPart owner)

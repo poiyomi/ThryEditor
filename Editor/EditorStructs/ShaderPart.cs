@@ -81,8 +81,7 @@ namespace Thry.ThryEditor
         // A part that has nothing to show draws no chrome for itself. Only groups can be empty in this
         // sense, so the base answer is always false; see ShaderGroup.HasDrawableContent.
         protected virtual bool SkipDrawBecauseEmpty => false;
-        internal bool RetainedVisible => !SectionEditing.IsHidden(this) &&
-            (SectionEditing.IsEditing(this) || (!SkipDrawBecauseEmpty && Options.condition_show.Test()));
+        internal bool RetainedVisible => !SkipDrawBecauseEmpty && Options.condition_show.Test();
         internal bool RetainedShownFor(Material material)
         {
             for (var part = this; part != null; part = part.Parent)

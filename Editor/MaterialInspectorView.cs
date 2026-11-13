@@ -811,12 +811,11 @@ namespace Thry.ThryEditor
             _version.tooltip = upgrade != null ? "This material uses an older shader version." : offerUpdate ? update + " is available" : "";
             _versionUpdate.tooltip = upgrade ?? "Update to " + update;
             _versionUpdate.style.display = offerUpdate || upgrade != null ? DisplayStyle.Flex : DisplayStyle.None;
-            bool editing = _shader.RootCategories.Any(g => SectionEditing.IsEditing(g));
             int selectedCount = _retained.Model.SelectedMaterials.Length;
-            _state.text = editing ? "Editing shader sections" : _shader.IsLockedMaterial ? "Optimized material"
+            _state.text = _shader.IsLockedMaterial ? "Optimized material"
                 : selectedCount > 1 ? selectedCount + " materials selected" : "Material editor";
             _state.EnableInClassList("thry-optimized", _shader.IsLockedMaterial);
-            _state.style.display = editing || _shader.IsLockedMaterial || selectedCount > 1 ? DisplayStyle.Flex : DisplayStyle.None;
+            _state.style.display = _shader.IsLockedMaterial || selectedCount > 1 ? DisplayStyle.Flex : DisplayStyle.None;
             UpdateSearch();
 
             UpdateFilterButtons();
@@ -850,7 +849,6 @@ namespace Thry.ThryEditor
                 AddTool("Settings", ToolbarIcons.Settings?.normal.background, () => EditorWindow.GetWindow<Settings>(false, "Thry Settings", true));
                 _builtTools = true;
             }
-            _tools.Q<Button>("thry-tool-edit-shader-sections")?.EnableInClassList("thry-selected", editing);
             UpdateSectionLockTool();
             var languageTool = _tools.Q<Button>("thry-tool-language");
             languageTool?.SetEnabled(_shader.Locale != null && _shader.Locale.LanguageNames.Length > 1);
