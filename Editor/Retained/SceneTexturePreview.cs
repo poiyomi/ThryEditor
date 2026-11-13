@@ -205,9 +205,11 @@ namespace Thry.ThryEditor
         {
             Renderers.Clear();
             if (!Active) return;
-            foreach (var renderer in ObjectExtensions.FindObjects<Renderer>(true))
+            // FindObjectsByType skips DontSave objects, which would miss NDMF's preview proxies.
+            foreach (var renderer in Resources.FindObjectsOfTypeAll<Renderer>())
                 if ((renderer is MeshRenderer || renderer is SkinnedMeshRenderer)
                     && !EditorUtility.IsPersistent(renderer)
+                    && renderer.gameObject.scene.IsValid() && !EditorSceneManager.IsPreviewScene(renderer.gameObject.scene)
                     && StageUtility.GetStageHandle(renderer.gameObject) == StageUtility.GetCurrentStageHandle())
                     Renderers.Add(renderer);
         }
