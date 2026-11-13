@@ -13,7 +13,7 @@ namespace Thry.ThryEditor
                 "ThryEditor", "InspectorAppearance.json"));
 
         internal static readonly string[] Fields = {
-            nameof(Config.inspectorDarkGray), nameof(Config.inspectorMediumGray), nameof(Config.inspectorLightGray),
+            nameof(Config.inspectorTheme), nameof(Config.inspectorDarkGray), nameof(Config.inspectorMediumGray), nameof(Config.inspectorLightGray),
             nameof(Config.inspectorTextSize), nameof(Config.inspectorPropertyHeight), nameof(Config.inspectorHeaderHeight),
             nameof(Config.defaultTexturePreview)
         };
@@ -32,6 +32,7 @@ namespace Thry.ThryEditor
             public TexturePreviewMode defaultTexturePreview;
             public int inspectorPropertyHeight = 18;
             public int inspectorHeaderHeight = 22;
+            public string inspectorTheme = "";
 
             internal static Profile From(Config config) => new Profile {
                 version = 2,
@@ -42,7 +43,8 @@ namespace Thry.ThryEditor
                 inspectorTextSize = config.inspectorTextSize,
                 defaultTexturePreview = config.defaultTexturePreview,
                 inspectorPropertyHeight = config.inspectorPropertyHeight,
-                inspectorHeaderHeight = config.inspectorHeaderHeight
+                inspectorHeaderHeight = config.inspectorHeaderHeight,
+                inspectorTheme = config.inspectorTheme ?? ""
             };
 
             internal void Apply(Config config)
@@ -55,6 +57,7 @@ namespace Thry.ThryEditor
                     ? inspectorTextSize : InspectorTextSize.Default;
                 config.inspectorPropertyHeight = inspectorPropertyHeight == 20 || inspectorPropertyHeight == 22 ? inspectorPropertyHeight : 18;
                 config.inspectorHeaderHeight = inspectorHeaderHeight == 18 || inspectorHeaderHeight == 20 || inspectorHeaderHeight == 24 ? inspectorHeaderHeight : 22;
+                config.inspectorTheme = inspectorTheme ?? "";
             }
         }
 

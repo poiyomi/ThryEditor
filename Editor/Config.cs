@@ -53,6 +53,7 @@ namespace Thry.ThryEditor
         public InspectorTextSize inspectorTextSize = InspectorTextSize.Default;
         public int inspectorPropertyHeight = 18;
         public int inspectorHeaderHeight = 22;
+        public string inspectorTheme = "";
         public TextureImporterFormat texturePackerCompressionWithAlphaOverwrite = TextureImporterFormat.Automatic;
         public TextureImporterFormat texturePackerCompressionNoAlphaOverwrite = TextureImporterFormat.Automatic;
         public TextureImporterFormat gradientEditorCompressionOverwrite = TextureImporterFormat.Automatic;

@@ -4,9 +4,38 @@ Edit `Resources/ThryTheme.uss`. The active Studio visual direction uses compact 
 
 ## Appearance settings
 
-Poi/Thry/Settings → Theme offers independent Dark gray, Medium gray, and Light gray sliders from −20 to 20, plus dropdowns for 11–14 px text and independent 18/20/22 px property heights and 18/20/22/24 px header heights. Gray sliders use broader neutral ranges for each Unity skin, with foreground adjustments at the extremes. Enabled text adapts to the extended range; the gray controls can also bring neighboring surfaces closer together. Reset appearance restores the default shades, 12 px text, 18 px property height, and 22 px header height. Nested headers are 2 px shorter than the selected header height with an 18 px minimum.
+Poi/Thry/Settings → Theme offers an Inspector Theme dropdown for third-party themes (described below), independent Dark gray, Medium gray, and Light gray sliders from −20 to 20, plus dropdowns for 11–14 px text and independent 18/20/22 px property heights and 18/20/22/24 px header heights. Gray sliders use broader neutral ranges for each Unity skin, with foreground adjustments at the extremes. Enabled text adapts to the extended range; the gray controls can also bring neighboring surfaces closer together. Reset appearance restores the default theme and shades, 12 px text, 18 px property height, and 22 px header height. Nested headers are 2 px shorter than the selected header height with an 18 px minimum.
 
 Changes update attached inspectors, menus, and retained tool windows immediately without rebuilding the material editor. Preferences are saved per project in Thry/Config.json, or, with "Use shared appearance on this computer" on, in the per-user `ThryEditor/InspectorAppearance.json` in the local application data folder. Text changes use the shared typography tokens; input heights, 18 px checkboxes, locked-material dimming, material previews, and explicit drawer font sizes keep their existing behavior. Legacy IMGUI controls and independently styled tools retain their own appearance.
+
+## Third-Party Themes
+
+A theme is a stylesheet whose file name ends in `.thrytheme.uss`, placed anywhere in Assets or in a package. Installing one changes nothing until it is chosen in Poi/Thry/Settings → Theme → Inspector Theme, which lists Default and every installed theme by file name without the suffix. `RetainedTheme` then attaches the chosen theme after `ThryTheme.uss` on every inspector, menu, and retained window, so its rules win over base rules with the same selector. Keep theme files outside `_PoiyomiShaders` so reinstalling or updating Poiyomi does not remove them. ThryEditor ships no theme files.
+
+One theme is active at a time. The choice is saved with the other Theme settings, so it follows "Use shared appearance on this computer", and Reset appearance returns to Default. If two themes share a name, the one in Assets wins over one in a package. Adding, editing, renaming, or deleting a theme updates open inspectors, windows, and the dropdown. A chosen theme that is no longer installed stays listed as not found and the default look is used until it returns or another theme is chosen.
+
+Override tokens rather than control rules. Token names are what themes rely on, so rename or remove a `--thry-*` token only with care. Scope colors to a skin: some light-skin values are declared on `.thry-light` alone, so a color set on plain `.thry-inspector` in a theme would also replace them in the light skin.
+
+```css
+/* Both skins: shapes, spacing, and type. */
+.thry-inspector, .thry-dropdown-menu {
+    --thry-radius-header: 2px;
+}
+
+/* Dark skin colors. */
+.thry-inspector.thry-dark, .thry-dropdown-menu.thry-dark {
+    --thry-accent-color: #ff79c6;
+    --thry-monokai-pink: #ff5fa2;
+}
+
+/* Light skin colors. */
+.thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
+    --thry-accent-color: #a8306a;
+    --thry-monokai-pink: #b0185a;
+}
+```
+
+A gray slider other than zero sets the surface, panel, input, section, and action-button tokens with three-class selectors, which win over a theme's values for those tokens. Leave the sliders at zero with a theme that recolors surfaces, or match those selectors in the theme. To restyle a specific control, the theme's selector must be at least as specific as the base rule it replaces. IMGUI drawers and the C# colors in `Styles.cs` are not affected by themes.
 
 ## Monokai palette
 
@@ -71,7 +100,7 @@ The material inspector, search, popup menus, settings and other retained compani
 
 The color picker is a retained companion window with the shared theme. Its wheel reads ring, gap, marker, disc, outline, and focus values from USS; slider tracks read their focus color; the new and original swatches, dropdowns, and buttons use the shared tokens and control states.
 
-Load `ThryTheme.uss` once on each standalone inspector or window root. Child controls inherit the theme; do not attach additional copies or component wrapper sheets.
+Attach the theme once on each standalone inspector or window root with `RetainedTheme.Install` (or `RetainedWindow.Style`, which calls it). It adds `ThryTheme.uss` and, after it, the third-party theme chosen in Settings. Child controls inherit the theme; do not attach additional copies or component wrapper sheets.
 
 For future experiments, change the shared tokens first. Test narrow and wide inspectors, Unity's light/dark skins, companion windows, and focus/disabled/selected states. Some sizes are coupled (for example, a search field contains an inner field); change related dimensions together. Make permanent visual changes here so all retained surfaces share them.
 

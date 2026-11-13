@@ -59,8 +59,7 @@ namespace Thry.ThryEditor
             _rowBandRefresh = schedule.Execute(UpdateRowBands); _rowBandRefresh.Pause();
             RegisterCallback<GeometryChangedEvent>(e => RequestRowBands());
             AddToClassList("thry-inspector");
-            var sheet = Resources.Load<StyleSheet>("ThryTheme");
-            if (sheet != null) styleSheets.Add(sheet);
+            RetainedTheme.Install(this);
             RetainedAppearance.Install(this);
             RetainedAvailability.Install(this);
 

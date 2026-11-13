@@ -59,7 +59,7 @@ namespace Thry.ThryEditor
         internal static void Style(VisualElement root)
         {
             root.AddToClassList("thry-inspector");root.AddToClassList("thry-active");root.AddToClassList("thry-window");root.EnableInClassList("thry-light",!EditorGUIUtility.isProSkin);
-            var sheet=Resources.Load<StyleSheet>("ThryTheme");if(sheet!=null && !root.styleSheets.Contains(sheet))root.styleSheets.Add(sheet);
+            RetainedTheme.Install(root);
             RetainedAppearance.Install(root);
         }
         internal static void Dropdown(DropdownField field)
@@ -115,10 +115,15 @@ namespace Thry.ThryEditor
             {
                 var row = root.Q(key);
                 if (row == null) continue;
-                if (key == "defaultTexturePreview")
-                { var field = row.Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[(int)appearance.defaultTexturePreview]); }
+                if (key == "inspectorTheme") SetThemeChoices(row.Q<DropdownField>(), appearance.inspectorTheme);
+                else if (key == "defaultTexturePreview")
+                {
+                    var field = row.Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[(int)appearance.defaultTexturePreview]);
+                }
                 else if (key == "inspectorTextSize")
-                { var field = row.Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[Mathf.Clamp((int)appearance.inspectorTextSize, 0, field.choices.Count - 1)]); }
+                {
+                    var field = row.Q<DropdownField>(); field.SetValueWithoutNotify(field.choices[Mathf.Clamp((int)appearance.inspectorTextSize, 0, field.choices.Count - 1)]);
+                }
                 else if (key == "inspectorPropertyHeight" || key == "inspectorHeaderHeight")
                 {
                     int value = (int)typeof(Config).GetField(key).GetValue(appearance);
@@ -135,6 +140,25 @@ namespace Thry.ThryEditor
                 : RetainedText.Get("reset_inspector_appearance", "Reset appearance");
         }
 
+        private static void SetThemeChoices(DropdownField field, string selected)
+        {
+            if (field == null) return;
+            selected = selected ?? "";
+            var names = new List<string> { "" };
+            names.AddRange(RetainedTheme.Available);
+            int index = names.FindIndex(name => string.Equals(name, selected, StringComparison.OrdinalIgnoreCase));
+            bool missing = index < 0;
+            if (missing)
+            {
+                names.Add(selected);
+                index = names.Count - 1;
+            }
+            var captions = names.Select((name, i) => i == 0 ? RetainedText.Get("default", "Default") : missing && i == index ? name + " (" + RetainedText.Get("theme_not_found", "not found") + ")" : name).ToList();
+            field.userData = names.ToArray();
+            field.choices = captions;
+            field.SetValueWithoutNotify(captions[index]);
+        }
+
         private sealed class SearchSection
         {
             internal Foldout Section;
@@ -149,7 +173,7 @@ namespace Thry.ThryEditor
             var scroll=new ScrollView();scroll.style.flexGrow=1;root.Add(scroll);
             var search=RetainedWindow.Search(RetainedText.Get("search_settings", "Search settings…"));search.AddToClassList("thry-settings-search");root.Insert(1,search);
             string[][] groups={
-                new[]{"Theme","inspectorDarkGray","inspectorMediumGray","inspectorLightGray","inspectorTextSize","inspectorPropertyHeight","inspectorHeaderHeight","defaultTexturePreview"},
+                new[]{"Theme","inspectorTheme","inspectorDarkGray","inspectorMediumGray","inspectorLightGray","inspectorTextSize","inspectorPropertyHeight","inspectorHeaderHeight","defaultTexturePreview"},
                 new[]{"Appearance","showRenderQueue","showColorspaceWarnings","showStarNextToNonDefaultProperties","showAnimatedDotOnHeaders","showNotes","staggeringRowColors"},
                 new[]{"Editing & animation","autoMarkPropertiesAnimated","allowCustomLockingRenaming","useUnityColorPicker"},
                 new[]{"Avatar fixes","autoSetAnchorOverride","humanBoneAnchor","anchorOverrideObjectName"},
@@ -188,7 +212,18 @@ namespace Thry.ThryEditor
                             !Config.Instance.useSharedInspectorAppearance);
                         else { member.SetValue(Config.Instance,v); Config.Instance.Save(); ShaderEditor.ReloadActive(); }
                     };
-                    if (key == "inspectorDarkGray" || key == "inspectorMediumGray" || key == "inspectorLightGray")
+                    if (key == "inspectorTheme")
+                    {
+                        var field = new DropdownField();
+                        SetThemeChoices(field, (string)member.GetValue(source));
+                        RetainedWindow.Dropdown(field);
+                        field.RegisterValueChangedCallback(e => {
+                            var names = (string[])field.userData;
+                            if (field.index >= 0 && field.index < names.Length) save(names[field.index]);
+                        });
+                        value.Add(field);
+                    }
+                    else if (key == "inspectorDarkGray" || key == "inspectorMediumGray" || key == "inspectorLightGray")
                     {
                         int initial = (int)member.GetValue(source);
                         var field = new SliderInt(-20, 20) { showInputField = true, value = Mathf.Clamp(initial, -20, 20) };
