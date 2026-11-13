@@ -74,7 +74,7 @@ namespace Thry.ThryEditor
             var titleCaret = RetainedMaterialBody.HeaderIcon("caret-down"); titleCaret.AddToClassList("thry-title-caret");
             _titleButton.Add(_title); _titleButton.Add(titleCaret);
             _version = new Label(); _version.AddToClassList("thry-version");
-            _versionUpdate = new Button(() => EditorApplication.ExecuteMenuItem(UpdateMenuItem));
+            _versionUpdate = new Button(RunVersionUpdate);
             _versionUpdate.AddToClassList("thry-version-update");
             _versionUpdate.generateVisualContent += context => {
                 var center = _versionUpdate.contentRect.center;
@@ -704,6 +704,30 @@ namespace Thry.ThryEditor
             return shader != null ? shader.name : material.GetTag(ShaderOptimizer.TAG_ORIGINAL_SHADER, false, "");
         }
 
+        private string _upgradeOffer;
+        private Material _upgradeOfferMaterial;
+        private Shader _upgradeOfferShader;
+        private int _upgradeOfferCount, _upgradeOfferAge;
+
+        // UpdateState runs several times a second, so the hook is asked when the shader assignment changes and every few seconds
+        private string UpgradeOffer()
+        {
+            if (ShaderEditor.MaterialUpgradeOffer == null) return null;
+            var materials = _shader.Materials;
+            Material first = materials.Length > 0 ? materials[0] : null;
+            Shader shader = first != null ? first.shader : null;
+            if (first == _upgradeOfferMaterial && shader == _upgradeOfferShader && materials.Length == _upgradeOfferCount && ++_upgradeOfferAge < 20) return _upgradeOffer;
+            _upgradeOfferMaterial = first; _upgradeOfferShader = shader; _upgradeOfferCount = materials.Length; _upgradeOfferAge = 0;
+            return _upgradeOffer = ShaderEditor.MaterialUpgradeOffer(materials);
+        }
+
+        private void RunVersionUpdate()
+        {
+            if (_upgradeOffer == null || ShaderEditor.UpgradeMaterials == null) { EditorApplication.ExecuteMenuItem(UpdateMenuItem); return; }
+            _upgradeOfferMaterial = null;
+            ShaderEditor.UpgradeMaterials(_shader.Materials);
+        }
+
         private void UpdateState()
         {
             // Leave typing responsive; the debounced refresh uses the latest query.
@@ -781,10 +805,12 @@ namespace Thry.ThryEditor
             // The package manager in com.poiyomi.pro publishes this; installs without it never offer an update
             string update = SessionState.GetString(UpdateVersionKey, "");
             bool offerUpdate = update.Length > 0 && !mixedPoiyomi && shaderName != null && shaderName.Split('/').Last().StartsWith("Poiyomi", StringComparison.OrdinalIgnoreCase);
-            _version.EnableInClassList("thry-version-outdated", offerUpdate);
-            _version.tooltip = offerUpdate ? update + " is available" : "";
-            _versionUpdate.tooltip = "Update to " + update;
-            _versionUpdate.style.display = offerUpdate ? DisplayStyle.Flex : DisplayStyle.None;
+            // A material on an older shader version comes first: a newer package would not change it
+            string upgrade = mixedPoiyomi ? null : UpgradeOffer();
+            _version.EnableInClassList("thry-version-outdated", offerUpdate || upgrade != null);
+            _version.tooltip = upgrade != null ? "This material uses an older shader version." : offerUpdate ? update + " is available" : "";
+            _versionUpdate.tooltip = upgrade ?? "Update to " + update;
+            _versionUpdate.style.display = offerUpdate || upgrade != null ? DisplayStyle.Flex : DisplayStyle.None;
             bool editing = _shader.RootCategories.Any(g => SectionEditing.IsEditing(g));
             int selectedCount = _retained.Model.SelectedMaterials.Length;
             _state.text = editing ? "Editing shader sections" : _shader.IsLockedMaterial ? "Optimized material"

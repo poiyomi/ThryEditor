@@ -37,6 +37,14 @@ namespace Thry
         public static Func<Material, Shader, Shader, bool> OnBeforeAssignNewShader;
 
         /// <summary>
+        /// Optional external hooks for materials on an older version of their shader. MaterialUpgradeOffer receives the
+        /// inspected materials and returns the tooltip for the header's update button, or null when there is nothing to
+        /// offer. UpgradeMaterials runs when that button is clicked.
+        /// </summary>
+        public static Func<Material[], string> MaterialUpgradeOffer;
+        public static Action<Material[]> UpgradeMaterials;
+
+        /// <summary>
         /// Values a new material is created with where they differ from the shader's defaults, by property name
         /// (numbers in x). The inspector doesn't mark them as changed.
         /// </summary>
