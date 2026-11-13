@@ -1053,6 +1053,76 @@ namespace Thry.ThryEditor
                     yield return reference;
         }
 
+        const string USER_PRESET_FOLDER = "Assets/Material Presets";
+
+        // What a section preset applies one by one: each group's reference toggles and its own properties
+        static IEnumerable<ShaderProperty> SectionProperties(ShaderGroup group)
+        {
+            foreach (ShaderProperty reference in ReferenceProperties(group)) yield return reference;
+            foreach (ShaderPart part in group.Children)
+            {
+                if (part is ShaderGroup child)
+                    foreach (ShaderProperty property in SectionProperties(child)) yield return property;
+                else if (part is ShaderProperty property) yield return property;
+            }
+        }
+
+        static bool IsSaved(ShaderProperty property, bool textures)
+        {
+            if (property.MaterialProperty == null) return false;
+            if (!textures && property.MaterialProperty.GetPropertyType() == UnityEngine.Rendering.ShaderPropertyType.Texture) return false;
+            return RetainedPropertyDefaults.HasChanged(property, property.MyShaderUI);
+        }
+
+        internal static bool CanSaveSection(ShaderGroup section)
+            => section?.MaterialProperty != null && SectionProperties(section).Any(p => IsSaved(p, true));
+
+        /// <summary>Saves the section's changed values as a new section preset and leaves the material alone.</summary>
+        internal static Material SaveSectionPreset(ShaderGroup section, string name, bool textures)
+        {
+            name = (name ?? "").Trim().Replace(';', '_');
+            Material source = section?.MyShaderUI?.Materials?.FirstOrDefault();
+            if (name.Length == 0 || source == null || section.MaterialProperty == null) return null;
+            InitializeDataStructures();
+            string header = section.MaterialProperty.name;
+            string unique = name;
+            for (int i = 2; DoesPresetExist(header, unique); i++) unique = name + " " + i;
+
+            var preset = new Material(source);
+            if (preset.isVariant) preset.parent = null;
+            SectionLock.Revert(preset);
+            // The copy may carry preset marks from an earlier life
+            foreach (string other in GetSavedHeaders(preset))
+                if (other != header && IsSectionPreset(preset, other)) preset.SetOverrideTag(other + TAG_POSTFIX_SECTION_NAME, "");
+            preset.SetOverrideTag(TAG_IS_MATERIAL_PRESET, "true");
+            preset.SetOverrideTag(TAG_IS_MATERIAL_SECTIONED_PRESET, "true");
+            preset.SetOverrideTag(TAG_MATERIAL_PRESET_NAME, unique);
+            preset.SetOverrideTag(header + TAG_POSTFIX_SECTION_NAME, unique);
+            foreach (ShaderProperty property in SectionProperties(section))
+                if (property.MaterialProperty != null)
+                    preset.SetOverrideTag(property.MaterialProperty.name + TAG_POSTFIX_IS_PROPERTY_PRESET, IsSaved(property, textures) ? "true" : "");
+
+            string folder = USER_PRESET_FOLDER + "/" + FileName(section.Content.text);
+            EnsureFolder(folder);
+            AssetDatabase.CreateAsset(preset, AssetDatabase.GenerateUniqueAssetPath(folder + "/" + FileName(unique) + ".mat"));
+            if (!DoesPresetExist(header, unique)) AddPreset(preset);
+            return preset;
+        }
+
+        static string FileName(string text)
+        {
+            foreach (char c in Path.GetInvalidFileNameChars()) text = text.Replace(c, '_');
+            return text.Trim();
+        }
+
+        static void EnsureFolder(string path)
+        {
+            if (AssetDatabase.IsValidFolder(path)) return;
+            string parent = Path.GetDirectoryName(path).Replace('\\', '/');
+            EnsureFolder(parent);
+            AssetDatabase.CreateFolder(parent, Path.GetFileName(path));
+        }
+
         internal static HashSet<string> AnimationOnlyProperties(ShaderEditor editor, Material preset)
             => new HashSet<string>(editor.PropertyDictionary.Where(p => GetPropertyMode(preset, p.Value) == PropertyMode.AnimationOnly).Select(p => p.Key));
 

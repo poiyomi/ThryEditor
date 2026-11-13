@@ -139,6 +139,19 @@ namespace Thry.ThryEditor
                 ThryLogger.LogDetail("ShaderHeader", $"Pasted {applied} properties from text onto '{property.Content.text}'");
             });
             menu.AddSeparator("");
+            // Only main headers own preset lists
+            if (property is ShaderHeader && !property.MyShaderUI.IsPresetEditor && property.MaterialProperty != null
+                && property.MaterialProperty.name.StartsWith("m_", System.StringComparison.Ordinal))
+                AddItem("Save as Preset...", canEdit && Presets.CanSaveSection(property), () =>
+                    RetainedTextPrompt.Open("Save preset", materials[0].name, "Include textures", true, (name, textures) =>
+                    {
+                        bool first = !Presets.DoesSectionHavePresets(property.MaterialProperty.name);
+                        Material preset = Presets.SaveSectionPreset(property, name, textures);
+                        if (preset == null) return;
+                        EditorGUIUtility.PingObject(preset);
+                        // The header gets its presets button with the first preset
+                        if (first) property.MyShaderUI.Reload();
+                    }));
             property.AddPresetMenu(menu);
             menu.AddSeparator("");
             addSearch?.Invoke(menu);
