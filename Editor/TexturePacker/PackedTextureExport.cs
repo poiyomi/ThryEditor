@@ -21,7 +21,26 @@ namespace Thry.ThryEditor.TexturePacker
                 importer.sRGBTexture = config.FileOutput.ColorSpace == ColorSpace.Gamma;
                 importer.filterMode = config.FileOutput.FilterMode;
                 importer.alphaIsTransparency = config.FileOutput.AlphaIsTransparency;
-                importer.maxTextureSize = Mathf.Clamp(Mathf.NextPowerOfTwo(Mathf.Max(texture.width, texture.height)), 32, 16384);
+                // The file keeps the sources' full resolution. Max Size follows the size the sources are used at, so
+                // sources imported smaller than their files don't come out larger once merged.
+                int size = Mathf.Max(texture.width, texture.height), used = 0;
+                TextureImporter first = null;
+                foreach (PackerSource source in config.Sources)
+                {
+                    if (source.InputType != InputType.Texture || source.Texture == null) continue;
+                    if (!(AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(source.Texture)) is TextureImporter sourceImporter)) continue;
+                    used = Mathf.Max(used, Mathf.Max(source.Texture.width, source.Texture.height));
+                    if (first == null) first = sourceImporter;
+                }
+                if (used > 0 && !config.FileOutput.CustomResolution) size = Mathf.Min(size, used);
+                importer.maxTextureSize = Mathf.Clamp(Mathf.NextPowerOfTwo(size), 32, 16384);
+                // The first source also decides mipmaps, wrapping and compression, as it does color space and filtering
+                if (first != null)
+                {
+                    importer.mipmapEnabled = first.mipmapEnabled;
+                    importer.wrapMode = first.wrapMode;
+                    importer.textureCompression = first.textureCompression;
+                }
                 importer.SaveAndReimport();
                 asset = AssetDatabase.LoadAssetAtPath<Texture>(path);
                 if (asset == null) throw new IOException("The saved texture could not be reloaded at " + path + ".");
