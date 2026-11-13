@@ -124,7 +124,7 @@ namespace Thry.ThryEditor
         }
 
         // Color slots are marked [sRGBWarning(true)].
-        static bool ExpectsSrgb(Shader shader, string property)
+        internal static bool ExpectsSrgb(Shader shader, string property)
         {
             int index = shader.FindPropertyIndex(property);
             if (index < 0) return false;

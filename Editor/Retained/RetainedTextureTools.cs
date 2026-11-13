@@ -37,7 +37,9 @@ namespace Thry.ThryEditor
                     if (!canApply()) return;
                     bool gammaColorSpace = attribute.Args.Any(a => a.Equals("gamma", StringComparison.OrdinalIgnoreCase));
                     string path = PATH.TEXTURES_DIR + "/Gradients/" + Guid.NewGuid().ToString("N") + ".png";
-                    var asset = RetainedGradientOutput.Save(gradient, output, outputDirection, gammaColorSpace, path);
+                    var target = Model.Editor.target as Material;
+                    bool colorSlot = target != null && MaskLevelsBaker.ExpectsSrgb(target.shader, property.MaterialProperty.name);
+                    var asset = RetainedGradientOutput.Save(gradient, output, outputDirection, gammaColorSpace, colorSlot, path);
                     if (!property.Options.force_texture_options) FileHelper.SaveValueToFile(settingsKey, Parser.Serialize(output), PATH.PERSISTENT_DATA);
                     FileHelper.SaveValueToFile(settingsKey + "_direction", outputDirection.ToString(), PATH.PERSISTENT_DATA);
                     Model.Edit(property, p => p.textureValue = asset);

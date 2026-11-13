@@ -24,7 +24,8 @@ namespace Thry.ThryEditor
             try { return JsonUtility.FromJson<Metadata>(json); }
             catch (ArgumentException) { return null; }
         }
-        internal static Texture Save(Gradient gradient, TextureData settings, int direction, bool gamma, string path)
+        // srgb marks the texture for a color slot without changing its pixels: the picked colors are already sRGB values
+        internal static Texture Save(Gradient gradient, TextureData settings, int direction, bool gamma, bool srgb, string path)
         {
             Texture2D texture = GradientEditor2.CreateTexture(gradient, settings.width, settings.height, direction);
             try
@@ -40,7 +41,7 @@ namespace Thry.ThryEditor
                     var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
                     if (importer == null) throw new IOException("Could not import gradient texture at " + assetPath + ".");
                     importer.filterMode = settings.filterMode; importer.wrapMode = settings.wrapMode; importer.anisoLevel = settings.ansioLevel;
-                    importer.sRGBTexture = gamma;
+                    importer.sRGBTexture = gamma || srgb;
                     importer.textureCompression = TextureImporterCompression.CompressedHQ;
                     importer.maxTextureSize = Mathf.Clamp(Mathf.NextPowerOfTwo(Mathf.Max(texture.width, texture.height)), 32, 16384);
                     var format = Config.Instance.gradientEditorCompressionOverwrite;
