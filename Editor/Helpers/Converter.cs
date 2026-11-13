@@ -487,8 +487,8 @@ namespace Thry.ThryEditor.Helpers
                 }
                 srcTexture.Apply();
 
-                // Resize to power of two
-                Texture2D resized = TextureHelper.Resize(srcTexture, targetWidth, targetHeight);
+                // Resize to power of two, filtered: taking one source pixel per output pixel drops rows and columns
+                Texture2D resized = ReadableFrame(srcTexture, targetWidth, targetHeight, TextureFormat.RGBA32);
                 UnityEngine.Object.DestroyImmediate(srcTexture);
 
                 gifFrames.Add(resized);
