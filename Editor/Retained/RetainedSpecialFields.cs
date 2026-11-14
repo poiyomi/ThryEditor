@@ -269,6 +269,21 @@ namespace Thry.ThryEditor
                         spawn.tooltip = prefabFound ? spawnLabel : "Prefab not found.";
                         Track(spawn, () => spawn.SetEnabled(prefabFound && Model.CanEdit(property)));
                         parent.Add(spawn); handled=true; return;
+                    case "PoiFitBounds":
+                        var fitCaption = parent.parent.Q<Label>(className: "thry-property-label");
+                        if (fitCaption != null) fitCaption.style.display = DisplayStyle.None;
+                        parent.parent.AddToClassList("thry-action-row");
+                        string fitLabel = string.IsNullOrEmpty(property.Content.text) ? "Fit Bounds" : property.Content.text;
+                        Button fit = null;
+                        fit = new Button(() => {
+                            var fitter = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType("Poi.Tools.Decorators.PoiFitBoundsDrawer")).FirstOrDefault(t => t != null)
+                                ?.GetMethod("Fit", new[] { typeof(Material[]), typeof(Renderer[]) });
+                            if (fitter == null) return;
+                            fit.text = fitter.Invoke(null, new object[] { PresentationTargets(property), Model.Renderers }) as string ?? fitLabel;
+                            fit.schedule.Execute(() => fit.text = fitLabel).StartingIn(4000);
+                        }) {name="action-"+property.MaterialProperty.name,text=fitLabel,tooltip=property.Content.tooltip};
+                        fit.style.marginLeft = 0; fit.style.marginRight = 0;
+                        parent.Add(fit); handled=true; return;
                 }
             }
         }
