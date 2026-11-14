@@ -9506,6 +9506,19 @@
     color: var(--thry-toggle-on-disabled-text-color);
 }
 
+/* When the selected materials disagree, no choice is picked. Each choice that some
+   of them use gets the mixed tile edge from ButtonVector: a light outline with a
+   heavier bottom. It outranks the shared hover, focus and disabled borders, so it
+   stays while pointing at it and on locked materials. */
+.thry-inspector .thry-enum-buttons > Button.thry-enum-mixed {
+    border-color: #999999;
+    border-bottom-width: var(--thry-border-width-strong);
+}
+
+.thry-inspector.thry-light .thry-enum-buttons > Button.thry-enum-mixed {
+    border-color: #777777;
+}
+
 /* The type and status filters are icon buttons at the end of the search strip. Each
    opens its menu; a filter that is on fills its button and tints its icon. */
 .thry-inspector .thry-search-filters > .thry-filter-button {
