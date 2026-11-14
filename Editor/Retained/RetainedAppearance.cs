@@ -23,7 +23,7 @@ namespace Thry.ThryEditor
             var appearance = InspectorAppearancePreferences.Shared.Get(Config.Instance);
             string signature = string.Join(":", Config.Instance.useSharedInspectorAppearance, appearance.inspectorDarkGray, appearance.inspectorMediumGray,
                 appearance.inspectorLightGray, (int)appearance.inspectorTextSize,
-                appearance.inspectorPropertyHeight, appearance.inspectorHeaderHeight, (int)appearance.defaultTexturePreview);
+                appearance.inspectorPropertyHeight, appearance.inspectorHeaderHeight, (int)appearance.defaultTexturePreview, appearance.inspectorTheme);
             if (signature == lastSharedAppearance) return;
             lastSharedAppearance = signature;
             Refresh();

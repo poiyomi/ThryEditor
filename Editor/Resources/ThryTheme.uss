@@ -62,6 +62,14 @@
     --thry-space-20: 20px;
 }
 
+/* Light-skin ramp and curve paint. The dark-skin line and anchor colors measure about 1.2:1 on the
+   light ramp background (#b8b8b8); these reach 3.9:1 for the line and 5.2:1 for the anchors. The
+   active anchor is drawn in the line color, so the anchors stay neutral to tell it apart. */
+.thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
+    --thry-ramp-line-color: #3775a8;
+    --thry-ramp-handle-color: #404040;
+}
+
 /* Monokai accents shared by inspector controls and companion windows.
    Light-skin counterparts keep small labels legible on light surfaces.
    Neutral surfaces continue to use the shared Poiyomi gray theme below. */
@@ -8574,6 +8582,36 @@
     border-color: var(--thry-focus-color);
 }
 
+
+/* The rendering dropdown and render queue box sit beside the Lock button, so in the light skin they use
+   its raised surface rather than the toolbar gray, which looked heavy next to it. Keep these colors
+   in step with the in-row action buttons above. */
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field__input,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input {
+    background-color: #e6e6e6;
+    border-color: #a8a8a8;
+}
+
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field__input:hover,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:hover {
+    background-color: #f0f0f0;
+    border-color: #a8a8a8;
+}
+
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field__input:focus,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field:focus > .unity-base-popup-field__input,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:focus {
+    border-color: var(--thry-focus-color);
+}
+
+.thry-inspector.thry-light .thry-material-controls .thry-action-row .thry-rendering-mode .unity-base-popup-field__input:disabled,
+.thry-inspector.thry-light .thry-material-controls .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:disabled {
+    background-color: var(--thry-disabled-background);
+    border-color: var(--thry-disabled-border);
+    color: var(--thry-muted-color);
+}
+
+
 /* Scene texture inspection shares the live Poi appearance and button states. */
 .thry-inspector.thry-scene-texture-overlay {
     position: absolute;
@@ -9414,6 +9452,19 @@
 .thry-inspector .thry-enum-buttons > Button.thry-selected:disabled {
     border-color: var(--thry-toggle-on-disabled-border-color);
     color: var(--thry-toggle-on-disabled-text-color);
+}
+
+/* When the selected materials disagree, no choice is picked. Each choice that some
+   of them use gets the mixed tile edge from ButtonVector: a light outline with a
+   heavier bottom. It outranks the shared hover, focus and disabled borders, so it
+   stays while pointing at it and on locked materials. */
+.thry-inspector .thry-enum-buttons > Button.thry-enum-mixed {
+    border-color: #999999;
+    border-bottom-width: var(--thry-border-width-strong);
+}
+
+.thry-inspector.thry-light .thry-enum-buttons > Button.thry-enum-mixed {
+    border-color: #777777;
 }
 
 /* The type and status filters are icon buttons at the end of the search strip. Each

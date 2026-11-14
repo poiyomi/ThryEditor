@@ -601,16 +601,19 @@ namespace Thry.ThryEditor
                 group.EnableInClassList("thry-channel-buttons", channels);
                 BindProperty(group, property);
                 var choices = new Button[names.Length];
+                bool[] clipped = new bool[names.Length], partial = new bool[names.Length];
+                Action<int> hover = i =>
+                {
+                    string tooltip = partial[i] ? choices[i].text + "\n" + RetainedText.Get("enum_mixed_choice", "Used by some of the selected materials. Click to set it on all of them.") : clipped[i] ? choices[i].text : null;
+                };
                 for (int i = 0; i < names.Length; i++)
                 {
-                    float value = values[i];
+                    float value = values[i]; int index = i;
                     var choice = choices[i] = new Button(() => { if (Model.CanEdit(property)) Model.Number(property, value); }) { text = names[i] };
-                    // A hover that repeats the label is noise; it only names a choice whose label is cut off.
                     choice.RegisterCallback<GeometryChangedEvent>(e =>
                     {
-                        bool clipped = choice.MeasureTextSize(choice.text, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x > choice.contentRect.width + .5f;
-                        string tooltip = clipped ? choice.text : null;
-                        if (choice.tooltip != tooltip) choice.tooltip = tooltip;
+                        clipped[index] = choice.MeasureTextSize(choice.text, 0, VisualElement.MeasureMode.Undefined, 0, VisualElement.MeasureMode.Undefined).x > choice.contentRect.width + .5f;
+                        hover(index);
                     });
                     if (channels && names[i].Length == 1 && "RGBA".Contains(names[i])) choices[i].AddToClassList("thry-channel-" + names[i].ToLowerInvariant());
                     group.Add(choices[i]);
@@ -619,10 +622,15 @@ namespace Thry.ThryEditor
                 {
                     bool editable = Model.CanEdit(property), mixed = property.MaterialProperty.hasMixedValue;
                     int selected = Array.IndexOf(values, property.MaterialProperty.GetNumber());
+                    // Materials that disagree on each other pick no choice; the choices they use are marked instead.
+                    var used = mixed ? new HashSet<float>(Model.Owners(property).Select(m => m.GetNumber(property.MaterialProperty))) : null;
                     for (int i = 0; i < choices.Length; i++)
                     {
                         choices[i].SetEnabled(editable);
                         choices[i].EnableInClassList("thry-selected", !mixed && i == selected);
+                        bool split = mixed && used.Contains(values[i]);
+                        choices[i].EnableInClassList("thry-enum-mixed", split);
+                        if (partial[i] != split) { partial[i] = split; hover(i); }
                     }
                 });
                 parent.Add(group); return;

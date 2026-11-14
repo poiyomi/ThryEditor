@@ -4,9 +4,48 @@ Edit `Resources/ThryTheme.uss`. The active Studio visual direction uses compact 
 
 ## Appearance settings
 
-Poi/Thry/Settings → Theme offers independent Dark gray, Medium gray, and Light gray sliders from −20 to 20, plus dropdowns for 11–14 px text and independent 18/20/22 px property heights and 18/20/22/24 px header heights. Gray sliders use broader neutral ranges for each Unity skin, with foreground adjustments at the extremes. Enabled text adapts to the extended range; the gray controls can also bring neighboring surfaces closer together. Reset appearance restores the default shades, 12 px text, 18 px property height, and 22 px header height. Nested headers are 2 px shorter than the selected header height with an 18 px minimum.
+Poi/Thry/Settings → Theme offers an Inspector Theme dropdown for third-party themes (described below), independent Dark gray, Medium gray, and Light gray sliders from −20 to 20, plus dropdowns for 11–14 px text and independent 18/20/22 px property heights and 18/20/22/24 px header heights. Gray sliders use broader neutral ranges for each Unity skin, with foreground adjustments at the extremes. Enabled text adapts to the extended range; the gray controls can also bring neighboring surfaces closer together. Reset appearance restores the default theme and shades, 12 px text, 18 px property height, and 22 px header height. Nested headers are 2 px shorter than the selected header height with an 18 px minimum.
 
 Changes update attached inspectors, menus, and retained tool windows immediately without rebuilding the material editor. Preferences are saved per project in Thry/Config.json, or, with "Use shared appearance on this computer" on, in the per-user `ThryEditor/InspectorAppearance.json` in the local application data folder. Text changes use the shared typography tokens; input heights, 18 px checkboxes, locked-material dimming, material previews, and explicit drawer font sizes keep their existing behavior. Legacy IMGUI controls and independently styled tools retain their own appearance.
+
+## Third-Party Themes
+
+A theme is a stylesheet whose file name ends in `.thrytheme.uss`, placed anywhere in Assets or in a package. Installing one changes nothing until it is chosen in Poi/Thry/Settings → Theme → Inspector Theme, which lists Default and every installed theme by file name without the suffix. `RetainedTheme` then attaches the chosen theme after `ThryTheme.uss` on every inspector, menu, and retained window, so its rules win over base rules with the same selector. Keep theme files outside `_PoiyomiShaders` so reinstalling or updating Poiyomi does not remove them. ThryEditor ships one sample, `Examples/Themes/Classic.thrytheme.uss`, a Unity 2017–style theme for both skins that uses the gradient hooks below; copy it outside the Poiyomi folder and rename it to start a theme of your own.
+
+One theme is active at a time. The choice is saved with the other Theme settings, so it follows "Use shared appearance on this computer", and Reset appearance returns to Default. If two themes share a name, the one in Assets wins over one in a package. Adding, editing, renaming, or deleting a theme updates open inspectors, windows, and the dropdown. A chosen theme that is no longer installed stays listed as not found and the default look is used until it returns or another theme is chosen.
+
+ButtonVector, Vector4Toggles, and multi-float tile buttons show their on state through the `--thry-toggle-on-*` tokens: a green fill that differs from the off buttons in brightness, not just hue, white bold text, and a 1px outline. The picked choice of an enum shown as buttons (`thry-enum-buttons`) uses the same tokens, and a picked R, G, B, or A channel drops its tint for the white on-state text. When the selected materials disagree, no enum choice is picked; each choice some of them use gets `thry-enum-mixed`, the same light outline with a heavier bottom edge as a mixed tile (`thry-tile-mixed`), and a tooltip saying a click sets it on all of them. The outline is Monokai green in the dark skin and dark green in the light skin, where a bright edge would disappear against light gray. Hover, focus, and press keep the outline, and locked materials use the muted disabled variants. Keep white text at 4.5:1 or better on every fill. `--thry-toggle-on-border-width` matches the regular border width, so the label needs no padding change; widening the outline means reducing the on state's padding by the extra width so the label stays put.
+
+```css
+/* Both skins: shapes, spacing, and type. */
+.thry-inspector, .thry-dropdown-menu {
+    --thry-radius-header: 2px;
+}
+
+/* Dark skin colors. */
+.thry-inspector.thry-dark, .thry-dropdown-menu.thry-dark {
+    --thry-accent-color: #ff79c6;
+    --thry-monokai-pink: #ff5fa2;
+}
+
+/* Light skin colors. */
+.thry-inspector.thry-light, .thry-dropdown-menu.thry-light {
+    --thry-accent-color: #a8306a;
+    --thry-monokai-pink: #b0185a;
+}
+```
+
+A gray slider other than zero sets the surface, panel, input, section, and action-button tokens with three-class selectors, which win over a theme's values for those tokens. Leave the sliders at zero with a theme that recolors surfaces, or match those selectors in the theme. To restyle a specific control, the theme's selector must be at least as specific as the base rule it replaces. IMGUI drawers and the C# colors in `Styles.cs` are not affected by themes.
+
+### Gradient Hooks
+
+USS has no gradients, so themes get two custom properties instead: `--thry-gradient-top` and `--thry-gradient-bottom`. Set either or both on a `Button`, a dropdown (`.unity-base-popup-field__input`), a text input (`.unity-base-text-field__input`), or a section header (`.thry-section-header`), and `RetainedGradient` paints a vertical gradient on that surface. One property alone paints a flat color. The colors become a small generated texture set as the surface's inline background image, so the gradient fills the padding, follows the rounded corners, sits over the background color, and stays under the border, text, and children. It replaces any background image a rule gives the surface. Colors may be translucent, which tints the background instead of replacing it. (Drawing the gradient as a mesh instead left flat strips at the sides of text inputs and headers, because a surface with hidden overflow clips its own drawing to its content box.)
+
+- A surface whose background color is transparent is not painted, so icon, link, and search buttons stay clear.
+- Set the properties on the surface's own selector; like every custom property read in C#, they are not inherited from a parent rule. Pseudo-classes such as `:hover`, `:disabled`, and `:active` work; also give the surface's normal state a gradient, as Classic does, so a state's colors are replaced when it ends.
+- With an opaque gradient, a button's background color only shows through its border, so Classic sets the button fill tokens to its outline colors.
+
+`ThryTheme.uss` sets neither property. The painters are installed only while the chosen theme's file mentions `--thry-gradient`, so the default theme and themes without gradients cost nothing. While a gradient theme is active, each inspector or window is scanned for new surfaces after its layout changes.
 
 ## Monokai palette
 
@@ -27,7 +66,7 @@ Discarded UV tiles get the same treatment in pink through the `--thry-uv-discard
 - A theme index beside a color is a small dropdown captioned Theme (`thry-theme-chip`), sized to its content. While a theme is picked it adds a round swatch of that Global Themes color and its number, or CC or AL plus a number for ColorChord and AudioLink themes. It opens the same list as a full dropdown.
 - A property's right-click menu starts with Reset, Copy Value and Paste Value, each with a drawn icon, followed by the Animated and Renamed marks. The name, path and keyframe copies sit under Copy as, and Favorite, Set note and Edit label come last. A section's menu follows the same order: Reset, Copy and Paste with those icons, then the other paste and text entries, preset entries, Search Section and extension entries, and Set Note last. `RetainedMenu.TrimSeparators` drops separators left at either end or doubled by groups that are absent.
 - Preset and animation markings use Monokai cyan for P, purple for PA (animation-only preset content), green for A, and yellow for RA. Animation labels and header dots share these colors, with darker counterparts for the light skin. In section headers the marker follows the title and is removed while the section is not in the preset; property rows keep an empty marker gutter. Preset colors live in `--thry-preset-color` and `--thry-preset-animation-color`; animation colors and IMGUI equivalents live in `Styles.cs`.
-- Shader-lock, Presets, rendering mode, and all other filled action buttons share the darker action surface and hover colors (`--thry-action-background` and `--thry-action-hover-background`), including decal positioning and Bake Color Adjust. The title and search strip, search strip and action block, and action block and first section are separated by 4px gaps. Rendering mode, the render queue and the lock button share one line with 6px gaps. The queue is a number box captioned Queue inside its border, and clicking that caption lists the named queues (From Shader, Background, Geometry, AlphaTest, Transparent, Overlay); the box's tooltip names the current one, such as Geometry +452. It is shown while the Render Queue setting is on and replaces the Render Queue row that used to sit above the footer. The rendering dropdown fills the rest of the line and carries a muted Rendering caption, and its list opens under the value to the right of that caption; the lock button is sized to its label, Lock with a closed padlock or Unlock with an open one, both drawn in the button's text color. Search and toolbar controls use a 22px control height, with 20px inner search fields.
+- Shader-lock, Presets, rendering mode, and all other filled action buttons share the darker action surface and hover colors (`--thry-action-background` and `--thry-action-hover-background`), including decal positioning and Bake Color Adjust. In the light skin, the lock button, rendering dropdown, and render queue box instead share the raised surface of in-row action buttons (#e6e6e6, #f0f0f0 on hover, #a8a8a8 border), with the focus color on focus and the disabled fill and border when disabled. The title and search strip, search strip and action block, and action block and first section are separated by 4px gaps. Rendering mode, the render queue and the lock button share one line with 6px gaps. The queue is a number box captioned Queue inside its border, and clicking that caption lists the named queues (From Shader, Background, Geometry, AlphaTest, Transparent, Overlay); the box's tooltip names the current one, such as Geometry +452. It is shown while the Render Queue setting is on and replaces the Render Queue row that used to sit above the footer. The rendering dropdown fills the rest of the line and carries a muted Rendering caption, and its list opens under the value to the right of that caption; the lock button is sized to its label, Lock with a closed padlock or Unlock with an open one, both drawn in the button's text color. Search and toolbar controls use a 22px control height, with 20px inner search fields.
 - All retained buttons automatically share normal, hover, pressed, disabled, and focused styling, including Bake Color Adjust, positioning, Pathing, toolbars, and companion windows. Disabled actions keep muted text and respond visually to hover while remaining unclickable. Bake Color Adjust has a Monokai yellow palette icon; Raycast and Scene Tools retain their original green icons, with light-skin equivalents for each.
 - Connected main section surfaces and standalone header bars for nested groups.
 - Hover brightens the section header surface using separate main/nested hover colors. Only the directly hovered icon brightens; other header icons stay steady. Keyboard focus and linked-state indicators remain visible.
@@ -61,7 +100,7 @@ The first block is the shape, sizing, spacing, and typography source for the ret
 
 Button, subheader, and small-panel radii inherit the control radius by default. Each can be overridden independently. Spacing tokens keep the existing pixel values as their names so the migration is easy to audit; changing a value affects its uses throughout the stylesheet. Geometry needed for joined edges, asset aspect ratios, tiny icons, virtualization, and native control internals remains explicit rather than being forced onto one universal size.
 
-Ramp height uses a length such as `54px`. Ramp stroke width and handle radius use unitless numbers because the custom drawing code consumes them directly. Its paint and drag coordinates share the same inset so larger handles remain aligned with interactions.
+Ramp height uses a length such as `54px`. Ramp stroke width and handle radius use unitless numbers because the custom drawing code consumes them directly. Its paint and drag coordinates share the same inset so larger handles remain aligned with interactions. The light skin darkens the line to #3775a8 and the anchors to #404040, which keep 3.9:1 and 5.2:1 against its #b8b8b8 ramp background; the dark-skin colors measure about 1.2:1 there. The same colors paint the four-point curve editor (`.thry-curve4`), and the active anchor uses the line color.
 
 The palette below these settings retains the original neutral dark/light colors. Additional Studio roles, including primary actions, slider handles, and disabled fields, live in the final section. Component rules follow in labeled sections; remaining component-specific palette details still live in this same file.
 
@@ -71,7 +110,7 @@ The material inspector, search, popup menus, settings and other retained compani
 
 The color picker is a retained companion window with the shared theme. Its wheel reads ring, gap, marker, disc, outline, and focus values from USS; slider tracks read their focus color; the new and original swatches, dropdowns, and buttons use the shared tokens and control states.
 
-Load `ThryTheme.uss` once on each standalone inspector or window root. Child controls inherit the theme; do not attach additional copies or component wrapper sheets.
+Attach the theme once on each standalone inspector or window root with `RetainedTheme.Install` (or `RetainedWindow.Style`, which calls it). It adds `ThryTheme.uss` and, after it, the third-party theme chosen in Settings. Child controls inherit the theme; do not attach additional copies or component wrapper sheets.
 
 For future experiments, change the shared tokens first. Test narrow and wide inspectors, Unity's light/dark skins, companion windows, and focus/disabled/selected states. Some sizes are coupled (for example, a search field contains an inner field); change related dimensions together. Make permanent visual changes here so all retained surfaces share them.
 
