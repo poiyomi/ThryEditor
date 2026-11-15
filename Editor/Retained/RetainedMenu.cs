@@ -96,11 +96,11 @@ namespace Thry.ThryEditor
         static void DrawResetIcon(Painter2D painter, VisualElement icon)
         {
             Stroke(painter, icon);
-            var center = new Vector2(9, 9.5f);
-            painter.BeginPath(); painter.Arc(center, 5.5f, 20, 290); painter.Stroke();
-            float end = 290 * Mathf.Deg2Rad;
-            var tip = center + new Vector2(Mathf.Cos(end), Mathf.Sin(end)) * 5.5f;
-            painter.BeginPath(); painter.MoveTo(tip + new Vector2(-3.6f, -1.4f)); painter.LineTo(tip); painter.LineTo(tip + new Vector2(-1.2f, 3.6f)); painter.Stroke();
+            var center = new Vector2(9, 9); const float radius = 5.5f, head = 3f;
+            var exit = center + new Vector2(1, -1) * (radius * Mathf.Sqrt(.5f));
+            var corner = exit + new Vector2(1, 1) * 1.6f;
+            painter.BeginPath(); painter.Arc(center, radius, 15, 315); painter.LineTo(corner); painter.Stroke();
+            painter.BeginPath(); painter.MoveTo(corner + new Vector2(0, -head)); painter.LineTo(corner); painter.LineTo(corner + new Vector2(-head, 0)); painter.Stroke();
         }
         static void DrawCopyIcon(Painter2D painter, VisualElement icon)
         {
