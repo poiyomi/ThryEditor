@@ -309,7 +309,7 @@ namespace Thry.ThryEditor
                 renamed.style.backgroundColor = Styles.AnimatedRenamedColor;
             });
             var note=new Label();note.AddToClassList("thry-note");header.Add(note);_fields.Track(note,()=>{note.text=group.Note;note.style.display=Config.Instance.showNotes&&!string.IsNullOrEmpty(note.text)?DisplayStyle.Flex:DisplayStyle.None;});
-            var link = HeaderAction("link", RetainedText.Get(Model.Shader, "global_links", "Global links"), () => GlobalLinker.Popup(group)); header.Add(link);
+            var link = HeaderAction("link", RetainedText.Get(Model.Shader, "global_links", "Global links"), () => GlobalLinker.Popup(group)); link.AddToClassList("thry-global-link"); header.Add(link);
             _fields.TrackVisible(link, () => link.EnableInClassList("thry-linked", group.MaterialProperty != null && Model.Shader.Materials.Any(m => GlobalLinker.IsGloballyLinked(m, group.MaterialProperty.name))));
             var resources = new[] { group.Options.button_help, group.Options.button_video, group.Options.button_author };
             var resourceIcons = new[] { "help", "video", "author" };

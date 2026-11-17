@@ -5713,6 +5713,12 @@
     --unity-image-tint-color: var(--thry-accent-color);
 }
 
+/* An active Global Link stands out in Monokai green. */
+.thry-inspector .thry-global-link.thry-linked .thry-header-icon {
+    --unity-image-tint-color: var(--thry-monokai-green);
+}
+
+
 .thry-inspector .thry-header-orb .thry-header-icon,
 .thry-inspector .thry-header-orb:hover .thry-header-icon,
 .thry-inspector .thry-header-orb:focus .thry-header-icon {

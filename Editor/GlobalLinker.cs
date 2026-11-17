@@ -877,7 +877,7 @@ namespace Thry.ThryEditor
             private string _sectionPropertyName;
             private string _newLinkName = "";
             private bool _newIncludeTextures = false;
-            private const string TexturePolicyTooltip = "Applies to every material in this link. Disable to preserve each material’s textures, tiling, offset and texture animation tags. Enabling copies textures from the inspected material.";
+            private const string TexturePolicyTooltip = "Applies to every material in this link. Disable to preserve each materials textures, tiling, offset and texture animation tags. Enabling copies textures from the inspected material.";
             private List<GlobalLink> _availableLinks;
             private GlobalLink _currentLink;       // non-null only when ALL selected materials share the same link
             private bool _hasMixedState;           // true when selected materials are in inconsistent link states
@@ -964,17 +964,17 @@ namespace Thry.ThryEditor
                 {
                     var row=new UnityEngine.UIElements.VisualElement();row.AddToClassList("thry-components");list.Add(row);
                     var select=new UnityEngine.UIElements.Button(()=>{SelectLink(link);CreateGUI();}){text=link.name+" ("+link.subscribedMaterialGuids.Length+")"};select.style.flexGrow=1;select.SetEnabled(link!=_currentLink);row.Add(select);
-                    row.Add(new UnityEngine.UIElements.Button(()=>{if(EditorUtility.DisplayDialog("Delete Global Link","Disconnect all materials and delete "+link.name+"?","Delete","Cancel")){DeleteLink(link);CreateGUI();}}){text="×",tooltip="Delete link"});
+                    row.Add(new UnityEngine.UIElements.Button(()=>{if(EditorUtility.DisplayDialog("Delete Global Link","Disconnect all materials and delete "+link.name+"?","Delete","Cancel")){DeleteLink(link);CreateGUI();}}){text="×",tooltip="Delete Link"});
                 }
-                if(_availableLinks.Count==0)list.Add(new UnityEngine.UIElements.Label("No links for this section yet."));
-                var newTextures = new UnityEngine.UIElements.Toggle("Include Textures for new link") { value = _newIncludeTextures, tooltip = TexturePolicyTooltip };
+                if(_availableLinks.Count==0)list.Add(new UnityEngine.UIElements.Label("No Links for this section yet."));
+                var newTextures = new UnityEngine.UIElements.Toggle("Include Textures for new Link") { value = _newIncludeTextures, tooltip = TexturePolicyTooltip };
                 newTextures.RegisterValueChangedCallback(e => _newIncludeTextures = e.newValue); root.Add(newTextures);
-                var input=new UnityEngine.UIElements.TextField("New link"){value=_newLinkName};root.Add(input);input.RegisterValueChangedCallback(e=>_newLinkName=e.newValue);
+                var input=new UnityEngine.UIElements.TextField("New Link"){value=_newLinkName};root.Add(input);input.RegisterValueChangedCallback(e=>_newLinkName=e.newValue);
                 root.Add(new UnityEngine.UIElements.Button(()=>{
                     if(string.IsNullOrWhiteSpace(_newLinkName))return;
                     if(_availableLinks.Any(l=>l.name==_newLinkName)){EditorUtility.DisplayDialog("Duplicate Name","A link with this name already exists.","OK");return;}
                     Unsubscribe(_materials,_sectionPropertyName);CreateLink(_newLinkName,_sectionPropertyName,Section,_materials,_newIncludeTextures);_newLinkName="";CreateGUI();
-                }){text="Create link"});root.Add(new UnityEngine.UIElements.Button(Close){text="Done"});
+                }){text="Create Link"});root.Add(new UnityEngine.UIElements.Button(Close){text="Done"});
             }
             private void SelectLink(GlobalLink link)
             {
