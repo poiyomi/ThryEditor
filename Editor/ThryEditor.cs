@@ -750,76 +750,68 @@ namespace Thry
             base.ValidateMaterial(material);
             // Also runs while packages import, when a texture they reference may not exist yet
             TextureKeywords.Sync(material, disable: false);
-            WatchForMaterialReset(material, Undo.GetCurrentGroup());
+            WatchForMaterialReset(material);
         }
 
         private const string RESET_MATERIAL_UNDO_NAME = "Reset Material";
-        // Unity has named the group by the tick after ValidateMaterial in some resets and later in others,
-        // so a single deferred check misses it. A short watch covers both without polling indefinitely.
-        private const int RESET_WATCH_FRAMES = 20;
-        // Every material a watched group validated, and whether it was locked at the time
-        private static readonly Dictionary<int, Dictionary<Material, bool>> _watchedResetGroups = new Dictionary<int, Dictionary<Material, bool>>();
-        private static readonly System.Reflection.MethodInfo _getUndoRecords = typeof(Undo).GetMethod("GetRecords",
-            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic, null, new[] { typeof(List<string>), typeof(List<string>) }, null);
-        private static int _lastHandledResetGroup = -1;
+        private const string RESET_MATERIAL_MENU = "CONTEXT/Material/Reset";
+        // The materials the running Reset command has reset, and whether each is locked
+        private static readonly Dictionary<Material, bool> _resetMaterials = new Dictionary<Material, bool>();
+        private static int _resetGroup;
 
         /// <summary>
-        /// Runs OnReset and unlocks the reset materials when the undo group this ValidateMaterial belongs to turns
-        /// out to be a material reset. Every material in the group is collected, so a multi-material reset is too.
+        /// Runs OnReset and unlocks the reset materials once a material's Reset command has finished.
         ///
-        /// Unity names that group "Reset Material" only after ValidateMaterial has already run, so reading the
-        /// name during the call returns whatever the previous action left behind - typically one of ThryEditor's
-        /// own group names, like "Expand Color &amp; Normals of X". The old check compared against that stale name,
-        /// so the first reset never cleared the animated tags and a second one had to be performed, which then
-        /// matched on the name the first had since set.
+        /// The command resets each of its targets with Unsupported.SmartReset, and Unity validates the material
+        /// inside that call. So a ValidateMaterial with both the command and SmartReset on its stack is for a
+        /// material that is being reset right now, and those are the only materials acted on.
         ///
-        /// Deliberately still an exact name match rather than anything heuristic: OnReset also unlinks materials
-        /// and clears notes, so a false positive destroys user data. Failing to detect a reset is the safe
-        /// direction to err in, and is no worse than the previous behaviour.
+        /// Nothing else says which materials a reset belonged to. Unity names the undo group "Reset Material" only
+        /// after ValidateMaterial has run, and the name doesn't say what the step holds. A shader import validates
+        /// every loaded material in one undo group, so going by the group's name, or by a "Reset Material" step
+        /// that shows up afterwards, treats all of them as reset when any one material is.
+        ///
+        /// OnReset also unlinks materials and clears notes, and unlocking resets the material again, so a false
+        /// positive destroys user data. Failing to detect a reset is the safe direction to err in.
         /// </summary>
-        private void WatchForMaterialReset(Material material, int group)
+        private static void WatchForMaterialReset(Material material)
         {
-            if (group == _lastHandledResetGroup) return;
-            if (_watchedResetGroups.TryGetValue(group, out Dictionary<Material, bool> watched))
+            if (!IsInsideResetCommand()) return;
+            // The command is still running: it writes to the material after SmartReset, runs once per selected
+            // material and records its undo step at the end
+            if (_resetMaterials.Count == 0)
             {
-                if (!watched.ContainsKey(material)) watched[material] = material.IsLocked();
-                return;
+                _resetGroup = Undo.GetCurrentGroup();
+                EditorApplication.update += HandleMaterialReset;
             }
-            watched = new Dictionary<Material, bool> { { material, material.IsLocked() } };
-            _watchedResetGroups[group] = watched;
-
-            int framesLeft = RESET_WATCH_FRAMES;
-            int undoSteps = UndoStepNames().Count;
-            EditorApplication.CallbackFunction watcher = null;
-            watcher = () =>
-            {
-                // TextCore's Reset menu, the one materials get, starts a new group before the name is readable, so
-                // the steps added since are checked too
-                bool isReset = Undo.GetCurrentGroup() == group && Undo.GetCurrentGroupName() == RESET_MATERIAL_UNDO_NAME
-                    || UndoStepNames().Skip(undoSteps).Contains(RESET_MATERIAL_UNDO_NAME);
-
-                if (isReset && group != _lastHandledResetGroup)
-                {
-                    _lastHandledResetGroup = group;
-                    if (Active != null && Active.Materials.Any(watched.ContainsKey))
-                        Active.OnReset();
-                    UnlockResetMaterials(watched.Where(p => p.Value && p.Key != null).Select(p => p.Key).ToArray(), group);
-                }
-
-                if (isReset || --framesLeft <= 0 || watched.Keys.All(m => m == null))
-                {
-                    EditorApplication.update -= watcher;
-                    _watchedResetGroups.Remove(group);
-                }
-            };
-            EditorApplication.update += watcher;
+            _resetMaterials[material] = material.IsLocked();
         }
 
-        private static List<string> UndoStepNames()
+        private static bool IsInsideResetCommand()
         {
-            List<string> undo = new List<string>();
-            _getUndoRecords?.Invoke(null, new object[] { undo, new List<string>() });
-            return undo;
+            // ValidateMaterial runs on every material change, so only a reset pays for the full trace. Unity's own
+            // ValidateMaterial is the first frame past this class, and SmartReset has to be the one that called it:
+            // further up it would be resetting some other material
+            int unity = 0;
+            while (typeof(ShaderGUI).IsAssignableFrom(new System.Diagnostics.StackFrame(unity, false).GetMethod()?.DeclaringType)) unity++;
+            System.Reflection.MethodBase caller = new System.Diagnostics.StackFrame(unity + 1, false).GetMethod();
+            if (caller == null || caller.DeclaringType != typeof(Unsupported) || !caller.Name.StartsWith(nameof(Unsupported.SmartReset))) return false;
+            return new System.Diagnostics.StackTrace(false).GetFrames().Any(frame => frame.GetMethod()?
+                .GetCustomAttributes(typeof(MenuItem), false).Any(item => ((MenuItem)item).menuItem == RESET_MATERIAL_MENU) == true);
+        }
+
+        private static void HandleMaterialReset()
+        {
+            EditorApplication.update -= HandleMaterialReset;
+            Material[] reset = _resetMaterials.Keys.Where(m => m != null).ToArray();
+            Material[] locked = reset.Where(m => _resetMaterials[m]).ToArray();
+            _resetMaterials.Clear();
+
+            // The command's own step goes in first, so the unlock collapses into it
+            Undo.FlushUndoRecordObjects();
+            if (Active != null && Active.Materials.Length > 0 && Active.Materials.All(reset.Contains))
+                Active.OnReset();
+            UnlockResetMaterials(locked, _resetGroup);
         }
 
         // A reset material should be a fresh one on the original shader. Unlocking brings back the stripped
