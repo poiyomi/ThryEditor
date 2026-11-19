@@ -222,20 +222,25 @@ namespace Thry.ThryEditor
             if (selected < 0) selected = Array.FindIndex(_items, Enabled);
             if (selected >= 0) Select(selected, false);
             _scroll.contentContainer.Focus(); _populating = false;
-            schedule.Execute(FitWidth);
+            // Ensure text in context menu fits in the width. If not, stretch it.
+            if (_captions.Count > 0) _captions[0].RegisterCallback<GeometryChangedEvent>(e => FitWidth());
         }
-        // Rows start at the minimum width; once styled, widen the card so no label needs an ellipsis.
+        // Rows start at the minimum width; once laid out, widen the card so no label needs an ellipsis.
         void FitWidth()
         {
             if (_closed || _captions.Count == 0 || _captions[0].panel == null) return;
-            float text = 0;
+            float row = 0;
             foreach (var caption in _captions)
-                text = Mathf.Max(text, caption.MeasureTextSize(caption.text, 0, MeasureMode.Undefined, 0, MeasureMode.Undefined).x);
-            var first = _captions[0];
-            float row = first.parent.layout.width - first.layout.width;
-            float card = _scroll.layout.width - first.parent.layout.width;
-            if (float.IsNaN(row) || float.IsNaN(card)) return;
-            float width = Mathf.Min(Mathf.Max(Mathf.Max(_anchor.width, 220), Mathf.Ceil(text + row + card + 12)), Mathf.Max(0, _panelRoot.layout.width - 8));
+            {
+                // Everything in this row besides its text: check, icon, submenu arrow, paddings and margins.
+                float chrome = caption.parent.layout.width - caption.contentRect.width;
+                float text = caption.MeasureTextSize(caption.text, 0, MeasureMode.Undefined, 0, MeasureMode.Undefined).x;
+                if (float.IsNaN(chrome) || float.IsNaN(text)) return;
+                row = Mathf.Max(row, text + chrome);
+            }
+            float card = _scroll.layout.width - _captions[0].parent.layout.width;
+            if (float.IsNaN(card)) return;
+            float width = Mathf.Min(Mathf.Max(Mathf.Max(_anchor.width, 220), Mathf.Ceil(row + card + 4)), Mathf.Max(0, _panelRoot.layout.width - 8));
             if (Mathf.Abs(width - _scroll.layout.width) < 1) return;
             var local = _panelRoot.WorldToLocal(_anchor.position);
             _scroll.style.width = width;
