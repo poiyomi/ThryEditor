@@ -595,7 +595,7 @@ namespace Thry.ThryEditor
         }
 
         // Native menus ignore tooltips, so a retained menu icon rides in one.
-        internal const string MenuIconReset = "thry-icon:reset", MenuIconCopy = "thry-icon:copy", MenuIconPaste = "thry-icon:paste";
+        internal const string MenuIconReset = "thry-icon:reset", MenuIconCopy = "thry-icon:copy", MenuIconPaste = "thry-icon:paste", MenuIconTrash = "thry-icon:trash", MenuIconFavorite = "thry-icon:favorite", MenuIconAnimated = "thry-icon:animated", MenuIconRenamed = "thry-icon:renamed";
 
         internal GenericMenu RetainedContextMenu(Action<GenericMenu> addClipboard = null, Action<GenericMenu> addFavorite = null)
         {
@@ -608,9 +608,9 @@ namespace Thry.ThryEditor
             if (IsAnimatable && !MyShaderUI.IsLockedMaterial)
             {
                 _contextMenu.AddSeparator("");
-                _contextMenu.AddItem(new GUIContent("Animated (when locked)"), IsAnimated, () => SetAnimated(!IsAnimated, false));
+                _contextMenu.AddItem(new GUIContent("Animated (when locked)", MenuIconAnimated), IsAnimated, () => SetAnimated(!IsAnimated, false));
                 if (CanRename)
-                    _contextMenu.AddItem(new GUIContent("Renamed (when locked)"), IsAnimated && IsRenaming, () => SetAnimated(true, !IsRenaming));
+                    _contextMenu.AddItem(new GUIContent("Renamed (when locked)", MenuIconRenamed), IsAnimated && IsRenaming, () => SetAnimated(true, !IsRenaming));
             }
             _contextMenu.AddSeparator("");
             if (MaterialProperty != null)
@@ -628,12 +628,12 @@ namespace Thry.ThryEditor
             _contextMenu.AddSeparator("");
             addFavorite?.Invoke(_contextMenu);
             if (Config.Instance.showNotes)
-                _contextMenu.AddItem(new GUIContent("Set note"), false, () =>
+                _contextMenu.AddItem(new GUIContent("Set Note"), false, () =>
                 {
                     var window = ScriptableObject.CreateInstance<SetNotePopup>(); window.Init(this, new Rect()); window.ShowUtility();
                 });
             if (MyShaderUI.Locale.EditInUI)
-                _contextMenu.AddItem(new GUIContent("Edit label"), false, () => RetainedTextPrompt.Open("Edit label", Content.text, value =>
+                _contextMenu.AddItem(new GUIContent("Edit Label"), false, () => RetainedTextPrompt.Open("Edit Label", Content.text, value =>
                 {
                     MyShaderUI.Locale.Set(MaterialProperty, value); MyShaderUI.Locale.Save(); MyShaderUI.Reload();
                 }));

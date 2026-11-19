@@ -906,10 +906,10 @@ namespace Thry.ThryEditor
                 {
                     bool animated = animatable.All(property => property.IsAnimated);
                     bool renamed = animatable.All(property => property.IsAnimated && property.IsRenaming);
-                    menu.AddItem(new GUIContent("Animated (when locked)"), animated, () => {
+                    menu.AddItem(new GUIContent("Animated (when locked)", ShaderPart.MenuIconAnimated), animated, () => {
                         foreach (var property in animatable) property.SetAnimated(!animated, false);
                     });
-                    menu.AddItem(new GUIContent("Renamed (when locked)"), renamed, () => {
+                    menu.AddItem(new GUIContent("Renamed (when locked)", ShaderPart.MenuIconRenamed), renamed, () => {
                         foreach (var property in animatable) property.SetAnimated(true, !renamed);
                     });
                     menu.AddSeparator("");
@@ -929,7 +929,7 @@ namespace Thry.ThryEditor
         {
             Model.Shader.ActivateRetained();
             var menu = property.RetainedContextMenu(clipboard => RetainedPropertyClipboard.AddMenu(clipboard, Model, property),
-                favorite => favorite.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "favorite", "Favorite")), _view.IsFavorite(property), () => _view.ToggleFavorite(property)));
+                favorite => favorite.AddItem(new GUIContent(RetainedText.Get(Model.Shader, "favorite", "Favorite"), ShaderPart.MenuIconFavorite), _view.IsFavorite(property), () => _view.ToggleFavorite(property)));
             extendMenu?.Invoke(menu);
             _view.ShowLegacyMenu(menu, element, new Rect(position, Vector2.zero));
         }

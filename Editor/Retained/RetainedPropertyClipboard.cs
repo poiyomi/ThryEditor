@@ -40,12 +40,12 @@ namespace Thry.ThryEditor
                     AddPaste(menu, new GUIContent("Paste Tiling and Offset"), model, property, true);
                 }
                 if (model.CanEdit(property))
-                    menu.AddItem(new GUIContent("Clear Texture"), false, () => model.Edit(property, target =>
+                    menu.AddItem(new GUIContent("Clear Texture", ShaderPart.MenuIconTrash), false, () => model.Edit(property, target =>
                     {
                         target.textureValue = null;
                         Drawers.ThryRGBAPackerDrawer.ClearPendingPreview(target);
                     }));
-                else menu.AddDisabledItem(new GUIContent("Clear Texture"));
+                else menu.AddDisabledItem(new GUIContent("Clear Texture", ShaderPart.MenuIconTrash));
             }
         }
 

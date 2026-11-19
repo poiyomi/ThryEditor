@@ -85,12 +85,17 @@ namespace Thry.ThryEditor
                 case ShaderPart.MenuIconReset: return DrawResetIcon;
                 case ShaderPart.MenuIconCopy: return DrawCopyIcon;
                 case ShaderPart.MenuIconPaste: return DrawPasteIcon;
+                case ShaderPart.MenuIconTrash: return DrawTrashIcon;
+                case ShaderPart.MenuIconFavorite: return DrawFavoriteIcon;
+                case ShaderPart.MenuIconAnimated: return DrawAnimatedIcon;
+                case ShaderPart.MenuIconRenamed: return DrawRenamedIcon;
                 default: return null;
             }
         }
-        static void Stroke(Painter2D painter, VisualElement icon)
+        static void Stroke(Painter2D painter, VisualElement icon) => Stroke(painter, icon.resolvedStyle.color);
+        static void Stroke(Painter2D painter, Color color)
         {
-            painter.strokeColor = icon.resolvedStyle.color;
+            painter.strokeColor = color;
             painter.lineWidth = 1.5f; painter.lineCap = LineCap.Round; painter.lineJoin = LineJoin.Round;
         }
         static void DrawResetIcon(Painter2D painter, VisualElement icon)
@@ -113,6 +118,48 @@ namespace Thry.ThryEditor
             Stroke(painter, icon);
             painter.BeginPath(); painter.MoveTo(new Vector2(6.5f, 4.5f)); painter.LineTo(new Vector2(4.5f, 4.5f)); painter.LineTo(new Vector2(4.5f, 15)); painter.LineTo(new Vector2(13.5f, 15)); painter.LineTo(new Vector2(13.5f, 4.5f)); painter.LineTo(new Vector2(11.5f, 4.5f)); painter.Stroke();
             painter.BeginPath(); painter.MoveTo(new Vector2(6.5f, 3)); painter.LineTo(new Vector2(11.5f, 3)); painter.LineTo(new Vector2(11.5f, 6)); painter.LineTo(new Vector2(6.5f, 6)); painter.ClosePath(); painter.Stroke();
+        }
+        // The texture slot's clear glyph (ThryToolbar/texture-clear, Phosphor trash-simple-fill),
+        // traced from its 256-unit path so it stays sharp at the menu's icon size.
+        static void DrawTrashIcon(Painter2D painter, VisualElement icon)
+        {
+            const float scale = 11.5f / 208;
+            Vector2 P(float x, float y) => new Vector2(9 + (x - 128) * scale, 9 + (y - 120) * scale);
+            painter.fillColor = icon.resolvedStyle.color;
+            painter.BeginPath();
+            painter.MoveTo(P(208, 64)); painter.LineTo(P(208, 208)); painter.Arc(P(192, 208), 16 * scale, 0, 90);
+            painter.LineTo(P(64, 224)); painter.Arc(P(64, 208), 16 * scale, 90, 180);
+            painter.LineTo(P(48, 64)); painter.LineTo(P(40, 64)); painter.Arc(P(40, 56), 8 * scale, 90, 270);
+            painter.LineTo(P(216, 48)); painter.Arc(P(216, 56), 8 * scale, -90, 90);
+            painter.ClosePath(); painter.Fill();
+            painter.BeginPath();
+            painter.MoveTo(P(88, 16)); painter.LineTo(P(168, 16)); painter.Arc(P(168, 24), 8 * scale, -90, 90);
+            painter.LineTo(P(88, 32)); painter.Arc(P(88, 24), 8 * scale, 90, 270);
+            painter.ClosePath(); painter.Fill();
+        }
+        static void DrawFavoriteIcon(Painter2D painter, VisualElement icon)
+        {
+            Stroke(painter, icon);
+            // Centered on its bounds: the lower points sit closer to the middle than the top one.
+            var center = new Vector2(9, 9.6f); const float outer = 6.4f, inner = 2.7f;
+            painter.BeginPath();
+            for (int i = 0; i < 10; i++)
+            {
+                float angle = (-90 + i * 36) * Mathf.Deg2Rad, radius = i % 2 == 0 ? outer : inner;
+                var point = center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+                if (i == 0) painter.MoveTo(point); else painter.LineTo(point);
+            }
+            painter.ClosePath(); painter.Stroke();
+        }
+        // Both marks share a keyframe on a timeline track, in the color the inspector tags them with.
+        static void DrawAnimatedIcon(Painter2D painter, VisualElement icon) => DrawKeyframeIcon(painter, Styles.AnimatedColor);
+        static void DrawRenamedIcon(Painter2D painter, VisualElement icon) => DrawKeyframeIcon(painter, Styles.AnimatedRenamedColor);
+        static void DrawKeyframeIcon(Painter2D painter, Color color)
+        {
+            Stroke(painter, color);
+            painter.BeginPath(); painter.MoveTo(new Vector2(9, 4.5f)); painter.LineTo(new Vector2(13.5f, 9)); painter.LineTo(new Vector2(9, 13.5f)); painter.LineTo(new Vector2(4.5f, 9)); painter.ClosePath(); painter.Stroke();
+            painter.BeginPath(); painter.MoveTo(new Vector2(2, 9)); painter.LineTo(new Vector2(4.5f, 9)); painter.Stroke();
+            painter.BeginPath(); painter.MoveTo(new Vector2(13.5f, 9)); painter.LineTo(new Vector2(16, 9)); painter.Stroke();
         }
         // Mirrors --thry-menu-item-height in ThryTheme.uss.
         static int RowHeight => Mathf.Clamp(InspectorAppearancePreferences.Shared.Get(Config.Instance).inspectorPropertyHeight, 18, 22) + 4;
@@ -222,7 +269,8 @@ namespace Thry.ThryEditor
             if (selected < 0) selected = Array.FindIndex(_items, Enabled);
             if (selected >= 0) Select(selected, false);
             _scroll.contentContainer.Focus(); _populating = false;
-            // Ensure text in context menu fits in the width. If not, stretch it.
+            // A scheduled fit can run before the new rows have a layout, and would then never widen
+            // the card. A row's first layout always reports a geometry change, as does each resize.
             if (_captions.Count > 0) _captions[0].RegisterCallback<GeometryChangedEvent>(e => FitWidth());
         }
         // Rows start at the minimum width; once laid out, widen the card so no label needs an ellipsis.
