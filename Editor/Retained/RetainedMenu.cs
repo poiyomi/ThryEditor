@@ -10,6 +10,10 @@ namespace Thry.ThryEditor
 {
     internal sealed class RetainedMenu : VisualElement
     {
+        // Set on the control that opened a dropdown menu until the menu closes, so a theme can show it pressed.
+        // Context menus, which open at a point rather than under a control, leave their target unmarked.
+        internal const string OpenClass = "thry-menu-open";
+
         internal sealed class Item
         {
             internal string Text;
@@ -68,6 +72,7 @@ namespace Thry.ThryEditor
             panelRoot.Q<RetainedMenu>()?.Close(false);
             var menu = new RetainedMenu(anchor, target, BuildHierarchy(items), panelRoot);
             panelRoot.Add(menu);
+            if (!menu._closed && (anchor.width > 0 || anchor.height > 0)) target.AddToClassList(OpenClass);
             menu._scroll.contentContainer.Focus();
             menu.schedule.Execute(() => { if (!menu._closed && menu._selected >= 0) menu._scroll.ScrollTo(menu._rows[menu._selected]); });
         }
@@ -224,7 +229,12 @@ namespace Thry.ThryEditor
             });
             RegisterCallback<FocusOutEvent>(e => { var next = e.relatedTarget as VisualElement; if (!_populating && (next == null || !Contains(next))) Close(false); });
             panelRoot.RegisterCallback<GeometryChangedEvent>(OnPanelGeometry);
-            RegisterCallback<DetachFromPanelEvent>(e => { if (e.target == this) panelRoot.UnregisterCallback<GeometryChangedEvent>(OnPanelGeometry); });
+            RegisterCallback<DetachFromPanelEvent>(e => {
+                if (e.target != this) return;
+                panelRoot.UnregisterCallback<GeometryChangedEvent>(OnPanelGeometry);
+                // A menu removed with its window rather than through Close still unmarks its opener.
+                if (!_closed) { _closed = true; _target.RemoveFromClassList(OpenClass); }
+            });
         }
         void Populate()
         {
@@ -330,7 +340,7 @@ namespace Thry.ThryEditor
         }
         void Close(bool focus = true)
         {
-            if (_closed) return; _closed = true; RemoveFromHierarchy();
+            if (_closed) return; _closed = true; _target.RemoveFromClassList(OpenClass); RemoveFromHierarchy();
             if (focus && _target.panel != null) _target.Focus();
         }
         void CloseAndTraverse(bool backwards)

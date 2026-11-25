@@ -44,6 +44,8 @@ USS has no gradients, so themes get two custom properties instead: `--thry-gradi
 - A surface whose background color is transparent is not painted, so icon, link, and search buttons stay clear.
 - Set the properties on the surface's own selector; like every custom property read in C#, they are not inherited from a parent rule. Pseudo-classes such as `:hover`, `:disabled`, and `:active` work; also give the surface's normal state a gradient, as Classic does, so a state's colors are replaced when it ends.
 - With an opaque gradient, a button's background color only shows through its border, so Classic sets the button fill tokens to its outline colors.
+- While a dropdown's menu is open, `RetainedMenu` adds `thry-menu-open` to the control that opened it and removes it when the menu closes. Right-click context menus leave their target unmarked. Classic uses it to keep a dropdown pushed in (`.unity-base-popup-field.thry-menu-open > .unity-base-popup-field__input`); `ThryTheme.uss` does not style it.
+- Classic draws pressed and selected buttons, open dropdowns, and the green on state of enum choice buttons and tiles pushed in, darker at the top. Raised surfaces are lighter at the top, including the render queue box in the action row, which overrides Classic's inset text-field gradient. Open root sections use `--thry-background-color` instead of the panel shade.
 
 `ThryTheme.uss` sets neither property. The painters are installed only while the chosen theme's file mentions `--thry-gradient`, so the default theme and themes without gradients cost nothing. While a gradient theme is active, each inspector or window is scanned for new surfaces after its layout changes.
 

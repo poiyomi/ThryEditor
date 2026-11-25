@@ -5,7 +5,13 @@
    Gradients use the --thry-gradient-top and --thry-gradient-bottom hooks. A gradient
    covers its surface's fill, and the base theme colors a button's border with that same
    fill token, so the button fill tokens below set the outline. Gray sliders other than
-   zero replace this theme's surface colors. */
+   zero replace this theme's surface colors.
+
+   Pressed surfaces are "pushed in": darker at the top than at the bottom. That covers
+   pressed buttons, selected buttons, and a dropdown while its menu is open (thry-menu-open
+   on the dropdown). The on state of enum choice buttons, ButtonVector, Vector4Toggles and
+   multi-float tiles is pushed in and green. The render queue box beside the rendering mode
+   is raised like the buttons around it rather than inset like a text field. */
 
 /* Both skins: square section bars like the old component headers. */
 .thry-inspector, .thry-dropdown-menu {
@@ -13,6 +19,12 @@
     --thry-radius-subheader: 0px;
     --thry-radius-panel: 0px;
     --thry-radius-control: 3px;
+}
+
+/* Open sections sit on the inspector background, like the old component bodies,
+   instead of a separate panel shade. */
+.thry-inspector .thry-root-section {
+    background-color: var(--thry-background-color);
 }
 
 /* ===== Light skin (Personal) ===== */
@@ -53,14 +65,15 @@
     --thry-button-disabled-background: #b4b4b4;
     --thry-disabled-background: #cfcfcf;
     --thry-disabled-border: #b0b0b0;
-    --thry-toggle-on-background: #8a8a8a;
-    --thry-toggle-on-hover-background: #808080;
-    --thry-toggle-on-pressed-background: #737373;
-    --thry-toggle-on-disabled-background: #aaaaaa;
-    --thry-toggle-on-border-color: #6e6e6e;
-    --thry-toggle-on-disabled-border-color: #9a9a9a;
-    --thry-toggle-on-text-color: #000000;
-    --thry-toggle-on-disabled-text-color: #5a5a5a;
+    /* On-state toggles are green; the gradients below push them in. */
+    --thry-toggle-on-background: #2f6e14;
+    --thry-toggle-on-hover-background: #377d18;
+    --thry-toggle-on-pressed-background: #285e11;
+    --thry-toggle-on-disabled-background: #86a877;
+    --thry-toggle-on-border-color: #1e4a0a;
+    --thry-toggle-on-disabled-border-color: #5f7a52;
+    --thry-toggle-on-text-color: #ffffff;
+    --thry-toggle-on-disabled-text-color: #3a3a3a;
 }
 
 .thry-inspector.thry-light Button {
@@ -103,25 +116,78 @@
     border-color: #999999;
 }
 
+/* A dropdown stays pushed in while its menu is open. */
+.thry-inspector.thry-light .unity-base-popup-field.thry-menu-open > .unity-base-popup-field__input {
+    --thry-gradient-top: #b4b4b4;
+    --thry-gradient-bottom: #cacaca;
+}
+
 /* A slightly darker top edge reads as the old inset text field. */
 .thry-inspector.thry-light .unity-base-text-field__input {
     --thry-gradient-top: #e9e9e9;
     --thry-gradient-bottom: #fafafa;
 }
 
+/* The render queue box is raised like the Lock button and rendering mode beside it. */
+.thry-inspector.thry-light .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input {
+    --thry-gradient-top: #f6f6f6;
+    --thry-gradient-bottom: #d4d4d4;
+}
+
+.thry-inspector.thry-light .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:hover {
+    --thry-gradient-top: #fbfbfb;
+    --thry-gradient-bottom: #dcdcdc;
+}
+
+.thry-inspector.thry-light .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:disabled {
+    --thry-gradient-top: #e8e8e8;
+    --thry-gradient-bottom: #dadada;
+}
+
 .thry-inspector.thry-light .thry-section-header {
-    --thry-gradient-top: #dedede;
-    --thry-gradient-bottom: #c6c6c6;
+    --thry-gradient-top: #ececec;
+    --thry-gradient-bottom: #bcbcbc;
 }
 
 .thry-inspector.thry-light .thry-section-header:hover {
-    --thry-gradient-top: #e6e6e6;
-    --thry-gradient-bottom: #cecece;
+    --thry-gradient-top: #f3f3f3;
+    --thry-gradient-bottom: #c6c6c6;
 }
 
 .thry-inspector.thry-light .thry-subsection-panel > .thry-section-header {
-    --thry-gradient-top: #d6d6d6;
-    --thry-gradient-bottom: #c2c2c2;
+    --thry-gradient-top: #e2e2e2;
+    --thry-gradient-bottom: #b8b8b8;
+}
+
+.thry-inspector.thry-light .thry-subsection-panel > .thry-section-header:hover {
+    --thry-gradient-top: #eaeaea;
+    --thry-gradient-bottom: #c1c1c1;
+}
+
+/* On state of enum choice buttons, ButtonVector, Vector4Toggles and multi-float tiles:
+   pushed in and green. The base theme keeps their outline in every state. */
+.thry-inspector.thry-light .thry-enum-buttons > Button.thry-selected,
+.thry-inspector.thry-light .thry-multi-value-controls > Button.thry-selected {
+    --thry-gradient-top: #255810;
+    --thry-gradient-bottom: #357918;
+}
+
+.thry-inspector.thry-light .thry-enum-buttons > Button.thry-selected:hover,
+.thry-inspector.thry-light .thry-multi-value-controls > Button.thry-selected:hover {
+    --thry-gradient-top: #2a6213;
+    --thry-gradient-bottom: #3a841a;
+}
+
+.thry-inspector.thry-light .thry-enum-buttons > Button.thry-selected:enabled:active,
+.thry-inspector.thry-light .thry-multi-value-controls > Button.thry-selected:enabled:active {
+    --thry-gradient-top: #1f4b0d;
+    --thry-gradient-bottom: #2d6a13;
+}
+
+.thry-inspector.thry-light .thry-enum-buttons > Button.thry-selected:disabled,
+.thry-inspector.thry-light .thry-multi-value-controls > Button.thry-selected:disabled {
+    --thry-gradient-top: #7b9c6c;
+    --thry-gradient-bottom: #8cad7d;
 }
 
 .thry-inspector.thry-light .thry-root-section > .thry-section-header {
@@ -167,14 +233,15 @@
     --thry-button-disabled-background: #2e2e2e;
     --thry-disabled-background: #333333;
     --thry-disabled-border: #2a2a2a;
-    --thry-toggle-on-background: #1e1e1e;
-    --thry-toggle-on-hover-background: #262626;
-    --thry-toggle-on-pressed-background: #181818;
-    --thry-toggle-on-disabled-background: #2c2c2c;
-    --thry-toggle-on-border-color: #151515;
-    --thry-toggle-on-disabled-border-color: #2a2a2a;
-    --thry-toggle-on-text-color: #e0e0e0;
-    --thry-toggle-on-disabled-text-color: #7d7d7d;
+    /* On-state toggles are green; the gradients below push them in. */
+    --thry-toggle-on-background: #3a751b;
+    --thry-toggle-on-hover-background: #407f1e;
+    --thry-toggle-on-pressed-background: #326817;
+    --thry-toggle-on-disabled-background: #445d33;
+    --thry-toggle-on-border-color: #16310a;
+    --thry-toggle-on-disabled-border-color: #2a3622;
+    --thry-toggle-on-text-color: #ffffff;
+    --thry-toggle-on-disabled-text-color: #b4b4b4;
 }
 
 .thry-inspector.thry-dark Button {
@@ -217,24 +284,77 @@
     border-color: #222222;
 }
 
+/* A dropdown stays pushed in while its menu is open. */
+.thry-inspector.thry-dark .unity-base-popup-field.thry-menu-open > .unity-base-popup-field__input {
+    --thry-gradient-top: #353535;
+    --thry-gradient-bottom: #404040;
+}
+
 .thry-inspector.thry-dark .unity-base-text-field__input {
     --thry-gradient-top: #272727;
     --thry-gradient-bottom: #303030;
 }
 
+/* The render queue box is raised like the Lock button and rendering mode beside it. */
+.thry-inspector.thry-dark .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input {
+    --thry-gradient-top: #5c5c5c;
+    --thry-gradient-bottom: #474747;
+}
+
+.thry-inspector.thry-dark .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:hover {
+    --thry-gradient-top: #636363;
+    --thry-gradient-bottom: #4d4d4d;
+}
+
+.thry-inspector.thry-dark .thry-action-row > .thry-queue-field > .unity-integer-field > .unity-base-text-field__input:disabled {
+    --thry-gradient-top: #4a4a4a;
+    --thry-gradient-bottom: #424242;
+}
+
 .thry-inspector.thry-dark .thry-section-header {
-    --thry-gradient-top: #4c4c4c;
-    --thry-gradient-bottom: #3e3e3e;
+    --thry-gradient-top: #5a5a5a;
+    --thry-gradient-bottom: #393939;
 }
 
 .thry-inspector.thry-dark .thry-section-header:hover {
-    --thry-gradient-top: #535353;
-    --thry-gradient-bottom: #444444;
+    --thry-gradient-top: #626262;
+    --thry-gradient-bottom: #404040;
 }
 
 .thry-inspector.thry-dark .thry-subsection-panel > .thry-section-header {
-    --thry-gradient-top: #474747;
-    --thry-gradient-bottom: #3b3b3b;
+    --thry-gradient-top: #535353;
+    --thry-gradient-bottom: #363636;
+}
+
+.thry-inspector.thry-dark .thry-subsection-panel > .thry-section-header:hover {
+    --thry-gradient-top: #5b5b5b;
+    --thry-gradient-bottom: #3d3d3d;
+}
+
+/* On state of enum choice buttons, ButtonVector, Vector4Toggles and multi-float tiles:
+   pushed in and green. The base theme keeps their outline in every state. */
+.thry-inspector.thry-dark .thry-enum-buttons > Button.thry-selected,
+.thry-inspector.thry-dark .thry-multi-value-controls > Button.thry-selected {
+    --thry-gradient-top: #29530f;
+    --thry-gradient-bottom: #3a751b;
+}
+
+.thry-inspector.thry-dark .thry-enum-buttons > Button.thry-selected:hover,
+.thry-inspector.thry-dark .thry-multi-value-controls > Button.thry-selected:hover {
+    --thry-gradient-top: #2e5c12;
+    --thry-gradient-bottom: #407f1e;
+}
+
+.thry-inspector.thry-dark .thry-enum-buttons > Button.thry-selected:enabled:active,
+.thry-inspector.thry-dark .thry-multi-value-controls > Button.thry-selected:enabled:active {
+    --thry-gradient-top: #22460c;
+    --thry-gradient-bottom: #326817;
+}
+
+.thry-inspector.thry-dark .thry-enum-buttons > Button.thry-selected:disabled,
+.thry-inspector.thry-dark .thry-multi-value-controls > Button.thry-selected:disabled {
+    --thry-gradient-top: #36492a;
+    --thry-gradient-bottom: #445d33;
 }
 
 .thry-inspector.thry-dark .thry-root-section > .thry-section-header {
