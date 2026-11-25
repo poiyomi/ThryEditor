@@ -179,7 +179,7 @@ namespace Thry.ThryEditor
                 new[]{"Avatar fixes","autoSetAnchorOverride","humanBoneAnchor","anchorOverrideObjectName"},
                 new[]{"Textures & gradients","texturePackerCompressionWithAlphaOverwrite","texturePackerCompressionNoAlphaOverwrite","gradientEditorCompressionOverwrite","gradient_name"},
                 new[]{"Texture packing","inlinePackerChrunchCompression","inlinePackerSaveLocation","inlinePackerSaveLocationCustom"},
-                new[]{"Shader optimization","forceAsyncCompilationPreview","saveAfterLockUnlock","fixKeywordsWhenLocking","lockedShaderCacheBudgetMB"},
+                new[]{"Shader optimization","forceAsyncCompilationPreview","saveAfterLockUnlock","fixKeywordsWhenLocking","useGlobalLockedShaderCache","lockedShaderCacheBudgetMB"},
                 new[]{"Developer","loggingLevel","enableDeveloperMode","disableUnlockedShaderStrippingOnBuild"}
             };
             var sections = new List<SearchSection>();
@@ -210,7 +210,11 @@ namespace Thry.ThryEditor
                     Action<object> save=v=>{
                         if (isTheme) ChangeAppearance(() => InspectorAppearancePreferences.Shared.SetValue(Config.Instance, key, v),
                             !Config.Instance.useSharedInspectorAppearance);
-                        else { member.SetValue(Config.Instance,v); Config.Instance.Save(); ShaderEditor.ReloadActive(); }
+                        else
+                        {
+                            member.SetValue(Config.Instance,v); Config.Instance.Save(); ShaderEditor.ReloadActive();
+                            if (key == nameof(Config.useGlobalLockedShaderCache)) LockedShaderCacheMove.OnGlobalCacheSettingChanged();
+                        }
                     };
                     if (key == "inspectorTheme")
                     {

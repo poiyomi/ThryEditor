@@ -77,6 +77,11 @@ namespace Thry.ThryEditor
         public bool saveAfterLockUnlock = true;
         public bool sectionLockWhileEditing = true;
 
+        // Off: locked shaders are written to an OptimizedShaders folder next to each material, so exporting a
+        // folder keeps its materials locked. On: every material locks into Assets/_LockedShaderCache and shares
+        // it across the project. Either way, unlocking keeps the shader in Assets/_LockedShaderCache.
+        public bool useGlobalLockedShaderCache = false;
+
         // Size ceiling for Assets/_LockedShaderCache. Once exceeded, locked shaders that no material
         // references any more are deleted least-recently-used first. 0 disables trimming.
         public int lockedShaderCacheBudgetMB = 2048;

@@ -756,9 +756,9 @@ namespace Thry.ThryEditor
         // reconciled across every material sharing them once, rather than per material.
         private static readonly HashSet<string> s_cacheEntriesTouchedThisBatch = new HashSet<string>();
 
-        // Folder entries the batch's unlocks left without a known user. A copy of a material in another folder
-        // can still point at one, which is looked up once for the whole batch.
-        private static readonly HashSet<string> s_entriesToDeleteThisBatch = new HashSet<string>();
+        // Folder entries the batch's unlocks left without a known user, to be parked in the central cache. A copy
+        // of a material in another folder can still point at one, which is looked up once for the whole batch.
+        private static readonly HashSet<string> s_entriesToParkThisBatch = new HashSet<string>();
         // One scan of the material files serves every batch run from the same call, such as an upgrade that
         // unlocks materials one at a time. Files of materials unlocked since then still name their old shader.
         private static Dictionary<string, List<string>> s_materialsByShaderGuid;
@@ -806,7 +806,7 @@ namespace Thry.ThryEditor
             s_applyStructsLater.Clear();
             s_lockedShaderNamesThisBatch.Clear();
             s_cacheEntriesTouchedThisBatch.Clear();
-            s_entriesToDeleteThisBatch.Clear();
+            s_entriesToParkThisBatch.Clear();
             if (s_materialsByShaderGuid == null) s_unlockedSinceScan.Clear();
             s_textMatchesThisBatch.Clear();
             s_contentIndexThisBatch.Clear();
@@ -908,13 +908,21 @@ namespace Thry.ThryEditor
                                 entryDirectory = textMatch.directory;
                             }
 
-                            // Three ways to get the shader, cheapest first:
+                            // Four ways to get the shader, cheapest first:
                             //  1. one generated earlier in this same batch. We are inside
                             //     StartAssetEditing, so Shader.Find cannot see it yet and we track it.
                             //  2. one already in the cache, possibly from a previous session.
-                            //  3. generate it.
+                            //  3. one this folder's materials left in the cache when they were unlocked,
+                            //     moved back beside them.
+                            //  4. generate it.
                             Shader unused;
                             bool exists = s_lockedShaderNamesThisBatch.Contains(lockedShaderName) || LockedShaderCache.TryGetCachedShader(entryDirectory, m.shader, out unused);
+                            if (!exists && LockedShaderCache.TryRestoreParkedEntry(entryDirectory, m.shader, lockedShaderName))
+                            {
+                                // Not imported at its new path until the batch's refresh
+                                s_lockedShaderNamesThisBatch.Add(lockedShaderName);
+                                exists = true;
+                            }
 
                             // The sidecar records which textures got stripped. Without it there is no way
                             // to know what to strip off this material, and the orphan sweep in
@@ -970,9 +978,10 @@ namespace Thry.ThryEditor
                             ThryLogger.LogErr("Could not un-/lock material " + m.name + "\n" + e.StackTrace);
                         }
                         EditorUtility.ClearProgressBar();
-                        DeleteUnusedFolderEntries();
                         AssetDatabase.StopAssetEditing();
                         assetEditingActive = false;
+                        ParkUnusedFolderEntries();
+                        LockedShaderCache.PruneEmptyFolders();
                         return false;
                     }
                     i++;
@@ -991,9 +1000,10 @@ namespace Thry.ThryEditor
                     foreach (Material m in materialsToChangeLock) GlobalLinker.ApplyAllLinksToMaterial(m);
                 }
                 
-                DeleteUnusedFolderEntries();
                 AssetDatabase.StopAssetEditing();
                 assetEditingActive = false;
+                // Moves assets, so not inside asset editing
+                ParkUnusedFolderEntries();
                 LockedShaderCache.PruneEmptyFolders();
                 //unity now compiles all the shaders
 
@@ -1209,6 +1219,11 @@ namespace Thry.ThryEditor
             // above 3000). Only the results go in, so queues on the same side of every threshold still share
             // a shader. Shaders without such a condition keep their old hashes.
             IfexConditions ifexConditions = GetIfexConditions(AssetDatabase.GetAssetPath(m.shader));
+
+            // The dependency hash above misses the includes Lock inlines. Shaders outlive unlocking in the
+            // cache, so an edited include must not resolve to one generated from its old contents.
+            stringBuilder.Append("|src:").Append(ifexConditions.Files.ContentHash);
+
             if (ifexConditions.RenderQueue.Length > 0)
             {
                 stringBuilder.Append("|rq:");
@@ -1352,6 +1367,38 @@ namespace Thry.ThryEditor
                 foreach (var file in _files)
                     if (Stamp(file.path) != file) return false;
                 return true;
+            }
+
+            string _contentHash;
+
+            /// <summary>
+            /// Hash of what the files hold, independent of where they are. Read once per scan, which is
+            /// redone whenever one of the files changes, so it never describes older contents.
+            /// </summary>
+            public string ContentHash
+            {
+                get
+                {
+                    if (_contentHash != null) return _contentHash;
+                    List<string> fileHashes = new List<string>(_files.Count);
+                    using (var md5 = new MD5CryptoServiceProvider())
+                    {
+                        foreach (var file in _files)
+                        {
+                            try
+                            {
+                                fileHashes.Add(File.Exists(file.path) ? BitConverter.ToString(md5.ComputeHash(File.ReadAllBytes(file.path))) : "missing");
+                            }
+                            catch (IOException)
+                            {
+                                fileHashes.Add("unreadable");
+                            }
+                        }
+                        fileHashes.Sort(StringComparer.Ordinal);
+                        _contentHash = BitConverter.ToString(md5.ComputeHash(Encoding.UTF8.GetBytes(string.Join("|", fileHashes)))).Replace("-", "").ToLowerInvariant();
+                    }
+                    return _contentHash;
+                }
             }
 
             static (string, long, long) Stamp(string path)
@@ -2121,6 +2168,8 @@ namespace Thry.ThryEditor
                 foreach (string directory in Directory.GetDirectories(shaderDirectory))
                 {
                     string entryDirectory = directory.Replace('\\', '/');
+                    // A parked folder entry carries its folder's name, so it only goes back to that folder
+                    if (!LockedShaderCache.IsHash(Path.GetFileName(entryDirectory))) continue;
                     LockedShaderCache.EntryInfo info = LockedShaderCache.ReadEntry(entryDirectory);
                     if (info != null && !string.IsNullOrEmpty(info.ContentHash)) index[info.ContentHash] = entryDirectory;
                 }
@@ -3268,7 +3317,8 @@ namespace Thry.ThryEditor
                 return UnlockSuccess.success;
             }
 
-            // A folder's shaders get exported with it, so one that nothing uses any more is deleted
+            // A folder's shaders get exported with it, so one that nothing uses any more is moved to the central
+            // cache rather than deleted. Locking with the same settings in this folder again moves it back.
             if (LockedShaderCache.IsFolderEntry(lockedShaderAssetPath))
             {
                 string entryDirectory = Path.GetDirectoryName(lockedShaderAssetPath).Replace('\\', '/');
@@ -3279,7 +3329,7 @@ namespace Thry.ThryEditor
                 if (IsLockedShaderStillUsed(lockedShader, entryDirectory, tagUsers))
                     s_cacheEntriesTouchedThisBatch.Add(entryDirectory);
                 else
-                    s_entriesToDeleteThisBatch.Add(entryDirectory);
+                    s_entriesToParkThisBatch.Add(entryDirectory);
                 return UnlockSuccess.success;
             }
 
@@ -3355,10 +3405,11 @@ namespace Thry.ThryEditor
             return false;
         }
 
-        // A copy of a material in another folder can still be on one of these shaders
-        static void DeleteUnusedFolderEntries()
+        // A copy of a material in another folder can still be on one of these shaders. Must run after
+        // StopAssetEditing, since parking moves assets.
+        static void ParkUnusedFolderEntries()
         {
-            if (s_entriesToDeleteThisBatch.Count == 0) return;
+            if (s_entriesToParkThisBatch.Count == 0) return;
             if (s_materialsByShaderGuid == null)
             {
                 s_materialsByShaderGuid = LockedShaderCache.GetMaterialPathsByShaderGuid();
@@ -3366,15 +3417,18 @@ namespace Thry.ThryEditor
             }
             string[] loadedShaderPaths = Resources.FindObjectsOfTypeAll<Material>().Where(m => m != null && m.shader != null)
                 .Select(m => AssetDatabase.GetAssetPath(m.shader)).Distinct().ToArray();
-            foreach (string entryDirectory in s_entriesToDeleteThisBatch)
+            int parked = 0;
+            foreach (string entryDirectory in s_entriesToParkThisBatch)
             {
                 string prefix = entryDirectory + "/";
                 bool used = loadedShaderPaths.Any(path => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                     || AssetDatabase.FindAssets("t:Shader", new[] { entryDirectory }).Any(shaderGuid =>
                         s_materialsByShaderGuid.TryGetValue(shaderGuid, out List<string> users) && users.Any(path => !s_unlockedSinceScan.Contains(path)));
-                if (!used) LockedShaderCache.DeleteEntry(entryDirectory);
+                if (!used && LockedShaderCache.ParkEntry(entryDirectory)) parked++;
             }
-            s_entriesToDeleteThisBatch.Clear();
+            s_entriesToParkThisBatch.Clear();
+            if (parked > 0)
+                ThryLogger.LogDetail("Kept " + parked + " unused locked shader" + (parked == 1 ? "" : "s") + " in " + LockedShaderCache.CacheRoot + " for the next lock.");
         }
 
         private static Shader GetOriginalShaderByName(Material material, bool log = true)
@@ -3628,8 +3682,19 @@ namespace Thry.ThryEditor
             public void OnPostprocessAvatar()
             {
                 RestoreMeshStripping();
-                // The copies' locked shaders are in here too
-                if (AssetDatabase.IsValidFolder(TempFolder)) LockedShaderCache.DeleteCollected(TempFolder);
+                if (!AssetDatabase.IsValidFolder(TempFolder)) return;
+                // The copies locked into the central cache. Their shaders stay there for the next upload.
+                foreach (string guid in AssetDatabase.FindAssets("t:Material", new[] { TempFolder }))
+                {
+                    Material copy = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(guid));
+                    string shaderPath = copy != null && copy.shader != null ? AssetDatabase.GetAssetPath(copy.shader) : null;
+                    if (!LockedShaderCache.IsInCache(shaderPath)) continue;
+                    string entryDirectory = Path.GetDirectoryName(shaderPath).Replace('\\', '/');
+                    LockedShaderCache.DeregisterUser(entryDirectory, guid);
+                    s_cacheEntriesTouchedThisBatch.Add(entryDirectory);
+                }
+                ReconcileSharedShaderTags();
+                LockedShaderCache.DeleteCollected(TempFolder);
             }
 
             // Unity would strip mesh channels that only animated material swaps read. The SDK skips postprocess

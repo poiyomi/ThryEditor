@@ -12,13 +12,16 @@ namespace Thry.ThryEditor
     /// <summary>
     /// Content-addressed store for the shaders the ShaderOptimizer generates.
     ///
-    /// A locked shader is written to an OptimizedShaders folder next to its material, so exporting a
-    /// folder carries its locked shaders along. Inside it, shaders are filed under a hash of everything
-    /// that affects the generated source, so materials in the same folder that hash the same share one.
-    /// Unlocking deletes a shader once no material uses it any more.
+    /// By default a locked shader is written to an OptimizedShaders folder next to its material, so
+    /// exporting a folder carries its locked shaders along. Inside it, shaders are filed under a hash of
+    /// everything that affects the generated source, so materials in the same folder that hash the same
+    /// share one. Once unlocking leaves a shader without users it is parked in CacheRoot rather than
+    /// deleted, so the folder exports without it, and locking that folder's material with the same
+    /// settings again moves it back instead of regenerating it.
     ///
-    /// Materials outside Assets lock into CacheRoot instead. Shaders there are kept after unlocking and
-    /// trimmed by the garbage collector.
+    /// With Config.useGlobalLockedShaderCache on, every material locks into CacheRoot and shares it
+    /// project-wide. Materials outside Assets and the flattened copies made for an upload always do.
+    /// Shaders in CacheRoot are kept after unlocking and trimmed by the garbage collector.
     /// </summary>
     public static class LockedShaderCache
     {
@@ -34,9 +37,10 @@ namespace Thry.ThryEditor
 are using Poiyomi Shaders, this folder is very important!
 
 - Everything in here is generated. Don't hand-edit it, or your changes will be overwritten.
-- DO NOT DELETE THIS FOLDER! Deletion of this folder will cause Pink colors on locked materials and will require a re-compiled unlock!
+- By default, locked materials keep their shaders in an OptimizedShaders folder next to them. When you unlock a material, its shader is moved here instead of being deleted, so locking it again with the same settings is instant.
+- With 'Global Locked Shader Cache' turned on in ThryEditor Settings, every locked material keeps its shader in here instead. DO NOT DELETE THIS FOLDER in that case! Locked materials would lose their shaders and get unlocked.
 - Each subfolder is named after a shader, and each folder inside that is one unique combination of material settings. Materials with identical settings share a single shader on purpose, which allows improved performance on Lock and Unlock.
-- VERSION CONTROL: This folder can be safely ignored via .gitignore.
+- VERSION CONTROL: This folder can be safely ignored via .gitignore while 'Global Locked Shader Cache' is off.
 - To clear this Cache: Poi > Thry > ThryEditor > Optimized Shader Cache > Remove Unused.
 ";
 
@@ -51,10 +55,10 @@ are using Poiyomi Shaders, this folder is very important!
         public static string GetRoot(string materialPath)
         {
             materialPath = (materialPath ?? string.Empty).Replace('\\', '/');
-            // Flattened variant copies are deleted after the upload, so their shaders go with them
+            if (Config.Instance.useGlobalLockedShaderCache || !materialPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                return CacheRoot;
+            // Flattened variant copies are deleted after the upload. Their shaders stay cached for the next one.
             if (materialPath.StartsWith(UploadMaterialsFolder + "/", StringComparison.OrdinalIgnoreCase))
-                return UploadMaterialsFolder + "/" + FolderName;
-            if (!materialPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
                 return CacheRoot;
             return Path.GetDirectoryName(materialPath).Replace('\\', '/') + "/" + FolderName;
         }
@@ -128,7 +132,19 @@ are using Poiyomi Shaders, this folder is very important!
             return null;
         }
 
-        static bool IsHash(string name)
+        /// <summary>
+        /// Where a folder entry is parked once nothing uses it: CacheRoot/&lt;shader&gt;/&lt;hash&gt;-&lt;folder key&gt;.
+        /// The key keeps entries of different folders apart, since each one's shader name carries it.
+        /// </summary>
+        static string GetParkedEntryDirectory(string folderEntryDirectory)
+        {
+            string shaderDirectory = Path.GetDirectoryName(folderEntryDirectory).Replace('\\', '/');
+            string root = Path.GetDirectoryName(shaderDirectory).Replace('\\', '/');
+            return CacheRoot + "/" + Path.GetFileName(shaderDirectory) + "/" + Path.GetFileName(folderEntryDirectory) + "-" + GetFolderKey(root);
+        }
+
+        /// <summary>True for an entry folder name that is a plain settings hash, which a parked entry's is not.</summary>
+        internal static bool IsHash(string name)
         {
             if (name.Length != 32) return false;
             foreach (char c in name)
@@ -185,6 +201,126 @@ are using Poiyomi Shaders, this folder is very important!
 
             shader = found;
             return true;
+        }
+
+        #endregion
+
+        #region Parking
+
+        /// <summary>
+        /// Moves a folder entry that no material uses any more into CacheRoot instead of deleting it. The
+        /// folder then exports without it, and locking one of its materials with the same settings again
+        /// moves it back (see TryRestoreParkedEntry). Must run outside StartAssetEditing, since it moves
+        /// assets. Returns true when the shader was kept in CacheRoot. When the move fails the entry is
+        /// left where it was.
+        /// </summary>
+        public static bool ParkEntry(string entryDirectory)
+        {
+            if (!IsFolderEntry(entryDirectory) || !Directory.Exists(entryDirectory)) return false;
+
+            string parked = GetParkedEntryDirectory(entryDirectory);
+            // Read first: the sidecar is a dot file, which the AssetDatabase does not know about
+            EntryInfo info = ReadEntry(entryDirectory) ?? new EntryInfo();
+            s_rootsToPrune.Add(Path.GetDirectoryName(Path.GetDirectoryName(entryDirectory)).Replace('\\', '/'));
+
+            // An older copy under the same name is parked already. The one that was just in use replaces it,
+            // so two shaders never share the name.
+            if (Directory.Exists(parked) && !DeleteCollected(parked))
+            {
+                ThryLogger.LogWarn("Could not replace the cached locked shader " + parked + ", so the unused " + entryDirectory + " stays where it is.");
+                return false;
+            }
+
+            EnsureCacheRoot();
+            if (!EnsureAssetFolder(Path.GetDirectoryName(parked).Replace('\\', '/')))
+            {
+                ThryLogger.LogWarn("Could not create " + Path.GetDirectoryName(parked) + " to keep the unused locked shader " + entryDirectory + " in.");
+                return false;
+            }
+
+            string error = AssetDatabase.MoveAsset(entryDirectory, parked);
+            if (!string.IsNullOrEmpty(error))
+            {
+                ThryLogger.LogWarn("Could not move the unused locked shader " + entryDirectory + " to " + parked + ": " + error);
+                return false;
+            }
+
+            try
+            {
+                string oldSidecar = GetSidecarPath(entryDirectory);
+                if (File.Exists(oldSidecar)) File.Delete(oldSidecar);
+                if (Directory.Exists(entryDirectory) && Directory.GetFileSystemEntries(entryDirectory).Length == 0) Directory.Delete(entryDirectory);
+            }
+            catch (IOException) { }
+
+            info.UserGuids.Clear();
+            WriteEntry(parked, info);
+            Touch(parked);
+            return true;
+        }
+
+        /// <summary>
+        /// Moves a parked copy of a folder entry back beside the folder's materials, when one is parked
+        /// under the same shader name. Runs inside the lock's StartAssetEditing block, so the files are
+        /// moved on disk along with their .meta files, keeping their GUIDs, and the AssetDatabase picks
+        /// the move up at the batch's refresh. Returns true once the entry is back in place.
+        ///
+        /// Only an exact match comes back. Its folder is named after the settings hash, which covers every
+        /// material value the generated code depends on, the original shader and the files it inlines, the
+        /// optimizer version and the color space. A material whose options changed hashes differently and
+        /// gets a newly generated shader instead.
+        /// </summary>
+        public static bool TryRestoreParkedEntry(string entryDirectory, Shader originalShader, string lockedShaderName)
+        {
+            // Developer mode edits sources the hash can't see. Never reuse there, as TryGetCachedShader.
+            if (Config.Instance.enableDeveloperMode) return false;
+            // Never overwrite what is in the folder already, even a broken entry: generating replaces that
+            if (!IsFolderEntry(entryDirectory) || Directory.Exists(entryDirectory)) return false;
+
+            string parked = GetParkedEntryDirectory(entryDirectory);
+            if (!Directory.Exists(parked)) return false;
+
+            Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(GetShaderPath(parked, originalShader));
+            // Unusable: missing, failing to compile, or without the stripped texture list the material needs
+            // to be locked onto it. Its name would also clash with the shader generated in its place.
+            if (shader == null || shader.IsBroken() || ShaderUtil.ShaderHasError(shader) || ReadEntry(parked) == null)
+            {
+                DeleteEntry(parked);
+                return false;
+            }
+            // A copy of a duplicated folder still carries the other folder's name
+            if (shader.name != lockedShaderName) return false;
+
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(entryDirectory));
+                // Recovery would otherwise take the shader leaving CacheRoot for a lost one
+                MarkCollected(parked);
+                Directory.Move(parked, entryDirectory);
+                if (File.Exists(parked + ".meta")) File.Move(parked + ".meta", entryDirectory + ".meta");
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                ThryLogger.LogWarn("Could not move the cached locked shader " + parked + " back to " + entryDirectory + ": " + e.Message);
+                return Directory.Exists(entryDirectory) && File.Exists(GetShaderPath(entryDirectory, originalShader));
+            }
+
+            Touch(entryDirectory);
+            return true;
+        }
+
+        /// <summary>
+        /// Makes a folder known to the AssetDatabase, creating it if needed. A folder that is on disk but
+        /// not imported yet is imported, since CreateFolder would make a "Folder 1" next to it.
+        /// </summary>
+        static bool EnsureAssetFolder(string folder)
+        {
+            if (AssetDatabase.IsValidFolder(folder)) return true;
+            string parent = Path.GetDirectoryName(folder).Replace('\\', '/');
+            if (string.IsNullOrEmpty(parent) || !EnsureAssetFolder(parent)) return false;
+            if (Directory.Exists(folder)) AssetDatabase.ImportAsset(folder, ImportAssetOptions.ForceSynchronousImport);
+            else AssetDatabase.CreateFolder(parent, Path.GetFileName(folder));
+            return AssetDatabase.IsValidFolder(folder);
         }
 
         #endregion
@@ -311,7 +447,8 @@ are using Poiyomi Shaders, this folder is very important!
             {
                 Directory.CreateDirectory(CacheRoot);
                 string readme = CacheRoot + "/" + ReadmeName;
-                if (!File.Exists(readme)) File.WriteAllText(readme, ReadmeContents);
+                // Rewritten when outdated, since what the folder holds depends on the version
+                if (!File.Exists(readme) || File.ReadAllText(readme) != ReadmeContents) File.WriteAllText(readme, ReadmeContents);
             }
             catch (IOException e)
             {
@@ -515,21 +652,26 @@ are using Poiyomi Shaders, this folder is very important!
             s_rootsToPrune.Clear();
         }
 
-        // Deleted by the optimizer itself, so recovery can skip them
+        // Deleted or moved away by the optimizer itself, so recovery can skip them
         static readonly HashSet<string> s_collectedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         internal static bool DeleteCollected(string assetPath)
         {
-            s_collectedPaths.Add(assetPath);
+            MarkCollected(assetPath);
             if (!AssetDatabase.DeleteAsset(assetPath))
             {
                 s_collectedPaths.Remove(assetPath);
                 return false;
             }
+            return true;
+        }
+
+        static void MarkCollected(string assetPath)
+        {
+            s_collectedPaths.Add(assetPath);
             // The postprocessor has seen the deletion by the next tick
             EditorApplication.delayCall -= ForgetCollected;
             EditorApplication.delayCall += ForgetCollected;
-            return true;
         }
 
         /// <summary>True if the GC deleted this asset, or the folder it was in.</summary>
@@ -633,7 +775,9 @@ are using Poiyomi Shaders, this folder is very important!
                     string root = group.Key;
                     if (root.Equals(CacheRoot, StringComparison.OrdinalIgnoreCase)) continue;
 
-                    string target = root + "/" + Path.GetFileName(Path.GetDirectoryName(entry)) + "/" + Path.GetFileName(entry);
+                    // A parked entry's folder name also carries its folder key, which an OptimizedShaders entry's must not
+                    string hash = Path.GetFileName(entry).Split('-')[0];
+                    string target = root + "/" + Path.GetFileName(Path.GetDirectoryName(entry)) + "/" + hash;
                     string targetShaderPath = target + "/" + Path.GetFileName(shaderPath);
                     EntryInfo targetInfo = new EntryInfo { ContentHash = info.ContentHash };
                     targetInfo.StrippedTextures.AddRange(info.StrippedTextures);
@@ -641,7 +785,11 @@ are using Poiyomi Shaders, this folder is very important!
 
                     if (!entryMoved && !Directory.Exists(target))
                     {
-                        CreateFolders(Path.GetDirectoryName(target).Replace('\\', '/'));
+                        if (!EnsureAssetFolder(Path.GetDirectoryName(target).Replace('\\', '/')))
+                        {
+                            unmoved.Add(entry);
+                            continue;
+                        }
                         string error = AssetDatabase.MoveAsset(entry, target);
                         if (!string.IsNullOrEmpty(error))
                         {
@@ -683,8 +831,8 @@ are using Poiyomi Shaders, this folder is very important!
                 }
             }
 
-            // Whatever is left in CacheRoot is used by nothing, or only by materials outside Assets
-            CollectGarbage();
+            // Whatever is left in CacheRoot is used by nothing, or only by materials outside Assets. Unused
+            // shaders stay cached for a later lock and are trimmed once the cache outgrows its budget.
 
             // What stays belongs to materials outside Assets, so it must not ask for this move again
             foreach (string left in GetAllEntryDirectories())
@@ -718,7 +866,8 @@ are using Poiyomi Shaders, this folder is very important!
         static bool IsAssetsMaterial(string guid)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
-            return path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && !IsInCache(path);
+            return path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && !IsInCache(path)
+                && !path.StartsWith(UploadMaterialsFolder + "/", StringComparison.OrdinalIgnoreCase);
         }
 
         static void RemoveEmptyCacheRoot()
@@ -731,7 +880,7 @@ are using Poiyomi Shaders, this folder is very important!
 
         static void CopyEntry(string source, string target, string oldName, string newName)
         {
-            CreateFolders(target);
+            EnsureAssetFolder(target);
             foreach (string file in Directory.GetFiles(source))
             {
                 string fileName = Path.GetFileName(file);
@@ -742,14 +891,6 @@ are using Poiyomi Shaders, this folder is very important!
                 File.WriteAllText(target + "/" + fileName, text);
             }
             AssetDatabase.ImportAsset(target, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceSynchronousImport);
-        }
-
-        static void CreateFolders(string folder)
-        {
-            if (AssetDatabase.IsValidFolder(folder)) return;
-            string parent = Path.GetDirectoryName(folder).Replace('\\', '/');
-            CreateFolders(parent);
-            AssetDatabase.CreateFolder(parent, Path.GetFileName(folder));
         }
 
         /// <summary>Deletes every locked shader. The caller must run LockedShaderRecovery.</summary>
@@ -763,6 +904,10 @@ are using Poiyomi Shaders, this folder is very important!
         #endregion
     }
 
+    /// <summary>
+    /// While the global cache is off, moves the shaders materials in Assets are locked to out of CacheRoot
+    /// and next to those materials: once per session, and again whenever the global cache is turned off.
+    /// </summary>
     static class LockedShaderCacheMove
     {
         const string SessionKey = "Thry.LockedShaderCache.MovedBesideMaterials";
@@ -774,6 +919,14 @@ are using Poiyomi Shaders, this folder is very important!
             EditorApplication.delayCall += Run;
         }
 
+        /// <summary>Called by the settings window once Config.useGlobalLockedShaderCache has changed.</summary>
+        internal static void OnGlobalCacheSettingChanged()
+        {
+            if (Config.Instance.useGlobalLockedShaderCache || !Directory.Exists(LockedShaderCache.CacheRoot)) return;
+            EditorApplication.delayCall -= Run;
+            EditorApplication.delayCall += Run;
+        }
+
         static void Run()
         {
             if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode)
@@ -782,6 +935,8 @@ are using Poiyomi Shaders, this folder is very important!
                 return;
             }
             SessionState.SetBool(SessionKey, true);
+            // With the global cache on, locked shaders belong in CacheRoot
+            if (Config.Instance.useGlobalLockedShaderCache) return;
             try
             {
                 if (LockedShaderCache.HasEntriesToMove()) LockedShaderCache.MoveEntriesBesideMaterials();
