@@ -214,7 +214,7 @@
     --thry-button-selected-hover-background: #46699f;
     --thry-caption-color: #b4b4b4;
     --thry-value-color: #c2c2c2;
-    --thry-muted-color: #7d7d7d;
+    --thry-muted-color: #a0a0a0;
     --thry-root-section-text-color: #c8c8c8;
     --thry-action-text-color: #c8c8c8;
     --thry-section-background: #464646;
@@ -329,6 +329,15 @@
 .thry-inspector.thry-dark .thry-subsection-panel > .thry-section-header:hover {
     --thry-gradient-top: #5b5b5b;
     --thry-gradient-bottom: #3d3d3d;
+}
+
+/* Header icons (docs link, Global Link, fold arrow and the rest) are tinted with the muted
+   color at rest and the value color on hover. Brighter values on the icons alone keep
+   them clear of the header gradient without touching other text, and leave the linked,
+   focus and orb tints as they are. */
+.thry-inspector.thry-dark .thry-header-icon {
+    --thry-muted-color: #c0c0c0;
+    --thry-value-color: #e6e6e6;
 }
 
 /* On state of enum choice buttons, ButtonVector, Vector4Toggles and multi-float tiles:
