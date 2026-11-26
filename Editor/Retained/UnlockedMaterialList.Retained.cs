@@ -21,9 +21,9 @@ namespace Thry.ThryEditor
         {
             var root = rootVisualElement; root.Clear(); RetainedWindow.Style(root);
             root.AddToClassList("thry-lock-manager");
-            var title = new Label("Material lock manager"); title.AddToClassList("thry-title"); root.Add(title);
+            var title = new Label("Material Lock Manager"); title.AddToClassList("thry-title"); root.Add(title);
             var toolbar = new VisualElement(); toolbar.AddToClassList("thry-components"); root.Add(toolbar);
-            var search = RetainedWindow.Search("Find materials…"); search.value = _search; search.style.flexGrow = 1; toolbar.Add(search);
+            var search = RetainedWindow.Search("Find Materials..."); search.value = _search; search.style.flexGrow = 1; toolbar.Add(search);
             search.RegisterValueChangedCallback(e => { _search = e.newValue; _needsViewRebuild = true; });
             toolbar.Add(new Button(() => _pendingRescan = true) { text = "Refresh", tooltip = "Re-scan the project (F5)" });
             var filters = new VisualElement(); filters.AddToClassList("thry-components"); root.Add(filters);
@@ -31,7 +31,7 @@ namespace Thry.ThryEditor
             grouping.RegisterValueChangedCallback(e => { _grouping = (MaterialLockGrouping)grouping.index; _needsViewRebuild = true; SavePreferences(); });
             var filter = new DropdownField("Show", Enum.GetNames(typeof(MaterialLockFilter)).Select(ObjectNames.NicifyVariableName).ToList(), (int)_filter); RetainedWindow.Dropdown(filter); filters.Add(filter);
             filter.RegisterValueChangedCallback(e => { _filter = (MaterialLockFilter)filter.index; _needsViewRebuild = true; SavePreferences(); });
-            var packages = new Toggle("Include packages") { value = _includePackages }; root.Add(packages);
+            var packages = new Toggle("Include Packages") { value = _includePackages }; root.Add(packages);
             packages.RegisterValueChangedCallback(e => { _includePackages = e.newValue; _pendingRescan = true; SavePreferences(); });
             _retainedSummary = new Label(); _retainedSummary.AddToClassList("thry-muted"); root.Add(_retainedSummary);
             _retainedNotice = new VisualElement(); _retainedNotice.AddToClassList("thry-components"); root.Add(_retainedNotice);
@@ -41,12 +41,12 @@ namespace Thry.ThryEditor
             _retainedUnmarkedRows = new ScrollView(); _retainedUnmarkedRows.AddToClassList("thry-lock-unmarked"); root.Add(_retainedUnmarkedRows);
             RefreshRetainedUnmarked();
             var actions = new VisualElement(); actions.AddToClassList("thry-components"); root.Add(actions);
-            actions.Add(new Button(() => Enqueue(PendingKind.Lock, AllShown, true)) { text = "Lock shown" });
-            actions.Add(new Button(() => Enqueue(PendingKind.Unlock, AllShown, true)) { text = "Unlock shown" });
-            _retainedRelock = new Button(() => Enqueue(PendingKind.Relock, AllShown, true)) { text = "Relock outdated", tooltip = "Relock the shown materials that were locked with an older shader version" };
+            actions.Add(new Button(() => Enqueue(PendingKind.Lock, AllShown, true)) { text = "Lock Shown" });
+            actions.Add(new Button(() => Enqueue(PendingKind.Unlock, AllShown, true)) { text = "Unlock Shown" });
+            _retainedRelock = new Button(() => Enqueue(PendingKind.Relock, AllShown, true)) { text = "Re-lock Outdated", tooltip = "Re-lock the shown materials that were locked with an older shader version" };
             actions.Add(_retainedRelock);
-            actions.Add(new Button(() => { SetAllExpanded(true); RefreshRetainedList(); }) { text = "Expand all" });
-            actions.Add(new Button(() => { SetAllExpanded(false); RefreshRetainedList(); }) { text = "Collapse all" });
+            actions.Add(new Button(() => { SetAllExpanded(true); RefreshRetainedList(); }) { text = "Expand All" });
+            actions.Add(new Button(() => { SetAllExpanded(false); RefreshRetainedList(); }) { text = "Collapse All" });
             _retainedGroups = new ScrollView(); _retainedGroups.style.flexGrow = 1; root.Add(_retainedGroups);
             RefreshRetainedList();
         }
@@ -71,7 +71,7 @@ namespace Thry.ThryEditor
                 { tooltip = "Animation clips change these properties, but locking bakes them unless they are marked Animated." };
             notice.style.flexGrow = 1; _retainedUnmarked.Add(notice);
             var markable = items.Where(i => !i.Locked).ToList();
-            var markAll = new Button(() => _pendingMark = markable) { text = "Mark all" }; markAll.SetEnabled(markable.Count > 0); _retainedUnmarked.Add(markAll);
+            var markAll = new Button(() => _pendingMark = markable) { text = "Mark All" }; markAll.SetEnabled(markable.Count > 0); _retainedUnmarked.Add(markAll);
             _retainedUnmarkedRows.style.height = Mathf.Min(112, items.Count * 28);
             foreach (var item in items)
             {
@@ -110,15 +110,15 @@ namespace Thry.ThryEditor
                     if (built || !foldout.value) return;
                     built = true;
                     var actions = new VisualElement(); actions.AddToClassList("thry-components"); foldout.Add(actions);
-                    var lockGroup = new Button(() => Enqueue(PendingKind.Lock, group.Entries)) { text = "Lock group" }; lockGroup.SetEnabled(group.Entries.Any(e => e.CanLock)); actions.Add(lockGroup);
-                    var unlockGroup = new Button(() => Enqueue(PendingKind.Unlock, group.Entries)) { text = "Unlock group" }; unlockGroup.SetEnabled(group.Entries.Any(e => e.CanUnlock)); actions.Add(unlockGroup);
-                    actions.Add(new Button(() => Ping(group)) { text = "Show in project" });
+                    var lockGroup = new Button(() => Enqueue(PendingKind.Lock, group.Entries)) { text = "Lock Group" }; lockGroup.SetEnabled(group.Entries.Any(e => e.CanLock)); actions.Add(lockGroup);
+                    var unlockGroup = new Button(() => Enqueue(PendingKind.Unlock, group.Entries)) { text = "Unlock Group" }; unlockGroup.SetEnabled(group.Entries.Any(e => e.CanUnlock)); actions.Add(unlockGroup);
+                    actions.Add(new Button(() => Ping(group)) { text = "Show in Project" });
                     var list = new ListView(group.Entries, 28, () =>
                     {
                         var row = new VisualElement(); row.AddToClassList("thry-components");
                         var material = new Button(() => { var entry = (MaterialLockEntry)row.userData; Selection.activeObject = entry.Material; EditorGUIUtility.PingObject(entry.Material); }) { name = "material" }; material.style.flexGrow = 1; material.AddToClassList("thry-lock-material-name"); row.Add(material);
                         var state = new Label { name = "state" }; state.style.minWidth = 90; state.style.alignSelf = Align.Center; row.Add(state);
-                        var relock = new Button(() => Enqueue(PendingKind.Relock, new[] { (MaterialLockEntry)row.userData })) { name = "relock", text = "Relock", tooltip = "Unlock this material and lock it again with the installed shader version" }; relock.style.width = 70; row.Add(relock);
+                        var relock = new Button(() => Enqueue(PendingKind.Relock, new[] { (MaterialLockEntry)row.userData })) { name = "re-lock", text = "Re-lock", tooltip = "Unlock this material and lock it again with the installed shader version" }; relock.style.width = 70; row.Add(relock);
                         var action = new Button(() => { var entry = (MaterialLockEntry)row.userData; Enqueue(entry.CanLock ? PendingKind.Lock : PendingKind.Unlock, new[] { entry }); }) { name = "action" }; action.style.width = 70; row.Add(action);
                         return row;
                     }, (row, index) =>
@@ -126,7 +126,7 @@ namespace Thry.ThryEditor
                         var entry = group.Entries[index]; row.userData = entry;
                         row.Q<Button>("material").text = entry.Name; row.tooltip = entry.AssetPath;
                         row.Q<Label>("state").text = entry.IsReadOnly ? "Read-only" : entry.IsVariant ? "Variant" : entry.IsOutdated ? "Locked " + entry.LockedVersion : entry.State.ToString();
-                        row.Q<Button>("relock").style.display = entry.CanRelock ? DisplayStyle.Flex : DisplayStyle.None;
+                        row.Q<Button>("re-lock").style.display = entry.CanRelock ? DisplayStyle.Flex : DisplayStyle.None;
                         var action = row.Q<Button>("action"); action.text = entry.CanLock ? "Lock" : entry.State == MaterialLockState.Orphaned ? "Recover" : "Unlock"; action.SetEnabled(entry.CanLock || entry.CanUnlock);
                         action.tooltip = ActionTooltip(entry, entry.CanLock);
                         row.Q<Label>("state").tooltip = entry.IsVariant || entry.IsReadOnly ? action.tooltip
