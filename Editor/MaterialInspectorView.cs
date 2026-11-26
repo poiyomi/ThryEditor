@@ -96,15 +96,7 @@ namespace Thry.ThryEditor
             var navigation = new VisualElement(); navigation.AddToClassList("thry-navigation");
             _search = new ToolbarSearchField { name = "thry-search", tooltip = "Filter properties and edit them here. Click a name to go to that property. Combine the type and changed filters, or type t:texture, is:changed, is:animated, or is:missing. Escape clears all filters. Ctrl+F jumps here." };
             _search.AddToClassList("thry-search");
-            var searchIcon = _search.Q(className: "unity-search-field-base__search-button");
-            searchIcon.style.backgroundImage = StyleKeyword.None;
-            searchIcon.generateVisualContent += context => {
-                var painter = context.painter2D;
-                painter.lineWidth = 1.8f;
-                painter.strokeColor = searchIcon.resolvedStyle.color;
-                painter.BeginPath(); painter.Arc(new Vector2(7,7),4.5f,0,360); painter.Stroke();
-                painter.BeginPath(); painter.MoveTo(new Vector2(10.3f,10.3f)); painter.LineTo(new Vector2(15,15)); painter.Stroke();
-            };
+            RetainedWindow.SearchIcon(_search);
             _search.RegisterCallback<FocusInEvent>(evt => _search.AddToClassList("thry-search-focused"));
             _search.RegisterCallback<FocusOutEvent>(evt => _search.RemoveFromClassList("thry-search-focused"));
             _placeholder = new Label("Search...") { pickingMode = PickingMode.Ignore };

@@ -1642,6 +1642,15 @@
     border-radius: 0;
 }
 
+/* The vector magnifier uses the material inspector's 18 px box, so window search
+   fields match it. Only the cancel button stays compact. */
+.thry-window .thry-search .unity-search-field-base__search-button {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    min-height: 18px;
+}
+
 .thry-window .thry-search {
     flex-grow: 0;
     flex-shrink: 0;

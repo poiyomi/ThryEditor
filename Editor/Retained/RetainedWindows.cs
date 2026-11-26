@@ -49,12 +49,31 @@ namespace Thry.ThryEditor
         }
         internal static ToolbarSearchField Search(string placeholder)
         {
-            var field = new ToolbarSearchField(); field.AddToClassList("thry-search");
+            var field = new ToolbarSearchField(); field.AddToClassList("thry-search"); SearchIcon(field);
             var hint = new Label(placeholder) { pickingMode = PickingMode.Ignore }; hint.AddToClassList("thry-search-placeholder"); field.Add(hint);
             field.RegisterValueChangedCallback(e => hint.style.display = string.IsNullOrEmpty(e.newValue) ? DisplayStyle.Flex : DisplayStyle.None);
             field.RegisterCallback<FocusInEvent>(e => field.AddToClassList("thry-search-focused"));
             field.RegisterCallback<FocusOutEvent>(e => field.RemoveFromClassList("thry-search-focused"));
             return field;
+        }
+        // Unity's bitmap magnifier blurs and distorts once the button is resized, so every
+        // Thry search field draws the same vector icon, laid out on an 18 px grid.
+        internal static void SearchIcon(ToolbarSearchField field)
+        {
+            var icon = field.Q(className: "unity-search-field-base__search-button");
+            if (icon == null) return;
+            icon.style.backgroundImage = StyleKeyword.None;
+            icon.generateVisualContent += context => {
+                var rect = icon.contentRect;
+                float scale = Mathf.Min(rect.width, rect.height) / 18f;
+                if (scale <= 0) return;
+                var origin = rect.center - new Vector2(9, 9) * scale;
+                var painter = context.painter2D;
+                painter.lineWidth = 1.8f;
+                painter.strokeColor = icon.resolvedStyle.color;
+                painter.BeginPath(); painter.Arc(origin + new Vector2(7, 7) * scale, 4.5f * scale, 0, 360); painter.Stroke();
+                painter.BeginPath(); painter.MoveTo(origin + new Vector2(10.3f, 10.3f) * scale); painter.LineTo(origin + new Vector2(15, 15) * scale); painter.Stroke();
+            };
         }
         internal static void Style(VisualElement root)
         {
@@ -189,17 +208,16 @@ namespace Thry.ThryEditor
                 var searchable = new SearchSection { Section = section }; sections.Add(searchable);
                 if (group[0] == "Theme")
                 {
-                    var shared = new Toggle(RetainedText.Get("use_shared_inspector_appearance", "Use shared appearance on this computer")) {
-                        name = "use-shared-inspector-appearance", value = Config.Instance.useSharedInspectorAppearance
-                    };
-                    shared.labelElement.style.whiteSpace = WhiteSpace.Normal;
-                    shared.labelElement.style.flexShrink = 1;
-                    shared.tooltip = RetainedText.Get("use_shared_inspector_appearance_help",
+                    // Same label/value row as the other bool settings, so it shares their checkbox and label column.
+                    VisualElement sharedValue;
+                    var sharedRow = RetainedFields.Row(RetainedText.Get("use_shared_inspector_appearance", "Use shared appearance on this computer"), out sharedValue);
+                    sharedRow.tooltip = RetainedText.Get("use_shared_inspector_appearance_help",
                         "Share the Theme controls across projects for your user account. This toggle applies across projects too. Turn it off to use each project's own appearance.");
+                    var shared = new Toggle { name = "use-shared-inspector-appearance", value = Config.Instance.useSharedInspectorAppearance };
                     shared.RegisterValueChangedCallback(e => ChangeAppearance(
                         () => InspectorAppearancePreferences.Shared.SetShared(Config.Instance, e.newValue), true));
-                    section.Add(shared);
-                    searchable.Rows.Add(new KeyValuePair<string, VisualElement>("Theme shared appearance computer projects", shared));
+                    sharedValue.Add(shared); section.Add(sharedRow);
+                    searchable.Rows.Add(new KeyValuePair<string, VisualElement>("Theme shared appearance computer projects", sharedRow));
                 }
                 foreach(var key in group.Skip(1))
                 {
