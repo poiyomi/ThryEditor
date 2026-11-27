@@ -202,6 +202,7 @@ namespace Thry.ThryEditor
             readonly RetainedMaterialModel _model;
             readonly Dictionary<Material, (Shader Shader, Color Value)> _originals = new Dictionary<Material, (Shader, Color)>();
             string _name;
+            bool _keyed;
 
             internal MaterialColorTarget(ThryColorField field, ShaderProperty property, RetainedMaterialModel model) : base(field)
             { _property = property; _model = model; }
@@ -225,6 +226,7 @@ namespace Thry.ThryEditor
             protected override void Snapshot()
             {
                 _originals.Clear();
+                _keyed = false;
                 _name = _property.MaterialProperty.name;
                 foreach (var material in _model.Owners(_property))
                     _originals[material] = (SectionLock.GetSourceShader(material.shader), material.GetColor(_name));
@@ -232,6 +234,9 @@ namespace Thry.ThryEditor
 
             protected override bool Unchanged()
             {
+                // Recorded keys leave the materials as they were, so comparing them would revert the session's undo group and delete the key. Make sure a keyed session is kept, as Unity's own picker normally does.
+                if (_keyed) return false;
+
                 foreach (var pair in _originals)
                 {
                     var material = pair.Key;
@@ -241,12 +246,21 @@ namespace Thry.ThryEditor
                 return true;
             }
 
-            // Writing the originals back would key them into the clip.
-            protected override bool CancelThroughUndo => AnimationMode.InAnimationMode();
+            // Writing the originals back would key them into the clip, and would not take back keys recorded before animation mode was left mid-session.
+            protected override bool CancelThroughUndo => _keyed || AnimationMode.InAnimationMode();
+
+            void NoteKeyed()
+            {
+                if (AnimationMode.InAnimationMode()) _keyed = true;
+            }
 
             // The single-property path Bind uses: undo, animation keys, drawers, callbacks and links.
             // MaterialProperty.colorValue writes every owner even while they differ.
-            protected override void Write(Color raw) => _model.EditSingleProperty(_property, p => p.colorValue = raw);
+            protected override void Write(Color raw)
+            {
+                NoteKeyed();
+                _model.EditSingleProperty(_property, p => p.colorValue = raw);
+            }
 
             protected override void Restore() => _model.EditSingleProperty(_property, p =>
             {
@@ -258,6 +272,7 @@ namespace Thry.ThryEditor
             protected override void WritePicked(Color display)
             {
                 var format = Format;
+                NoteKeyed();
                 _model.EditSingleProperty(_property, p =>
                 {
                     var state = new ThryColorState(p.colorValue, format);
